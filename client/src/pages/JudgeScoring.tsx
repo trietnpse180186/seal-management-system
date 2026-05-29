@@ -44,16 +44,24 @@ export default function JudgeScoring() {
   const currentRound = rounds.find((r: any) => r._id === selectedRoundId);
   const isRoundLocked = currentRound?.status === 'completed';
 
-  // Fetch events
+  // Fetch specific team info & set event context
   useEffect(() => {
-    axios.get('http://localhost:5000/api/events')
+    if (!teamId) return;
+    axios.get(`http://localhost:5000/api/teams/${teamId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
       .then((res: any) => {
-        if (res.data.length > 0) {
-          setSelectedEventId(res.data[0]._id);
+        const teamData = res.data.team;
+        if (teamData) {
+          setTeam(teamData);
+          const evId = teamData.eventId?._id || teamData.eventId;
+          if (evId) {
+            setSelectedEventId(evId);
+          }
         }
       })
-      .catch((err: any) => console.error(err));
-  }, []);
+      .catch((err: any) => console.error('Error fetching team details:', err));
+  }, [teamId, token]);
 
   // Fetch event details (rounds, tracks)
   useEffect(() => {
@@ -67,21 +75,6 @@ export default function JudgeScoring() {
       })
       .catch((err: any) => console.error(err));
   }, [selectedEventId]);
-
-  // Fetch specific team info
-  useEffect(() => {
-    if (!selectedEventId || !teamId) return;
-    axios.get(`http://localhost:5000/api/teams/all/${selectedEventId}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then((res: any) => {
-        const found = res.data.find((t: any) => t._id === teamId);
-        if (found) {
-          setTeam(found);
-        }
-      })
-      .catch((err: any) => console.error(err));
-  }, [selectedEventId, teamId, token]);
 
   // Fetch rubric/criteria
   useEffect(() => {

@@ -530,4 +530,35 @@ router.put('/:teamId/assign-track', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * @route   GET /api/teams/:teamId
+ * @desc    Get details of a single team by ID
+ * @access  Private
+ */
+router.get('/:teamId', authenticateToken, async (req, res) => {
+  try {
+    const team = await Team.findById(req.params.teamId)
+      .populate('eventId', 'name semester year status')
+      .populate('trackId', 'name description');
+      
+    if (!team) {
+      return res.status(404).json({ message: 'Không tìm thấy thông tin đội thi.' });
+    }
+
+    const members = await TeamMember.find({ teamId: team._id })
+      .populate('userId', 'fullName email studentId githubUsername avatarUrl');
+
+    const repo = await GithubRepository.findOne({ teamId: team._id });
+
+    res.json({
+      team,
+      members,
+      repository: repo
+    });
+  } catch (error) {
+    console.error('Fetch Single Team Error:', error.message);
+    res.status(500).json({ message: 'Server error retrieving team details.' });
+  }
+});
+
 module.exports = router;

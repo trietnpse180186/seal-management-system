@@ -97,6 +97,7 @@ export default function AdminDashboard({
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
 
+  // Tab management state
   const [activeTab, setActiveTab] = useState<
     "admin" | "events" | "teams" | "rounds" | "tracks" | "github"
   >(defaultTab);

@@ -1,6 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { Trophy, Lock, RefreshCw, AlertCircle } from "lucide-react";
+import {
+  BarChart3,
+  Trophy,
+  CheckSquare,
+  Lock,
+  RefreshCw,
+  AlertCircle,
+} from "lucide-react";
 
 export default function JudgeLeaderboard() {
   const token = localStorage.getItem("token");
@@ -9,6 +16,7 @@ export default function JudgeLeaderboard() {
   const [selectedEventId, setSelectedEventId] = useState("");
   const [rounds, setRounds] = useState<any[]>([]);
   const [selectedRoundId, setSelectedRoundId] = useState("");
+  const [selectedRound, setSelectedRound] = useState<any>(null);
 
   const [standings, setStandings] = useState<any[]>([]);
   const [isLocked, setIsLocked] = useState(false);
@@ -36,8 +44,10 @@ export default function JudgeLeaderboard() {
         setRounds(res.data.rounds || []);
         if (res.data.rounds && res.data.rounds.length > 0) {
           setSelectedRoundId(res.data.rounds[0]._id);
+          setSelectedRound(res.data.rounds[0]);
         } else {
           setSelectedRoundId("");
+          setSelectedRound(null);
         }
       })
       .catch((err) => console.error(err));
@@ -50,7 +60,7 @@ export default function JudgeLeaderboard() {
     }
     setLoading(true);
     try {
-      // Normal leaderboard for judges (completed/finalized standings only)
+      // Judges only see leaderboard when officially published
       const res = await axios.get(
         `http://localhost:5000/api/grades/leaderboard/${selectedRoundId}`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -77,29 +87,39 @@ export default function JudgeLeaderboard() {
     fetchRankings();
   }, [fetchRankings]);
 
-
+  const handleRoundChange = (roundId: string) => {
+    setSelectedRoundId(roundId);
+    const round = rounds.find((r: any) => r._id === roundId);
+    setSelectedRound(round || null);
+  };
 
   return (
     <div className="space-y-8 animate-fadeIn">
-      {/* Header Area */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div>
-          <h2 className="text-3xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
-            <Trophy className="text-amber-500" size={28} />
-            <span>Bảng xếp hạng chung cuộc</span>
-          </h2>
-          <p className="text-slate-500 text-xs mt-1">
-            Xem kết quả xếp hạng chính thức và các đội thi được đi tiếp sau khi ban tổ chức đã công bố.
-          </p>
+      {/* Page Header */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-3">
+          <div className="bg-gradient-premium p-3 rounded-2xl text-white shadow-lg shadow-indigo-500/20">
+            <Trophy size={28} />
+          </div>
+          <div>
+            <h2 className="text-3xl font-extrabold text-white tracking-tight drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]">
+              Bảng Xếp Hạng Chung Cuộc
+            </h2>
+            <p className="text-slate-400 text-xs mt-1">
+              Xem kết quả xếp hạng chính thức sau khi ban tổ chức đã công bố.
+            </p>
+          </div>
         </div>
 
         {lastUpdated && (
-          <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono bg-white border border-slate-200 px-4 py-2 rounded-lg shadow-sm">
-            <span>Cập nhật: {lastUpdated.toLocaleTimeString("vi-VN")}</span>
+          <div className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold transition-all">
+            <span className="text-slate-400 font-mono">
+              Cập nhật: {lastUpdated.toLocaleTimeString("vi-VN")}
+            </span>
             <button
               onClick={fetchRankings}
               disabled={loading}
-              className="text-blue-600 hover:text-blue-750 disabled:opacity-50 transition-colors"
+              className="text-indigo-400 hover:text-indigo-300 disabled:opacity-50 transition-colors"
             >
               <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
             </button>
@@ -108,17 +128,17 @@ export default function JudgeLeaderboard() {
       </div>
 
       {/* Selectors Row */}
-      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+      <div className="glass p-6 rounded-2xl flex flex-wrap gap-4 items-center">
         <div>
-          <label className="block text-[9px] font-bold uppercase text-slate-400 mb-1">
+          <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
             Cuộc thi
           </label>
           <select
             value={selectedEventId}
             onChange={(e) => setSelectedEventId(e.target.value)}
-            className="!bg-slate-50 !border-slate-300 rounded-lg !text-slate-800 text-xs px-3 py-2 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none w-64 font-bold shadow-sm cursor-pointer"
+            className="px-3 py-2 rounded-lg text-xs w-48"
           >
-            {events.map((e) => (
+            {events.map((e: any) => (
               <option key={e._id} value={e._id}>
                 {e.name}
               </option>
@@ -127,15 +147,15 @@ export default function JudgeLeaderboard() {
         </div>
 
         <div>
-          <label className="block text-[9px] font-bold uppercase text-slate-400 mb-1">
-            Vòng thi
+          <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
+            Vòng đấu (Round)
           </label>
           <select
             value={selectedRoundId}
-            onChange={(e) => setSelectedRoundId(e.target.value)}
-            className="!bg-slate-50 !border-slate-300 rounded-lg !text-slate-800 text-xs px-3 py-2 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none w-80 font-bold shadow-sm cursor-pointer"
+            onChange={(e) => handleRoundChange(e.target.value)}
+            className="px-3 py-2 rounded-lg text-xs w-48"
           >
-            {rounds.map((r) => (
+            {rounds.map((r: any) => (
               <option key={r._id} value={r._id}>
                 {r.name} (Lấy Top {r.advanceTopN})
               </option>
@@ -143,86 +163,110 @@ export default function JudgeLeaderboard() {
             {rounds.length === 0 && <option>Không có vòng thi</option>}
           </select>
         </div>
+
+        {/* Round status pill */}
+        {selectedRound?.status === "completed" && (
+          <div className="ml-2">
+            <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
+              Trạng thái vòng
+            </label>
+            <span className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded-lg text-xs font-bold">
+              <CheckSquare size={12} />
+              Đã khóa &amp; Công bố
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Standings Grid/Table */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+      {/* Standings Table */}
+      <div className="glass p-6 rounded-3xl relative overflow-hidden">
         {loading ? (
-          <div className="text-center py-24 text-slate-400 text-xs animate-pulse font-mono">
+          <div className="text-center py-24 text-slate-500 text-xs animate-pulse font-mono">
             [ĐANG TẢI BẢNG XẾP HẠNG...]
           </div>
         ) : isLocked ? (
-          <div className="text-center py-24 bg-slate-50/20">
-            <Lock size={40} className="mx-auto text-slate-300 mb-3" />
-            <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Bảng điểm đang được bảo mật</h3>
+          <div className="text-center py-24">
+            <Lock size={40} className="mx-auto text-slate-700 mb-3 drop-shadow-[0_0_10px_rgba(0,0,0,0.5)]" />
+            <h3 className="font-bold text-slate-400 text-sm uppercase tracking-wider">
+              Bảng điểm đang được bảo mật
+            </h3>
             <p className="text-xs text-slate-500 max-w-sm mx-auto mt-2 leading-relaxed">
-              {lockedMessage || "Kết quả của vòng đấu này chưa được ban tổ chức công bố chính thức. Giám khảo vui lòng quay lại sau."}
+              {lockedMessage ||
+                "Bảng xếp hạng sẽ tự động hiển thị tại đây sau khi ban tổ chức tiến hành chốt khoá điểm thi và xếp hạng cuối cùng."}
             </p>
           </div>
         ) : standings.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold uppercase text-slate-500 tracking-wider">
-                  <th className="px-6 py-4 w-[15%]">Thứ hạng</th>
-                  <th className="px-6 py-4 w-[45%]">Tên đội thi</th>
-                  <th className="px-6 py-4 w-[20%] text-center">Điểm trung bình</th>
-                  <th className="px-6 py-4 w-[20%] text-right">Trạng thái</th>
+                <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px] font-bold">
+                  <th className="py-4 px-4 w-[15%] text-center">Thứ Hạng</th>
+                  <th className="py-4 px-4 w-[45%]">Tên Đội Thi</th>
+                  <th className="py-4 px-4 w-[20%] text-center">Điểm Trung Bình</th>
+                  <th className="py-4 px-4 w-[20%] text-center">Trạng Thái</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                {standings.map((row: any) => {
-                  const isAdvanced = row.isAdvanced;
+              <tbody>
+                {standings.map((row: any, idx: number) => {
+                  const rank = row.rank ?? idx + 1;
+                  const rankStyles =
+                    rank === 1
+                      ? "text-amber-400 bg-amber-500/10"
+                      : rank === 2
+                        ? "text-slate-300 bg-slate-300/10"
+                        : rank === 3
+                          ? "text-amber-600 bg-amber-700/10"
+                          : "text-slate-400 bg-slate-800/40";
+
                   return (
-                    <tr key={row.teamId?._id || row._id} className="hover:bg-slate-50/50 transition-colors">
+                    <tr
+                      key={row._id || row.teamId?._id || idx}
+                      className="border-b border-slate-800/60 hover:bg-white/[0.02] transition-colors"
+                    >
                       {/* Rank */}
-                      <td className="px-6 py-5 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          {row.rank === 1 ? (
-                            <span className="w-6 h-6 rounded-full bg-amber-150 border border-amber-300 flex items-center justify-center text-amber-800 font-extrabold text-[10px]">
-                              🥇 1
-                            </span>
-                          ) : row.rank === 2 ? (
-                            <span className="w-6 h-6 rounded-full bg-slate-150 border border-slate-250 flex items-center justify-center text-slate-700 font-extrabold text-[10px]">
-                              🥈 2
-                            </span>
-                          ) : row.rank === 3 ? (
-                            <span className="w-6 h-6 rounded-full bg-orange-100 border border-orange-200 flex items-center justify-center text-orange-850 font-extrabold text-[10px]">
-                              🥉 3
-                            </span>
-                          ) : (
-                            <span className="w-6 h-6 rounded-full bg-slate-50 border border-slate-150 flex items-center justify-center text-slate-500 font-mono text-[10px]">
-                              {row.rank}
-                            </span>
-                          )}
-                        </div>
+                      <td className="py-4 px-4 text-center font-black">
+                        {rank <= 3 ? (
+                          <span className="text-2xl leading-none">
+                            {rank === 1 ? "🥇" : rank === 2 ? "🥈" : "🥉"}
+                          </span>
+                        ) : (
+                          <span
+                            className={`inline-flex items-center justify-center w-10 h-10 rounded-full text-base font-black ${rankStyles}`}
+                          >
+                            {rank}
+                          </span>
+                        )}
                       </td>
 
                       {/* Team Name */}
-                      <td className="px-6 py-5 whitespace-nowrap">
-                        <div>
-                          <span className="font-extrabold text-slate-800 block">{row.teamId?.name}</span>
-                          {row.trackName && (
-                            <span className="text-[9px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded font-mono mt-1 inline-block">
-                              Bảng: {row.trackName} {row.trackRank ? `(Hạng ${row.trackRank})` : ""}
-                            </span>
-                          )}
-                        </div>
+                      <td className="py-4 px-4">
+                        <span className="font-bold text-slate-100 text-sm block">
+                          {row.teamId?.name}
+                        </span>
+                        {row.trackName && (
+                          <span className="text-[9px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded font-mono mt-1 inline-block">
+                            Bảng: {row.trackName}{" "}
+                            {row.trackRank ? `(Hạng ${row.trackRank})` : ""}
+                          </span>
+                        )}
                       </td>
 
                       {/* Avg Score */}
-                      <td className="px-6 py-5 whitespace-nowrap text-center font-bold text-slate-850 font-mono">
-                        {row.averageScore?.toFixed(2)}/10đ
+                      <td className="py-4 px-4 text-center font-black text-indigo-400 text-sm">
+                        {row.averageScore != null
+                          ? row.averageScore.toFixed(2)
+                          : "—"}
+                        <span className="text-slate-500 text-[10px] font-normal">/10đ</span>
                       </td>
 
                       {/* Status */}
-                      <td className="px-6 py-5 whitespace-nowrap text-right">
-                        {isAdvanced ? (
-                          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider shadow-sm">
-                            Được đi tiếp
+                      <td className="py-4 px-4 text-center">
+                        {selectedRound?.status !== "completed" ? null : row.isAdvanced ? (
+                          <span className="inline-flex items-center gap-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded-md text-[10px] font-bold">
+                            <CheckSquare size={10} /> ĐÃ ĐI TIẾP
                           </span>
                         ) : (
-                          <span className="bg-slate-50 text-slate-400 border border-slate-200 px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                          <span className="inline-flex items-center gap-0.5 bg-slate-800 text-slate-500 border border-slate-700 px-2 py-1 rounded-md text-[10px]">
                             Dừng bước
                           </span>
                         )}
@@ -234,10 +278,14 @@ export default function JudgeLeaderboard() {
             </table>
           </div>
         ) : (
-          <div className="text-center py-24 bg-slate-50/20">
-            <AlertCircle size={36} className="mx-auto text-slate-350 mb-2" />
+          <div className="text-center py-24">
+            <AlertCircle size={36} className="mx-auto text-slate-700 mb-2 drop-shadow-[0_0_5px_rgba(100,116,139,0.5)]" />
+            <BarChart3 size={24} className="mx-auto text-slate-700 mb-3" />
             <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">
               Không có dữ liệu xếp hạng nào trong vòng thi này.
+            </p>
+            <p className="text-[10px] text-slate-600 max-w-sm mx-auto mt-1">
+              Bảng xếp hạng sẽ tự động hiển thị tại đây sau khi ban tổ chức tiến hành chốt khoá điểm thi và xếp hạng cuối cùng.
             </p>
           </div>
         )}

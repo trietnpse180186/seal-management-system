@@ -15,7 +15,9 @@ const UserSchema = new Schema({
   isActive: { type: Boolean, default: true },
   emailVerificationToken: { type: String },
   emailVerificationTokenExpiry: { type: Date },
-  notificationPrefs: { type: Schema.Types.Mixed, default: {} }
+  notificationPrefs: { type: Schema.Types.Mixed, default: {} },
+  activeSessionId: { type: String, default: null },
+  lastActiveAt: { type: Date, default: null }
 }, {
   timestamps: true
 });

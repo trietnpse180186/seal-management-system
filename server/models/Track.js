@@ -3,6 +3,7 @@ const Schema = mongoose.Schema;
 
 const TrackSchema = new Schema({
   eventId: { type: Schema.Types.ObjectId, ref: 'Event', required: true },
+  roundId: { type: Schema.Types.ObjectId, ref: 'Round', required: true },
   name: { type: String, required: true },
   description: { type: String },
   maxTeams: { type: Number },
@@ -12,6 +13,6 @@ const TrackSchema = new Schema({
   timestamps: true
 });
 
-TrackSchema.index({ eventId: 1, name: 1 }, { unique: true });
+TrackSchema.index({ roundId: 1, name: 1 }, { unique: true });
 
 module.exports = mongoose.model('Track', TrackSchema);

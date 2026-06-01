@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import {
-  Terminal,
   LogOut,
   Award,
   Users,
@@ -11,7 +10,9 @@ import {
   BarChart2,
   Bell,
   Compass,
+  Settings2,
 } from "lucide-react";
+import logo from "../assets/logo.svg";
 
 interface NavbarProps {
   user: any;
@@ -110,9 +111,11 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Brand Logo */}
         <Link to="/" className="flex items-center gap-2 group">
-          <div className="bg-gradient-premium p-2 rounded-xl text-white group-hover:scale-105 transition-transform duration-300 shadow-lg shadow-indigo-500/20">
-            <Terminal size={22} className="animate-pulse" />
-          </div>
+          <img
+            src={logo}
+            alt="SEAL Logo"
+            className="h-10 w-10 group-hover:scale-105 transition-transform duration-300 logo-glow"
+          />
           <div>
             <span className="font-extrabold text-lg tracking-wider text-gradient-purple-blue">
               SEAL
@@ -149,27 +152,23 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
 
             {/* Coordinator/Admin Links */}
             {isCoordinator && (
-              <Link to="/admin" className={linkClass("/admin")}>
-                <ShieldAlert size={16} />
-                <span>Quản trị viên</span>
-              </Link>
+              <>
+                <Link to="/admin" className={linkClass("/admin")}>
+                  <ShieldAlert size={16} />
+                  <span>Quản trị viên</span>
+                </Link>
+                <Link to="/admin/events" className={linkClass("/admin/events")}>
+                  <Settings2 size={16} />
+                  <span>Thiết lập sự kiện</span>
+                </Link>
+              </>
             )}
 
-            {/* Judge/Coordinator Links */}
-            {isJudge && (
-              <Link to="/grading" className={linkClass("/grading")}>
+            {/* Judge Links */}
+            {isJudge && !isCoordinator && (
+              <Link to="/judge/dashboard" className={linkClass("/judge/dashboard")}>
                 <Award size={16} />
                 <span>Bàn chấm điểm</span>
-              </Link>
-            )}
-
-            {(isCoordinator || isJudge) && (
-              <Link
-                to="/hackathon-review"
-                className={linkClass("/hackathon-review")}
-              >
-                <GitBranch size={16} />
-                <span>Hackathon Review</span>
               </Link>
             )}
 

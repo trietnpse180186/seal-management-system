@@ -29,8 +29,14 @@ router.get('/', async (req, res) => {
   if (status) filter.status = status;
 
   try {
-    const events = await Event.find(filter).sort({ year: -1, semester: 1 });
-    res.json(events);
+    const events = await Event.find(filter).sort({ year: -1, semester: 1 }).lean();
+    
+    const eventsWithTeamCount = await Promise.all(events.map(async (event) => {
+      const teamCount = await Team.countDocuments({ eventId: event._id });
+      return { ...event, teamCount };
+    }));
+
+    res.json(eventsWithTeamCount);
   } catch (error) {
     console.error('Fetch Events Error:', error.message);
     res.status(500).json({ message: 'Server error retrieving events.' });
@@ -142,16 +148,21 @@ router.get('/:id', async (req, res) => {
  */
 router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
   const { eventId } = req.params;
-  const { name, description, maxTeams } = req.body;
+  const { name, description, maxTeams, roundId } = req.body;
 
-  if (!name) {
-    return res.status(400).json({ message: 'Track name is required.' });
+  if (!name || !roundId) {
+    return res.status(400).json({ message: 'Track name and roundId are required.' });
   }
 
   try {
     const event = await Event.findById(eventId);
     if (!event) {
       return res.status(404).json({ message: 'Event not found.' });
+    }
+
+    const round = await Round.findById(roundId);
+    if (!round) {
+      return res.status(404).json({ message: 'Round not found.' });
     }
 
     // Auth check: System Admin or has coordinator role
@@ -169,6 +180,7 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
 
     const newTrack = new Track({
       eventId,
+      roundId,
       name,
       description,
       maxTeams: maxTeams ? parseInt(maxTeams) : 10,
@@ -185,12 +197,12 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
 });
 
 /**
- * @route   POST /api/events/:eventId/tracks/:trackId/rounds
- * @desc    Add a Round to a track
+ * @route   POST /api/events/:eventId/rounds
+ * @desc    Add a Round to an event
  * @access  Private (Coordinator or Admin)
  */
-router.post('/:eventId/tracks/:trackId/rounds', authenticateToken, async (req, res) => {
-  const { eventId, trackId } = req.params;
+router.post('/:eventId/rounds', authenticateToken, async (req, res) => {
+  const { eventId } = req.params;
   const { name, order, submissionDeadline, advanceTopN } = req.body;
 
   if (!name || order === undefined) {
@@ -213,7 +225,6 @@ router.post('/:eventId/tracks/:trackId/rounds', authenticateToken, async (req, r
 
     const newRound = new Round({
       eventId,
-      trackId,
       name,
       order: parseInt(order),
       submissionDeadline: submissionDeadline ? new Date(submissionDeadline) : undefined,

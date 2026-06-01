@@ -67,6 +67,19 @@ async function createTestData() {
   await event.save();
   console.log(`Đã tạo Event: "${event.name}" (ID: ${event._id})`);
 
+  // 2.5 Tạo một Vòng thi mặc định (Round)
+  console.log('\nTạo vòng thi mặc định (Round)...');
+  const Round = mongoose.model('Round');
+  const round = new Round({
+    eventId: event._id,
+    name: 'Vòng sơ loại',
+    order: 1,
+    submissionDeadline: new Date(Date.now() + 3600000 * 24 * 7),
+    advanceTopN: 5
+  });
+  await round.save();
+  console.log(`Đã tạo Round: "${round.name}" (ID: ${round._id})`);
+
   // 3. Tạo 3 Bảng đấu (Tracks) cho Event này
   console.log('\nTạo 3 bảng đấu (Tracks)...');
   const trackNames = ['Bảng A - AI & Data Science', 'Bảng B - Web/Mobile Applications', 'Bảng C - IoT & Hardware'];
@@ -76,7 +89,8 @@ async function createTestData() {
       eventId: event._id,
       name,
       description: `Bảng đấu dành cho các đội thi thuộc lĩnh vực ${name}`,
-      maxTeams: 5
+      maxTeams: 5,
+      roundId: round._id
     });
     await t.save();
     tracks.push(t);

@@ -180,9 +180,9 @@ export default function RoundsTab({
                   const track = tracks.find((t) => t._id === e.target.value);
                   if (track) {
                     setSelectedTrack(track);
-                    const firstRound = rounds.find((r) => r.trackId === track._id);
-                    if (firstRound) {
-                      setSelectedRubricRoundId(firstRound._id);
+                    const associatedRound = rounds.find((r) => r._id === track.roundId);
+                    if (associatedRound) {
+                      setSelectedRubricRoundId(associatedRound._id);
                     } else {
                       setSelectedRubricRoundId("");
                       setRubric(null);
@@ -204,12 +204,10 @@ export default function RoundsTab({
 
           <h3 className="text-md font-bold text-white mb-4 flex items-center gap-1.5 font-mono">
             <ListOrdered size={16} className="text-indigo-400" />
-            <span>Các Vòng thi ({selectedTrack?.name || "Chung"})</span>
+            <span>Các Vòng thi (Sự kiện)</span>
           </h3>
           <div className="space-y-2 mb-6 max-h-48 overflow-y-auto pr-1">
-            {rounds
-              .filter((r: any) => r.trackId === selectedTrack?._id)
-              .map((r: any) => (
+            {rounds.map((r: any) => (
                 <button
                   key={r._id}
                   onClick={() => {
@@ -226,14 +224,22 @@ export default function RoundsTab({
                     <p className="text-[9px] text-slate-500 mt-0.5">
                       Thứ tự: {r.order} | Lấy Top: {r.advanceTopN}
                     </p>
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {tracks
+                        .filter((t: any) => t.roundId === r._id)
+                        .map((t: any) => (
+                          <span key={t._id} className="bg-slate-950 px-1.5 py-0.5 rounded text-[8px] border border-slate-800 text-slate-450 font-sans">
+                            {t.name}
+                          </span>
+                        ))}
+                    </div>
                   </div>
                   <ChevronRight size={14} />
                 </button>
               ))}
-            {rounds.filter((r: any) => r.trackId === selectedTrack?._id)
-              .length === 0 && (
+            {rounds.length === 0 && (
               <p className="text-xs text-slate-500 italic">
-                Chưa cấu hình vòng thi nào cho bảng đấu này.
+                Chưa cấu hình vòng thi nào cho sự kiện này.
               </p>
             )}
           </div>
@@ -245,7 +251,7 @@ export default function RoundsTab({
           className="space-y-3 pt-3 border-t border-slate-800/80"
         >
           <p className="text-[10px] font-bold text-slate-300 uppercase font-mono">
-            Tạo thêm vòng thi cho bảng này:
+            Tạo thêm vòng thi mới:
           </p>
           <input
             type="text"
@@ -282,52 +288,58 @@ export default function RoundsTab({
           />
 
           {/* Rubric Configuration */}
-          <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80 space-y-2">
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">
-              Bảng tiêu chí (Rubric):
-            </p>
-            <div className="flex gap-4">
-              <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-300 font-mono cursor-pointer">
-                <input
-                  type="radio"
-                  name="roundRubricOption"
-                  value="new"
-                  checked={rubricTypeOption === "new"}
-                  onChange={() => setRubricTypeOption("new")}
-                  className="text-indigo-600 focus:ring-0"
-                />
-                Mới
-              </label>
-              <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-300 font-mono cursor-pointer">
-                <input
-                  type="radio"
-                  name="roundRubricOption"
-                  value="existing"
-                  checked={rubricTypeOption === "existing"}
-                  onChange={() => setRubricTypeOption("existing")}
-                  className="text-indigo-600 focus:ring-0"
-                />
-                Sao chép cũ
-              </label>
-            </div>
+          {selectedTrack ? (
+            <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80 space-y-2">
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                Bảng tiêu chí (Rubric) cho bảng {selectedTrack.name}:
+              </p>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-300 font-mono cursor-pointer">
+                  <input
+                    type="radio"
+                    name="roundRubricOption"
+                    value="new"
+                    checked={rubricTypeOption === "new"}
+                    onChange={() => setRubricTypeOption("new")}
+                    className="text-indigo-600 focus:ring-0"
+                  />
+                  Mới
+                </label>
+                <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-300 font-mono cursor-pointer">
+                  <input
+                    type="radio"
+                    name="roundRubricOption"
+                    value="existing"
+                    checked={rubricTypeOption === "existing"}
+                    onChange={() => setRubricTypeOption("existing")}
+                    className="text-indigo-600 focus:ring-0"
+                  />
+                  Sao chép cũ
+                </label>
+              </div>
 
-            {rubricTypeOption === "existing" && (
-              <select
-                value={selectedSourceRubricId}
-                onChange={(e) =>
-                  setSelectedSourceRubricId(e.target.value)
-                }
-                className="w-full px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] text-slate-300 font-mono"
-              >
-                <option value="">-- Chọn Rubric cũ --</option>
-                {existingRubrics.map((r: any) => (
-                  <option key={r._id} value={r._id}>
-                    {r.name} ({r.eventId?.name || "Sự kiện cũ"})
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
+              {rubricTypeOption === "existing" && (
+                <select
+                  value={selectedSourceRubricId}
+                  onChange={(e) =>
+                    setSelectedSourceRubricId(e.target.value)
+                  }
+                  className="w-full px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] text-slate-300 font-mono"
+                >
+                  <option value="">-- Chọn Rubric cũ --</option>
+                  {existingRubrics.map((r: any) => (
+                    <option key={r._id} value={r._id}>
+                      {r.name} ({r.eventId?.name || "Sự kiện cũ"})
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          ) : (
+            <p className="text-[9px] text-amber-500 italic font-mono">
+              * Cần chọn Bảng đấu trước để thiết lập Rubric.
+            </p>
+          )}
 
           <button
             type="submit"
@@ -356,13 +368,11 @@ export default function RoundsTab({
             className="w-full px-3 py-2.5 rounded-xl text-xs bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
           >
             <option value="">-- Chọn Vòng đấu --</option>
-            {rounds
-              .filter((r: any) => r.trackId === selectedTrack?._id)
-              .map((r: any) => (
-                <option key={r._id} value={r._id}>
-                  {r.name} (Vòng {r.order})
-                </option>
-              ))}
+            {rounds.map((r: any) => (
+              <option key={r._id} value={r._id}>
+                {r.name} (Vòng {r.order})
+              </option>
+            ))}
           </select>
         </div>
 

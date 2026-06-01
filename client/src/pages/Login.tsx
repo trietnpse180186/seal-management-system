@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import logo from "../assets/logo.svg";
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
   <svg
@@ -31,6 +32,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const [isVerificationPending, setIsVerificationPending] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState('');
   const [studentId, setStudentId] = useState('');
   const [university, setUniversity] = useState('');
@@ -45,6 +47,13 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     // Check if redirect contains GitHub OAuth authorization code
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
+    const expired = params.get('expired');
+
+    if (expired === 'true') {
+      setError('Phiên đăng nhập đã hết hạn hoặc tài khoản được đăng nhập từ thiết bị khác.');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     if (code) {
       // Clear query params so we don't try to log in again on refresh
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -198,7 +207,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             <img 
               alt="SEAL Hackathon Logo" 
               className="w-full h-full object-contain rounded-full logo-glow drop-shadow-[0_0_20px_rgba(0,240,255,0.6)]" 
-              src="https://lh3.googleusercontent.com/aida/ADBb0ujijblMHWmiBodnzGgcfB7u7EiN0US6CunNVACp9z1m9Bt40l554VgXUfaUBJrxb7qG2EYB-rrKMBuEOeOjZVfKDrr6Op31S1Wu2TxyC-jdYc4wPP8yMVL6TCay4qe54bHg_HSh18Isk5grPw84zb6qJwialtdkb-E-xP2Cy6t-TpnMnysiicR1ugcklLKsHo73UptBGwh7zFFCMlfybrHnmjrh514W01DyL2z0Cm9CRPNSHR3SIo1fdLIl"
+              src={logo}
             />
           </div>
 
@@ -252,7 +261,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             <img 
               alt="SEAL Hackathon Logo" 
               className="w-full h-full object-contain rounded-full logo-glow drop-shadow-[0_0_20px_rgba(0,240,255,0.6)]" 
-              src="https://lh3.googleusercontent.com/aida/ADBb0ujijblMHWmiBodnzGgcfB7u7EiN0US6CunNVACp9z1m9Bt40l554VgXUfaUBJrxb7qG2EYB-rrKMBuEOeOjZVfKDrr6Op31S1Wu2TxyC-jdYc4wPP8yMVL6TCay4qe54bHg_HSh18Isk5grPw84zb6qJwialtdkb-E-xP2Cy6t-TpnMnysiicR1ugcklLKsHo73UptBGwh7zFFCMlfybrHnmjrh514W01DyL2z0Cm9CRPNSHR3SIo1fdLIl"
+              src={logo}
             />
           </div>
           <div className="chip font-mono text-xs text-primary-container mb-3 bg-[#0a141d]/50">
@@ -374,16 +383,23 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               )}
             </div>
             <div className="relative cyber-input-wrapper rounded overflow-hidden">
-              <div className="relative terminal-prompt">
+              <div className="relative terminal-prompt flex items-center">
                 <input 
-                  type="password" 
+                  type={showPassword ? "text" : "password"} 
                   id="password"
                   required 
                   placeholder="Nhập mật khẩu bảo mật của bạn"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  className="cyber-input relative z-10 w-full rounded py-2 pl-11 pr-4 font-mono text-xs focus:ring-0"
+                  className="cyber-input relative z-10 w-full rounded py-2 pl-11 pr-10 font-mono text-xs focus:ring-0"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 z-20 text-primary-container opacity-60 hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
                 <div className="scanline"></div>
               </div>
             </div>

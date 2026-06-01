@@ -3,7 +3,6 @@ const Schema = mongoose.Schema;
 
 const RoundSchema = new Schema({
   eventId: { type: Schema.Types.ObjectId, ref: 'Event', required: true },
-  trackId: { type: Schema.Types.ObjectId, ref: 'Track', required: true },
   name: { type: String, required: true },
   order: { type: Number, required: true },
   submissionDeadline: { type: Date },
@@ -13,6 +12,6 @@ const RoundSchema = new Schema({
   timestamps: true
 });
 
-RoundSchema.index({ eventId: 1, trackId: 1, order: 1 }, { unique: true });
+RoundSchema.index({ eventId: 1, order: 1 }, { unique: true });
 
 module.exports = mongoose.model('Round', RoundSchema);

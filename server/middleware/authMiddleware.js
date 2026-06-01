@@ -28,6 +28,20 @@ async function authenticateToken(req, res, next) {
       return res.status(403).json({ message: 'User account is deactivated.' });
     }
 
+    // Verify session ID
+    if (decoded.sessionId && user.activeSessionId !== decoded.sessionId) {
+      return res.status(401).json({ 
+        message: 'Phiên đăng nhập đã hết hạn hoặc tài khoản được đăng nhập từ thiết bị khác.',
+        isSessionExpired: true
+      });
+    }
+
+    // Update lastActiveAt heartbeat (throttled to once every 5 seconds)
+    if (!user.lastActiveAt || Date.now() - new Date(user.lastActiveAt).getTime() > 5000) {
+      user.lastActiveAt = new Date();
+      await user.save();
+    }
+
     req.user = user;
     next();
   } catch (error) {

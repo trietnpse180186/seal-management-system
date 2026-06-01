@@ -9,7 +9,7 @@ import {
   Scale,
   Users,
   DollarSign,
-  Cpu
+  Cpu,
 } from "lucide-react";
 
 interface GuestPortalProps {
@@ -81,7 +81,11 @@ export default function GuestPortal({ user }: GuestPortalProps) {
           </div>
 
           <h1 className="text-3xl md:text-5xl text-white font-extrabold tracking-tight">
-            Chào mừng trở lại, <span className="text-cyan-400 text-cyan-glow font-mono-tech">{displayName}</span>.
+            Chào mừng trở lại,{" "}
+            <span className="text-cyan-400 text-cyan-glow font-mono-tech">
+              {displayName}
+            </span>
+            .
           </h1>
 
           <p className="text-slate-400 text-sm sm:text-base leading-relaxed max-w-2xl">
@@ -112,15 +116,15 @@ export default function GuestPortal({ user }: GuestPortalProps) {
         </div>
 
         <div className="flex-1 relative h-64 md:h-80 w-full rounded-xl border border-slate-800 overflow-hidden bg-slate-950/50">
-          <img
-            alt="Abstract neon geometric shapes"
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
             className="w-full h-full object-cover opacity-80 mix-blend-screen"
-            src="https://lh3.googleusercontent.com/aida/ADBb0ugKSAyrnDpBoJcmJ57R9B0pMwdxKG8XqhTc5q4VG1rPg4RQZYS3SA7wQ4EB1pAZjtmxJbMxoHH9mLXiTkLqwiftT34UnDKGdJHue8qMCBeNuRpTXBQwaMRkR_GTYWVhs7ERu_AUYvrm8UuhtuK73Y7SIzgdVCHb2-D78QI-EzrvhEAdGOLc1Rb6VIoz_Q2sVkPQUJTHJ254sBnnAYT7w8QIJkF6mwuGZaShK2B7OAGfEHhjmifZrPa69dNB"
+            src="/mp_.mp4"
           />
           <div className="absolute inset-0 border border-cyan-500/20 pointer-events-none rounded-xl"></div>
-          <div className="absolute top-2 left-2 text-[10px] text-cyan-400/50">
-            KẾT_NỐI_BẢO_MẬT_ỔN_ĐỊNH
-          </div>
         </div>
       </section>
 
@@ -145,23 +149,36 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                   Mục tiêu chính
                 </h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Phát triển các giải pháp sáng tạo để giải quyết bài toán thực tế và xây dựng hệ thống phần mềm chất lượng. Các đội thi cần tối ưu mã nguồn, liên kết repository và tối ưu hóa hệ thống dưới sự hỗ trợ của AI.
+                  Phát triển các giải pháp sáng tạo để giải quyết bài toán thực
+                  tế và xây dựng hệ thống phần mềm chất lượng. Các đội thi cần
+                  tối ưu mã nguồn, liên kết repository và tối ưu hóa hệ thống
+                  dưới sự hỗ trợ của AI.
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="border border-slate-800 p-3 bg-slate-900/30 rounded-xl">
-                  <div className="text-[9px] text-slate-500 mb-1">THỜI GIAN</div>
+                  <div className="text-[9px] text-slate-500 mb-1">
+                    THỜI GIAN
+                  </div>
                   <div className="text-sm font-bold text-white">48 GIỜ</div>
                 </div>
                 <div className="border border-slate-800 p-3 bg-slate-900/30 rounded-xl">
-                  <div className="text-[9px] text-slate-500 mb-1">SỐ THÀNH VIÊN</div>
-                  <div className="text-sm font-bold text-white">2-4 OPERATORS</div>
+                  <div className="text-[9px] text-slate-500 mb-1">
+                    SỐ THÀNH VIÊN
+                  </div>
+                  <div className="text-sm font-bold text-white">
+                    2-4 OPERATORS
+                  </div>
                 </div>
                 <div className="border border-slate-800 p-3 bg-slate-900/30 rounded-xl col-span-2 flex justify-between items-center">
                   <div>
-                    <div className="text-[9px] text-slate-500 mb-1">QUỸ GIẢI THƯỞNG</div>
-                    <div className="text-sm font-bold text-cyan-400">$50,000 USD</div>
+                    <div className="text-[9px] text-slate-500 mb-1">
+                      QUỸ GIẢI THƯỞNG
+                    </div>
+                    <div className="text-sm font-bold text-cyan-400">
+                      $50,000 USD
+                    </div>
                   </div>
                   <DollarSign size={20} className="text-cyan-400/40" />
                 </div>
@@ -191,10 +208,13 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                   <h3 className="text-xs text-white font-bold uppercase tracking-wider">
                     Giai đoạn 1: Thành lập đội & Lên ý tưởng
                   </h3>
-                  <span className="text-[9px] text-slate-500">TRƯỚC 2 NGÀY</span>
+                  <span className="text-[9px] text-slate-500">
+                    TRƯỚC 2 NGÀY
+                  </span>
                 </div>
                 <p className="text-[11px] text-slate-400">
-                  Kết nối với các thí sinh khác, thành lập nhóm và phác thảo các ý tưởng dự án ban đầu.
+                  Kết nối với các thí sinh khác, thành lập nhóm và phác thảo các
+                  ý tưởng dự án ban đầu.
                 </p>
               </div>
 
@@ -213,7 +233,8 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-300">
-                  Truy cập vào môi trường lập trình. Viết code, đồng bộ commit và chuẩn bị phiên bản sản phẩm cuối cùng.
+                  Truy cập vào môi trường lập trình. Viết code, đồng bộ commit
+                  và chuẩn bị phiên bản sản phẩm cuối cùng.
                 </p>
               </div>
 
@@ -227,7 +248,8 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                   <span className="text-[9px] text-slate-600">CHƯA MỞ</span>
                 </div>
                 <p className="text-[11px] text-slate-500">
-                  Thuyết trình về phương pháp, tính năng sản phẩm và giải pháp của đội trước ban giám khảo.
+                  Thuyết trình về phương pháp, tính năng sản phẩm và giải pháp
+                  của đội trước ban giám khảo.
                 </p>
               </div>
             </div>
@@ -250,7 +272,9 @@ export default function GuestPortal({ user }: GuestPortalProps) {
               Mã nguồn tự viết
             </h3>
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              Tất cả các dòng code chính và sản phẩm phải được viết trong thời gian diễn ra cuộc thi. Các thư viện và framework có sẵn được phép sử dụng nếu là mã nguồn mở.
+              Tất cả các dòng code chính và sản phẩm phải được viết trong thời
+              gian diễn ra cuộc thi. Các thư viện và framework có sẵn được phép
+              sử dụng nếu là mã nguồn mở.
             </p>
           </div>
           <div className="p-4 border border-slate-850 hover:border-cyan-500/40 transition-colors bg-slate-900/20 rounded-xl">
@@ -259,7 +283,8 @@ export default function GuestPortal({ user }: GuestPortalProps) {
               Giới hạn đội thi
             </h3>
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              Mỗi đội phải có từ 2 đến 4 thành viên. Không cho phép tham gia cá nhân hoặc đội thi có số lượng vượt mức quy định.
+              Mỗi đội phải có từ 2 đến 4 thành viên. Không cho phép tham gia cá
+              nhân hoặc đội thi có số lượng vượt mức quy định.
             </p>
           </div>
           <div className="p-4 border border-slate-850 hover:border-cyan-500/40 transition-colors bg-slate-900/20 rounded-xl">
@@ -268,7 +293,8 @@ export default function GuestPortal({ user }: GuestPortalProps) {
               Ranh giới Đạo đức
             </h3>
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              Bất kỳ hành vi gian lận hoặc tấn công phá hoại hạ tầng bên ngoài phạm vi quy định sẽ dẫn đến việc truất quyền thi đấu ngay lập tức.
+              Bất kỳ hành vi gian lận hoặc tấn công phá hoại hạ tầng bên ngoài
+              phạm vi quy định sẽ dẫn đến việc truất quyền thi đấu ngay lập tức.
             </p>
           </div>
         </div>
@@ -282,7 +308,10 @@ export default function GuestPortal({ user }: GuestPortalProps) {
             className="btn-primary font-bold text-sm px-12 py-4 uppercase tracking-widest flex items-center gap-2 group"
           >
             <span>Tiếp tục vào Khu vực Đội thi</span>
-            <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+            <ArrowRight
+              size={16}
+              className="group-hover:translate-x-1 transition-transform"
+            />
           </button>
         ) : (
           <button
@@ -290,7 +319,10 @@ export default function GuestPortal({ user }: GuestPortalProps) {
             className="btn-primary font-bold text-sm px-12 py-4 uppercase tracking-widest flex items-center gap-2 group"
           >
             <span>Đăng ký thành lập đội thi</span>
-            <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+            <ArrowRight
+              size={16}
+              className="group-hover:translate-x-1 transition-transform"
+            />
           </button>
         )}
       </section>

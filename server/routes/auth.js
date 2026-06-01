@@ -71,7 +71,12 @@ router.post('/register', async (req, res) => {
     }
 
     // First user is auto-logged in
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '24h' });
+    const activeSessionId = crypto.randomBytes(16).toString('hex');
+    user.activeSessionId = activeSessionId;
+    user.lastActiveAt = new Date();
+    await user.save();
+
+    const token = jwt.sign({ id: user._id, sessionId: activeSessionId }, JWT_SECRET, { expiresIn: '24h' });
 
     res.status(201).json({
       message: 'Registration successful!',
@@ -123,11 +128,24 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials.' });
     }
 
+    // Check session concurrency: if user has active session and heartbeat is fresh (< 20 seconds)
+    if (user.activeSessionId && user.lastActiveAt && (Date.now() - new Date(user.lastActiveAt).getTime() < 20000)) {
+      return res.status(409).json({ 
+        message: 'Tài khoản này đang được đăng nhập ở nơi khác. Vui lòng đăng xuất ở thiết bị cũ hoặc đợi 20 giây.' 
+      });
+    }
+
+    // Generate session ID
+    const activeSessionId = crypto.randomBytes(16).toString('hex');
+    user.activeSessionId = activeSessionId;
+    user.lastActiveAt = new Date();
+    await user.save();
+
     // Get event roles
     const roles = await EventRole.find({ userId: user._id, status: 'active' }).populate('eventId', 'name semester year');
 
-    // Generate JWT
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '24h' });
+    // Generate JWT (including sessionId)
+    const token = jwt.sign({ id: user._id, sessionId: activeSessionId }, JWT_SECRET, { expiresIn: '24h' });
 
     res.json({
       token,
@@ -285,8 +303,21 @@ router.post('/google', async (req, res) => {
       await user.save();
     }
 
+    // Check session concurrency
+    if (user.activeSessionId && user.lastActiveAt && (Date.now() - new Date(user.lastActiveAt).getTime() < 20000)) {
+      return res.status(409).json({ 
+        message: 'Tài khoản này đang được đăng nhập ở nơi khác. Vui lòng đăng xuất ở thiết bị cũ hoặc đợi 20 giây.' 
+      });
+    }
+
+    // Generate session ID
+    const activeSessionId = crypto.randomBytes(16).toString('hex');
+    user.activeSessionId = activeSessionId;
+    user.lastActiveAt = new Date();
+    await user.save();
+
     const roles = await EventRole.find({ userId: user._id, status: 'active' }).populate('eventId', 'name semester year');
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '24h' });
+    const token = jwt.sign({ id: user._id, sessionId: activeSessionId }, JWT_SECRET, { expiresIn: '24h' });
 
     res.json({
       token,
@@ -450,8 +481,21 @@ router.post('/github', async (req, res) => {
       }
     }
 
+    // Check session concurrency
+    if (user.activeSessionId && user.lastActiveAt && (Date.now() - new Date(user.lastActiveAt).getTime() < 20000)) {
+      return res.status(409).json({ 
+        message: 'Tài khoản này đang được đăng nhập ở nơi khác. Vui lòng đăng xuất ở thiết bị cũ hoặc đợi 20 giây.' 
+      });
+    }
+
+    // Generate session ID
+    const activeSessionId = crypto.randomBytes(16).toString('hex');
+    user.activeSessionId = activeSessionId;
+    user.lastActiveAt = new Date();
+    await user.save();
+
     const roles = await EventRole.find({ userId: user._id, status: 'active' }).populate('eventId', 'name semester year');
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '24h' });
+    const token = jwt.sign({ id: user._id, sessionId: activeSessionId }, JWT_SECRET, { expiresIn: '24h' });
 
     res.json({
       token,
@@ -687,6 +731,38 @@ router.get('/test-email', async (req, res) => {
       },
       diagnosticLogs: logs
     });
+  }
+});
+
+/**
+ * @route   POST /api/auth/logout
+ * @desc    Logout user & invalidate session
+ * @access  Private
+ */
+router.post('/logout', authenticateToken, async (req, res) => {
+  try {
+    const user = req.user;
+    user.activeSessionId = null;
+    user.lastActiveAt = null;
+    await user.save();
+    res.json({ message: 'Đăng xuất thành công!' });
+  } catch (error) {
+    console.error('Logout Error:', error.message);
+    res.status(500).json({ message: 'Server error during logout.' });
+  }
+});
+
+/**
+ * @route   POST /api/auth/heartbeat
+ * @desc    Keep session active
+ * @access  Private
+ */
+router.post('/heartbeat', authenticateToken, async (req, res) => {
+  try {
+    res.json({ status: 'active' });
+  } catch (error) {
+    console.error('Heartbeat Error:', error.message);
+    res.status(500).json({ message: 'Server error during heartbeat.' });
   }
 });
 

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
   CalendarPlus,
   FolderKanban,
   Info,
   Settings2,
+  Users,
 } from "lucide-react";
 import TeamsTab from "./TeamsTab";
 import TracksTab from "./TracksTab";
@@ -29,8 +31,15 @@ const Github = ({ size = 20, className = "" }: { size?: number; className?: stri
   </svg>
 );
 
-export default function AdminDashboard() {
+interface AdminDashboardProps {
+  defaultTab?: "admin" | "events";
+}
+
+export default function AdminDashboard({ defaultTab = "admin" }: AdminDashboardProps) {
   const token = localStorage.getItem("token");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const eventIdParam = searchParams.get('eventId');
   const [eventName, setEventName] = useState("");
   const [semester, setSemester] = useState("Spring");
   const [year, setYear] = useState("2026");
@@ -44,10 +53,10 @@ export default function AdminDashboard() {
   const [trackName, setTrackName] = useState("");
   const [trackDesc, setTrackDesc] = useState("");
   const [trackMax, setTrackMax] = useState("5");
+  const [trackRoundId, setTrackRoundId] = useState("");
   const [selectedTrack, setSelectedTrack] = useState<any>(null);
 
   const [rounds, setRounds] = useState<any[]>([]);
-  const [selectedTrackForRound, setSelectedTrackForRound] = useState<any>(null);
   const [roundName, setRoundName] = useState("");
   const [roundOrder, setRoundOrder] = useState("1");
   const [roundDeadline, setRoundDeadline] = useState("");
@@ -82,7 +91,15 @@ export default function AdminDashboard() {
   const [message, setMessage] = useState({ type: "", text: "" });
 
   // Tab management state
-  const [activeTab, setActiveTab] = useState<'teams' | 'tracks' | 'rounds' | 'github'>('teams');
+  const [activeTab, setActiveTab] = useState<'admin' | 'events' | 'teams' | 'tracks' | 'rounds' | 'github'>(defaultTab);
+
+  // Edit Event States
+  const [editEventName, setEditEventName] = useState("");
+  const [editEventSemester, setEditEventSemester] = useState("Spring");
+  const [editEventYear, setEditEventYear] = useState("2026");
+  const [editEventDesc, setEditEventDesc] = useState("");
+  const [editEventMaxTeams, setEditEventMaxTeams] = useState("10");
+  const [editEventGithubOrgName, setEditEventGithubOrgName] = useState("");
 
   // Rubric Edit Form States
   const [selectedRubricRoundId, setSelectedRubricRoundId] = useState('');
@@ -124,6 +141,29 @@ export default function AdminDashboard() {
       fetchEventDetails();
     }
   }, [selectedEvent]);
+
+  useEffect(() => {
+    setActiveTab(defaultTab);
+  }, [defaultTab]);
+
+  useEffect(() => {
+    if (eventIdParam) {
+      const foundEvent = events.find(e => e._id === eventIdParam);
+      if (foundEvent) {
+        setSelectedEvent(foundEvent);
+        setEditEventName(foundEvent.name || "");
+        setEditEventSemester(foundEvent.semester || "Spring");
+        setEditEventYear(String(foundEvent.year || 2026));
+        setEditEventDesc(foundEvent.description || "");
+        setEditEventMaxTeams(String(foundEvent.maxTeams || 10));
+        setEditEventGithubOrgName(foundEvent.githubOrgName || "");
+      } else if (events.length > 0) {
+        setSelectedEvent(null);
+      }
+    } else {
+      setSelectedEvent(null);
+    }
+  }, [eventIdParam, events]);
 
   const fetchEvents = async () => {
     try {
@@ -179,12 +219,8 @@ export default function AdminDashboard() {
       if (res.data.tracks && res.data.tracks.length > 0 && !selectedTrack) {
         setSelectedTrack(res.data.tracks[0]);
       }
-      if (
-        res.data.tracks &&
-        res.data.tracks.length > 0 &&
-        !selectedTrackForRound
-      ) {
-        setSelectedTrackForRound(res.data.tracks[0]);
+      if (res.data.tracks && res.data.tracks.length > 0 && !selectedTrack) {
+        setSelectedTrack(res.data.tracks[0]);
       }
 
       fetchEventRoles();
@@ -332,6 +368,19 @@ export default function AdminDashboard() {
     setCriteria([]);
     setMessage({ type: "", text: "" });
 
+    // Populate edit fields for the event
+    setEditEventName(eventObj.name || "");
+    setEditEventSemester(eventObj.semester || "Spring");
+    setEditEventYear(String(eventObj.year || 2026));
+    setEditEventDesc(eventObj.description || "");
+    setEditEventMaxTeams(String(eventObj.maxTeams || 10));
+    setEditEventGithubOrgName(eventObj.githubOrgName || "");
+
+    // If we are currently on the 'events' tab/route, sync URL
+    if (defaultTab === 'events') {
+      setSearchParams({ eventId: eventObj._id });
+    }
+
     // Fetch roles immediately when choosing existing event
     axios
       .get(`http://localhost:5000/api/events/${eventObj._id}/roles`, {
@@ -339,6 +388,10 @@ export default function AdminDashboard() {
       })
       .then((res) => setEventRoles(res.data || []))
       .catch(console.error);
+  };
+
+  const handleEventDoubleClick = (eventObj: any) => {
+    navigate(`/admin/events?eventId=${eventObj._id}`);
   };
 
   const handleCreateEvent = async (e: React.FormEvent) => {
@@ -365,7 +418,6 @@ export default function AdminDashboard() {
       setTracks([]);
       setRounds([]);
       setSelectedTrack(null);
-      setSelectedTrackForRound(null);
 
       setEventName("");
       setDesc("");
@@ -376,10 +428,43 @@ export default function AdminDashboard() {
       });
 
       fetchEvents();
+      setActiveTab("admin"); // Go to admin tab to view it
     } catch (err: any) {
       setMessage({
         type: "error",
         text: err.response?.data?.message || "Lỗi khi tạo cuộc thi.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEvent) return;
+    setMessage({ type: "", text: "" });
+    setLoading(true);
+
+    try {
+      const res = await axios.put(
+        `http://localhost:5000/api/events/${selectedEvent._id}`,
+        {
+          name: editEventName,
+          semester: editEventSemester,
+          year: parseInt(editEventYear),
+          description: editEventDesc,
+          maxTeams: parseInt(editEventMaxTeams),
+          githubOrgName: editEventGithubOrgName,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setMessage({ type: "success", text: "Cập nhật sự kiện thành công!" });
+      setSelectedEvent(res.data.event);
+      fetchEvents();
+    } catch (err: any) {
+      setMessage({
+        type: "error",
+        text: err.response?.data?.message || "Lỗi khi cập nhật sự kiện.",
       });
     } finally {
       setLoading(false);
@@ -410,6 +495,10 @@ export default function AdminDashboard() {
   const handleCreateTrack = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEvent) return;
+    if (!trackRoundId) {
+      setMessage({ type: "error", text: "Vui lòng chọn Vòng thi cho Bảng đấu." });
+      return;
+    }
     setMessage({ type: "", text: "" });
     setLoading(true);
 
@@ -420,6 +509,7 @@ export default function AdminDashboard() {
           name: trackName,
           description: trackDesc,
           maxTeams: parseInt(trackMax),
+          roundId: trackRoundId,
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -427,12 +517,15 @@ export default function AdminDashboard() {
       const newTrack = res.data;
       setTrackName("");
       setTrackDesc("");
+      setTrackRoundId("");
 
       // Update local tracks state
       const updatedTracks = [...tracks, newTrack];
       setTracks(updatedTracks);
       setSelectedTrack(newTrack);
-      setSelectedTrackForRound(newTrack);
+
+      // Fetch updated event details to reload tracks with round mapping
+      await fetchEventDetails();
 
       setMessage({ type: "success", text: "Thêm bảng đấu thành công!" });
     } catch (err: any) {
@@ -448,13 +541,6 @@ export default function AdminDashboard() {
   const handleCreateRound = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEvent) return;
-    if (!selectedTrackForRound) {
-      setMessage({
-        type: "error",
-        text: "Vui lòng tạo/chọn bảng đấu trước khi tạo vòng đấu.",
-      });
-      return;
-    }
 
     setMessage({ type: "", text: "" });
     setLoading(true);
@@ -462,7 +548,7 @@ export default function AdminDashboard() {
     try {
       // 1. Create the Round
       const roundRes = await axios.post(
-        `http://localhost:5000/api/events/${selectedEvent._id}/tracks/${selectedTrackForRound._id}/rounds`,
+        `http://localhost:5000/api/events/${selectedEvent._id}/rounds`,
         {
           name: roundName,
           order: parseInt(roundOrder),
@@ -474,39 +560,46 @@ export default function AdminDashboard() {
 
       const newRound = roundRes.data;
 
-      // 2. Setup Rubric (Create empty or Clone)
-      if (rubricTypeOption === "existing" && selectedSourceRubricId) {
-        // Clone rubric API
-        await axios.post(
-          "http://localhost:5000/api/rubrics/clone",
-          {
-            fromRubricId: selectedSourceRubricId,
-            eventId: selectedEvent._id,
-            trackId: selectedTrackForRound._id,
-            roundId: newRound._id,
-            name: `Rubric ${newRound.name}`,
-          },
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-        setMessage({
-          type: "success",
-          text: `Tạo vòng đấu và sao chép Rubric thành công!`,
-        });
+      // 2. Setup Rubric if a track is selected (Create empty or Clone)
+      if (selectedTrack) {
+        if (rubricTypeOption === "existing" && selectedSourceRubricId) {
+          // Clone rubric API
+          await axios.post(
+            "http://localhost:5000/api/rubrics/clone",
+            {
+              fromRubricId: selectedSourceRubricId,
+              eventId: selectedEvent._id,
+              trackId: selectedTrack._id,
+              roundId: newRound._id,
+              name: `Rubric ${newRound.name}`,
+            },
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
+          setMessage({
+            type: "success",
+            text: `Tạo vòng đấu và sao chép Rubric thành công cho bảng ${selectedTrack.name}!`,
+          });
+        } else {
+          // Create empty Rubric
+          await axios.post(
+            "http://localhost:5000/api/rubrics",
+            {
+              eventId: selectedEvent._id,
+              trackId: selectedTrack._id,
+              roundId: newRound._id,
+              name: rubricName || `Rubric ${newRound.name}`,
+            },
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
+          setMessage({
+            type: "success",
+            text: `Tạo vòng đấu và khởi tạo Rubric trống thành công cho bảng ${selectedTrack.name}!`,
+          });
+        }
       } else {
-        // Create empty Rubric
-        await axios.post(
-          "http://localhost:5000/api/rubrics",
-          {
-            eventId: selectedEvent._id,
-            trackId: selectedTrackForRound._id,
-            roundId: newRound._id,
-            name: rubricName || `Rubric ${newRound.name}`,
-          },
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
         setMessage({
           type: "success",
-          text: `Tạo vòng đấu và khởi tạo Rubric trống thành công!`,
+          text: `Tạo vòng đấu thành công! (Chưa thiết lập Rubric vì chưa chọn Bảng đấu)`,
         });
       }
 
@@ -521,7 +614,6 @@ export default function AdminDashboard() {
       await fetchEventDetails();
 
       // Auto select the new round to view rubric
-
       setSelectedRubricRoundId(newRound._id);
 
       // Re-fetch existing rubrics list
@@ -570,10 +662,9 @@ export default function AdminDashboard() {
   useEffect(() => {
     // When selected track or rounds change, auto-select a round for rubric selection
     if (selectedTrack && rounds.length > 0) {
-      const trackRounds = rounds.filter((r: any) => r.trackId === selectedTrack._id);
-      if (trackRounds.length > 0) {
-        const roundOne = trackRounds.find((r: any) => r.order === 1) || trackRounds[0];
-        setSelectedRubricRoundId(roundOne._id);
+      const associatedRound = rounds.find((r: any) => r._id === selectedTrack.roundId);
+      if (associatedRound) {
+        setSelectedRubricRoundId(associatedRound._id);
       } else {
         setSelectedRubricRoundId('');
         setRubric(null);
@@ -968,7 +1059,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
       {/* Page Title */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
@@ -1021,398 +1112,703 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* CREATE EVENT */}
-      {!selectedEvent && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 glass p-6 rounded-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl"></div>
-            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2 font-mono">
-              <CalendarPlus size={20} className="text-indigo-400" />
-              <span>BƯỚC 1: KHỞI TẠO HỌC KỲ & CUỘC THI</span>
-            </h2>
-
-            <form onSubmit={handleCreateEvent} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-                  Tên Cuộc thi
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ví dụ: SEAL Hackathon Spring 2026"
-                  value={eventName}
-                  onChange={(e) => setEventName(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl text-sm font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-                  GitHub Organization Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ví dụ: seal-hackathon-2026"
-                  value={githubOrgName}
-                  onChange={(e) => setGithubOrgName(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl text-sm font-mono"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-                    Học kỳ
-                  </label>
-                  <select
-                    value={semester}
-                    onChange={(e) => setSemester(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-900 border border-slate-800 text-white"
-                  >
-                    <option value="Spring">Spring</option>
-                    <option value="Summer">Summer</option>
-                    <option value="Fall">Fall</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-                    Năm
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    value={year}
-                    onChange={(e) => setYear(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl text-sm font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-                    Số Đội Tối Đa (Max Teams)
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    value={maxTeams}
-                    onChange={(e) => setMaxTeams(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl text-sm font-mono"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-                  Mô tả Chi tiết Cuộc thi
-                </label>
-                <textarea
-                  placeholder="Nhập thông tin giới thiệu, thời gian, thể lệ chính của sự kiện..."
-                  rows={4}
-                  value={desc}
-                  onChange={(e) => setDesc(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl text-sm font-mono"
-                ></textarea>
-              </div>
-
-              <div className="flex justify-end pt-4">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="bg-indigo-600 hover:bg-indigo-500 font-bold px-6 py-2.5 rounded-xl text-sm transition-all flex items-center gap-2 cursor-pointer font-mono"
-                >
-                  <span>
-                    {loading ? "Đang khởi tạo..." : "Khởi tạo Cuộc thi"}
-                  </span>
-                  <CalendarPlus size={16} />
-                </button>
-              </div>
-            </form>
-          </div>
-
-          {/* Quick instructions & list */}
-          <div className="lg:col-span-1 space-y-6">
-            <div className="glass p-6 rounded-2xl">
-              <h3 className="text-md font-bold text-white mb-3 flex items-center gap-1.5 font-mono">
-                <Info size={16} className="text-indigo-400" />
-                <span>HƯỚNG DẪN BƯỚC 1</span>
-              </h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Tạo một cuộc thi mới đại diện cho học kỳ cụ thể. Cuộc thi này sẽ
-                chứa các bảng đấu (Tracks) và vòng thi (Rounds) tiếp theo.
+      {/* EVENT HEADER PANEL (if selected) */}
+      {selectedEvent && (
+        <div className="glass p-6 rounded-2xl relative overflow-hidden bg-gradient-to-r from-indigo-950/20 to-slate-900/20">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl"></div>
+          <div className="flex justify-between items-start flex-col md:flex-row gap-4">
+            <div>
+              <span className="text-[10px] bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded font-mono font-bold uppercase tracking-wider">
+                [DETAIL_BOARD]
+              </span>
+              <h1 className="text-2xl font-black text-white mt-2 font-mono uppercase tracking-tight">
+                {selectedEvent.name}
+              </h1>
+              <p className="text-xs text-slate-400 mt-1">
+                Học kỳ: {selectedEvent.semester} {selectedEvent.year} |
+                Trạng thái:{" "}
+                <span className="text-indigo-400 font-bold uppercase">
+                  {selectedEvent.status}
+                </span>
               </p>
-              <div className="mt-4 p-3 bg-slate-900/60 rounded-xl border border-slate-800 text-[11px] text-indigo-300">
-                Lưu ý: Chỉ hệ thống Admin mới được quyền khởi tạo cuộc thi mới.
-              </div>
             </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl">
+                <label className="text-[10px] font-bold text-slate-400 uppercase font-mono">Trạng thái:</label>
+                <select
+                  value={selectedEvent.status}
+                  onChange={(e) => handleUpdateEventStatus(e.target.value)}
+                  className="bg-transparent text-slate-200 text-xs font-semibold focus:outline-none cursor-pointer"
+                >
+                  <option className="bg-slate-900" value="draft">Draft</option>
+                  <option className="bg-slate-900" value="registration">Registration</option>
+                  <option className="bg-slate-900" value="ongoing">Ongoing</option>
+                  <option className="bg-slate-900" value="completed">Completed</option>
+                  <option className="bg-slate-900" value="cancelled">Cancelled</option>
+                </select>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedEvent(null);
+                }}
+                className="bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white px-3 py-2 rounded-xl border border-slate-800 text-xs font-mono flex items-center gap-1 cursor-pointer"
+              >
+                <CalendarPlus size={14} />
+                Tạo cuộc thi mới
+              </button>
+            </div>
+          </div>
+          {selectedEvent.description && (
+            <p className="text-xs text-slate-400 mt-4 leading-relaxed bg-slate-950/30 p-3 rounded-xl border border-slate-800/40">
+              {selectedEvent.description}
+            </p>
+          )}
+        </div>
+      )}
 
-            {/* List existing */}
-            {events.length > 0 && (
-              <div className="glass p-6 rounded-2xl">
-                <h3 className="text-md font-bold text-white mb-4 flex items-center gap-2 font-mono">
-                  <FolderKanban size={16} className="text-indigo-400" />
-                  <span>CẤU HÌNH SỰ KIỆN SẴN CÓ</span>
-                </h3>
-                <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
-                  {events.map((e: any) => (
-                    <button
-                      key={e._id}
-                      onClick={() => handleSelectEvent(e)}
-                      className="w-full text-left p-3 rounded-xl border border-slate-800 hover:border-slate-700 bg-slate-900/30 hover:bg-slate-900/50 transition-all text-xs"
-                    >
-                      <div className="flex justify-between font-bold text-slate-200">
-                        <span className="truncate max-w-[150px]">{e.name}</span>
-                        <span className="text-[10px] text-indigo-400">
+      {/* TAB NAVIGATION BAR */}
+      {defaultTab === "events" && (
+        <div className="flex flex-wrap gap-3 border-b border-slate-800/80 pb-3">
+          <button
+            onClick={() => setActiveTab("events")}
+            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
+              activeTab === "events"
+                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25 font-semibold"
+                : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+            }`}
+          >
+            Thông tin sự kiện
+          </button>
+          <button
+            onClick={() => setActiveTab("teams")}
+            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
+              activeTab === "teams"
+                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25 font-semibold"
+                : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+            }`}
+          >
+            Đội thi tham gia
+          </button>
+          <button
+            onClick={() => setActiveTab("tracks")}
+            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
+              activeTab === "tracks"
+                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25 font-semibold"
+                : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+            }`}
+          >
+            Bảng đấu
+          </button>
+          <button
+            onClick={() => setActiveTab("rounds")}
+            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
+              activeTab === "rounds"
+                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25 font-semibold"
+                : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+            }`}
+          >
+            Vòng thi & Tiêu chí
+          </button>
+          <button
+            onClick={() => setActiveTab("github")}
+            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === "github"
+                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25 font-semibold"
+                : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+            }`}
+          >
+            <Github size={14} />
+            GitHub & AI Đánh giá
+          </button>
+        </div>
+      )}
+
+      {/* TAB CONTENT AREAS */}
+      
+      {/* 1. ADMIN TAB */}
+      {activeTab === "admin" && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left panel: List existing events */}
+          <div className="lg:col-span-2 space-y-4">
+            <h3 className="text-md font-bold text-white mb-2 flex items-center gap-2 font-mono">
+              <FolderKanban size={18} className="text-indigo-400" />
+              <span>DANH SÁCH SỰ KIỆN HIỆN CÓ</span>
+            </h3>
+            {events.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {events.map((e: any) => (
+                  <button
+                    key={e._id}
+                    onClick={() => handleSelectEvent(e)}
+                    onDoubleClick={() => handleEventDoubleClick(e)}
+                    className={`w-full text-left p-5 rounded-2xl border transition-all duration-300 flex flex-col justify-between h-40 ${
+                      selectedEvent?._id === e._id
+                        ? "bg-indigo-600/10 border-indigo-500 shadow-md text-white font-bold"
+                        : "border-slate-800 bg-slate-900/30 hover:border-slate-700 text-slate-400"
+                    }`}
+                  >
+                    <div>
+                      <div className="flex justify-between items-start w-full">
+                        <span className={`font-mono text-sm tracking-tight ${selectedEvent?._id === e._id ? 'text-indigo-405' : 'text-slate-200'}`}>
+                          {e.name}
+                        </span>
+                        <span className="text-[10px] bg-slate-950 px-2 py-0.5 rounded font-mono border border-slate-800 text-slate-350">
                           {e.semester} {e.year}
                         </span>
                       </div>
+                      <p className="text-xs text-slate-500 mt-2 line-clamp-3 font-sans font-normal leading-normal">
+                        {e.description || "Chưa có mô tả chi tiết."}
+                      </p>
+                    </div>
+                    
+                    <div className="flex justify-between items-center w-full mt-4 pt-2 border-t border-slate-800/40 text-[10px] font-mono">
+                      <span>Trạng thái: <strong className="text-indigo-300 uppercase">{e.status}</strong></span>
+                      <span className="text-indigo-450 font-bold bg-indigo-500/5 px-2.5 py-0.5 rounded">
+                        {e.teamCount || 0} Đội tham gia
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 italic font-mono">Chưa có cuộc thi nào được khởi tạo.</p>
+            )}
+          </div>
+
+          {/* Right panel: Role assignment & list */}
+          <div className="lg:col-span-1 space-y-6">
+            {selectedEvent ? (
+              <>
+                {/* Role Assignment Form */}
+                <div className="glass p-6 rounded-2xl">
+                  <h3 className="text-md font-bold text-white mb-4 flex items-center gap-1.5 font-mono">
+                    <Users size={16} className="text-indigo-400" />
+                    <span>Phân quyền thành viên</span>
+                  </h3>
+
+                  <form onSubmit={handleAssignRole} className="space-y-4">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
+                        Email Người dùng
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="giamkhao@domain.com"
+                        value={roleEmail}
+                        onChange={(e) => setRoleEmail(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
+                        Vai trò
+                      </label>
+                      <select
+                        value={roleType}
+                        onChange={(e) => setRoleType(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl text-xs font-mono bg-slate-950 border border-slate-850 text-slate-350"
+                      >
+                        <option value="judge">Giám khảo</option>
+                        <option value="coordinator">Ban tổ chức</option>
+                        <option value="mentor">Cố vấn</option>
+                        <option value="participant">Thí sinh</option>
+                      </select>
+                    </div>
+
+                    {(roleType === "judge" ||
+                      roleType === "mentor" ||
+                      roleType === "participant") && (
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
+                          Bảng đấu
+                        </label>
+                        <select
+                          value={roleTrackId}
+                          onChange={(e) => setRoleTrackId(e.target.value)}
+                          className="w-full px-3 py-2.5 rounded-xl text-xs font-mono bg-slate-950 border border-slate-850 text-slate-300"
+                        >
+                          <option value="">Toàn bộ cuộc thi (Không chọn Track)</option>
+                          {tracks.map((t: any) => (
+                            <option key={t._id} value={t._id}>
+                              {t.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2.5 rounded-xl transition-all cursor-pointer font-mono"
+                    >
+                      Gán Quyền Hạn
                     </button>
-                  ))}
+                  </form>
                 </div>
+
+                {/* Assigned Roles List */}
+                <div className="glass p-6 rounded-2xl">
+                  <h3 className="text-md font-bold text-white mb-3 flex items-center gap-1.5 font-mono">
+                    <Users size={16} className="text-indigo-400" />
+                    <span>Danh sách phân quyền ({eventRoles.length})</span>
+                  </h3>
+                  <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+                    {eventRoles.map((role: any) => (
+                      <div
+                        key={role._id}
+                        className="p-3 bg-slate-900/40 rounded-xl border border-slate-800/80 text-xs flex justify-between items-center font-sans"
+                      >
+                        <div>
+                          <p className="font-bold text-slate-200">
+                            {role.userId?.fullName || "Không rõ tên"}
+                          </p>
+                          <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                            {role.userId?.email}
+                          </p>
+                          <p className="text-[10px] text-indigo-400 font-mono mt-0.5 uppercase font-bold">
+                            {role.role}{" "}
+                            {role.trackId
+                              ? `// Bảng: ${role.trackId.name}`
+                              : "// Toàn cuộc thi"}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveRole(role._id)}
+                          className="text-rose-500 hover:text-rose-400 font-bold text-[10px] uppercase font-mono border border-rose-500/20 hover:border-rose-500/40 px-2 py-1 rounded bg-rose-500/5 cursor-pointer"
+                        >
+                          Xóa
+                        </button>
+                      </div>
+                    ))}
+                    {eventRoles.length === 0 && (
+                      <p className="text-xs text-slate-500 italic py-2 text-center">
+                        Chưa có ai được phân quyền cho cuộc thi này.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="glass p-6 rounded-2xl text-center py-12 text-slate-500 font-mono border-dashed border-slate-800">
+                <Users size={32} className="mx-auto mb-3 text-slate-600" />
+                <p className="text-xs">Vui lòng chọn sự kiện ở danh sách bên trái để thực hiện phân quyền.</p>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* DETAIL DASHBOARD & ROLE ASSIGNMENT */}
-      {selectedEvent && (
-        <div className="space-y-6">
-          {/* Event Header Panel */}
-          <div className="glass p-6 rounded-2xl relative overflow-hidden bg-gradient-to-r from-indigo-950/20 to-slate-900/20">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl"></div>
-            <div className="flex justify-between items-start flex-col md:flex-row gap-4">
-              <div>
-                <span className="text-[10px] bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded font-mono font-bold uppercase tracking-wider">
-                  [DETAIL_BOARD]
-                </span>
-                <h1 className="text-2xl font-black text-white mt-2 font-mono uppercase tracking-tight">
-                  {selectedEvent.name}
-                </h1>
-                <p className="text-xs text-slate-400 mt-1">
-                  Học kỳ: {selectedEvent.semester} {selectedEvent.year} |
-                  Trạng thái:{" "}
-                  <span className="text-indigo-400 font-bold uppercase">
-                    {selectedEvent.status}
-                  </span>
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase font-mono">Trạng thái:</label>
-                  <select
-                    value={selectedEvent.status}
-                    onChange={(e) => handleUpdateEventStatus(e.target.value)}
-                    className="bg-transparent text-slate-200 text-xs font-semibold focus:outline-none cursor-pointer"
-                  >
-                    <option className="bg-slate-900" value="draft">Draft</option>
-                    <option className="bg-slate-900" value="registration">Registration</option>
-                    <option className="bg-slate-900" value="ongoing">Ongoing</option>
-                    <option className="bg-slate-900" value="completed">Completed</option>
-                    <option className="bg-slate-900" value="cancelled">Cancelled</option>
-                  </select>
-                </div>
-                <button
-                  onClick={() => {
-                    setSelectedEvent(null);
-                  }}
-                  className="bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white px-3 py-2 rounded-xl border border-slate-800 text-xs font-mono flex items-center gap-1 cursor-pointer"
-                >
-                  <CalendarPlus size={14} />
-                  Tạo cuộc thi mới
-                </button>
-              </div>
-            </div>
-            {selectedEvent.description && (
-              <p className="text-xs text-slate-400 mt-4 leading-relaxed bg-slate-950/30 p-3 rounded-xl border border-slate-800/40">
-                {selectedEvent.description}
-              </p>
+      {/* 2. EVENTS SETTINGS TAB */}
+      {activeTab === "events" && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main settings form */}
+          <div className="lg:col-span-2 glass p-6 rounded-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl"></div>
+            
+            {selectedEvent ? (
+              // EDIT SELECTED EVENT FORM
+              <>
+                <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2 font-mono">
+                  <CalendarPlus size={20} className="text-indigo-400" />
+                  <span>CẬP NHẬT THÔNG TIN SỰ KIỆN</span>
+                </h2>
+
+                <form onSubmit={handleUpdateEvent} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
+                      Tên Cuộc thi
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ví dụ: SEAL Hackathon Spring 2026"
+                      value={editEventName}
+                      onChange={(e) => setEditEventName(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-slate-200"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
+                      GitHub Organization Name
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ví dụ: seal-hackathon-2026"
+                      value={editEventGithubOrgName}
+                      onChange={(e) => setEditEventGithubOrgName(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-slate-200"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
+                        Học kỳ
+                      </label>
+                      <select
+                        value={editEventSemester}
+                        onChange={(e) => setEditEventSemester(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-white"
+                      >
+                        <option value="Spring">Spring</option>
+                        <option value="Summer">Summer</option>
+                        <option value="Fall">Fall</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
+                        Năm
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        value={editEventYear}
+                        onChange={(e) => setEditEventYear(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-slate-200"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
+                        Số Đội Tối Đa (Max Teams)
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        value={editEventMaxTeams}
+                        onChange={(e) => setEditEventMaxTeams(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-slate-200"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
+                      Mô tả Chi tiết Cuộc thi
+                    </label>
+                    <textarea
+                      placeholder="Nhập thông tin giới thiệu, thời gian, thể lệ chính của sự kiện..."
+                      rows={4}
+                      value={editEventDesc}
+                      onChange={(e) => setEditEventDesc(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-slate-200"
+                    ></textarea>
+                  </div>
+
+                  <div className="flex justify-between pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedEvent(null)}
+                      className="bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white px-5 py-2.5 rounded-xl text-sm border border-slate-800 font-mono flex items-center gap-1.5 cursor-pointer"
+                    >
+                      Hủy & Tạo mới
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="bg-indigo-600 hover:bg-indigo-500 font-bold px-6 py-2.5 rounded-xl text-sm transition-all flex items-center gap-2 cursor-pointer font-mono"
+                    >
+                      <span>
+                        {loading ? "Đang cập nhật..." : "Lưu thay đổi"}
+                      </span>
+                      <CalendarPlus size={16} />
+                    </button>
+                  </div>
+                </form>
+              </>
+            ) : (
+              // CREATE NEW EVENT FORM
+              <>
+                <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2 font-mono">
+                  <CalendarPlus size={20} className="text-indigo-400" />
+                  <span>THIẾT LẬP SỰ KIỆN: KHỞI TẠO CUỘC THI MỚI</span>
+                </h2>
+
+                <form onSubmit={handleCreateEvent} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
+                      Tên Cuộc thi
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ví dụ: SEAL Hackathon Spring 2026"
+                      value={eventName}
+                      onChange={(e) => setEventName(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-slate-200"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
+                      GitHub Organization Name
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ví dụ: seal-hackathon-2026"
+                      value={githubOrgName}
+                      onChange={(e) => setGithubOrgName(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-slate-200"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
+                        Học kỳ
+                      </label>
+                      <select
+                        value={semester}
+                        onChange={(e) => setSemester(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-white"
+                      >
+                        <option value="Spring">Spring</option>
+                        <option value="Summer">Summer</option>
+                        <option value="Fall">Fall</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
+                        Năm
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        value={year}
+                        onChange={(e) => setYear(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-slate-200"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
+                        Số Đội Tối Đa (Max Teams)
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        value={maxTeams}
+                        onChange={(e) => setMaxTeams(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-slate-200"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
+                      Mô tả Chi tiết Cuộc thi
+                    </label>
+                    <textarea
+                      placeholder="Nhập thông tin giới thiệu, thời gian, thể lệ chính của sự kiện..."
+                      rows={4}
+                      value={desc}
+                      onChange={(e) => setDesc(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-slate-200"
+                    ></textarea>
+                  </div>
+
+                  <div className="flex justify-end pt-4">
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="bg-indigo-600 hover:bg-indigo-500 font-bold px-6 py-2.5 rounded-xl text-sm transition-all flex items-center gap-2 cursor-pointer font-mono"
+                    >
+                      <span>
+                        {loading ? "Đang khởi tạo..." : "Khởi tạo Cuộc thi"}
+                      </span>
+                      <CalendarPlus size={16} />
+                    </button>
+                  </div>
+                </form>
+              </>
             )}
           </div>
-          <div className="flex gap-4 border-b border-slate-800/80 pb-3">
-            <button
-              onClick={() => setActiveTab("teams")}
-              className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
-                activeTab === "teams"
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25"
-                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-              }`}
-            >
-              Đội thi tham gia
-            </button>
-            <button
-              onClick={() => setActiveTab("tracks")}
-              className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
-                activeTab === "tracks"
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25"
-                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-              }`}
-            >
-              Bảng đấu & Phân quyền
-            </button>
-            <button
-              onClick={() => setActiveTab("rounds")}
-              className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
-                activeTab === "rounds"
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25"
-                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-              }`}
-            >
-              Vòng thi & Tiêu chí
-            </button>
-            <button
-              onClick={() => setActiveTab("github")}
-              className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
-                activeTab === "github"
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25"
-                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-              }`}
-            >
-              <Github size={14} />
-              GitHub & AI Đánh giá
-            </button>
+
+          {/* Quick instructions */}
+          <div className="lg:col-span-1 space-y-6">
+            <div className="glass p-6 rounded-2xl">
+              <h3 className="text-md font-bold text-white mb-3 flex items-center gap-1.5 font-mono">
+                <Info size={16} className="text-indigo-400" />
+                <span>HƯỚNG DẪN THIẾT LẬP</span>
+              </h3>
+              <p className="text-xs text-slate-400 leading-relaxed font-sans">
+                {selectedEvent ? (
+                  "Bạn đang chỉnh sửa cấu hình của cuộc thi được chọn. Thay đổi các thông tin chi tiết như tên, mô tả hoặc giới hạn số đội, sau đó bấm Lưu thay đổi."
+                ) : (
+                  "Khởi tạo một cuộc thi mới đại diện cho học kỳ cụ thể. Cuộc thi này sẽ chứa các bảng đấu (Tracks) và vòng thi (Rounds) tiếp theo."
+                )}
+              </p>
+              <div className="mt-4 p-3 bg-slate-900/60 rounded-xl border border-slate-800 text-[11px] text-indigo-300 font-mono">
+                Lưu ý: Chỉ hệ thống Admin/Ban tổ chức mới được quyền khởi tạo hoặc cấu hình cuộc thi mới.
+              </div>
+            </div>
           </div>
+        </div>
+      )}
 
-          {activeTab === "teams" && (
-            <TeamsTab
-              selectedEvent={selectedEvent}
-              teamsList={teamsList}
-              tracks={tracks}
-              loading={loading}
-              handleDistributeTeams={handleDistributeTeams}
-              handleAssignTrack={handleAssignTrack}
-            />
-          )}
+      {/* 3. TEAMS TAB */}
+      {activeTab === "teams" && (
+        selectedEvent ? (
+          <TeamsTab
+            selectedEvent={selectedEvent}
+            teamsList={teamsList}
+            tracks={tracks}
+            loading={loading}
+            handleDistributeTeams={handleDistributeTeams}
+            handleAssignTrack={handleAssignTrack}
+          />
+        ) : (
+          <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">
+            Vui lòng chọn cuộc thi từ thanh tiêu đề hoặc trang Quản trị viên để quản lý Đội thi.
+          </div>
+        )
+      )}
 
-          {activeTab === "tracks" && (
-            <TracksTab
-              selectedEvent={selectedEvent}
-              tracks={tracks}
-              trackName={trackName}
-              setTrackName={setTrackName}
-              trackDesc={trackDesc}
-              setTrackDesc={setTrackDesc}
-              trackMax={trackMax}
-              setTrackMax={setTrackMax}
-              handleCreateTrack={handleCreateTrack}
-              selectedTrack={selectedTrack}
-              setSelectedTrack={setSelectedTrack}
-              rounds={rounds}
-              setSelectedRubricRoundId={setSelectedRubricRoundId}
-              setRubric={setRubric}
-              setCriteria={setCriteria}
-              roleEmail={roleEmail}
-              setRoleEmail={setRoleEmail}
-              roleType={roleType}
-              setRoleType={setRoleType}
-              roleTrackId={roleTrackId}
-              setRoleTrackId={setRoleTrackId}
-              handleAssignRole={handleAssignRole}
-              eventRoles={eventRoles}
-              handleRemoveRole={handleRemoveRole}
-              attachmentName={attachmentName}
-              setAttachmentName={setAttachmentName}
-              attachmentUrl={attachmentUrl}
-              setAttachmentUrl={setAttachmentUrl}
-              handleUploadExam={handleUploadExam}
-              loading={loading}
-            />
-          )}
+      {/* 4. TRACKS TAB */}
+      {activeTab === "tracks" && (
+        selectedEvent ? (
+          <TracksTab
+            selectedEvent={selectedEvent}
+            tracks={tracks}
+            trackName={trackName}
+            setTrackName={setTrackName}
+            trackDesc={trackDesc}
+            setTrackDesc={setTrackDesc}
+            trackMax={trackMax}
+            setTrackMax={setTrackMax}
+            trackRoundId={trackRoundId}
+            setTrackRoundId={setTrackRoundId}
+            handleCreateTrack={handleCreateTrack}
+            selectedTrack={selectedTrack}
+            setSelectedTrack={setSelectedTrack}
+            rounds={rounds}
+            setSelectedRubricRoundId={setSelectedRubricRoundId}
+            setRubric={setRubric}
+            setCriteria={setCriteria}
+            attachmentName={attachmentName}
+            setAttachmentName={setAttachmentName}
+            attachmentUrl={attachmentUrl}
+            setAttachmentUrl={setAttachmentUrl}
+            handleUploadExam={handleUploadExam}
+            loading={loading}
+          />
+        ) : (
+          <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">
+            Vui lòng chọn cuộc thi từ thanh tiêu đề hoặc trang Quản trị viên để quản lý Bảng đấu.
+          </div>
+        )
+      )}
 
-          {activeTab === "rounds" && (
-            <RoundsTab
-              selectedEvent={selectedEvent}
-              tracks={tracks}
-              rounds={rounds}
-              selectedTrack={selectedTrack}
-              setSelectedTrack={setSelectedTrack}
-              selectedRubricRoundId={selectedRubricRoundId}
-              setSelectedRubricRoundId={setSelectedRubricRoundId}
-              roundName={roundName}
-              setRoundName={setRoundName}
-              roundOrder={roundOrder}
-              setRoundOrder={setRoundOrder}
-              roundDeadline={roundDeadline}
-              setRoundDeadline={setRoundDeadline}
-              roundLimit={roundLimit}
-              setRoundLimit={setRoundLimit}
-              rubricTypeOption={rubricTypeOption}
-              setRubricTypeOption={setRubricTypeOption}
-              existingRubrics={existingRubrics}
-              selectedSourceRubricId={selectedSourceRubricId}
-              setSelectedSourceRubricId={setSelectedSourceRubricId}
-              rubricName={rubricName}
-              setRubricName={setRubricName}
-              handleCreateRound={handleCreateRound}
-              rubric={rubric}
-              criteria={criteria}
-              editingRubric={editingRubric}
-              setEditingRubric={setEditingRubric}
-              editRubricName={editRubricName}
-              setEditRubricName={setEditRubricName}
-              editRubricDesc={editRubricDesc}
-              setEditRubricDesc={setEditRubricDesc}
-              editRubricTotalWeight={editRubricTotalWeight}
-              setEditRubricTotalWeight={setEditRubricTotalWeight}
-              editRubricMaxScore={editRubricMaxScore}
-              setEditRubricMaxScore={setEditRubricMaxScore}
-              editRubricIsActive={editRubricIsActive}
-              setEditRubricIsActive={setEditRubricIsActive}
-              handleUpdateRubric={handleUpdateRubric}
-              handleDeleteRubric={handleDeleteRubric}
-              handleLockRubric={handleLockRubric}
-              critCode={critCode}
-              setCritCode={setCritCode}
-              critName={critName}
-              setCritName={setCritName}
-              critWeight={critWeight}
-              setCritWeight={setCritWeight}
-              critDesc={critDesc}
-              setCritDesc={setCritDesc}
-              critMaxScore={critMaxScore}
-              setCritMaxScore={setCritMaxScore}
-              critGradingLevels={critGradingLevels}
-              setCritGradingLevels={setCritGradingLevels}
-              editingCriterion={editingCriterion}
-              setEditingCriterion={setEditingCriterion}
-              handleSaveCriterion={handleSaveCriterion}
-              handleDeleteCriterion={handleDeleteCriterion}
-              handleStartEditCriterion={handleStartEditCriterion}
-              handleCancelEditCriterion={handleCancelEditCriterion}
-              levelLabel={levelLabel}
-              setLevelLabel={setLevelLabel}
-              levelMinScore={levelMinScore}
-              setLevelMinScore={setLevelMinScore}
-              levelMaxScore={levelMaxScore}
-              setLevelMaxScore={setLevelMaxScore}
-              levelDesc={levelDesc}
-              setLevelDesc={setLevelDesc}
-              handleAddGradingLevel={handleAddGradingLevel}
-              handleRemoveGradingLevel={handleRemoveGradingLevel}
-              handleCreateRubric={handleCreateRubric}
-              loading={loading}
-              setRubric={setRubric}
-              setCriteria={setCriteria}
-            />
-          )}
+      {/* 5. ROUNDS TAB */}
+      {activeTab === "rounds" && (
+        selectedEvent ? (
+          <RoundsTab
+            selectedEvent={selectedEvent}
+            tracks={tracks}
+            rounds={rounds}
+            selectedTrack={selectedTrack}
+            setSelectedTrack={setSelectedTrack}
+            selectedRubricRoundId={selectedRubricRoundId}
+            setSelectedRubricRoundId={setSelectedRubricRoundId}
+            roundName={roundName}
+            setRoundName={setRoundName}
+            roundOrder={roundOrder}
+            setRoundOrder={setRoundOrder}
+            roundDeadline={roundDeadline}
+            setRoundDeadline={setRoundDeadline}
+            roundLimit={roundLimit}
+            setRoundLimit={setRoundLimit}
+            rubricTypeOption={rubricTypeOption}
+            setRubricTypeOption={setRubricTypeOption}
+            existingRubrics={existingRubrics}
+            selectedSourceRubricId={selectedSourceRubricId}
+            setSelectedSourceRubricId={setSelectedSourceRubricId}
+            rubricName={rubricName}
+            setRubricName={setRubricName}
+            handleCreateRound={handleCreateRound}
+            rubric={rubric}
+            criteria={criteria}
+            editingRubric={editingRubric}
+            setEditingRubric={setEditingRubric}
+            editRubricName={editRubricName}
+            setEditRubricName={setEditRubricName}
+            editRubricDesc={editRubricDesc}
+            setEditRubricDesc={setEditRubricDesc}
+            editRubricTotalWeight={editRubricTotalWeight}
+            setEditRubricTotalWeight={setEditRubricTotalWeight}
+            editRubricMaxScore={editRubricMaxScore}
+            setEditRubricMaxScore={setEditRubricMaxScore}
+            editRubricIsActive={editRubricIsActive}
+            setEditRubricIsActive={setEditRubricIsActive}
+            handleUpdateRubric={handleUpdateRubric}
+            handleDeleteRubric={handleDeleteRubric}
+            handleLockRubric={handleLockRubric}
+            critCode={critCode}
+            setCritCode={setCritCode}
+            critName={critName}
+            setCritName={setCritName}
+            critWeight={critWeight}
+            setCritWeight={setCritWeight}
+            critDesc={critDesc}
+            setCritDesc={setCritDesc}
+            critMaxScore={critMaxScore}
+            setCritMaxScore={setCritMaxScore}
+            critGradingLevels={critGradingLevels}
+            setCritGradingLevels={setCritGradingLevels}
+            editingCriterion={editingCriterion}
+            setEditingCriterion={setEditingCriterion}
+            handleSaveCriterion={handleSaveCriterion}
+            handleDeleteCriterion={handleDeleteCriterion}
+            handleStartEditCriterion={handleStartEditCriterion}
+            handleCancelEditCriterion={handleCancelEditCriterion}
+            levelLabel={levelLabel}
+            setLevelLabel={setLevelLabel}
+            levelMinScore={levelMinScore}
+            setLevelMinScore={setLevelMinScore}
+            levelMaxScore={levelMaxScore}
+            setLevelMaxScore={setLevelMaxScore}
+            levelDesc={levelDesc}
+            setLevelDesc={setLevelDesc}
+            handleAddGradingLevel={handleAddGradingLevel}
+            handleRemoveGradingLevel={handleRemoveGradingLevel}
+            handleCreateRubric={handleCreateRubric}
+            loading={loading}
+            setRubric={setRubric}
+            setCriteria={setCriteria}
+          />
+        ) : (
+          <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">
+            Vui lòng chọn cuộc thi từ thanh tiêu đề hoặc trang Quản trị viên để quản lý Vòng thi.
+          </div>
+        )
+      )}
 
-          {activeTab === "github" && (
-            <GithubTab
-              repos={repos}
-              allTeams={allTeams}
-              linkingTeamId={linkingTeamId}
-              setLinkingTeamId={setLinkingTeamId}
-              manualRepoName={manualRepoName}
-              setManualRepoName={setManualRepoName}
-              manualRepoUrl={manualRepoUrl}
-              setManualRepoUrl={setManualRepoUrl}
-              syncingRepoId={syncingRepoId}
-              handleCreateRepo={handleCreateRepo}
-              handleLinkRepo={handleLinkRepo}
-              handleSyncRepo={handleSyncRepo}
-            />
-          )}
-      </div>
-    )}
-  </div>
+      {/* 6. GITHUB TAB */}
+      {activeTab === "github" && (
+        selectedEvent ? (
+          <GithubTab
+            repos={repos}
+            allTeams={allTeams}
+            linkingTeamId={linkingTeamId}
+            setLinkingTeamId={setLinkingTeamId}
+            manualRepoName={manualRepoName}
+            setManualRepoName={setManualRepoName}
+            manualRepoUrl={manualRepoUrl}
+            setManualRepoUrl={setManualRepoUrl}
+            syncingRepoId={syncingRepoId}
+            handleCreateRepo={handleCreateRepo}
+            handleLinkRepo={handleLinkRepo}
+            handleSyncRepo={handleSyncRepo}
+          />
+        ) : (
+          <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">
+            Vui lòng chọn cuộc thi từ thanh tiêu đề hoặc trang Quản trị viên để quản lý GitHub.
+          </div>
+        )
+      )}
+    </div>
   );
 }

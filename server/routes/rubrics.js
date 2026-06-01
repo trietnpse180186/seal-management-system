@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 const Rubric = mongoose.model("Rubric");
 const Criterion = mongoose.model("Criterion");
 const Round = mongoose.model("Round");
+const Track = mongoose.model("Track");
 const EventRole = mongoose.model("EventRole");
 const { authenticateToken } = require("../middleware/authMiddleware");
 
@@ -92,9 +93,12 @@ router.post("/", authenticateToken, async (req, res) => {
     const round = await Round.findById(roundId);
     if (!round) return res.status(404).json({ message: "Round not found." });
 
+    const track = await Track.findById(trackId);
+    if (!track) return res.status(404).json({ message: "Track not found." });
+
     if (
       round.eventId.toString() !== eventId.toString() ||
-      round.trackId.toString() !== trackId.toString()
+      track.roundId.toString() !== roundId.toString()
     ) {
       return res
         .status(400)

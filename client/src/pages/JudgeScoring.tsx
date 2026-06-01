@@ -479,7 +479,7 @@ export default function JudgeScoring() {
                     className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold py-3.5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-[0_0_20px_rgba(99,102,241,0.4)] hover:shadow-[0_0_30px_rgba(99,102,241,0.6)] uppercase tracking-widest"
                   >
                     <Save size={16} />
-                    <span>{saving ? 'Đang nộp điểm...' : 'Submit Final Grades'}</span>
+                    <span>{saving ? 'Đang lưu điểm...' : 'Nộp điểm chính thức'}</span>
                   </button>
                 )}
               </form>
@@ -511,7 +511,7 @@ export default function JudgeScoring() {
                     : 'text-slate-500 hover:text-slate-300'
                 }`}
               >
-                Commits ({commits.length})
+                Commit ({commits.length})
                 {sidebarTab === 'commits' && (
                   <div className="absolute bottom-[-9px] left-0 w-full h-[2px] bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]"></div>
                 )}
@@ -576,19 +576,27 @@ export default function JudgeScoring() {
                     </div>
 
                     {/* Qualitative criteria review */}
-                    <div className="space-y-2">
-                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block font-mono flex items-center gap-1.5"><Activity size={12} /> Đánh giá định tính (Stitch R1-R2)</span>
-                      <div className="space-y-1.5 text-[10px]">
+                    <div className="space-y-3">
+                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block font-mono flex items-center gap-1.5"><Activity size={12} /> Đánh giá chi tiết tiêu chí (Stitch R1-R2)</span>
+                      <div className="space-y-2.5 text-[10px]">
                         {Object.entries(aiInsight.criteria_comments || {}).map(([key, value]: [string, any]) => (
-                          <div key={key} className="flex justify-between items-center bg-slate-800/40 p-2.5 rounded border border-white/5 shadow-inner hover:border-white/10 transition-colors">
-                            <span className="font-bold text-slate-300">{key}</span>
-                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase shadow-[0_0_8px_rgba(0,0,0,0.5)] ${
-                              value.grade === 'Xuất sắc' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]' :
-                              value.grade === 'Tốt' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 drop-shadow-[0_0_5px_rgba(99,102,241,0.5)]' :
-                              value.grade === 'Khá' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 drop-shadow-[0_0_5px_rgba(245,158,11,0.5)]' : 'bg-slate-700/50 text-slate-400 border border-slate-600'
-                            }`}>
-                              {value.grade}
-                            </span>
+                          <div key={key} className="bg-slate-800/40 p-3 rounded-xl border border-white/5 shadow-inner space-y-1.5 hover:border-white/10 transition-colors">
+                            <div className="flex justify-between items-center">
+                              <span className="font-bold text-slate-300">{key}</span>
+                              <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase shadow-[0_0_8px_rgba(0,0,0,0.5)] ${
+                                value.grade === 'Xuất sắc' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]' :
+                                value.grade === 'Tốt' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 drop-shadow-[0_0_5px_rgba(99,102,241,0.5)]' :
+                                value.grade === 'Khá' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 drop-shadow-[0_0_5px_rgba(245,158,11,0.5)]' :
+                                value.grade === 'Trung bình' ? 'bg-slate-800/60 text-slate-300 border border-slate-700' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                              }`}>
+                                {value.grade}
+                              </span>
+                            </div>
+                            {value.comment && (
+                              <p className="text-slate-400 leading-relaxed font-sans text-[10px] pl-2 border-l border-slate-700 mt-1">
+                                {value.comment}
+                              </p>
+                            )}
                           </div>
                         ))}
                       </div>

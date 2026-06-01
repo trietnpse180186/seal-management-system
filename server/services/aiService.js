@@ -192,6 +192,41 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
   const commitSummaries = commits.map(c => `SHA: ${c.commitSha.substring(0, 7)}, Msg: ${c.message}, Committed: ${c.committedAt}`).join('\n');
   const reviewSummaries = priorReviews.map(r => `Level: ${r.result?.rag_maturity?.level || 'Basic'}, Summary: ${r.result?.overall_picture?.push_summary}`).join('\n');
 
+  // Dynamically query active criteria from Mongoose
+  const Team = require('mongoose').model('Team');
+  const Rubric = require('mongoose').model('Rubric');
+  const Criterion = require('mongoose').model('Criterion');
+
+  let roundCriteria = [];
+  try {
+    const team = await Team.findById(teamId);
+    if (team && team.currentRoundId) {
+      const rubric = await Rubric.findOne({ roundId: team.currentRoundId, isActive: true });
+      if (rubric) {
+        roundCriteria = await Criterion.find({ rubricId: rubric._id }).sort({ order: 1 });
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching round criteria for AI analysis:', err.message);
+  }
+
+  let criteriaPrompt = '';
+  if (roundCriteria.length > 0) {
+    criteriaPrompt = roundCriteria.map(c => `- **${c.code}**: ${c.name} (Mô tả: ${c.description || 'Không có mô tả.'}, Điểm tối đa: ${c.maxScore}đ)`).join('\n');
+  } else {
+    criteriaPrompt = `
+- **R1_01**: Problem & Solution Suitability
+- **R1_02**: Data Pipeline
+- **R1_03**: Retrieval & Citation
+- **R1_04**: Intent & Prompting
+- **R1_05**: Presentation/Documentation
+- **R2_01**: Agent & Multi-hop
+- **R2_02**: Model Resources Management
+- **R2_03**: Production-grade Operations
+- **R2_04**: Extensibility/Creativity
+- **R2_05**: Defensibility/Q&A preparation`;
+  }
+
   const prompt = `
     You are an expert AI Judge Auditor for the SEAL Hackathon. Synthesize the development history of team ${teamId}.
     Use the following inputs:
@@ -207,43 +242,30 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
     2. B2 (Gap & Risk): Compare code state to target hackathon expectation. Identify technical debt and security risks.
     3. B3 (Improvements): Suggest clear proposals.
     
-    Rate the team qualitatively for the following 10 criteria.
-    For each criterion, choose a grade from ["Xuất sắc", "Tốt", "Khá", "Trung bình", "Yếu"] and provide a detailed comment:
-    R1 Vòng 1:
-    - R1_01: Problem & Solution Suitability
-    - R1_02: Data Pipeline
-    - R1_03: Retrieval & Citation
-    - R1_04: Intent & Prompting
-    - R1_05: Presentation/Documentation
-    R2 Vòng 2:
-    - R2_01: Agent & Multi-hop
-    - R2_02: Model Resources Management
-    - R2_03: Production-grade Operations
-    - R2_04: Extensibility/Creativity
-    - R2_05: Defensibility/Q&A preparation
+    Rate the team qualitatively for the following criteria defined in the active Rubric. All qualitative grades MUST choose from ["Xuất sắc", "Tốt", "Khá", "Trung bình", "Yếu"]:
+    ${criteriaPrompt}
     
+    IMPORTANT: You MUST write the detailed assessment comments, overall pictures, evolution notes, reasoning processes, and SMB Advisories entirely in fluent, professional Vietnamese.
     Also compile an SMB Scale Advisory (system_identity_recap, summary, tech_and_architecture, cost_for_smb, throughput_and_reliability, observability_and_operations, data_and_integrations).
     
     Return a raw JSON block without markdown formatting or code block wrapper:
     {
       "criteria_comments": {
-        "R1_01": {"grade": "Tốt|Xuất sắc|...", "comment": "comment details"},
-        "R1_02": {"grade": "Tốt|Xuất sắc|...", "comment": "comment details"},
-        ...
-        "R2_05": {"grade": "Tốt|Xuất sắc|...", "comment": "comment details"}
+        // You MUST include exactly one entry for each criterion code listed above.
+        // Format: "CODE": {"grade": "Tốt|Xuất sắc|...", "comment": "detailed review comment in Vietnamese explaining the grade based on code commits"}
       },
       "smb_scale_advisory": {
-        "system_identity_recap": "recapping the system identity",
-        "summary": "overall viability summary",
-        "tech_and_architecture": "architecture advice",
-        "cost_for_smb": "estimated API and hosting costs",
-        "throughput_and_reliability": "reliability pointers",
-        "observability_and_operations": "monitoring advice",
-        "data_and_integrations": "integration capabilities"
+        "system_identity_recap": "system identity recap in Vietnamese",
+        "summary": "overall viability summary in Vietnamese",
+        "tech_and_architecture": "architecture advice in Vietnamese",
+        "cost_for_smb": "estimated API and hosting costs in Vietnamese",
+        "throughput_and_reliability": "reliability pointers in Vietnamese",
+        "observability_and_operations": "monitoring advice in Vietnamese",
+        "data_and_integrations": "integration capabilities in Vietnamese"
       },
       "overall_picture": {
-        "historical_synthesis": "overview of the team development progress",
-        "evolution_notes": "notable milestones during the hackathon"
+        "historical_synthesis": "overview of the team development progress in Vietnamese",
+        "evolution_notes": "notable milestones during the hackathon in Vietnamese"
       }
     }
   `;
@@ -252,20 +274,45 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
     console.log(`[GEMINI MOCK] Analyzing team aggregate for: ${teamId}`);
     await new Promise(resolve => setTimeout(resolve, 800));
 
-    // Realistic aggregate audit report mock
+    const commentsMap = {};
+    if (roundCriteria.length > 0) {
+      roundCriteria.forEach(c => {
+        let commentText = `Nhóm thực hiện tốt tiêu chí ${c.name}, cấu trúc code sạch sẽ và rõ ràng.`;
+        let grade = "Tốt";
+        if (c.code === 'CODE') {
+          commentText = "Mã nguồn được cấu hình chuẩn, áp dụng các design pattern tối ưu, cấu trúc thư mục phân tách Layered MVC rõ ràng và dễ bảo trì.";
+          grade = "Tốt";
+        } else if (c.code === 'TEAM') {
+          commentText = "Sự phối hợp trong nhóm rất nhịp nhàng, đóng góp của các thành viên qua các commit đồng đều, lịch sử Git rõ ràng.";
+          grade = "Tốt";
+        } else if (c.code === 'R1_01') {
+          commentText = "Ý tưởng giải quyết bài toán logistics rất thực tế và thiết thực, có tính khả thi cao.";
+          grade = "Xuất sắc";
+        } else if (c.code === 'R1_02') {
+          commentText = "Pipeline xử lý dữ liệu và chia tài liệu thành chunking hợp lý, có overlap 15% để giữ ngữ cảnh.";
+          grade = "Tốt";
+        } else if (c.code === 'R1_03') {
+          commentText = "Đã có tìm kiếm ngữ nghĩa nhưng chưa có reranking nâng cao hoặc trích dẫn nguồn (citation) chi tiết.";
+          grade = "Khá";
+        }
+        commentsMap[c.code] = { grade, comment: commentText };
+      });
+    } else {
+      // Fallback defaults
+      commentsMap["R1_01"] = { grade: "Xuất sắc", comment: "Ý tưởng giải quyết bài toán logistics rất thực tế và thiết thực." };
+      commentsMap["R1_02"] = { grade: "Tốt", comment: "Pipeline xử lý PDF và chia chunking hợp lý, có overlap 15%." };
+      commentsMap["R1_03"] = { grade: "Khá", comment: "Đã có tìm kiếm ngữ nghĩa nhưng chưa có reranking nâng cao." };
+      commentsMap["R1_04"] = { grade: "Tốt", comment: "Prompts được thiết kế khá chỉnh chu, có phân vai rõ ràng." };
+      commentsMap["R1_05"] = { grade: "Tốt", comment: "README ghi chú cài đặt chi tiết, cấu trúc thư mục module hóa sạch sẽ." };
+      commentsMap["R2_01"] = { grade: "Khá", comment: "Có cài đặt agent dạng ReAct đơn giản, chưa thực sự tối ưu multi-hop." };
+      commentsMap["R2_02"] = { grade: "Tốt", comment: "Có theo dõi token sử dụng của các api calls cục bộ." };
+      commentsMap["R2_03"] = { grade: "Khá", comment: "Khả năng chịu lỗi trung bình, cần cấu hình retry khi sập network." };
+      commentsMap["R2_04"] = { grade: "Khá", comment: "Giải pháp ở mức tiêu chuẩn, độ đột phá công nghệ trung bình khá." };
+      commentsMap["R2_05"] = { grade: "Tốt", comment: "AI đề xuất bộ câu hỏi phản biện rất sát thực tế, giúp nhóm chuẩn bị tốt." };
+    }
+
     return {
-      criteria_comments: {
-        R1_01: { grade: "Xuất sắc", comment: "Ý tưởng giải quyết bài toán logistics rất thực tế và thiết thực." },
-        R1_02: { grade: "Tốt", comment: "Pipeline xử lý PDF và chia chunking hợp lý, có overlap 15%." },
-        R1_03: { grade: "Khá", comment: "Đã có tìm kiếm ngữ nghĩa nhưng chưa có reranking nâng cao." },
-        R1_04: { grade: "Tốt", comment: "Prompts được thiết kế khá chỉnh chu, có phân vai rõ ràng." },
-        R1_05: { grade: "Tốt", comment: "README ghi chú cài đặt chi tiết, cấu trúc thư mục module hóa sạch sẽ." },
-        R2_01: { grade: "Khá", comment: "Có cài đặt agent dạng ReAct đơn giản, chưa thực sự tối ưu multi-hop." },
-        R2_02: { grade: "Tốt", comment: "Có theo dõi token sử dụng của các api calls cục bộ." },
-        R2_03: { grade: "Khá", comment: "Khả năng chịu lỗi trung bình, cần cấu hình retry khi sập network." },
-        R2_04: { grade: "Khá", comment: "Giải pháp ở mức tiêu chuẩn, độ đột phá công nghệ trung bình khá." },
-        R2_05: { grade: "Tốt", comment: "AI đề xuất bộ câu hỏi phản biện rất sát thực tế, giúp nhóm chuẩn bị tốt." }
-      },
+      criteria_comments: commentsMap,
       smb_scale_advisory: {
         system_identity_recap: "Hệ thống RAG và trợ lý số hỗ trợ thông quan tờ khai hải quan logistics.",
         summary: "Dự án có triển vọng thương mại hóa tốt cho các doanh nghiệp kho bãi logistics vừa và nhỏ.",
@@ -290,13 +337,15 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
     return JSON.parse(cleanedText);
   } catch (error) {
     console.error('Error generating aggregate review with Gemini:', error.message);
+    const fallbackMap = {};
+    const defaultCodes = roundCriteria.length > 0 ? roundCriteria.map(c => c.code) : ["R1_01", "R1_02", "R1_03", "R1_04", "R1_05", "R2_01", "R2_02", "R2_03", "R2_04", "R2_05"];
+    defaultCodes.forEach(code => {
+      fallbackMap[code] = { grade: "Tốt", comment: `Phân tích chi tiết tiêu chí tạm thời chưa khả dụng. Chi tiết: ${error.message}` };
+    });
     return {
-      criteria_comments: {
-        R1_01: { grade: "Khá", comment: `Analysis failed due to API limitations. Details: ${error.message}` },
-        R1_02: { grade: "Khá", comment: "Analysis failed." }
-      },
-      smb_scale_advisory: { summary: `Service limits or API failure. Details: ${error.message}` },
-      overall_picture: { historical_synthesis: "Failed", evolution_notes: "None" }
+      criteria_comments: fallbackMap,
+      smb_scale_advisory: { summary: `Giới hạn dịch vụ hoặc lỗi API kết nối Gemini. Chi tiết: ${error.message}` },
+      overall_picture: { historical_synthesis: "Phân tích thất bại", evolution_notes: "Không có ghi nhận" }
     };
   }
 }
@@ -346,9 +395,14 @@ async function generateScoringSuggestion(repositorySnapshot, commits, criteria) 
     let grade = "Tốt"; // Default fallback
     let comment = "Nhóm thể hiện tiến độ làm việc ổn định, có commit giải quyết tiêu chí này.";
 
-    if (hasAgg && latestAggReview.result.criteria_comments[critCode]) {
-      grade = latestAggReview.result.criteria_comments[critCode].grade || "Tốt";
-      comment = latestAggReview.result.criteria_comments[critCode].comment || comment;
+    if (hasAgg) {
+      if (latestAggReview.result.criteria_comments[c.code]) {
+        grade = latestAggReview.result.criteria_comments[c.code].grade || "Tốt";
+        comment = latestAggReview.result.criteria_comments[c.code].comment || comment;
+      } else if (latestAggReview.result.criteria_comments[critCode]) {
+        grade = latestAggReview.result.criteria_comments[critCode].grade || "Tốt";
+        comment = latestAggReview.result.criteria_comments[critCode].comment || comment;
+      }
     }
 
     const factor = gradeToScoreFactor[grade] || 0.8;

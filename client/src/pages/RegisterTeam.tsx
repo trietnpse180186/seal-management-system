@@ -13,8 +13,6 @@ interface MemberInput {
 export default function RegisterTeam() {
   const [events, setEvents] = useState<any[]>([]);
   const [selectedEventId, setSelectedEventId] = useState('');
-  const [tracks, setTracks] = useState<any[]>([]);
-  const [selectedTrackId, setSelectedTrackId] = useState('');
   
   const [teamName, setTeamName] = useState('');
   
@@ -46,20 +44,7 @@ export default function RegisterTeam() {
       .catch(err => console.error('Error fetching events:', err));
   }, []);
 
-  useEffect(() => {
-    if (!selectedEventId) return;
-    // Fetch tracks for the event
-    axios.get(`http://localhost:5000/api/events/${selectedEventId}`)
-      .then(res => {
-        setTracks(res.data.tracks || []);
-        if (res.data.tracks && res.data.tracks.length > 0) {
-          setSelectedTrackId(res.data.tracks[0]._id);
-        } else {
-          setSelectedTrackId('');
-        }
-      })
-      .catch(err => console.error('Error fetching tracks:', err));
-  }, [selectedEventId]);
+
 
   useEffect(() => {
     if (!token) return;
@@ -106,18 +91,12 @@ export default function RegisterTeam() {
       return;
     }
 
-    if (tracks.length > 0 && !selectedTrackId) {
-      setError('Vui lòng chọn bảng đấu/chủ đề.');
-      setLoading(false);
-      return;
-    }
-
     try {
       const response = await axios.post(
         'http://localhost:5000/api/teams/register',
         {
           eventId: selectedEventId,
-          trackId: selectedTrackId || undefined,
+          trackId: undefined,
           teamName: teamName.trim(),
           membersList: members.filter(m => m.email.trim() !== ''),
           leaderInfo: {
@@ -213,19 +192,12 @@ export default function RegisterTeam() {
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
                   Bảng đấu / Lĩnh vực chuyên môn
                 </label>
-                <select
-                  value={selectedTrackId}
-                  onChange={e => setSelectedTrackId(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl text-sm"
-                  disabled={tracks.length === 0}
-                >
-                  {tracks.map(t => (
-                    <option key={t._id} value={t._id}>
-                      {t.name} (Tối đa: {t.maxTeams || 10} đội)
-                    </option>
-                  ))}
-                  {tracks.length === 0 && <option value="">[TỰ ĐỘNG CHIA BẢNG ĐẤU SAU]</option>}
-                </select>
+                <div className="w-full px-4 py-3 rounded-xl text-sm bg-slate-900/60 border border-slate-800 text-slate-400 font-mono select-none flex items-center gap-1.5">
+                  <span>🎲 Tự động phân chia ngẫu nhiên</span>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1.5 font-sans">
+                  * Ban tổ chức sẽ tự động chia bảng đấu ngẫu nhiên để đảm bảo công bằng sau khi các thành viên xác nhận email.
+                </p>
               </div>
             </div>
 

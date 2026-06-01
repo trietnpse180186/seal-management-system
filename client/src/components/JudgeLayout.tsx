@@ -88,17 +88,17 @@ export default function JudgeLayout({ user, onLogout }: JudgeLayoutProps) {
   const navItems = [
     {
       path: '/judge/dashboard',
-      label: 'Dashboard',
+      label: 'Bảng điều khiển',
       icon: LayoutDashboard
     },
     {
       path: '/judge/projects',
-      label: 'Projects to Grade',
+      label: 'Dự án cần chấm',
       icon: BookOpen
     },
     {
       path: '/judge/leaderboard',
-      label: 'Leaderboard',
+      label: 'Bảng xếp hạng',
       icon: Trophy
     }
   ];

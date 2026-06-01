@@ -6,20 +6,11 @@ import {
   CheckSquare,
   Lock,
   RefreshCw,
-  Radio,
+  AlertCircle,
 } from "lucide-react";
 
-export default function Leaderboard({
-  user,
-  roles = [],
-}: {
-  user?: any;
-  roles?: any[];
-}) {
+export default function JudgeLeaderboard() {
   const token = localStorage.getItem("token");
-
-  // Detect user role
-  const isSystemAdmin = user?.isSystemAdmin;
 
   const [events, setEvents] = useState<any[]>([]);
   const [selectedEventId, setSelectedEventId] = useState("");
@@ -29,18 +20,11 @@ export default function Leaderboard({
 
   const [standings, setStandings] = useState<any[]>([]);
   const [isLocked, setIsLocked] = useState(false);
-  const [isLive, setIsLive] = useState(false);
   const [lockedMessage, setLockedMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  // Detect if coordinator for selectedEvent
-  const isCoordinator =
-    isSystemAdmin ||
-    roles.some(
-      (r: any) => r.eventId === selectedEventId && r.role === "coordinator",
-    );
-
+  // Fetch events
   useEffect(() => {
     axios
       .get("http://localhost:5000/api/events")
@@ -51,6 +35,7 @@ export default function Leaderboard({
       .catch((err) => console.error(err));
   }, []);
 
+  // Fetch event details (rounds)
   useEffect(() => {
     if (!selectedEventId) return;
     axios
@@ -75,32 +60,19 @@ export default function Leaderboard({
     }
     setLoading(true);
     try {
-      if (isCoordinator && selectedRound?.status !== "completed") {
-        // Coordinator: use live-ranking for real-time view
-        const res = await axios.get(
-          `http://localhost:5000/api/grades/live-ranking/${selectedRoundId}`,
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-        setStandings(res.data.standings || []);
-        setIsLive(res.data.isLive || true);
+      // Judges only see leaderboard when officially published
+      const res = await axios.get(
+        `http://localhost:5000/api/grades/leaderboard/${selectedRoundId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data.locked) {
+        setIsLocked(true);
+        setLockedMessage(res.data.message || "Bảng xếp hạng chưa được công bố.");
+        setStandings([]);
+      } else {
         setIsLocked(false);
         setLockedMessage("");
-      } else {
-        // Non-coordinator or completed round: use normal leaderboard
-        const res = await axios.get(
-          `http://localhost:5000/api/grades/leaderboard/${selectedRoundId}`,
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-        if (res.data.locked) {
-          setIsLocked(true);
-          setLockedMessage(res.data.message || "");
-          setStandings([]);
-        } else {
-          setIsLocked(false);
-          setLockedMessage("");
-          setStandings(res.data.standings || []);
-        }
-        setIsLive(false);
+        setStandings(res.data.standings || []);
       }
       setLastUpdated(new Date());
     } catch (err) {
@@ -109,20 +81,11 @@ export default function Leaderboard({
     } finally {
       setLoading(false);
     }
-  }, [selectedRoundId, isCoordinator, token, selectedRound]);
+  }, [selectedRoundId, token]);
 
   useEffect(() => {
     fetchRankings();
   }, [fetchRankings]);
-
-  // Auto-refresh every 30s for coordinator (real-time)
-  useEffect(() => {
-    if (!isCoordinator || !selectedRoundId) return;
-    const interval = setInterval(() => {
-      fetchRankings();
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [isCoordinator, selectedRoundId, fetchRankings]);
 
   const handleRoundChange = (roundId: string) => {
     setSelectedRoundId(roundId);
@@ -131,74 +94,40 @@ export default function Leaderboard({
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-12 space-y-8">
-      {/* Page header */}
+    <div className="space-y-8 animate-fadeIn">
+      {/* Page Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
           <div className="bg-gradient-premium p-3 rounded-2xl text-white shadow-lg shadow-indigo-500/20">
             <Trophy size={28} />
           </div>
           <div>
-            <h1 className="text-3xl font-extrabold text-white">
+            <h2 className="text-3xl font-extrabold text-white tracking-tight drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]">
               Bảng Xếp Hạng Chung Cuộc
-            </h1>
-            <p className="text-slate-400 text-sm">
-              Điểm số trung bình từ ban giám khảo và các đội thi đi tiếp
+            </h2>
+            <p className="text-slate-400 text-xs mt-1">
+              Xem kết quả xếp hạng chính thức sau khi ban tổ chức đã công bố.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Live badge for coordinator */}
-          {isCoordinator && isLive && (
-            <span className="flex items-center gap-1.5 bg-rose-500/10 text-rose-400 border border-rose-500/30 px-3 py-1.5 rounded-full text-xs font-bold animate-pulse">
-              <Radio size={12} />
-              LIVE — Cập nhật mỗi 30 giây
+        {lastUpdated && (
+          <div className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold transition-all">
+            <span className="text-slate-400 font-mono">
+              Cập nhật: {lastUpdated.toLocaleTimeString("vi-VN")}
             </span>
-          )}
-
-
-
-          {/* Manual refresh for coordinator */}
-          {isCoordinator && (
             <button
               onClick={fetchRankings}
               disabled={loading}
-              className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+              className="text-indigo-400 hover:text-indigo-300 disabled:opacity-50 transition-colors"
             >
               <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
-              Làm mới
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* Coordinator info banner */}
-      {isCoordinator && (
-        <div className="bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 px-5 py-3.5 rounded-xl text-xs leading-relaxed">
-          <p className="font-bold text-indigo-400 mb-1">
-            🔒 Chế độ xem Điều phối viên
-          </p>
-          <p>
-            Bạn đang xem bảng xếp hạng{" "}
-            <span className="font-bold text-white">thời gian thực (LIVE)</span>{" "}
-            — điểm được tính trung bình từ tất cả giám khảo đã nộp điểm. Bảng
-            này chỉ hiển thị riêng với bạn. Thành viên đội thi chỉ thấy kết quả
-            sau khi bạn{" "}
-            <span className="font-bold text-white">
-              Khoá & Công bố Vòng thi
-            </span>
-            .
-          </p>
-          {lastUpdated && (
-            <p className="mt-1 text-indigo-400/70">
-              Cập nhật lần cuối: {lastUpdated.toLocaleTimeString("vi-VN")}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Selectors */}
+      {/* Selectors Row */}
       <div className="glass p-6 rounded-2xl flex flex-wrap gap-4 items-center">
         <div>
           <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
@@ -228,10 +157,10 @@ export default function Leaderboard({
           >
             {rounds.map((r: any) => (
               <option key={r._id} value={r._id}>
-                {r.name}
+                {r.name} (Lấy Top {r.advanceTopN})
               </option>
             ))}
-            {rounds.length === 0 && <option>Không có vòng đấu</option>}
+            {rounds.length === 0 && <option>Không có vòng thi</option>}
           </select>
         </div>
 
@@ -243,45 +172,27 @@ export default function Leaderboard({
             </label>
             <span className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded-lg text-xs font-bold">
               <CheckSquare size={12} />
-              Đã khóa & Công bố
+              Đã khóa &amp; Công bố
             </span>
           </div>
         )}
       </div>
 
-      {/* Standings Grid Table */}
+      {/* Standings Table */}
       <div className="glass p-6 rounded-3xl relative overflow-hidden">
-        {/* Coordinator live header */}
-        {isCoordinator && isLive && standings.length > 0 && (
-          <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-800">
-            <Radio size={14} className="text-rose-400 animate-pulse" />
-            <span className="text-xs font-bold text-slate-300">
-              Bảng xếp hạng tạm thời (Live) —{" "}
-              <span className="text-rose-400">{standings.length} đội</span> —
-              Điểm TB từ{" "}
-              {standings.reduce(
-                (max: number, s: any) => Math.max(max, s.judgeCount),
-                0,
-              )}{" "}
-              giám khảo (tối đa)
-            </span>
-          </div>
-        )}
-
         {loading ? (
-          <p className="text-center text-slate-500 py-12 text-xs">
-            Đang tải bảng điểm xếp hạng...
-          </p>
+          <div className="text-center py-24 text-slate-500 text-xs animate-pulse font-mono">
+            [ĐANG TẢI BẢNG XẾP HẠNG...]
+          </div>
         ) : isLocked ? (
-          /* Locked state for non-coordinator */
-          <div className="text-center text-slate-500 py-16">
-            <Lock size={36} className="mx-auto text-slate-700 mb-3" />
-            <p className="text-sm font-semibold text-slate-400">
-              Bảng xếp hạng chưa được công bố
-            </p>
+          <div className="text-center py-24">
+            <Lock size={40} className="mx-auto text-slate-700 mb-3 drop-shadow-[0_0_10px_rgba(0,0,0,0.5)]" />
+            <h3 className="font-bold text-slate-400 text-sm uppercase tracking-wider">
+              Bảng điểm đang được bảo mật
+            </h3>
             <p className="text-xs text-slate-500 max-w-sm mx-auto mt-2 leading-relaxed">
               {lockedMessage ||
-                "Bảng xếp hạng sẽ tự động hiển thị sau khi ban tổ chức tiến hành chốt khóa điểm thi và xếp hạng cuối cùng."}
+                "Bảng xếp hạng sẽ tự động hiển thị tại đây sau khi ban tổ chức tiến hành chốt khoá điểm thi và xếp hạng cuối cùng."}
             </p>
           </div>
         ) : standings.length > 0 ? (
@@ -310,48 +221,53 @@ export default function Leaderboard({
                   return (
                     <tr
                       key={row._id || row.teamId?._id || idx}
-                      className="border-b border-slate-800/60 hover:bg-white/2 transition-colors"
+                      className="border-b border-slate-800/60 hover:bg-white/[0.02] transition-colors"
                     >
+                      {/* Rank */}
                       <td className="py-4 px-4 text-center font-black">
-                        <span
-                          className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${rankStyles}`}
-                        >
-                          {rank}
-                        </span>
-                        {isCoordinator && isLive && (
-                          <span className="block text-[8px] text-rose-400 font-bold mt-0.5">
-                            LIVE
+                        {rank <= 3 ? (
+                          <span className="text-2xl leading-none">
+                            {rank === 1 ? "🥇" : rank === 2 ? "🥈" : "🥉"}
+                          </span>
+                        ) : (
+                          <span
+                            className={`inline-flex items-center justify-center w-10 h-10 rounded-full text-base font-black ${rankStyles}`}
+                          >
+                            {rank}
                           </span>
                         )}
                       </td>
-                      <td className="py-4 px-4 font-bold text-slate-100 text-sm">
-                        {row.teamId?.name}
+
+                      {/* Team Name */}
+                      <td className="py-4 px-4">
+                        <span className="font-bold text-slate-100 text-sm block">
+                          {row.teamId?.name}
+                        </span>
+                        {row.trackName && (
+                          <span className="text-[9px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded font-mono mt-1 inline-block">
+                            Bảng: {row.trackName}{" "}
+                            {row.trackRank ? `(Hạng ${row.trackRank})` : ""}
+                          </span>
+                        )}
                       </td>
 
+                      {/* Avg Score */}
                       <td className="py-4 px-4 text-center font-black text-indigo-400 text-sm">
                         {row.averageScore != null
                           ? row.averageScore.toFixed(2)
                           : "—"}
-                        {isCoordinator && isLive && row.judgeCount === 0 && (
-                          <span className="block text-[9px] text-slate-500 font-normal">
-                            Chưa có điểm
-                          </span>
-                        )}
+                        <span className="text-slate-500 text-[10px] font-normal">/10đ</span>
                       </td>
 
-
-
+                      {/* Status */}
                       <td className="py-4 px-4 text-center">
-                        {selectedRound?.status !==
-                        "completed" ? // Round not finalized: leave status cell empty
-                        null : // Round finalized: show official advancement status
-                        row.isAdvanced ? (
+                        {selectedRound?.status !== "completed" ? null : row.isAdvanced ? (
                           <span className="inline-flex items-center gap-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded-md text-[10px] font-bold">
                             <CheckSquare size={10} /> ĐÃ ĐI TIẾP
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-0.5 bg-slate-800 text-slate-500 border border-slate-700 px-2 py-1 rounded-md text-[10px]">
-                            Bị loại
+                            Dừng bước
                           </span>
                         )}
                       </td>
@@ -362,13 +278,14 @@ export default function Leaderboard({
             </table>
           </div>
         ) : (
-          <div className="text-center text-slate-500 py-16">
-            <BarChart3 size={32} className="mx-auto text-slate-700 mb-2" />
-            <p className="text-xs">Bảng xếp hạng chưa được công bố.</p>
+          <div className="text-center py-24">
+            <AlertCircle size={36} className="mx-auto text-slate-700 mb-2 drop-shadow-[0_0_5px_rgba(100,116,139,0.5)]" />
+            <BarChart3 size={24} className="mx-auto text-slate-700 mb-3" />
+            <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">
+              Không có dữ liệu xếp hạng nào trong vòng thi này.
+            </p>
             <p className="text-[10px] text-slate-600 max-w-sm mx-auto mt-1">
-              {isCoordinator
-                ? "Chưa có giám khảo nào nộp điểm cho vòng này."
-                : "Bảng xếp hạng sẽ tự động hiển thị tại đây sau khi ban tổ chức tiến hành chốt khoá điểm thi và xếp hạng cuối cùng."}
+              Bảng xếp hạng sẽ tự động hiển thị tại đây sau khi ban tổ chức tiến hành chốt khoá điểm thi và xếp hạng cuối cùng.
             </p>
           </div>
         )}

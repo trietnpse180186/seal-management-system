@@ -449,6 +449,38 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @route   GET /api/teams/:teamId
+ * @desc    Get team by ID with event, members, and repository details
+ * @access  Private (Coordinator, Judge, or Admin)
+ */
+router.get('/:teamId', authenticateToken, async (req, res) => {
+  try {
+    const team = await Team.findById(req.params.teamId)
+      .populate('trackId', 'name')
+      .populate('leaderId', 'fullName email')
+      .populate('eventId', 'name status');
+
+    if (!team) {
+      return res.status(404).json({ message: 'Không tìm thấy đội thi.' });
+    }
+
+    const members = await TeamMember.find({ teamId: team._id })
+      .populate('userId', 'fullName email githubUsername confirmStatus');
+    
+    const repo = await GithubRepository.findOne({ teamId: team._id });
+
+    res.json({
+      ...team.toObject(),
+      members,
+      repository: repo
+    });
+  } catch (error) {
+    console.error('Get Team By ID Error:', error.message);
+    res.status(500).json({ message: 'Server error retrieving team.' });
+  }
+});
+
+/**
  * @route   PUT /api/teams/:teamId/assign-track
  * @desc    Assign a team to a track (specific or random) and provision GitHub Repo
  * @access  Private (Coordinator or Admin)

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { 
   Sparkles, 
@@ -9,16 +9,18 @@ import {
   Lock, 
   ArrowLeft,
   ExternalLink,
-  HelpCircle,
   Activity,
   Code,
   Zap,
   ShieldAlert
 } from 'lucide-react';
 
+
 export default function JudgeScoring() {
   const { teamId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const queryRoundId = searchParams.get('roundId');
   const token = localStorage.getItem('token');
 
   const [selectedEventId, setSelectedEventId] = useState('');
@@ -48,44 +50,40 @@ export default function JudgeScoring() {
   const currentRound = rounds.find((r: any) => r._id === selectedRoundId);
   const isRoundLocked = currentRound?.status === 'completed';
 
-  // Fetch events
+  // Fetch specific team info directly
   useEffect(() => {
-    axios.get('http://localhost:5000/api/events')
+    if (!teamId) return;
+    axios.get(`http://localhost:5000/api/teams/${teamId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
       .then((res: any) => {
-        if (res.data.length > 0) {
-          setSelectedEventId(res.data[0]._id);
+        setTeam(res.data);
+        if (res.data.eventId) {
+          // If populated eventId is an object
+          const evId = res.data.eventId._id || res.data.eventId;
+          setSelectedEventId(evId);
         }
       })
-      .catch((err: any) => console.error(err));
-  }, []);
+      .catch((err: any) => console.error('Error fetching team info:', err));
+  }, [teamId, token]);
 
   // Fetch event details (rounds, tracks)
   useEffect(() => {
     if (!selectedEventId) return;
     axios.get(`http://localhost:5000/api/events/${selectedEventId}`)
       .then((res: any) => {
-        setRounds(res.data.rounds || []);
-        if (res.data.rounds && res.data.rounds.length > 0) {
-          setSelectedRoundId(res.data.rounds[0]._id);
+        const eventRounds = res.data.rounds || [];
+        setRounds(eventRounds);
+        
+        // Select the round based on query parameters or fallback to the first round
+        if (queryRoundId && eventRounds.some((r: any) => r._id === queryRoundId)) {
+          setSelectedRoundId(queryRoundId);
+        } else if (eventRounds.length > 0) {
+          setSelectedRoundId(eventRounds[0]._id);
         }
       })
-      .catch((err: any) => console.error(err));
-  }, [selectedEventId]);
-
-  // Fetch specific team info
-  useEffect(() => {
-    if (!selectedEventId || !teamId) return;
-    axios.get(`http://localhost:5000/api/teams/all/${selectedEventId}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then((res: any) => {
-        const found = res.data.find((t: any) => t._id === teamId);
-        if (found) {
-          setTeam(found);
-        }
-      })
-      .catch((err: any) => console.error(err));
-  }, [selectedEventId, teamId, token]);
+      .catch((err: any) => console.error('Error fetching event details:', err));
+  }, [selectedEventId, queryRoundId]);
 
   // Fetch rubric/criteria
   useEffect(() => {
@@ -233,11 +231,14 @@ export default function JudgeScoring() {
     setSaving(true);
     setMessage({ type: '', text: '' });
 
-    const details = Object.entries(scores).map(([critId, val]: [string, any]) => ({
-      criterionId: critId,
-      scoreValue: parseFloat(val.scoreValue),
-      comment: val.comment
-    }));
+    const details = criteria.map((c: any) => {
+      const val = scores[c._id] || {};
+      return {
+        criterionId: c._id,
+        scoreValue: parseFloat(val.scoreValue),
+        comment: val.comment || ''
+      };
+    });
 
     if (details.some(d => isNaN(d.scoreValue))) {
       setMessage({ type: 'error', text: 'Vui lòng điền đầy đủ điểm số cho tất cả tiêu chí.' });

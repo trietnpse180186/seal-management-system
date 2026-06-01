@@ -329,7 +329,7 @@ export default function JudgeDashboard() {
             </div>
           </div>
           <button
-            onClick={() => navigate(`/judge/score/${lastGradedTeamId}`)}
+            onClick={() => navigate(`/judge/score/${lastGradedTeamId}?roundId=${selectedRoundId}`)}
             className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-6 py-3 rounded-lg shadow-[0_0_15px_rgba(99,102,241,0.4)] hover:shadow-[0_0_25px_rgba(99,102,241,0.6)] transition-all uppercase tracking-wider shrink-0 relative z-10"
           >
             Vào Bàn Chấm Điểm

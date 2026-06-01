@@ -98,9 +98,11 @@ export default function AdminDashboard({
   const [message, setMessage] = useState({ type: "", text: "" });
 
   // Tab management state
-  const [activeTab, setActiveTab] = useState<'admin' | 'events' | 'teams' | 'tracks' | 'rounds' | 'github'>(defaultTab);
+  const [activeTab, setActiveTab] = useState<
+    "admin" | "events" | "teams" | "rounds" | "tracks" | "github"
+  >(defaultTab);
   // Sidebar collapse state (for premium slide effect)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Edit Event States
   const [editEventName, setEditEventName] = useState("");

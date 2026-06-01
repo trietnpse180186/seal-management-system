@@ -161,6 +161,10 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                   <Settings2 size={16} />
                   <span>Thiết lập sự kiện</span>
                 </Link>
+                <Link to="/admin/grades" className={linkClass("/admin/grades")}>
+                  <Award size={16} />
+                  <span>Xem chi tiết điểm</span>
+                </Link>
               </>
             )}
 

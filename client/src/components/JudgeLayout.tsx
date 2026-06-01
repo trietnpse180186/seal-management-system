@@ -97,7 +97,7 @@ export default function JudgeLayout({ user, onLogout }: JudgeLayoutProps) {
       icon: BookOpen
     },
     {
-      path: '/leaderboard',
+      path: '/judge/leaderboard',
       label: 'Leaderboard',
       icon: Trophy
     }

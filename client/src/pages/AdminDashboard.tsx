@@ -588,46 +588,37 @@ export default function AdminDashboard({
 
       const newRound = roundRes.data;
 
-      // 2. Setup Rubric if a track is selected (Create empty or Clone)
-      if (selectedTrack) {
-        if (rubricTypeOption === "existing" && selectedSourceRubricId) {
-          // Clone rubric API
-          await axios.post(
-            "http://localhost:5000/api/rubrics/clone",
-            {
-              fromRubricId: selectedSourceRubricId,
-              eventId: selectedEvent._id,
-              trackId: selectedTrack._id,
-              roundId: newRound._id,
-              name: `Rubric ${newRound.name}`,
-            },
-            { headers: { Authorization: `Bearer ${token}` } },
-          );
-          setMessage({
-            type: "success",
-            text: `Tạo vòng đấu và sao chép Rubric thành công cho bảng ${selectedTrack.name}!`,
-          });
-        } else {
-          // Create empty Rubric
-          await axios.post(
-            "http://localhost:5000/api/rubrics",
-            {
-              eventId: selectedEvent._id,
-              trackId: selectedTrack._id,
-              roundId: newRound._id,
-              name: rubricName || `Rubric ${newRound.name}`,
-            },
-            { headers: { Authorization: `Bearer ${token}` } },
-          );
-          setMessage({
-            type: "success",
-            text: `Tạo vòng đấu và khởi tạo Rubric trống thành công cho bảng ${selectedTrack.name}!`,
-          });
-        }
-      } else {
+      // 2. Setup Rubric (Create empty or Clone) - unconditionally linked to Round
+      if (rubricTypeOption === "existing" && selectedSourceRubricId) {
+        // Clone rubric API
+        await axios.post(
+          "http://localhost:5000/api/rubrics/clone",
+          {
+            fromRubricId: selectedSourceRubricId,
+            eventId: selectedEvent._id,
+            roundId: newRound._id,
+            name: `Rubric ${newRound.name}`,
+          },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
         setMessage({
           type: "success",
-          text: `Tạo vòng đấu thành công! (Chưa thiết lập Rubric vì chưa chọn Bảng đấu)`,
+          text: `Tạo vòng đấu "${newRound.name}" và sao chép Rubric thành công!`,
+        });
+      } else {
+        // Create empty Rubric
+        await axios.post(
+          "http://localhost:5000/api/rubrics",
+          {
+            eventId: selectedEvent._id,
+            roundId: newRound._id,
+            name: rubricName || `Rubric ${newRound.name}`,
+          },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        setMessage({
+          type: "success",
+          text: `Tạo vòng đấu "${newRound.name}" và khởi tạo Rubric trống thành công!`,
         });
       }
 

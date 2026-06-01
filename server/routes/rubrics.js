@@ -467,8 +467,8 @@ router.get('/', authenticateToken, async (req, res) => {
 router.post('/clone', authenticateToken, async (req, res) => {
   const { fromRubricId, eventId, trackId, roundId, name } = req.body;
 
-  if (!fromRubricId || !eventId || !trackId || !roundId || !name) {
-    return res.status(400).json({ message: 'From Rubric ID, Event ID, Track ID, Round ID, and New Rubric Name are required.' });
+  if (!fromRubricId || !eventId || !roundId || !name) {
+    return res.status(400).json({ message: 'From Rubric ID, Event ID, Round ID, and New Rubric Name are required.' });
   }
 
   try {
@@ -498,7 +498,7 @@ router.post('/clone', authenticateToken, async (req, res) => {
     // Create new rubric
     const newRubric = new Rubric({
       eventId,
-      trackId,
+      trackId: trackId || undefined,
       roundId,
       name,
       description: sourceRubric.description,

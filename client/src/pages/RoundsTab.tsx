@@ -166,7 +166,7 @@ export default function RoundsTab({
   // Read unused props to satisfy the TS compiler (noUnusedLocals: true)
   const selectedRound = rounds.find((r: any) => r._id === selectedRubricRoundId);
   if (false as boolean) {
-    console.log(setSelectedTrack, setRubric, setCriteria);
+    console.log(selectedTrack, setSelectedTrack, setRubric, setCriteria);
   }
 
   return (
@@ -263,56 +263,50 @@ export default function RoundsTab({
           />
 
           {/* Rubric Configuration */}
-          {selectedTrack ? (
-            <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80 space-y-2">
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">
-                Bảng tiêu chí (Rubric) cho bảng {selectedTrack.name}:
-              </p>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-300 font-mono cursor-pointer">
-                  <input
-                    type="radio"
-                    name="roundRubricOption"
-                    value="new"
-                    checked={rubricTypeOption === "new"}
-                    onChange={() => setRubricTypeOption("new")}
-                    className="text-indigo-600 focus:ring-0"
-                  />
-                  Mới
-                </label>
-                <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-300 font-mono cursor-pointer">
-                  <input
-                    type="radio"
-                    name="roundRubricOption"
-                    value="existing"
-                    checked={rubricTypeOption === "existing"}
-                    onChange={() => setRubricTypeOption("existing")}
-                    className="text-indigo-600 focus:ring-0"
-                  />
-                  Sao chép cũ
-                </label>
-              </div>
-
-              {rubricTypeOption === "existing" && (
-                <select
-                  value={selectedSourceRubricId}
-                  onChange={(e) => setSelectedSourceRubricId(e.target.value)}
-                  className="w-full px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] text-slate-300 font-mono"
-                >
-                  <option value="">-- Chọn Rubric cũ --</option>
-                  {existingRubrics.map((r: any) => (
-                    <option key={r._id} value={r._id}>
-                      {r.name} ({r.eventId?.name || "Sự kiện cũ"})
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-          ) : (
-            <p className="text-[9px] text-amber-500 italic font-mono">
-              * Cần chọn Bảng đấu trước để thiết lập Rubric.
+          <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80 space-y-2">
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+              Bảng tiêu chí (Rubric) cho Vòng đấu:
             </p>
-          )}
+            <div className="flex gap-4">
+              <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-300 font-mono cursor-pointer">
+                <input
+                  type="radio"
+                  name="roundRubricOption"
+                  value="new"
+                  checked={rubricTypeOption === "new"}
+                  onChange={() => setRubricTypeOption("new")}
+                  className="text-indigo-600 focus:ring-0"
+                />
+                Mới
+              </label>
+              <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-300 font-mono cursor-pointer">
+                <input
+                  type="radio"
+                  name="roundRubricOption"
+                  value="existing"
+                  checked={rubricTypeOption === "existing"}
+                  onChange={() => setRubricTypeOption("existing")}
+                  className="text-indigo-600 focus:ring-0"
+                />
+                Sao chép cũ
+              </label>
+            </div>
+
+            {rubricTypeOption === "existing" && (
+              <select
+                value={selectedSourceRubricId}
+                onChange={(e) => setSelectedSourceRubricId(e.target.value)}
+                className="w-full px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] text-slate-300 font-mono"
+              >
+                <option value="">-- Chọn Rubric cũ --</option>
+                {existingRubrics.map((r: any) => (
+                  <option key={r._id} value={r._id}>
+                    {r.name} ({r.eventId?.name || "Sự kiện cũ"})
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
 
           <button
             type="submit"

@@ -958,6 +958,42 @@ export default function AdminDashboard({
     }
   };
 
+  const handleAdvanceRound = async (roundId: string) => {
+    if (!selectedEvent || !roundId) return;
+
+    if (!window.confirm("Bạn có chắc chắn muốn CHỐT vòng đấu này và THĂNG HẠNG (Advance) các đội xuất sắc nhất vào vòng tiếp theo?")) {
+      return;
+    }
+
+    setMessage({ type: "", text: "" });
+    setLoading(true);
+
+    try {
+      const res = await axios.post(
+        "http://localhost:5000/api/grades/advance-round",
+        {
+          eventId: selectedEvent._id,
+          currentRoundId: roundId
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setMessage({ type: "success", text: res.data.message });
+      
+      // Reload event details, rounds, and teams list
+      await fetchEventDetails();
+      await fetchTeamsList();
+    } catch (err: any) {
+      console.error(err);
+      setMessage({
+        type: "error",
+        text: err.response?.data?.message || "Lỗi khi chốt và thăng hạng vòng đấu."
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCreateRepo = async (teamId: string) => {
     setMessage({ type: "", text: "" });
     try {
@@ -1845,6 +1881,7 @@ export default function AdminDashboard({
             handleUpdateRubric={handleUpdateRubric}
             handleDeleteRubric={handleDeleteRubric}
             handleLockRubric={handleLockRubric}
+            handleAdvanceRound={handleAdvanceRound}
             critCode={critCode}
             setCritCode={setCritCode}
             critName={critName}

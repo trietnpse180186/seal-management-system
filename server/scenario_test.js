@@ -37,17 +37,17 @@ async function runTests() {
   console.log("Connected. Clearing test collections...");
 
   // Drop database or clear all collections to ensure fresh state
-  // try {
-  //   await mongoose.connection.db.dropDatabase();
-  //   console.log('Database dropped to ensure fresh state.');
-  // } catch (err) {
-  //   console.log('dropDatabase failed/restricted, clearing collections manually...');
-  // }
-  // const collections = Object.keys(mongoose.connection.collections);
-  // for (const name of collections) {
-  //   await mongoose.connection.collections[name].deleteMany({});
-  // }
-  // console.log('All collections cleared.');
+  try {
+    await mongoose.connection.db.dropDatabase();
+    console.log('Database dropped to ensure fresh state.');
+  } catch (err) {
+    console.log('dropDatabase failed/restricted, clearing collections manually...');
+  }
+  const collections = Object.keys(mongoose.connection.collections);
+  for (const name of collections) {
+    await mongoose.connection.collections[name].deleteMany({});
+  }
+  console.log('All collections cleared.');
 
   // Helper for HTTP Post
   const post = async (url, data, token) => {

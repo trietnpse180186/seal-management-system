@@ -4,7 +4,7 @@ const Schema = mongoose.Schema;
 const RubricSchema = new Schema(
   {
     eventId: { type: Schema.Types.ObjectId, ref: "Event", required: true },
-    trackId: { type: Schema.Types.ObjectId, ref: "Track", required: true },
+    trackId: { type: Schema.Types.ObjectId, ref: "Track" },
     roundId: { type: Schema.Types.ObjectId, ref: "Round", required: true },
     name: { type: String, required: true },
     description: { type: String },

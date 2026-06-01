@@ -135,8 +135,37 @@ async function syncRepo(repoId) {
           savedFiles.push(fileRecord);
         }
 
-        // Mock Firebase Realtime Database Sync
-        console.log(`[FIREBASE MOCK] Syncing raw commit thô to Firebase: /commit/${commitRecord.commitSha}.json`);
+        // Firebase Realtime Database Sync
+        const firebaseData = {
+          team_id: repo.teamId.toString(),
+          commit_sha: commitRecord.commitSha,
+          repo_name: repo.repoName,
+          author: commitRecord.authorName,
+          commit_message: commitRecord.message,
+          committed_at: commitRecord.committedAt,
+          source: 'webhook'
+        };
+
+        if (process.env.FIREBASE_DATABASE_URL) {
+          const cleanFbUrl = process.env.FIREBASE_DATABASE_URL.replace(/\/$/, '');
+          const fbUrl = `${cleanFbUrl}/commit/${commitRecord.commitSha}.json`;
+          console.log(`[FIREBASE] Syncing raw commit to Firebase: ${fbUrl}`);
+          
+          fetch(fbUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(firebaseData)
+          })
+          .then(res => {
+            if (!res.ok) console.error(`[FIREBASE ERROR] Failed to write to Firebase: Status ${res.status}`);
+            else console.log(`[FIREBASE] Successfully synced commit ${commitRecord.commitSha.substring(0, 7)} to Firebase`);
+          })
+          .catch(err => {
+            console.error('[FIREBASE ERROR] Connection failed:', err.message);
+          });
+        } else {
+          console.log(`[FIREBASE MOCK] Syncing raw commit thô to Firebase: /commit/${commitRecord.commitSha}.json`);
+        }
         
         syncedCommits.push({ commitRecord, savedFiles });
       }

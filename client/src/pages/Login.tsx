@@ -66,6 +66,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           const baseUrl = 'http://localhost:5000/api';
           const response = await axios.post(`${baseUrl}/auth/github`, {
             code,
+            redirectUri: window.location.origin + '/login',
             isMock: false
           });
           const { token, user, roles } = response.data;
@@ -568,7 +569,7 @@ function OAuthModal({ provider, onClose, onSubmit }: OAuthModalProps) {
               <div className="flex flex-col items-center justify-center p-4 bg-slate-950/60 rounded-2xl border border-slate-800/80 mb-2">
                 <span className="text-xs text-slate-400 mb-3 font-semibold">Bấm để xác thực qua tài khoản GitHub:</span>
                 <a
-                  href={`https://github.com/login/oauth/authorize?client_id=${import.meta.env.VITE_GITHUB_CLIENT_ID || 'Ov23liz8uHIFRtgdwDwE'}&scope=read:user%20user:email`}
+                  href={`https://github.com/login/oauth/authorize?client_id=${import.meta.env.VITE_GITHUB_CLIENT_ID || 'Ov23liz8uHIFRtgdwDwE'}&scope=read:user%20user:email&redirect_uri=${encodeURIComponent(window.location.origin + '/login')}`}
                   className="flex items-center justify-center gap-2 w-full py-2.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-700 text-sm font-semibold text-white transition-all cursor-pointer text-center"
                 >
                   <Github size={16} />

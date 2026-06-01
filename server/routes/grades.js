@@ -278,7 +278,7 @@ router.post('/submit', authenticateToken, async (req, res) => {
  * @access  Private (Coordinator or Admin)
  */
 router.post('/lock-round', authenticateToken, async (req, res) => {
-  const { eventId, roundId } = req.body;
+  const { eventId, roundId, trackId } = req.body;
 
   if (!eventId || !roundId) {
     return res.status(400).json({ message: 'Event ID and Round ID are required.' });
@@ -565,6 +565,120 @@ router.get('/live-ranking/:roundId', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Live Ranking Error:', error.message);
     res.status(500).json({ message: 'Server error retrieving live ranking.' });
+  }
+});
+
+/**
+ * @route   POST /api/grades/advance-round
+ * @desc    Finalize the current round and advance qualified teams (isAdvanced: true) to the next round
+ * @access  Private (Coordinator or Admin)
+ */
+router.post('/advance-round', authenticateToken, async (req, res) => {
+  const { eventId, currentRoundId } = req.body;
+
+  if (!eventId || !currentRoundId) {
+    return res.status(400).json({ message: 'Event ID and Current Round ID are required.' });
+  }
+
+  try {
+    // Auth Check
+    if (!req.user.isSystemAdmin) {
+      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator' });
+      if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
+    }
+
+    const currentRound = await Round.findById(currentRoundId);
+    if (!currentRound) return res.status(404).json({ message: 'Current round not found.' });
+
+    // 1. Verify if all tracks in the current round are locked
+    const tracks = await Track.find({ roundId: currentRoundId });
+    if (tracks.length === 0) {
+      return res.status(400).json({ message: 'No tracks found in the current round.' });
+    }
+
+    const trackIds = tracks.map(t => t._id);
+    for (const trackId of trackIds) {
+      const rankingsExist = await Ranking.exists({ roundId: currentRoundId, trackId });
+      if (!rankingsExist) {
+        const track = tracks.find(t => t._id.toString() === trackId.toString());
+        return res.status(400).json({ 
+          message: `Bảng đấu "${track ? track.name : trackId}" chưa được khóa điểm. Vui lòng khóa điểm và công bố tất cả bảng đấu trước khi chốt vòng.` 
+        });
+      }
+    }
+
+    // 2. Find the next round in order
+    const nextRound = await Round.findOne({ eventId, order: currentRound.order + 1 });
+    
+    // 3. Get all advanced teams in the current round
+    const advancedRankings = await Ranking.find({ roundId: currentRoundId, isAdvanced: true });
+    const advancedTeamIds = advancedRankings.map(r => r.teamId);
+
+    if (advancedTeamIds.length === 0) {
+      return res.status(400).json({ message: 'Không tìm thấy đội nào được thăng hạng (isAdvanced) trong vòng hiện tại.' });
+    }
+
+    const Event = mongoose.model('Event');
+
+    if (nextRound) {
+      // Find or create a consolidated track for the next round (e.g. "Chung kết")
+      let nextRoundTrack = await Track.findOne({ roundId: nextRound._id });
+      if (!nextRoundTrack) {
+        nextRoundTrack = new Track({
+          eventId,
+          roundId: nextRound._id,
+          name: nextRound.name === 'Chung kết' || nextRound.name.includes('Chung') ? 'Bảng Chung Kết' : `Bảng Đấu ${nextRound.name}`,
+          description: `Bảng đấu tập trung dành cho các đội xuất sắc nhất vượt qua ${currentRound.name}`,
+          maxTeams: advancedTeamIds.length,
+          topicSubmissionOpen: true
+        });
+        await nextRoundTrack.save();
+      }
+
+      // Promote teams to next round and assign to the consolidated track
+      await Team.updateMany(
+        { _id: { $in: advancedTeamIds } },
+        { 
+          currentRoundId: nextRound._id, 
+          trackId: nextRoundTrack._id 
+        }
+      );
+
+      // Transition round statuses
+      currentRound.status = 'completed';
+      await currentRound.save();
+
+      nextRound.status = 'active';
+      await nextRound.save();
+
+      return res.json({
+        message: `Đã chốt thành công vòng đấu "${currentRound.name}". Cả ${advancedTeamIds.length} đội xuất sắc đã được thăng hạng tiến vào "${nextRound.name}" thuộc "${nextRoundTrack.name}".`,
+        nextRoundId: nextRound._id,
+        nextTrackId: nextRoundTrack._id,
+        advancedTeamsCount: advancedTeamIds.length
+      });
+    } else {
+      // No next round - this is the final round!
+      currentRound.status = 'completed';
+      await currentRound.save();
+
+      // Update Event status to completed
+      const eventObj = await Event.findById(eventId);
+      if (eventObj) {
+        eventObj.status = 'completed';
+        await eventObj.save();
+      }
+
+      return res.json({
+        message: `Đã chốt thành công Vòng Chung Kết "${currentRound.name}". Sự kiện đã kết thúc và toàn bộ kết quả xếp hạng chung cuộc đã được công bố!`,
+        isEventCompleted: true,
+        advancedTeamsCount: advancedTeamIds.length
+      });
+    }
+
+  } catch (error) {
+    console.error('Advance Round Error:', error.message);
+    res.status(500).json({ message: 'Server error during round advancement.' });
   }
 });
 

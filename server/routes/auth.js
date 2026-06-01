@@ -351,7 +351,7 @@ router.post('/google', async (req, res) => {
  * @access  Public
  */
 router.post('/github', async (req, res) => {
-  const { accessToken, code, email, fullName, githubUsername, isMock } = req.body;
+  const { accessToken, code, redirectUri, email, fullName, githubUsername, isMock } = req.body;
 
   let userEmail = email;
   let userName = fullName;
@@ -364,17 +364,22 @@ router.post('/github', async (req, res) => {
       const clientId = process.env.GITHUB_CLIENT_ID || 'Ov23liz8uHIFRtgdwDwE';
       const clientSecret = process.env.GITHUB_CLIENT_SECRET || 'eb9a526811f9bc9b70b5ec1042974aa5e3c55df9';
 
+      const exchangeBody = {
+        client_id: clientId,
+        client_secret: clientSecret,
+        code
+      };
+      if (redirectUri) {
+        exchangeBody.redirect_uri = redirectUri;
+      }
+
       const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify({
-          client_id: clientId,
-          client_secret: clientSecret,
-          code
-        })
+        body: JSON.stringify(exchangeBody)
       });
 
       if (!tokenRes.ok) {

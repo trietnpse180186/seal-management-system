@@ -9,6 +9,7 @@ interface RoundsTabProps {
   setSelectedTrack: (track: any) => void;
   selectedRubricRoundId: string;
   setSelectedRubricRoundId: (id: string) => void;
+  handleAdvanceRound: (roundId: string) => Promise<void>;
 
   // Create Round form props
   roundName: string;
@@ -94,6 +95,7 @@ export default function RoundsTab({
   setSelectedTrack,
   selectedRubricRoundId,
   setSelectedRubricRoundId,
+  handleAdvanceRound,
 
   roundName,
   setRoundName,
@@ -162,8 +164,9 @@ export default function RoundsTab({
   setCriteria,
 }: RoundsTabProps) {
   // Read unused props to satisfy the TS compiler (noUnusedLocals: true)
+  const selectedRound = rounds.find((r: any) => r._id === selectedRubricRoundId);
   if (false as boolean) {
-    console.log(setSelectedTrack, setRubric, setCriteria);
+    console.log(selectedTrack, setSelectedTrack, setRubric, setCriteria);
   }
 
   return (
@@ -260,56 +263,50 @@ export default function RoundsTab({
           />
 
           {/* Rubric Configuration */}
-          {selectedTrack ? (
-            <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80 space-y-2">
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">
-                Bảng tiêu chí (Rubric) cho bảng {selectedTrack.name}:
-              </p>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-300 font-mono cursor-pointer">
-                  <input
-                    type="radio"
-                    name="roundRubricOption"
-                    value="new"
-                    checked={rubricTypeOption === "new"}
-                    onChange={() => setRubricTypeOption("new")}
-                    className="text-indigo-600 focus:ring-0"
-                  />
-                  Mới
-                </label>
-                <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-300 font-mono cursor-pointer">
-                  <input
-                    type="radio"
-                    name="roundRubricOption"
-                    value="existing"
-                    checked={rubricTypeOption === "existing"}
-                    onChange={() => setRubricTypeOption("existing")}
-                    className="text-indigo-600 focus:ring-0"
-                  />
-                  Sao chép cũ
-                </label>
-              </div>
-
-              {rubricTypeOption === "existing" && (
-                <select
-                  value={selectedSourceRubricId}
-                  onChange={(e) => setSelectedSourceRubricId(e.target.value)}
-                  className="w-full px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] text-slate-300 font-mono"
-                >
-                  <option value="">-- Chọn Rubric cũ --</option>
-                  {existingRubrics.map((r: any) => (
-                    <option key={r._id} value={r._id}>
-                      {r.name} ({r.eventId?.name || "Sự kiện cũ"})
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-          ) : (
-            <p className="text-[9px] text-amber-500 italic font-mono">
-              * Cần chọn Bảng đấu trước để thiết lập Rubric.
+          <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80 space-y-2">
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+              Bảng tiêu chí (Rubric) cho Vòng đấu:
             </p>
-          )}
+            <div className="flex gap-4">
+              <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-300 font-mono cursor-pointer">
+                <input
+                  type="radio"
+                  name="roundRubricOption"
+                  value="new"
+                  checked={rubricTypeOption === "new"}
+                  onChange={() => setRubricTypeOption("new")}
+                  className="text-indigo-600 focus:ring-0"
+                />
+                Mới
+              </label>
+              <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-300 font-mono cursor-pointer">
+                <input
+                  type="radio"
+                  name="roundRubricOption"
+                  value="existing"
+                  checked={rubricTypeOption === "existing"}
+                  onChange={() => setRubricTypeOption("existing")}
+                  className="text-indigo-600 focus:ring-0"
+                />
+                Sao chép cũ
+              </label>
+            </div>
+
+            {rubricTypeOption === "existing" && (
+              <select
+                value={selectedSourceRubricId}
+                onChange={(e) => setSelectedSourceRubricId(e.target.value)}
+                className="w-full px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] text-slate-300 font-mono"
+              >
+                <option value="">-- Chọn Rubric cũ --</option>
+                {existingRubrics.map((r: any) => (
+                  <option key={r._id} value={r._id}>
+                    {r.name} ({r.eventId?.name || "Sự kiện cũ"})
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
 
           <button
             type="submit"
@@ -437,12 +434,35 @@ export default function RoundsTab({
                       Trọng số: {rubric.totalWeight}% | Max điểm:{" "}
                       {rubric.maxCriterionScore}đ
                     </p>
+                    {selectedRound && (
+                      <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                        Trạng thái vòng:{" "}
+                        <span className={`font-bold uppercase ${
+                          selectedRound.status === 'completed' ? 'text-emerald-400' :
+                          selectedRound.status === 'scoring' ? 'text-amber-400' : 'text-indigo-400'
+                        }`}>
+                          {selectedRound.status === 'completed' ? 'Đã hoàn thành' :
+                           selectedRound.status === 'scoring' ? 'Đang chấm điểm' : 'Đang chuẩn bị'}
+                        </span>
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-col gap-2 items-end">
                     {rubric.isLocked ? (
-                      <span className="flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded text-[10px] font-bold font-mono">
-                        <Lock size={10} /> ĐÃ KHÓA
-                      </span>
+                      <div className="flex flex-col gap-1.5 items-end">
+                        <span className="flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded text-[10px] font-bold font-mono">
+                          <Lock size={10} /> ĐÃ KHÓA
+                        </span>
+
+                        {selectedRound && selectedRound.status !== "completed" && (
+                          <button
+                            onClick={() => handleAdvanceRound(selectedRound._id)}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-[10px] font-bold px-3 py-1.5 rounded text-white cursor-pointer font-sans shadow-lg hover:shadow-emerald-600/20 transition-all uppercase tracking-wider mt-1"
+                          >
+                            Chốt & Thăng Hạng Đội Thi
+                          </button>
+                        )}
+                      </div>
                     ) : (
                       <div className="flex gap-1.5">
                         <button

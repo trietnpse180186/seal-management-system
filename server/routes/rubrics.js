@@ -81,11 +81,11 @@ router.post("/", authenticateToken, async (req, res) => {
     maxCriterionScore,
   } = req.body;
 
-  if (!eventId || !trackId || !roundId || !name) {
+  if (!eventId || !roundId || !name) {
     return res
       .status(400)
       .json({
-        message: "Event ID, Track ID, Round ID, and Rubric name are required.",
+        message: "Event ID, Round ID, and Rubric name are required.",
       });
   }
 
@@ -93,18 +93,25 @@ router.post("/", authenticateToken, async (req, res) => {
     const round = await Round.findById(roundId);
     if (!round) return res.status(404).json({ message: "Round not found." });
 
-    const track = await Track.findById(trackId);
-    if (!track) return res.status(404).json({ message: "Track not found." });
-
-    if (
-      round.eventId.toString() !== eventId.toString() ||
-      track.roundId.toString() !== roundId.toString()
-    ) {
+    if (round.eventId.toString() !== eventId.toString()) {
       return res
         .status(400)
         .json({
-          message: "Round does not belong to the provided event/track.",
+          message: "Round does not belong to the provided event.",
         });
+    }
+
+    if (trackId) {
+      const track = await Track.findById(trackId);
+      if (!track) return res.status(404).json({ message: "Track not found." });
+
+      if (track.roundId.toString() !== roundId.toString()) {
+        return res
+          .status(400)
+          .json({
+            message: "Track does not belong to the provided round.",
+          });
+      }
     }
 
     if (!(await canManageRubric(req, eventId))) {
@@ -460,8 +467,8 @@ router.get('/', authenticateToken, async (req, res) => {
 router.post('/clone', authenticateToken, async (req, res) => {
   const { fromRubricId, eventId, trackId, roundId, name } = req.body;
 
-  if (!fromRubricId || !eventId || !trackId || !roundId || !name) {
-    return res.status(400).json({ message: 'From Rubric ID, Event ID, Track ID, Round ID, and New Rubric Name are required.' });
+  if (!fromRubricId || !eventId || !roundId || !name) {
+    return res.status(400).json({ message: 'From Rubric ID, Event ID, Round ID, and New Rubric Name are required.' });
   }
 
   try {
@@ -491,7 +498,7 @@ router.post('/clone', authenticateToken, async (req, res) => {
     // Create new rubric
     const newRubric = new Rubric({
       eventId,
-      trackId,
+      trackId: trackId || undefined,
       roundId,
       name,
       description: sourceRubric.description,

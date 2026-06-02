@@ -36,18 +36,16 @@ async function runTests() {
   await mongoose.connect(mongoUri);
   console.log("Connected. Clearing test collections...");
 
-  // Drop database or clear all collections to ensure fresh state
-  try {
-    await mongoose.connection.db.dropDatabase();
-    console.log('Database dropped to ensure fresh state.');
-  } catch (err) {
-    console.log('dropDatabase failed/restricted, clearing collections manually...');
-  }
+  // Clear all collections to ensure fresh state (excluding admin@seal.com in users collection)
   const collections = Object.keys(mongoose.connection.collections);
   for (const name of collections) {
-    await mongoose.connection.collections[name].deleteMany({});
+    if (name === 'users') {
+      await mongoose.connection.collections[name].deleteMany({ email: { $ne: 'admin@seal.com' } });
+    } else {
+      await mongoose.connection.collections[name].deleteMany({});
+    }
   }
-  console.log('All collections cleared.');
+  console.log('All collections cleared (except default system admin).');
 
   // Helper for HTTP Post
   const post = async (url, data, token) => {
@@ -98,18 +96,33 @@ async function runTests() {
     }
   };
 
-  // 2. Register Admin User (First user is automatically system admin)
-  console.log("\n[Step 2] Registering System Admin...");
-  const adminReg = await post("/auth/register", {
-    email: "admin@seal.com",
-    password: "password123",
-    fullName: "System Administrator",
-    githubUsername: "seal-admin",
-  });
-  const adminToken = adminReg.token;
-  console.log(
-    `Admin registered: ${adminReg.user.fullName} (isSystemAdmin: ${adminReg.user.isSystemAdmin})`,
-  );
+  // 2. Setup System Admin (Register or Login)
+  console.log("\n[Step 2] Setting up System Admin...");
+  const User = mongoose.model("User");
+  const adminUser = await User.findOne({ email: "admin@seal.com" });
+  let adminToken;
+
+  if (!adminUser) {
+    console.log("Admin account not found. Registering...");
+    const adminReg = await post("/auth/register", {
+      email: "admin@seal.com",
+      password: "password123",
+      fullName: "System Administrator",
+      githubUsername: "seal-admin",
+    });
+    adminToken = adminReg.token;
+    console.log(
+      `Admin registered: ${adminReg.user.fullName} (isSystemAdmin: ${adminReg.user.isSystemAdmin})`,
+    );
+  } else {
+    console.log("Admin account already exists. Logging in...");
+    const adminLogin = await post("/auth/login", {
+      email: "admin@seal.com",
+      password: "password123",
+    });
+    adminToken = adminLogin.token;
+    console.log(`Admin logged in successfully.`);
+  }
 
   // 3. Create Event
   console.log("\n[Step 3] Creating Event (Spring 2026)...");

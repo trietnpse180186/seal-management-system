@@ -135,15 +135,15 @@ export default function Leaderboard({
       {/* Page header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
-          <div className="bg-cyan-950/50 p-3 rounded-2xl text-cyan-400 shadow-lg shadow-cyan-500/5 border border-cyan-500/20">
+          <div className="bg-cyan-950/50 p-3 rounded-2xl text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.15)] border border-cyan-500/20">
             <Trophy size={28} />
           </div>
           <div>
             <h1 className="text-3xl font-extrabold text-white">
-              <span className="text-cyan-400 text-cyan-glow font-mono-tech">[BẢNG_XẾP_HẠNG_CHUNG_CUỘC]</span>
+              <span className="text-cyan-400 text-cyan-glow font-mono-tech">BẢNG XẾP HẠNG CHUNG CUỘC</span>
             </h1>
             <p className="text-slate-400 text-sm mt-1">
-              Điểm số trung bình từ ban giám khảo và các đội thi đi tiếp
+              Thứ hạng của các đội thi
             </p>
           </div>
         </div>
@@ -343,17 +343,17 @@ export default function Leaderboard({
 
                       <td className="py-4 px-4 text-center">
                         {selectedRound?.status !==
-                        "completed" ? // Round not finalized: leave status cell empty
-                        null : // Round finalized: show official advancement status
-                        row.isAdvanced ? (
-                          <span className="inline-flex items-center gap-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded-md text-[10px] font-bold">
-                            <CheckSquare size={10} /> ĐÃ ĐI TIẾP
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-0.5 bg-slate-800 text-slate-500 border border-slate-700 px-2 py-1 rounded-md text-[10px]">
-                            Bị loại
-                          </span>
-                        )}
+                          "completed" ? // Round not finalized: leave status cell empty
+                          null : // Round finalized: show official advancement status
+                          row.isAdvanced ? (
+                            <span className="inline-flex items-center gap-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded-md text-[10px] font-bold">
+                              <CheckSquare size={10} /> ĐÃ ĐI TIẾP
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-0.5 bg-slate-800 text-slate-500 border border-slate-700 px-2 py-1 rounded-md text-[10px]">
+                              Bị loại
+                            </span>
+                          )}
                       </td>
                     </tr>
                   );

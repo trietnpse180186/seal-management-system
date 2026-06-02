@@ -119,10 +119,10 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
   const isActive = (path: string) => location.pathname === path;
 
   const linkClass = (path: string) => `
-    flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200
+    flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 font-mono
     ${
       isActive(path)
-        ? "bg-indigo-600/30 text-indigo-400 border border-indigo-500/20 shadow-[0_0_15px_-3px_rgba(99,102,241,0.3)]"
+        ? "bg-cyan-600/30 text-cyan-400 border border-cyan-500/20 shadow-[0_0_15px_-3px_rgba(6,182,212,0.3)]"
         : "text-slate-300 hover:text-white hover:bg-white/5 border border-transparent"
     }
   `;
@@ -138,10 +138,10 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
             className="h-10 w-10 group-hover:scale-105 transition-transform duration-300 logo-glow"
           />
           <div>
-            <span className="font-extrabold text-lg tracking-wider text-gradient-purple-blue">
+            <span className="font-extrabold text-lg tracking-wider text-cyan-400 text-cyan-glow font-mono-tech">
               SEAL
             </span>
-            <span className="font-semibold text-xs ml-1 bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-slate-700">
+            <span className="font-semibold text-xs ml-1 bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-slate-700 font-mono-tech">
               HACKATHON
             </span>
           </div>
@@ -217,7 +217,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
               <div className="relative">
                 <button
                   onClick={() => setShowNotifications(!showNotifications)}
-                  className="relative p-2 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 border border-transparent transition-all duration-200"
+                  className="relative p-2 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 border border-transparent transition-all duration-200"
                 >
                   <Bell size={18} />
                   {unreadCount > 0 && (
@@ -238,7 +238,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                       {unreadCount > 0 && (
                         <button
                           onClick={markAllAsRead}
-                          className="text-xs text-indigo-400 hover:text-indigo-300"
+                          className="text-xs text-cyan-400 hover:text-cyan-300"
                         >
                           Đánh dấu đã đọc
                         </button>
@@ -257,10 +257,10 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                               if (notif.status === "pending")
                                 markAsRead(notif._id);
                             }}
-                            className={`p-3 border-b border-slate-800/50 cursor-pointer transition-colors ${notif.status === "pending" ? "bg-indigo-900/20 hover:bg-indigo-900/30" : "hover:bg-slate-800/50"}`}
+                            className={`p-3 border-b border-slate-800/50 cursor-pointer transition-colors ${notif.status === "pending" ? "bg-cyan-950/20 hover:bg-cyan-950/30" : "hover:bg-slate-800/50"}`}
                           >
                             <p
-                              className={`text-xs font-semibold ${notif.status === "pending" ? "text-indigo-300" : "text-slate-300"}`}
+                              className={`text-xs font-semibold ${notif.status === "pending" ? "text-cyan-300" : "text-slate-300"}`}
                             >
                               {notif.title}
                             </p>
@@ -278,7 +278,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                 )}
               </div>
 
-              <div className="text-right hidden sm:block">
+              <div className="text-right hidden sm:block font-mono">
                 <p className="text-sm font-semibold text-slate-200">
                   {user.fullName}
                 </p>
@@ -295,7 +295,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                 </p>
               </div>
 
-              <div className="h-9 w-9 rounded-full bg-gradient-premium flex items-center justify-center text-white text-sm font-bold shadow-md border border-white/10">
+              <div className="h-9 w-9 rounded-full bg-cyan-950/50 text-cyan-400 border border-cyan-500/30 flex items-center justify-center text-sm font-bold shadow-[0_0_10px_rgba(6,182,212,0.15)] font-mono">
                 {user.fullName.charAt(0)}
               </div>
 

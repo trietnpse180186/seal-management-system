@@ -136,7 +136,7 @@ export default function RegisterTeam() {
 
         <div>
           <h1 className="text-3xl font-extrabold text-white">
-            <span className="text-cyan-400 text-cyan-glow font-mono-tech">[ĐĂNG_KÝ_ĐỘI_THI]</span>
+            <span className="text-cyan-400 text-cyan-glow font-mono-tech">ĐĂNG KÝ ĐỘI THI</span>
           </h1>
           <p className="text-slate-400 text-sm mt-1">Thành lập nhóm và mời các thành viên tham gia</p>
         </div>
@@ -147,7 +147,7 @@ export default function RegisterTeam() {
           <div className="inline-flex bg-emerald-500/20 p-4 rounded-full text-emerald-400 mb-4 border border-emerald-500/30">
             <CheckCircle size={40} />
           </div>
-          <h3 className="text-2xl font-bold text-white mb-2">[ĐĂNG_KÝ_NHÓM_THÀNH_CÔNG]</h3>
+          <h3 className="text-2xl font-bold text-white mb-2">ĐĂNG KÝ NHÓM THÀNH CÔNG</h3>
           <p className="text-slate-300 max-w-md mx-auto mb-6">{success}</p>
           <div className="inline-flex items-center gap-2 text-sm text-cyan-400 animate-pulse">
             <span>Đang chuyển hướng về Khu vực Đội thi...</span>
@@ -160,7 +160,7 @@ export default function RegisterTeam() {
           <div className="glass p-6 rounded-2xl space-y-6 border border-slate-800 hover:border-cyan-500/30 transition-all">
             <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2 border-b border-slate-800 pb-3 font-mono-tech">
               <Calendar size={18} className="text-cyan-400" />
-              <span className="text-cyan-400">[1. THÔNG_TIN_CHUNG]</span>
+              <span className="text-cyan-400">1. THÔNG TIN CHUNG</span>
             </h2>
 
             {error && (
@@ -209,10 +209,10 @@ export default function RegisterTeam() {
           <div className="glass p-6 rounded-2xl space-y-6 border border-slate-800 hover:border-cyan-500/30 transition-all">
             <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2 border-b border-slate-800 pb-3 font-mono-tech">
               <Users size={18} className="text-cyan-400" />
-              <span className="text-cyan-400">[2. THÔNG_TIN_TRƯỞNG_NHÓM]</span>
+              <span className="text-cyan-400">2. THÔNG TIN TRƯỞNG NHÓM</span>
             </h2>
             <p className="text-xs text-slate-400">
-              * Điền chính xác thông tin cá nhân của bạn. <strong>GitHub Username</strong> bắt buộc phải đúng để được cấp quyền truy cập vào Repository của nhóm.
+              * Điền chính xác thông tin cá nhân của bạn. <strong>GitHub Username</strong> bắt buộc đúng để truy cập vào Repository của nhóm.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -275,7 +275,7 @@ export default function RegisterTeam() {
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2 font-mono-tech">
                 <FolderGit2 size={18} className="text-cyan-400" />
-                <span className="text-cyan-400">[3. THÀNH_VIÊN_NHÓM]</span>
+                <span className="text-cyan-400">3. THÀNH VIÊN NHÓM</span>
               </h2>
               <button
                 type="button"
@@ -372,9 +372,9 @@ export default function RegisterTeam() {
             <button
               type="submit"
               disabled={loading}
-              className="bg-cyan-600 hover:bg-cyan-500 disabled:bg-cyan-800 text-white font-bold px-8 py-3 rounded-xl shadow-lg shadow-cyan-600/25 transition-all duration-200 cursor-pointer disabled:cursor-not-allowed border border-cyan-500/20 font-mono-tech tracking-wider uppercase"
+              className="btn-primary font-bold text-sm px-12 py-4 uppercase tracking-widest flex items-center gap-2 group"
             >
-              {loading ? 'ĐANG_GỬI_THÔNG_TIN...' : 'XÁC_NHẬN_ĐĂNG_KÝ'}
+              {loading ? 'ĐANG GỬI THÔNG TIN...' : 'XÁC NHẬN ĐĂNG KÝ'}
             </button>
           </div>
 

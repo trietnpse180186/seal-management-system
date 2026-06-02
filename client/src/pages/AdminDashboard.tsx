@@ -89,7 +89,7 @@ export default function AdminDashboard({
   const [attachmentUrl, setAttachmentUrl] = useState("");
 
   const [roleEmail, setRoleEmail] = useState("");
-  const [roleType, setRoleType] = useState("judge");
+  const [roleType, setRoleType] = useState("coordinator");
   const [roleTrackId, setRoleTrackId] = useState("");
   const [eventRoles, setEventRoles] = useState<any[]>([]);
   const [teamsList, setTeamsList] = useState<any[]>([]);
@@ -1164,6 +1164,37 @@ export default function AdminDashboard({
     }
   };
 
+  const handleAssignRoleForTrack = async (email: string, trackId: string) => {
+    if (!selectedEvent) return;
+    setMessage({ type: "", text: "" });
+    setLoading(true);
+
+    try {
+      await axios.post(
+        "http://localhost:5000/api/auth/assign-role",
+        {
+          userEmail: email,
+          eventId: selectedEvent._id,
+          trackId: trackId,
+          role: "judge",
+        },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      setMessage({
+        type: "success",
+        text: `Phân quyền Giám khảo thành công!`,
+      });
+      fetchEventRoles();
+    } catch (err: any) {
+      setMessage({
+        type: "error",
+        text: err.response?.data?.message || "Lỗi phân quyền Giám khảo.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRemoveRole = async (roleId: string) => {
     if (!selectedEvent) return;
     if (
@@ -1466,7 +1497,6 @@ export default function AdminDashboard({
                         onChange={(e) => setRoleType(e.target.value)}
                         className="w-full px-3 py-2.5 rounded-xl text-xs font-mono bg-slate-950 border border-slate-850 text-slate-350"
                       >
-                        <option value="judge">Giám khảo</option>
                         <option value="coordinator">Ban tổ chức</option>
                         <option value="mentor">Cố vấn</option>
                         <option value="participant">Thí sinh</option>
@@ -1856,6 +1886,9 @@ export default function AdminDashboard({
             setAttachmentUrl={setAttachmentUrl}
             handleUploadExam={handleUploadExam}
             loading={loading}
+            eventRoles={eventRoles}
+            handleAssignRoleForTrack={handleAssignRoleForTrack}
+            handleRemoveRole={handleRemoveRole}
           />
         ) : (
           <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">

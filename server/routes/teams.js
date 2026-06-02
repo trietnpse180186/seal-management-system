@@ -47,10 +47,10 @@ router.post('/register', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'Registration for this event is closed or not yet open.' });
     }
 
-    // Check overall event capacity
-    const confirmedTeamsCount = await Team.countDocuments({ eventId, status: 'confirmed' });
-    if (event.maxTeams && confirmedTeamsCount >= event.maxTeams) {
-      return res.status(400).json({ message: 'This event has reached its maximum team capacity.' });
+    // Check overall event capacity (both confirmed and pending_confirm)
+    const activeTeamsCount = await Team.countDocuments({ eventId, status: { $in: ['confirmed', 'pending_confirm'] } });
+    if (event.maxTeams && activeTeamsCount >= event.maxTeams) {
+      return res.status(400).json({ message: 'Cuộc thi đã đạt giới hạn số lượng đội đăng ký dự kiến.' });
     }
 
     // Check track capacity if trackId is provided
@@ -58,9 +58,9 @@ router.post('/register', authenticateToken, async (req, res) => {
       const track = await Track.findById(trackId);
       if (!track) return res.status(404).json({ message: 'Track not found.' });
       
-      const trackConfirmedCount = await Team.countDocuments({ trackId, status: 'confirmed' });
-      if (track.maxTeams && trackConfirmedCount >= track.maxTeams) {
-        return res.status(400).json({ message: 'This track has reached its maximum team capacity.' });
+      const trackActiveCount = await Team.countDocuments({ trackId, status: { $in: ['confirmed', 'pending_confirm'] } });
+      if (track.maxTeams && trackActiveCount >= track.maxTeams) {
+        return res.status(400).json({ message: 'Bảng đấu này đã đạt giới hạn số lượng đội đăng ký.' });
       }
     }
 
@@ -427,7 +427,21 @@ router.post('/submit-topic', authenticateToken, async (req, res) => {
  */
 router.get('/all/:eventId', authenticateToken, async (req, res) => {
   try {
-    const teams = await Team.find({ eventId: req.params.eventId })
+    let query = { eventId: req.params.eventId };
+
+    if (!req.user.isSystemAdmin) {
+      const userRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId: req.params.eventId,
+        status: 'active'
+      });
+
+      if (userRole && userRole.role === 'judge' && userRole.trackId) {
+        query.trackId = userRole.trackId;
+      }
+    }
+
+    const teams = await Team.find(query)
       .populate('trackId', 'name')
       .populate('leaderId', 'fullName email');
 
@@ -462,6 +476,22 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
 
     if (!team) {
       return res.status(404).json({ message: 'Không tìm thấy đội thi.' });
+    }
+
+    // Verify track permissions for judges
+    if (!req.user.isSystemAdmin) {
+      const userRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId: team.eventId,
+        role: 'judge',
+        status: 'active'
+      });
+
+      if (userRole && userRole.trackId) {
+        if (!team.trackId || team.trackId.toString() !== userRole.trackId.toString()) {
+          return res.status(403).json({ message: 'Bạn không có quyền truy cập thông tin của đội thi thuộc bảng đấu khác.' });
+        }
+      }
     }
 
     const members = await TeamMember.find({ teamId: team._id })

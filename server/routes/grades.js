@@ -31,6 +31,38 @@ router.get('/suggestion', authenticateToken, async (req, res) => {
   }
 
   try {
+    const team = await Team.findById(teamId);
+    if (!team) return res.status(404).json({ message: 'Team not found.' });
+
+    // Verify track permissions for judges
+    if (!req.user.isSystemAdmin) {
+      let userRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId: team.eventId,
+        roundId: roundId,
+        status: 'active'
+      });
+
+      if (!userRole) {
+        userRole = await EventRole.findOne({
+          userId: req.user._id,
+          eventId: team.eventId,
+          $or: [{ roundId: null }, { roundId: { $exists: false } }],
+          status: 'active'
+        });
+      }
+
+      if (!userRole) {
+        return res.status(403).json({ message: 'Only assigned judges or coordinators can request suggestions.' });
+      }
+
+      if (userRole.role === 'judge' && userRole.trackId) {
+        if (!team.trackId || team.trackId.toString() !== userRole.trackId.toString()) {
+          return res.status(403).json({ message: 'Bạn chỉ có quyền lấy gợi ý chấm điểm cho đội thuộc bảng đấu được phân công.' });
+        }
+      }
+    }
+
     // 1. Fetch criteria
     const criteria = await Criterion.find({ rubricId }).sort({ order: 1 });
     if (criteria.length === 0) {
@@ -97,6 +129,35 @@ router.get('/team/:teamId/round/:roundId', authenticateToken, async (req, res) =
       status: 'active'
     });
     const isCoordinator = req.user.isSystemAdmin || !!coordinatorRole;
+
+    // Verify track permissions for judges
+    if (!isCoordinator) {
+      let userRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId: team.eventId,
+        roundId: req.params.roundId,
+        status: 'active'
+      });
+
+      if (!userRole) {
+        userRole = await EventRole.findOne({
+          userId: req.user._id,
+          eventId: team.eventId,
+          $or: [{ roundId: null }, { roundId: { $exists: false } }],
+          status: 'active'
+        });
+      }
+
+      if (!userRole) {
+        return res.status(403).json({ message: 'Only assigned judges or coordinators can access scores.' });
+      }
+
+      if (userRole.trackId) {
+        if (!team.trackId || team.trackId.toString() !== userRole.trackId.toString()) {
+          return res.status(403).json({ message: 'Bạn chỉ có quyền xem điểm của các đội thuộc bảng đấu được phân công.' });
+        }
+      }
+    }
 
     if (isCoordinator) {
       // Coordinator views all scores submitted/locked by all judges for this team/round
@@ -170,15 +231,31 @@ router.post('/submit', authenticateToken, async (req, res) => {
     }
 
     // Verify user is a Judge or Coordinator in this event
-    const userRole = await EventRole.findOne({
+    let userRole = await EventRole.findOne({
       userId: req.user._id,
       eventId: team.eventId,
-      role: { $in: ['judge', 'coordinator'] },
+      roundId: roundId,
       status: 'active'
     });
 
+    if (!userRole) {
+      userRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId: team.eventId,
+        $or: [{ roundId: null }, { roundId: { $exists: false } }],
+        status: 'active'
+      });
+    }
+
     if (!userRole && !req.user.isSystemAdmin) {
       return res.status(403).json({ message: 'Only assigned judges or coordinators can submit scores.' });
+    }
+
+    // Verify track assignment if user is a judge
+    if (userRole && userRole.role === 'judge' && userRole.trackId) {
+      if (!team.trackId || team.trackId.toString() !== userRole.trackId.toString()) {
+        return res.status(403).json({ message: 'Bạn chỉ có quyền chấm điểm cho các đội thuộc bảng đấu được phân công.' });
+      }
     }
 
     const repo = await GithubRepository.findOne({ teamId });

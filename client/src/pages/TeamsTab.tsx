@@ -148,6 +148,8 @@ export default function TeamsTab({
                         >
                           <span>
                             • {m.userId?.fullName}{" "}
+                            {m.userId?.studentId && `(${m.userId.studentId}) `}
+                            {m.userId?.university && `- ${m.userId.university} `}
                             {m.role === "leader" && (
                               <span className="text-[9px] text-indigo-400 font-mono font-bold">
                                 (Trưởng nhóm)

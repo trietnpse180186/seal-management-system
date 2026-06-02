@@ -10,6 +10,7 @@ interface RoundsTabProps {
   selectedRubricRoundId: string;
   setSelectedRubricRoundId: (id: string) => void;
   handleAdvanceRound: (roundId: string) => Promise<void>;
+  handleLockRound: (roundId: string) => Promise<void>;
 
   // Create Round form props
   roundName: string;
@@ -96,6 +97,7 @@ export default function RoundsTab({
   selectedRubricRoundId,
   setSelectedRubricRoundId,
   handleAdvanceRound,
+  handleLockRound,
 
   roundName,
   setRoundName,
@@ -456,12 +458,30 @@ export default function RoundsTab({
 
                         {selectedRound && selectedRound.status !== "completed" && (
                           <button
-                            onClick={() => handleAdvanceRound(selectedRound._id)}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-[10px] font-bold px-3 py-1.5 rounded text-white cursor-pointer font-sans shadow-lg hover:shadow-emerald-600/20 transition-all uppercase tracking-wider mt-1"
+                            onClick={() => handleLockRound(selectedRound._id)}
+                            className="bg-indigo-600 hover:bg-indigo-500 text-[10px] font-bold px-3 py-1.5 rounded text-white cursor-pointer font-sans shadow-lg hover:shadow-indigo-600/20 transition-all uppercase tracking-wider mt-1"
                           >
-                            Chốt & Thăng Hạng Đội Thi
+                            Khóa & Công Bố Điểm Vòng Đấu
                           </button>
                         )}
+
+                        {selectedRound && selectedRound.status === "completed" && (() => {
+                          const currentOrder = selectedRound.order;
+                          const nextRoundObj = rounds.find((r: any) => r.order === currentOrder + 1);
+                          const canAdvance = nextRoundObj && nextRoundObj.status === 'pending';
+                          
+                          if (canAdvance) {
+                            return (
+                              <button
+                                onClick={() => handleAdvanceRound(selectedRound._id)}
+                                className="bg-emerald-600 hover:bg-emerald-500 text-[10px] font-bold px-3 py-1.5 rounded text-white cursor-pointer font-sans shadow-lg hover:shadow-emerald-600/20 transition-all uppercase tracking-wider mt-1"
+                              >
+                                Chốt & Thăng Hạng Đội Thi
+                              </button>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                     ) : (
                       <div className="flex gap-1.5">

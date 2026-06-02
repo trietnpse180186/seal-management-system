@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Link2, Save, RefreshCw, CheckCircle, Clock, FileDiff, Cpu, BookOpen, Users } from 'lucide-react';
+import { Link2, Save, RefreshCw, CheckCircle, Clock, FileDiff, BookOpen, Users } from 'lucide-react';
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
   <svg
@@ -31,16 +31,6 @@ export default function TeamArea() {
       default: return status?.toUpperCase() || '';
     }
   };
-
-  const getImpactText = (impact: string) => {
-    switch (impact?.toLowerCase()) {
-      case 'low': return 'Thấp';
-      case 'medium': return 'Trung bình';
-      case 'high': return 'Cao';
-      case 'critical': return 'Nghiêm trọng';
-      default: return impact || 'Thấp';
-    }
-  };
   
   // Topic Submission Form
   const [topicTitle, setTopicTitle] = useState('');
@@ -50,7 +40,6 @@ export default function TeamArea() {
   // Git commits & AI report
   const [commits, setCommits] = useState<any[]>([]);
   const [selectedCommit, setSelectedCommit] = useState<any>(null);
-  const [aiAnalysis, setAiAnalysis] = useState<any>(null);
 
   // Status indicators
   const [loading, setLoading] = useState(true);
@@ -100,17 +89,8 @@ export default function TeamArea() {
     }
   };
 
-  const handleSelectCommit = async (commitObj: any) => {
+  const handleSelectCommit = (commitObj: any) => {
     setSelectedCommit(commitObj);
-    setAiAnalysis(null);
-    try {
-      const res = await axios.get(`http://localhost:5000/api/analytics/commit/${commitObj._id}/ai-analysis`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setAiAnalysis(res.data);
-    } catch (err: any) {
-      setAiAnalysis(null);
-    }
   };
 
   useEffect(() => {
@@ -186,13 +166,13 @@ export default function TeamArea() {
   const { team, members, repository } = data || {};
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 py-12 space-y-8 font-mono">
       
       {/* Top Banner team details */}
-      <div className="glass p-8 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="glass p-8 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden border border-slate-800 hover:border-cyan-500/30 transition-all">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
         <div>
-          <span className="text-xs bg-indigo-950 text-indigo-400 border border-indigo-900 px-3 py-1 rounded-full font-bold">
+          <span className="text-xs bg-cyan-950 text-cyan-400 border border-cyan-900 px-3 py-1 rounded-full font-bold">
             {team?.trackId?.name || 'Bảng đấu'}
           </span>
           <h1 className="text-3xl font-black text-white mt-2">{team?.name}</h1>
@@ -206,7 +186,7 @@ export default function TeamArea() {
             <button
               onClick={handleSyncRepo}
               disabled={syncing}
-              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-lg shadow-indigo-600/25 transition-all"
+              className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-cyan-800 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-lg shadow-cyan-600/25 transition-all cursor-pointer border border-cyan-500/20"
             >
               <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
               <span>{syncing ? 'Đang đồng bộ...' : 'Đồng bộ Repo'}</span>
@@ -233,10 +213,10 @@ export default function TeamArea() {
         <div className="lg:col-span-1 space-y-8">
           
           {/* Submit Topic and Documents */}
-          <div className="glass p-6 rounded-2xl">
-            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <BookOpen size={18} className="text-indigo-400" />
-              <span>Nộp Đề tài & Link Topic</span>
+          <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all">
+            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2 font-mono-tech">
+              <BookOpen size={18} className="text-cyan-400" />
+              <span className="text-cyan-400">[NỘP_ĐỀ_TÀI_&_LINK_TOPIC]</span>
             </h2>
 
             <form onSubmit={handleSaveTopic} className="space-y-4">
@@ -245,7 +225,7 @@ export default function TeamArea() {
                 <input
                   type="text" required placeholder="Hệ thống quản lý chuỗi cung ứng"
                   value={topicTitle} onChange={e => setTopicTitle(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg text-xs"
+                  className="w-full bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
                 />
               </div>
 
@@ -254,7 +234,7 @@ export default function TeamArea() {
                 <textarea
                   placeholder="Mô tả dự án hackathon của nhóm..." rows={3}
                   value={topicDesc} onChange={e => setTopicDesc(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg text-xs"
+                  className="w-full bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
                 ></textarea>
               </div>
 
@@ -265,26 +245,26 @@ export default function TeamArea() {
                   <input
                     type="url" placeholder="https://drive.google.com/..."
                     value={docLink} onChange={e => setDocLink(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 rounded-lg text-xs"
+                    className="w-full bg-slate-900/50 border border-slate-800 text-white pl-9 pr-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
                   />
                 </div>
               </div>
 
               <button
                 type="submit" disabled={submittingTopic}
-                className="w-full bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold py-2 rounded-lg flex items-center justify-center gap-1.5"
+                className="w-full bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer font-mono-tech border border-cyan-500/20"
               >
                 <Save size={14} />
-                <span>{submittingTopic ? 'Đang lưu...' : 'Lưu Đề tài'}</span>
+                <span>{submittingTopic ? 'ĐANG_LƯU...' : 'LƯU_ĐỀ_TÀI'}</span>
               </button>
             </form>
           </div>
 
           {/* Members Invite Confirmations Status */}
-          <div className="glass p-6 rounded-2xl">
-            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Users size={18} className="text-indigo-400" />
-              <span>Thành viên nhóm</span>
+          <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all">
+            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2 font-mono-tech">
+              <Users size={18} className="text-cyan-400" />
+              <span className="text-cyan-400">[THÀNH_VIÊN_NHÓM]</span>
             </h2>
             <div className="space-y-3.5">
               {members?.map((m: any) => (
@@ -292,6 +272,13 @@ export default function TeamArea() {
                   <div>
                     <p className="font-bold text-slate-200">{m.userId?.fullName}</p>
                     <p className="text-[10px] text-slate-400">{m.userId?.email}</p>
+                    {(m.userId?.studentId || m.userId?.university) && (
+                      <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                        {m.userId?.studentId && `MSSV: ${m.userId.studentId}`}
+                        {m.userId?.studentId && m.userId?.university && ' • '}
+                        {m.userId?.university}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-1">
                     {m.confirmStatus === 'confirmed' ? (
@@ -318,10 +305,10 @@ export default function TeamArea() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               
               {/* Commits List Column */}
-              <div className="md:col-span-1 glass p-5 rounded-2xl space-y-4">
-                <h3 className="text-sm font-bold text-slate-200 flex items-center gap-1.5">
-                  <Github size={16} className="text-indigo-400" />
-                  <span>Commits ({commits.length})</span>
+              <div className="md:col-span-1 glass p-5 rounded-2xl space-y-4 border border-slate-800">
+                <h3 className="text-sm font-bold text-slate-200 flex items-center gap-1.5 font-mono-tech">
+                  <Github size={16} className="text-cyan-400" />
+                  <span className="text-cyan-400">[COMMITS_({commits.length})]</span>
                 </h3>
                 
                 <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
@@ -329,9 +316,9 @@ export default function TeamArea() {
                     <button
                       key={c._id}
                       onClick={() => handleSelectCommit(c)}
-                      className={`w-full text-left p-3 rounded-xl border transition-all ${
+                      className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer ${
                         selectedCommit?._id === c._id
-                          ? 'bg-indigo-600/20 border-indigo-500 text-white'
+                          ? 'bg-cyan-600/20 border-cyan-500 text-white'
                           : 'border-slate-800 text-slate-400 hover:border-slate-700'
                       }`}
                     >
@@ -356,7 +343,7 @@ export default function TeamArea() {
                     
                     {/* Commit Basic Detail */}
                     <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-2">
-                      <div className="flex justify-between items-center text-[10px] text-indigo-400 font-bold">
+                      <div className="flex justify-between items-center text-[10px] text-cyan-400 font-bold font-mono-tech">
                         <span>SHA: {selectedCommit.commitSha.substring(0, 8)}</span>
                         <span>{new Date(selectedCommit.committedAt).toLocaleString()}</span>
                       </div>
@@ -369,60 +356,6 @@ export default function TeamArea() {
                       </div>
                     </div>
 
-                    <hr className="border-slate-800" />
-
-                    {/* Gemini AI review result */}
-                    <div className="space-y-4">
-                      <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-                        <Cpu size={16} className="text-indigo-400" />
-                        <span>Đánh giá & Nhận xét của Gemini AI</span>
-                      </h3>
-
-                      {aiAnalysis ? (
-                        <div className="space-y-4">
-                          
-                          <div className="flex items-center gap-4 bg-indigo-950/20 p-3 rounded-xl border border-indigo-900/30 text-xs">
-                            <div>
-                              <span className="text-slate-400">Điểm số chất lượng:</span>
-                              <span className="ml-1.5 text-lg font-black text-gradient-purple-blue">{aiAnalysis.result?.qualityScore || 8}/10</span>
-                            </div>
-                            <div className="h-4 w-px bg-indigo-900"></div>
-                            <div>
-                              <span className="text-slate-400">Mức độ ảnh hưởng:</span>
-                              <span className="ml-1.5 font-bold text-emerald-400">{getImpactText(aiAnalysis.result?.impact)}</span>
-                            </div>
-                          </div>
-
-                          <div className="space-y-1">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tóm tắt chỉnh sửa</p>
-                            <p className="text-xs text-slate-300 bg-slate-900/40 p-3 rounded border border-slate-800/80 leading-relaxed">{aiAnalysis.result?.summary}</p>
-                          </div>
-
-                          <div className="space-y-1">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ý kiến phản hồi / Cải tiến</p>
-                            <p className="text-xs text-slate-300 bg-slate-900/40 p-3 rounded border border-slate-800/80 leading-relaxed">{aiAnalysis.result?.constructiveFeedback}</p>
-                          </div>
-
-                          {aiAnalysis.result?.securityIssues?.length > 0 && (
-                            <div className="bg-rose-500/10 border border-rose-500/20 p-3 rounded-xl">
-                              <p className="text-[10px] font-bold text-rose-400 uppercase tracking-wider">Cảnh báo bảo mật AI</p>
-                              <ul className="list-disc pl-4 text-xs text-rose-300 mt-1 space-y-1">
-                                {aiAnalysis.result.securityIssues.map((item: any, idx: number) => (
-                                  <li key={idx}>{item}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-
-                        </div>
-                      ) : (
-                        <div className="bg-slate-900/20 p-6 rounded-xl border border-slate-800/60 text-center">
-                          <Cpu size={24} className="text-slate-600 mx-auto animate-bounce mb-2" />
-                          <p className="text-xs text-slate-500">Gemini đang phân tích chất lượng code...</p>
-                        </div>
-                      )}
-
-                    </div>
 
                   </div>
                 ) : (

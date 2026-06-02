@@ -222,13 +222,30 @@ router.post('/assign-role', authenticateToken, requireSystemAdmin, async (req, r
       return res.status(404).json({ message: 'Target user not found.' });
     }
 
-    // Delete existing role for same user/event to prevent duplicate key error
-    await EventRole.deleteMany({ userId: targetUser._id, eventId });
+    // Resolve roundId if trackId is provided
+    let resolvedRoundId = undefined;
+    if (trackId) {
+      const Track = mongoose.model('Track');
+      const track = await Track.findById(trackId);
+      if (track) {
+        resolvedRoundId = track.roundId;
+      }
+    }
+
+    // Delete existing duplicate role to prevent duplicate key error
+    await EventRole.deleteOne({
+      userId: targetUser._id,
+      eventId,
+      trackId: trackId || undefined,
+      roundId: resolvedRoundId,
+      role
+    });
 
     const newRole = new EventRole({
       userId: targetUser._id,
       eventId,
       trackId: trackId || undefined,
+      roundId: resolvedRoundId,
       role,
       assignedBy: req.user._id
     });

@@ -36,11 +36,36 @@ const mongoUri =
   process.env.MONGO_URI || "mongodb://127.0.0.1:27017/seal-hackathon";
 mongoose
   .connect(mongoUri)
-  .then(() => {
+  .then(async () => {
     console.log(
       "Connected to MongoDB successfully at:",
       mongoUri.split("@").pop(),
     );
+
+    // Auto-create default system admin if not exists
+    try {
+      const User = mongoose.model('User');
+      const bcrypt = require('bcryptjs');
+      const adminExists = await User.exists({ email: 'admin@seal.com' });
+      if (!adminExists) {
+        console.log("Auto-creating default system admin (admin@seal.com)...");
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash('password123', salt);
+        const newAdmin = new User({
+          email: 'admin@seal.com',
+          passwordHash,
+          fullName: 'System Administrator',
+          githubUsername: 'seal-admin',
+          isSystemAdmin: true,
+          isApproved: true,
+          isActive: true
+        });
+        await newAdmin.save();
+        console.log("Default system admin auto-created successfully!");
+      }
+    } catch (err) {
+      console.error("Error auto-creating admin account on startup:", err.message);
+    }
   })
   .catch((err) => {
     console.error("Failed to connect to MongoDB:", err.message);

@@ -43,14 +43,14 @@ router.post('/register', authenticateToken, async (req, res) => {
     // 1. Verify Event is active & open for registration
     const event = await Event.findById(eventId);
     if (!event) return res.status(404).json({ message: 'Event not found.' });
-    if (event.status !== 'draft' && event.status !== 'registration') {
-      return res.status(400).json({ message: 'Registration for this event is closed.' });
+    if (event.status !== 'registration') {
+      return res.status(400).json({ message: 'Registration for this event is closed or not yet open.' });
     }
 
-    // Check overall event capacity
-    const confirmedTeamsCount = await Team.countDocuments({ eventId, status: 'confirmed' });
-    if (event.maxTeams && confirmedTeamsCount >= event.maxTeams) {
-      return res.status(400).json({ message: 'This event has reached its maximum team capacity.' });
+    // Check overall event capacity (both confirmed and pending_confirm)
+    const activeTeamsCount = await Team.countDocuments({ eventId, status: { $in: ['confirmed', 'pending_confirm'] } });
+    if (event.maxTeams && activeTeamsCount >= event.maxTeams) {
+      return res.status(400).json({ message: 'Cuộc thi đã đạt giới hạn số lượng đội đăng ký dự kiến.' });
     }
 
     // Check track capacity if trackId is provided
@@ -58,9 +58,9 @@ router.post('/register', authenticateToken, async (req, res) => {
       const track = await Track.findById(trackId);
       if (!track) return res.status(404).json({ message: 'Track not found.' });
       
-      const trackConfirmedCount = await Team.countDocuments({ trackId, status: 'confirmed' });
-      if (track.maxTeams && trackConfirmedCount >= track.maxTeams) {
-        return res.status(400).json({ message: 'This track has reached its maximum team capacity.' });
+      const trackActiveCount = await Team.countDocuments({ trackId, status: { $in: ['confirmed', 'pending_confirm'] } });
+      if (track.maxTeams && trackActiveCount >= track.maxTeams) {
+        return res.status(400).json({ message: 'Bảng đấu này đã đạt giới hạn số lượng đội đăng ký.' });
       }
     }
 
@@ -94,7 +94,7 @@ router.post('/register', authenticateToken, async (req, res) => {
 
     // 5. Loop through and invite other members
     for (const memberData of membersList) {
-      const { email, fullName, githubUsername, studentId } = memberData;
+      const { email, fullName, githubUsername, studentId, university } = memberData;
       if (!email) continue;
 
       // Find or create User record for member
@@ -108,13 +108,23 @@ router.post('/register', authenticateToken, async (req, res) => {
           fullName: fullName || email.split('@')[0],
           studentId: studentId || '',
           githubUsername: githubUsername || '',
+          university: university || '',
           isApproved: true
         });
         await memberUser.save();
-      } else if (githubUsername && !memberUser.githubUsername) {
-        // Update user github if not filled
-        memberUser.githubUsername = githubUsername;
-        await memberUser.save();
+      } else {
+        let changed = false;
+        if (githubUsername && !memberUser.githubUsername) {
+          memberUser.githubUsername = githubUsername;
+          changed = true;
+        }
+        if (university && !memberUser.university) {
+          memberUser.university = university;
+          changed = true;
+        }
+        if (changed) {
+          await memberUser.save();
+        }
       }
 
       // Generate verification token
@@ -363,7 +373,7 @@ router.get('/my-team', authenticateToken, async (req, res) => {
     }
 
     const members = await TeamMember.find({ teamId: team._id })
-      .populate('userId', 'fullName email studentId githubUsername avatarUrl');
+      .populate('userId', 'fullName email studentId githubUsername avatarUrl university');
 
     const repo = await GithubRepository.findOne({ teamId: team._id });
 
@@ -427,12 +437,43 @@ router.post('/submit-topic', authenticateToken, async (req, res) => {
  */
 router.get('/all/:eventId', authenticateToken, async (req, res) => {
   try {
-    const teams = await Team.find({ eventId: req.params.eventId })
+    let query = { eventId: req.params.eventId };
+
+    if (!req.user.isSystemAdmin) {
+      const roundId = req.query.roundId;
+      let userRole = null;
+
+      if (roundId) {
+        userRole = await EventRole.findOne({
+          userId: req.user._id,
+          eventId: req.params.eventId,
+          roundId: roundId,
+          status: 'active'
+        });
+      }
+
+      if (!userRole) {
+        userRole = await EventRole.findOne({
+          userId: req.user._id,
+          eventId: req.params.eventId,
+          $or: [{ roundId: null }, { roundId: { $exists: false } }],
+          status: 'active'
+        });
+      }
+
+      if (userRole && userRole.role === 'judge' && userRole.trackId) {
+        query.trackId = userRole.trackId;
+      } else if (!userRole) {
+        return res.json([]); // No active role in this event/round, return empty
+      }
+    }
+
+    const teams = await Team.find(query)
       .populate('trackId', 'name')
       .populate('leaderId', 'fullName email');
 
     const detailedTeams = await Promise.all(teams.map(async (t) => {
-      const members = await TeamMember.find({ teamId: t._id }).populate('userId', 'fullName email githubUsername confirmStatus');
+      const members = await TeamMember.find({ teamId: t._id }).populate('userId', 'fullName email studentId university githubUsername confirmStatus');
       const repo = await GithubRepository.findOne({ teamId: t._id });
       return {
         ...t.toObject(),
@@ -464,8 +505,23 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy đội thi.' });
     }
 
+    // Verify track permissions for judges
+    if (!req.user.isSystemAdmin) {
+      const userRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId: team.eventId,
+        role: 'judge',
+        status: 'active',
+        $or: [{ trackId: team.trackId }, { trackId: null }, { trackId: { $exists: false } }]
+      });
+
+      if (!userRole) {
+        return res.status(403).json({ message: 'Bạn không có quyền truy cập thông tin của đội thi thuộc bảng đấu khác.' });
+      }
+    }
+
     const members = await TeamMember.find({ teamId: team._id })
-      .populate('userId', 'fullName email githubUsername confirmStatus');
+      .populate('userId', 'fullName email studentId university githubUsername confirmStatus');
     
     const repo = await GithubRepository.findOne({ teamId: team._id });
 

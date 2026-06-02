@@ -35,7 +35,7 @@ export default function RegisterTeam() {
     // Fetch active events
     axios.get('http://localhost:5000/api/events')
       .then(res => {
-        const activeEvents = res.data.filter((e: any) => e.status === 'draft' || e.status === 'registration');
+        const activeEvents = res.data.filter((e: any) => e.status === 'registration');
         setEvents(activeEvents);
         if (activeEvents.length > 0) {
           setSelectedEventId(activeEvents[0]._id);

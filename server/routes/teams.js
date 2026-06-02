@@ -43,8 +43,8 @@ router.post('/register', authenticateToken, async (req, res) => {
     // 1. Verify Event is active & open for registration
     const event = await Event.findById(eventId);
     if (!event) return res.status(404).json({ message: 'Event not found.' });
-    if (event.status !== 'draft' && event.status !== 'registration') {
-      return res.status(400).json({ message: 'Registration for this event is closed.' });
+    if (event.status !== 'registration') {
+      return res.status(400).json({ message: 'Registration for this event is closed or not yet open.' });
     }
 
     // Check overall event capacity

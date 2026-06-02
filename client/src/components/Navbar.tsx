@@ -95,6 +95,27 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
     roles?.some((r) => r.role === "participant") ||
     (!isSystemAdmin && !isCoordinator && !isJudge);
 
+  const [hasTeam, setHasTeam] = useState(false);
+
+  useEffect(() => {
+    if (user && isParticipant) {
+      const checkTeamStatus = async () => {
+        try {
+          const token = localStorage.getItem("token");
+          const res = await axios.get("http://localhost:5000/api/teams/my-team", {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setHasTeam(!!res.data.team);
+        } catch (err) {
+          setHasTeam(false);
+        }
+      };
+      checkTeamStatus();
+    } else {
+      setHasTeam(false);
+    }
+  }, [user, roles, isParticipant]);
+
   const isActive = (path: string) => location.pathname === path;
 
   const linkClass = (path: string) => `
@@ -136,13 +157,15 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                   <Compass size={16} />
                   <span>Trang chủ</span>
                 </Link>
-                <Link
-                  to="/register-team"
-                  className={linkClass("/register-team")}
-                >
-                  <Users size={16} />
-                  <span>Đăng ký đội</span>
-                </Link>
+                {!hasTeam && (
+                  <Link
+                    to="/register-team"
+                    className={linkClass("/register-team")}
+                  >
+                    <Users size={16} />
+                    <span>Đăng ký đội</span>
+                  </Link>
+                )}
                 <Link to="/team-area" className={linkClass("/team-area")}>
                   <GitBranch size={16} />
                   <span>Khu vực đội thi</span>

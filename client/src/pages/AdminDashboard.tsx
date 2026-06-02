@@ -985,6 +985,42 @@ export default function AdminDashboard({
     }
   };
 
+  const handleLockRound = async (roundId: string) => {
+    if (!selectedEvent || !roundId) return;
+
+    if (!window.confirm("Bạn có chắc chắn muốn KHÓA điểm và CÔNG BỐ kết quả xếp hạng cho vòng đấu này? Sau khi khóa, giám khảo sẽ không thể sửa điểm được nữa.")) {
+      return;
+    }
+
+    setMessage({ type: "", text: "" });
+    setLoading(true);
+
+    try {
+      const res = await axios.post(
+        "http://localhost:5000/api/grades/lock-round",
+        {
+          eventId: selectedEvent._id,
+          roundId: roundId
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setMessage({ type: "success", text: res.data.message });
+      
+      // Reload event details and rounds
+      await fetchEventDetails();
+      await fetchRoundsAndRubric();
+    } catch (err: any) {
+      console.error(err);
+      setMessage({
+        type: "error",
+        text: err.response?.data?.message || "Lỗi khi khóa điểm và công bố kết quả."
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCreateRepo = async (teamId: string) => {
     setMessage({ type: "", text: "" });
     try {
@@ -1873,6 +1909,7 @@ export default function AdminDashboard({
             handleDeleteRubric={handleDeleteRubric}
             handleLockRubric={handleLockRubric}
             handleAdvanceRound={handleAdvanceRound}
+            handleLockRound={handleLockRound}
             critCode={critCode}
             setCritCode={setCritCode}
             critName={critName}

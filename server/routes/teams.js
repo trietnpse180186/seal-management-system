@@ -430,14 +430,31 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
     let query = { eventId: req.params.eventId };
 
     if (!req.user.isSystemAdmin) {
-      const userRole = await EventRole.findOne({
-        userId: req.user._id,
-        eventId: req.params.eventId,
-        status: 'active'
-      });
+      const roundId = req.query.roundId;
+      let userRole = null;
+
+      if (roundId) {
+        userRole = await EventRole.findOne({
+          userId: req.user._id,
+          eventId: req.params.eventId,
+          roundId: roundId,
+          status: 'active'
+        });
+      }
+
+      if (!userRole) {
+        userRole = await EventRole.findOne({
+          userId: req.user._id,
+          eventId: req.params.eventId,
+          $or: [{ roundId: null }, { roundId: { $exists: false } }],
+          status: 'active'
+        });
+      }
 
       if (userRole && userRole.role === 'judge' && userRole.trackId) {
         query.trackId = userRole.trackId;
+      } else if (!userRole) {
+        return res.json([]); // No active role in this event/round, return empty
       }
     }
 
@@ -484,13 +501,12 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
         userId: req.user._id,
         eventId: team.eventId,
         role: 'judge',
-        status: 'active'
+        status: 'active',
+        $or: [{ trackId: team.trackId }, { trackId: null }, { trackId: { $exists: false } }]
       });
 
-      if (userRole && userRole.trackId) {
-        if (!team.trackId || team.trackId.toString() !== userRole.trackId.toString()) {
-          return res.status(403).json({ message: 'Bạn không có quyền truy cập thông tin của đội thi thuộc bảng đấu khác.' });
-        }
+      if (!userRole) {
+        return res.status(403).json({ message: 'Bạn không có quyền truy cập thông tin của đội thi thuộc bảng đấu khác.' });
       }
     }
 

@@ -60,7 +60,7 @@ export default function JudgeProjects() {
     }
     setLoading(true);
     axiosInstance
-      .get(`http://localhost:5000/api/teams/all/${selectedEventId}`, {
+      .get(`http://localhost:5000/api/teams/all/${selectedEventId}?roundId=${selectedRoundId}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then(async (res: any) => {

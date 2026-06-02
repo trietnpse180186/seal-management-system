@@ -72,7 +72,7 @@ export default function JudgeDashboard() {
   useEffect(() => {
     if (!selectedEventId) return;
     axios
-      .get(`http://localhost:5000/api/teams/all/${selectedEventId}`, {
+      .get(`http://localhost:5000/api/teams/all/${selectedEventId}?roundId=${selectedRoundId}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then(async (res: any) => {

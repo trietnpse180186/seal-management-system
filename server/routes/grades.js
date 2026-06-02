@@ -36,12 +36,21 @@ router.get('/suggestion', authenticateToken, async (req, res) => {
 
     // Verify track permissions for judges
     if (!req.user.isSystemAdmin) {
-      const userRole = await EventRole.findOne({
+      let userRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: team.eventId,
-        role: { $in: ['judge', 'coordinator'] },
+        roundId: roundId,
         status: 'active'
       });
+
+      if (!userRole) {
+        userRole = await EventRole.findOne({
+          userId: req.user._id,
+          eventId: team.eventId,
+          $or: [{ roundId: null }, { roundId: { $exists: false } }],
+          status: 'active'
+        });
+      }
 
       if (!userRole) {
         return res.status(403).json({ message: 'Only assigned judges or coordinators can request suggestions.' });
@@ -123,12 +132,21 @@ router.get('/team/:teamId/round/:roundId', authenticateToken, async (req, res) =
 
     // Verify track permissions for judges
     if (!isCoordinator) {
-      const userRole = await EventRole.findOne({
+      let userRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: team.eventId,
-        role: 'judge',
+        roundId: req.params.roundId,
         status: 'active'
       });
+
+      if (!userRole) {
+        userRole = await EventRole.findOne({
+          userId: req.user._id,
+          eventId: team.eventId,
+          $or: [{ roundId: null }, { roundId: { $exists: false } }],
+          status: 'active'
+        });
+      }
 
       if (!userRole) {
         return res.status(403).json({ message: 'Only assigned judges or coordinators can access scores.' });
@@ -213,12 +231,21 @@ router.post('/submit', authenticateToken, async (req, res) => {
     }
 
     // Verify user is a Judge or Coordinator in this event
-    const userRole = await EventRole.findOne({
+    let userRole = await EventRole.findOne({
       userId: req.user._id,
       eventId: team.eventId,
-      role: { $in: ['judge', 'coordinator'] },
+      roundId: roundId,
       status: 'active'
     });
+
+    if (!userRole) {
+      userRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId: team.eventId,
+        $or: [{ roundId: null }, { roundId: { $exists: false } }],
+        status: 'active'
+      });
+    }
 
     if (!userRole && !req.user.isSystemAdmin) {
       return res.status(403).json({ message: 'Only assigned judges or coordinators can submit scores.' });

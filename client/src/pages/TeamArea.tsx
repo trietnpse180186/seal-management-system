@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Link2, Save, RefreshCw, CheckCircle, Clock, FileDiff, Cpu, BookOpen, Users } from 'lucide-react';
+import { Link2, Save, RefreshCw, CheckCircle, Clock, FileDiff, BookOpen, Users } from 'lucide-react';
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
   <svg
@@ -31,16 +31,6 @@ export default function TeamArea() {
       default: return status?.toUpperCase() || '';
     }
   };
-
-  const getImpactText = (impact: string) => {
-    switch (impact?.toLowerCase()) {
-      case 'low': return 'Thấp';
-      case 'medium': return 'Trung bình';
-      case 'high': return 'Cao';
-      case 'critical': return 'Nghiêm trọng';
-      default: return impact || 'Thấp';
-    }
-  };
   
   // Topic Submission Form
   const [topicTitle, setTopicTitle] = useState('');
@@ -50,7 +40,6 @@ export default function TeamArea() {
   // Git commits & AI report
   const [commits, setCommits] = useState<any[]>([]);
   const [selectedCommit, setSelectedCommit] = useState<any>(null);
-  const [aiAnalysis, setAiAnalysis] = useState<any>(null);
 
   // Status indicators
   const [loading, setLoading] = useState(true);
@@ -100,17 +89,8 @@ export default function TeamArea() {
     }
   };
 
-  const handleSelectCommit = async (commitObj: any) => {
+  const handleSelectCommit = (commitObj: any) => {
     setSelectedCommit(commitObj);
-    setAiAnalysis(null);
-    try {
-      const res = await axios.get(`http://localhost:5000/api/analytics/commit/${commitObj._id}/ai-analysis`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setAiAnalysis(res.data);
-    } catch (err: any) {
-      setAiAnalysis(null);
-    }
   };
 
   useEffect(() => {
@@ -369,60 +349,6 @@ export default function TeamArea() {
                       </div>
                     </div>
 
-                    <hr className="border-slate-800" />
-
-                    {/* Gemini AI review result */}
-                    <div className="space-y-4">
-                      <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-                        <Cpu size={16} className="text-indigo-400" />
-                        <span>Đánh giá & Nhận xét của Gemini AI</span>
-                      </h3>
-
-                      {aiAnalysis ? (
-                        <div className="space-y-4">
-                          
-                          <div className="flex items-center gap-4 bg-indigo-950/20 p-3 rounded-xl border border-indigo-900/30 text-xs">
-                            <div>
-                              <span className="text-slate-400">Điểm số chất lượng:</span>
-                              <span className="ml-1.5 text-lg font-black text-gradient-purple-blue">{aiAnalysis.result?.qualityScore || 8}/10</span>
-                            </div>
-                            <div className="h-4 w-px bg-indigo-900"></div>
-                            <div>
-                              <span className="text-slate-400">Mức độ ảnh hưởng:</span>
-                              <span className="ml-1.5 font-bold text-emerald-400">{getImpactText(aiAnalysis.result?.impact)}</span>
-                            </div>
-                          </div>
-
-                          <div className="space-y-1">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tóm tắt chỉnh sửa</p>
-                            <p className="text-xs text-slate-300 bg-slate-900/40 p-3 rounded border border-slate-800/80 leading-relaxed">{aiAnalysis.result?.summary}</p>
-                          </div>
-
-                          <div className="space-y-1">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ý kiến phản hồi / Cải tiến</p>
-                            <p className="text-xs text-slate-300 bg-slate-900/40 p-3 rounded border border-slate-800/80 leading-relaxed">{aiAnalysis.result?.constructiveFeedback}</p>
-                          </div>
-
-                          {aiAnalysis.result?.securityIssues?.length > 0 && (
-                            <div className="bg-rose-500/10 border border-rose-500/20 p-3 rounded-xl">
-                              <p className="text-[10px] font-bold text-rose-400 uppercase tracking-wider">Cảnh báo bảo mật AI</p>
-                              <ul className="list-disc pl-4 text-xs text-rose-300 mt-1 space-y-1">
-                                {aiAnalysis.result.securityIssues.map((item: any, idx: number) => (
-                                  <li key={idx}>{item}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-
-                        </div>
-                      ) : (
-                        <div className="bg-slate-900/20 p-6 rounded-xl border border-slate-800/60 text-center">
-                          <Cpu size={24} className="text-slate-600 mx-auto animate-bounce mb-2" />
-                          <p className="text-xs text-slate-500">Gemini đang phân tích chất lượng code...</p>
-                        </div>
-                      )}
-
-                    </div>
 
                   </div>
                 ) : (

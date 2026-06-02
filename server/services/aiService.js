@@ -77,6 +77,8 @@ async function analyzeCommit(commit, files) {
       "suggested_questions_for_team": ["Question 1", "Question 2"],
       "suggested_prompt_refinement": "Refinement suggestions for their LLM prompts"
     }
+
+    IMPORTANT: You MUST write all descriptive fields (especially suggested_questions_for_team, overall_picture.push_summary, overall_picture.current_focus, overall_picture.project_about, assessment.advantages, assessment.disadvantages, assessment.improvement_areas, and suggested_test_cases) entirely in fluent, professional Vietnamese.
   `;
 
   if (isMock || !ai) {
@@ -200,10 +202,26 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
   let roundCriteria = [];
   try {
     const team = await Team.findById(teamId);
-    if (team && team.currentRoundId) {
-      const rubric = await Rubric.findOne({ roundId: team.currentRoundId, isActive: true });
-      if (rubric) {
-        roundCriteria = await Criterion.find({ rubricId: rubric._id }).sort({ order: 1 });
+    if (team) {
+      let roundId = team.currentRoundId;
+      if (!roundId) {
+        const Round = require('mongoose').model('Round');
+        const activeRound = await Round.findOne({ eventId: team.eventId, status: 'active' });
+        if (activeRound) {
+          roundId = activeRound._id;
+        } else {
+          const firstRound = await Round.findOne({ eventId: team.eventId }).sort({ order: 1 });
+          if (firstRound) {
+            roundId = firstRound._id;
+          }
+        }
+      }
+
+      if (roundId) {
+        const rubric = await Rubric.findOne({ roundId, isActive: true });
+        if (rubric) {
+          roundCriteria = await Criterion.find({ rubricId: rubric._id }).sort({ order: 1 });
+        }
       }
     }
   } catch (err) {

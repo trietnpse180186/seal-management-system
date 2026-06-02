@@ -166,10 +166,12 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                     <span>Đăng ký đội</span>
                   </Link>
                 )}
-                <Link to="/team-area" className={linkClass("/team-area")}>
-                  <GitBranch size={16} />
-                  <span>Khu vực đội thi</span>
-                </Link>
+                {hasTeam && (
+                  <Link to="/team-area" className={linkClass("/team-area")}>
+                    <GitBranch size={16} />
+                    <span>Khu vực đội thi</span>
+                  </Link>
+                )}
               </>
             )}
 

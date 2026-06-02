@@ -94,7 +94,7 @@ router.post('/register', authenticateToken, async (req, res) => {
 
     // 5. Loop through and invite other members
     for (const memberData of membersList) {
-      const { email, fullName, githubUsername, studentId } = memberData;
+      const { email, fullName, githubUsername, studentId, university } = memberData;
       if (!email) continue;
 
       // Find or create User record for member
@@ -108,13 +108,23 @@ router.post('/register', authenticateToken, async (req, res) => {
           fullName: fullName || email.split('@')[0],
           studentId: studentId || '',
           githubUsername: githubUsername || '',
+          university: university || '',
           isApproved: true
         });
         await memberUser.save();
-      } else if (githubUsername && !memberUser.githubUsername) {
-        // Update user github if not filled
-        memberUser.githubUsername = githubUsername;
-        await memberUser.save();
+      } else {
+        let changed = false;
+        if (githubUsername && !memberUser.githubUsername) {
+          memberUser.githubUsername = githubUsername;
+          changed = true;
+        }
+        if (university && !memberUser.university) {
+          memberUser.university = university;
+          changed = true;
+        }
+        if (changed) {
+          await memberUser.save();
+        }
       }
 
       // Generate verification token
@@ -363,7 +373,7 @@ router.get('/my-team', authenticateToken, async (req, res) => {
     }
 
     const members = await TeamMember.find({ teamId: team._id })
-      .populate('userId', 'fullName email studentId githubUsername avatarUrl');
+      .populate('userId', 'fullName email studentId githubUsername avatarUrl university');
 
     const repo = await GithubRepository.findOne({ teamId: team._id });
 
@@ -463,7 +473,7 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
       .populate('leaderId', 'fullName email');
 
     const detailedTeams = await Promise.all(teams.map(async (t) => {
-      const members = await TeamMember.find({ teamId: t._id }).populate('userId', 'fullName email githubUsername confirmStatus');
+      const members = await TeamMember.find({ teamId: t._id }).populate('userId', 'fullName email studentId university githubUsername confirmStatus');
       const repo = await GithubRepository.findOne({ teamId: t._id });
       return {
         ...t.toObject(),
@@ -511,7 +521,7 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
     }
 
     const members = await TeamMember.find({ teamId: team._id })
-      .populate('userId', 'fullName email githubUsername confirmStatus');
+      .populate('userId', 'fullName email studentId university githubUsername confirmStatus');
     
     const repo = await GithubRepository.findOne({ teamId: team._id });
 

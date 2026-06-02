@@ -131,18 +131,18 @@ export default function Leaderboard({
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-12 space-y-8">
+    <div className="max-w-6xl mx-auto px-4 py-12 space-y-8 font-mono">
       {/* Page header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
-          <div className="bg-gradient-premium p-3 rounded-2xl text-white shadow-lg shadow-indigo-500/20">
+          <div className="bg-cyan-950/50 p-3 rounded-2xl text-cyan-400 shadow-lg shadow-cyan-500/5 border border-cyan-500/20">
             <Trophy size={28} />
           </div>
           <div>
             <h1 className="text-3xl font-extrabold text-white">
-              Bảng Xếp Hạng Chung Cuộc
+              <span className="text-cyan-400 text-cyan-glow font-mono-tech">[BẢNG_XẾP_HẠNG_CHUNG_CUỘC]</span>
             </h1>
-            <p className="text-slate-400 text-sm">
+            <p className="text-slate-400 text-sm mt-1">
               Điểm số trung bình từ ban giám khảo và các đội thi đi tiếp
             </p>
           </div>
@@ -175,8 +175,8 @@ export default function Leaderboard({
 
       {/* Coordinator info banner */}
       {isCoordinator && (
-        <div className="bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 px-5 py-3.5 rounded-xl text-xs leading-relaxed">
-          <p className="font-bold text-indigo-400 mb-1">
+        <div className="bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 px-5 py-3.5 rounded-xl text-xs leading-relaxed font-mono">
+          <p className="font-bold text-cyan-400 mb-1">
             🔒 Chế độ xem Điều phối viên
           </p>
           <p>
@@ -191,7 +191,7 @@ export default function Leaderboard({
             .
           </p>
           {lastUpdated && (
-            <p className="mt-1 text-indigo-400/70">
+            <p className="mt-1 text-cyan-400/70">
               Cập nhật lần cuối: {lastUpdated.toLocaleTimeString("vi-VN")}
             </p>
           )}
@@ -199,7 +199,7 @@ export default function Leaderboard({
       )}
 
       {/* Selectors */}
-      <div className="glass p-6 rounded-2xl flex flex-wrap gap-4 items-center">
+      <div className="glass p-6 rounded-2xl flex flex-wrap gap-4 items-center border border-slate-800 hover:border-cyan-500/20 transition-all">
         <div>
           <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
             Cuộc thi
@@ -207,10 +207,10 @@ export default function Leaderboard({
           <select
             value={selectedEventId}
             onChange={(e) => setSelectedEventId(e.target.value)}
-            className="px-3 py-2 rounded-lg text-xs w-48"
+            className="px-3 py-2 rounded-lg text-xs w-48 bg-slate-900/50 border border-slate-800 text-white focus:outline-none focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(0,240,255,0.05)] transition-all font-mono"
           >
             {events.map((e: any) => (
-              <option key={e._id} value={e._id}>
+              <option key={e._id} value={e._id} className="bg-slate-950 text-white">
                 {e.name}
               </option>
             ))}
@@ -224,14 +224,14 @@ export default function Leaderboard({
           <select
             value={selectedRoundId}
             onChange={(e) => handleRoundChange(e.target.value)}
-            className="px-3 py-2 rounded-lg text-xs w-48"
+            className="px-3 py-2 rounded-lg text-xs w-48 bg-slate-900/50 border border-slate-800 text-white focus:outline-none focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(0,240,255,0.05)] transition-all font-mono"
           >
             {rounds.map((r: any) => (
-              <option key={r._id} value={r._id}>
+              <option key={r._id} value={r._id} className="bg-slate-950 text-white">
                 {r.name}
               </option>
             ))}
-            {rounds.length === 0 && <option>Không có vòng đấu</option>}
+            {rounds.length === 0 && <option className="bg-slate-950 text-white">Không có vòng đấu</option>}
           </select>
         </div>
 
@@ -250,7 +250,7 @@ export default function Leaderboard({
       </div>
 
       {/* Standings Grid Table */}
-      <div className="glass p-6 rounded-3xl relative overflow-hidden">
+      <div className="glass p-6 rounded-3xl relative overflow-hidden border border-slate-800 hover:border-cyan-500/30 transition-all">
         {/* Coordinator live header */}
         {isCoordinator && isLive && standings.length > 0 && (
           <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-800">
@@ -328,12 +328,12 @@ export default function Leaderboard({
                         {row.teamId?.name}
                       </td>
 
-                      <td className="py-4 px-4 text-center font-black text-indigo-400 text-sm">
+                      <td className="py-4 px-4 text-center font-black text-cyan-400 text-sm font-mono-tech">
                         {row.averageScore != null
                           ? row.averageScore.toFixed(2)
                           : "—"}
                         {isCoordinator && isLive && row.judgeCount === 0 && (
-                          <span className="block text-[9px] text-slate-500 font-normal">
+                          <span className="block text-[9px] text-slate-500 font-normal font-sans">
                             Chưa có điểm
                           </span>
                         )}

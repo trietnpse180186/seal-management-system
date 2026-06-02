@@ -238,7 +238,6 @@ async function runTests() {
   console.log(
     "Leader registration response received. Verifying email token from DB...",
   );
-  const User = mongoose.model("User");
   const leaderUser = await User.findOne({ email: "leader@seal.com" });
   const verifyToken = leaderUser.emailVerificationToken;
   console.log(`Verification token from DB: ${verifyToken}`);

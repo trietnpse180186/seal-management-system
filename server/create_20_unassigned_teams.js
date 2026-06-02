@@ -32,7 +32,7 @@ async function create20Teams() {
 
   const suffix = Date.now().toString().slice(-4);
 
-  for (let i = 1; i <= 20; i++) {
+  for (let i = 1; i <= 19; i++) {
     // 1. Tạo tài khoản Mock Leader
     const email = `mock-leader-${i}-${suffix}@example.com`;
     const leaderUser = new User({

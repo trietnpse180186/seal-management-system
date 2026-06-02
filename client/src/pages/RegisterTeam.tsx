@@ -169,7 +169,7 @@ export default function RegisterTeam() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
                   Lựa chọn Học kỳ / Cuộc thi
@@ -186,18 +186,6 @@ export default function RegisterTeam() {
                   ))}
                   {events.length === 0 && <option>Không có cuộc thi nào mở đăng ký</option>}
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                  Bảng đấu / Lĩnh vực chuyên môn
-                </label>
-                <div className="w-full px-4 py-3 rounded-xl text-sm bg-slate-900/60 border border-slate-800 text-slate-400 font-mono select-none flex items-center gap-1.5">
-                  <span>🎲 Tự động phân chia ngẫu nhiên</span>
-                </div>
-                <p className="text-[10px] text-slate-500 mt-1.5 font-sans">
-                  * Ban tổ chức sẽ tự động chia bảng đấu ngẫu nhiên để đảm bảo công bằng sau khi các thành viên xác nhận email.
-                </p>
               </div>
             </div>
 

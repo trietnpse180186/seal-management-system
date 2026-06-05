@@ -5,8 +5,6 @@ import {
   CalendarPlus,
   FolderKanban,
   Info,
-  Settings2,
-  Users,
 } from "lucide-react";
 import TeamsTab from "./TeamsTab";
 import TracksTab from "./TracksTab";
@@ -88,9 +86,6 @@ export default function AdminDashboard({
   const [attachmentName, setAttachmentName] = useState("");
   const [attachmentUrl, setAttachmentUrl] = useState("");
 
-  const [roleEmail, setRoleEmail] = useState("");
-  const [roleType, setRoleType] = useState("coordinator");
-  const [roleTrackId, setRoleTrackId] = useState("");
   const [eventRoles, setEventRoles] = useState<any[]>([]);
   const [teamsList, setTeamsList] = useState<any[]>([]);
 
@@ -970,7 +965,7 @@ export default function AdminDashboard({
       );
 
       setMessage({ type: "success", text: res.data.message });
-      
+
       // Reload event details, rounds, and teams list
       await fetchEventDetails();
       await fetchTeamsList();
@@ -1006,7 +1001,7 @@ export default function AdminDashboard({
       );
 
       setMessage({ type: "success", text: res.data.message });
-      
+
       // Reload event details and rounds
       await fetchEventDetails();
       await fetchRoundsAndRubric();
@@ -1130,40 +1125,6 @@ export default function AdminDashboard({
     }
   };
 
-  const handleAssignRole = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedEvent) return;
-    setMessage({ type: "", text: "" });
-    setLoading(true);
-
-    try {
-      await axios.post(
-        "http://localhost:5000/api/auth/assign-role",
-        {
-          userEmail: roleEmail,
-          eventId: selectedEvent._id,
-          trackId: roleTrackId || undefined,
-          role: roleType,
-        },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      setRoleEmail("");
-      setRoleTrackId("");
-      setMessage({
-        type: "success",
-        text: `Cấp quyền ${roleType.toUpperCase()} thành công!`,
-      });
-      fetchEventRoles();
-    } catch (err: any) {
-      setMessage({
-        type: "error",
-        text: err.response?.data?.message || "Lỗi phân quyền.",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleAssignRoleForTrack = async (email: string, trackId: string) => {
     if (!selectedEvent) return;
     setMessage({ type: "", text: "" });
@@ -1230,7 +1191,6 @@ export default function AdminDashboard({
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-2">
-            <Settings2 className="text-indigo-400" />
             <span>Thiết lập Cuộc thi (Event Dashboard)</span>
           </h1>
           <p className="text-xs text-slate-400 mt-1">
@@ -1251,7 +1211,7 @@ export default function AdminDashboard({
                 const ev = events.find((event) => event._id === e.target.value);
                 if (ev) handleSelectEvent(ev);
               }}
-              className="bg-slate-900 border border-slate-800 text-slate-300 text-xs px-3 py-1.5 rounded-lg focus:border-indigo-500 outline-none"
+              className="bg-slate-900 border border-slate-800 text-slate-300 text-xs px-3 py-1.5 rounded-lg focus:border-cyan-500 outline-none"
             >
               <option value="">-- Chọn cuộc thi --</option>
               {events.map((e: any) => (
@@ -1267,11 +1227,10 @@ export default function AdminDashboard({
       {/* System message display */}
       {message.text && (
         <div
-          className={`p-4 rounded-xl text-sm border flex items-center gap-2 mb-6 ${
-            message.type === "success"
+          className={`p-4 rounded-xl text-sm border flex items-center gap-2 mb-6 ${message.type === "success"
               ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
               : "bg-rose-500/10 border-rose-500/30 text-rose-400"
-          }`}
+            }`}
         >
           <Info size={18} />
           <span>{message.text}</span>
@@ -1280,11 +1239,11 @@ export default function AdminDashboard({
 
       {/* EVENT HEADER PANEL (if selected) */}
       {selectedEvent && (
-        <div className="glass p-6 rounded-2xl relative overflow-hidden bg-gradient-to-r from-indigo-950/20 to-slate-900/20">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl"></div>
+        <div className="glass p-6 rounded-2xl relative overflow-hidden bg-gradient-to-r from-cyan-950/20 to-slate-900/20">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-2xl"></div>
           <div className="flex justify-between items-start flex-col md:flex-row gap-4">
             <div>
-              <span className="text-[10px] bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded font-mono font-bold uppercase tracking-wider">
+              <span className="text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded font-mono font-bold uppercase tracking-wider">
                 [DETAIL_BOARD]
               </span>
               <h1 className="text-2xl font-black text-white mt-2 font-mono uppercase tracking-tight">
@@ -1293,7 +1252,7 @@ export default function AdminDashboard({
               <p className="text-xs text-slate-400 mt-1">
                 Học kỳ: {selectedEvent.semester} {selectedEvent.year} | Trạng
                 thái:{" "}
-                <span className="text-indigo-400 font-bold uppercase">
+                <span className="text-cyan-400 font-bold uppercase">
                   {selectedEvent.status}
                 </span>
               </p>
@@ -1349,51 +1308,46 @@ export default function AdminDashboard({
         <div className="flex flex-wrap gap-3 border-b border-slate-800/80 pb-3">
           <button
             onClick={() => setActiveTab("events")}
-            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
-              activeTab === "events"
-                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25 font-semibold"
+            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "events"
+                ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
                 : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-            }`}
+              }`}
           >
             Thông tin sự kiện
           </button>
           <button
             onClick={() => setActiveTab("teams")}
-            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
-              activeTab === "teams"
-                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25 font-semibold"
+            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "teams"
+                ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
                 : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-            }`}
+              }`}
           >
             Đội thi tham gia
           </button>
           <button
             onClick={() => setActiveTab("rounds")}
-            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
-              activeTab === "rounds"
-                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25 font-semibold"
+            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "rounds"
+                ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
                 : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-            }`}
+              }`}
           >
             Vòng thi & Tiêu chí
           </button>
           <button
             onClick={() => setActiveTab("tracks")}
-            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
-              activeTab === "tracks"
-                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25 font-semibold"
+            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "tracks"
+                ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
                 : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-            }`}
+              }`}
           >
             Bảng đấu
           </button>
           <button
             onClick={() => setActiveTab("github")}
-            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
-              activeTab === "github"
-                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25 font-semibold"
+            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${activeTab === "github"
+                ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
                 : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-            }`}
+              }`}
           >
             <Github size={14} />
             GitHub & AI Đánh giá
@@ -1405,189 +1359,58 @@ export default function AdminDashboard({
 
       {/* 1. ADMIN TAB */}
       {activeTab === "admin" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left panel: List existing events */}
-          <div className="lg:col-span-2 space-y-4">
-            <h3 className="text-md font-bold text-white mb-2 flex items-center gap-2 font-mono">
-              <FolderKanban size={18} className="text-indigo-400" />
-              <span>DANH SÁCH SỰ KIỆN HIỆN CÓ</span>
-            </h3>
-            {events.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {events.map((e: any) => (
-                  <button
-                    key={e._id}
-                    onClick={() => handleSelectEvent(e)}
-                    onDoubleClick={() => handleEventDoubleClick(e)}
-                    className={`w-full text-left p-5 rounded-2xl border transition-all duration-300 flex flex-col justify-between h-40 ${
-                      selectedEvent?._id === e._id
-                        ? "bg-indigo-600/10 border-indigo-500 shadow-md text-white font-bold"
-                        : "border-slate-800 bg-slate-900/30 hover:border-slate-700 text-slate-400"
+        <div className="w-full space-y-4">
+          <h3 className="text-md font-bold text-white mb-2 flex items-center gap-2 font-mono">
+            <FolderKanban size={18} className="text-cyan-400" />
+            <span>DANH SÁCH SỰ KIỆN HIỆN CÓ</span>
+          </h3>
+          {events.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {events.map((e: any) => (
+                <button
+                  key={e._id}
+                  onClick={() => handleSelectEvent(e)}
+                  onDoubleClick={() => handleEventDoubleClick(e)}
+                  className={`w-full text-left p-5 rounded-2xl border transition-all duration-300 flex flex-col justify-between h-40 ${selectedEvent?._id === e._id
+                      ? "bg-cyan-500/10 border-cyan-500 shadow-md text-white font-bold"
+                      : "border-slate-800 bg-slate-900/30 hover:border-slate-700 text-slate-400"
                     }`}
-                  >
-                    <div>
-                      <div className="flex justify-between items-start w-full">
-                        <span
-                          className={`font-mono text-sm tracking-tight ${selectedEvent?._id === e._id ? "text-indigo-405" : "text-slate-200"}`}
-                        >
-                          {e.name}
-                        </span>
-                        <span className="text-[10px] bg-slate-950 px-2 py-0.5 rounded font-mono border border-slate-800 text-slate-350">
-                          {e.semester} {e.year}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500 mt-2 line-clamp-3 font-sans font-normal leading-normal">
-                        {e.description || "Chưa có mô tả chi tiết."}
-                      </p>
-                    </div>
-
-                    <div className="flex justify-between items-center w-full mt-4 pt-2 border-t border-slate-800/40 text-[10px] font-mono">
-                      <span>
-                        Trạng thái:{" "}
-                        <strong className="text-indigo-300 uppercase">
-                          {e.status}
-                        </strong>
+                >
+                  <div>
+                    <div className="flex justify-between items-start w-full">
+                      <span
+                        className={`font-mono text-sm tracking-tight ${selectedEvent?._id === e._id ? "text-cyan-400" : "text-slate-200"}`}
+                      >
+                        {e.name}
                       </span>
-                      <span className="text-indigo-450 font-bold bg-indigo-500/5 px-2.5 py-0.5 rounded">
-                        {e.teamCount || 0} Đội tham gia
+                      <span className="text-[10px] bg-slate-950 px-2 py-0.5 rounded font-mono border border-slate-800 text-slate-350">
+                        {e.semester} {e.year}
                       </span>
                     </div>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-slate-500 italic font-mono">
-                Chưa có cuộc thi nào được khởi tạo.
-              </p>
-            )}
-          </div>
-
-          {/* Right panel: Role assignment & list */}
-          <div className="lg:col-span-1 space-y-6">
-            {selectedEvent ? (
-              <>
-                {/* Role Assignment Form */}
-                <div className="glass p-6 rounded-2xl">
-                  <h3 className="text-md font-bold text-white mb-4 flex items-center gap-1.5 font-mono">
-                    <Users size={16} className="text-indigo-400" />
-                    <span>Phân quyền thành viên</span>
-                  </h3>
-
-                  <form onSubmit={handleAssignRole} className="space-y-4">
-                    <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-                        Email Người dùng
-                      </label>
-                      <input
-                        type="email"
-                        required
-                        placeholder="giamkhao@domain.com"
-                        value={roleEmail}
-                        onChange={(e) => setRoleEmail(e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200 focus:outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-                        Vai trò
-                      </label>
-                      <select
-                        value={roleType}
-                        onChange={(e) => setRoleType(e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl text-xs font-mono bg-slate-950 border border-slate-850 text-slate-350"
-                      >
-                        <option value="coordinator">Ban tổ chức</option>
-                        <option value="mentor">Cố vấn</option>
-                        <option value="participant">Thí sinh</option>
-                      </select>
-                    </div>
-
-                    {(roleType === "judge" ||
-                      roleType === "mentor" ||
-                      roleType === "participant") && (
-                      <div>
-                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-                          Bảng đấu
-                        </label>
-                        <select
-                          value={roleTrackId}
-                          onChange={(e) => setRoleTrackId(e.target.value)}
-                          className="w-full px-3 py-2.5 rounded-xl text-xs font-mono bg-slate-950 border border-slate-850 text-slate-300"
-                        >
-                          <option value="">
-                            Toàn bộ cuộc thi (Không chọn Track)
-                          </option>
-                          {tracks.map((t: any) => (
-                            <option key={t._id} value={t._id}>
-                              {t.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
-                    <button
-                      type="submit"
-                      className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2.5 rounded-xl transition-all cursor-pointer font-mono"
-                    >
-                      Gán Quyền Hạn
-                    </button>
-                  </form>
-                </div>
-
-                {/* Assigned Roles List */}
-                <div className="glass p-6 rounded-2xl">
-                  <h3 className="text-md font-bold text-white mb-3 flex items-center gap-1.5 font-mono">
-                    <Users size={16} className="text-indigo-400" />
-                    <span>Danh sách phân quyền ({eventRoles.length})</span>
-                  </h3>
-                  <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
-                    {eventRoles.map((role: any) => (
-                      <div
-                        key={role._id}
-                        className="p-3 bg-slate-900/40 rounded-xl border border-slate-800/80 text-xs flex justify-between items-center font-sans"
-                      >
-                        <div>
-                          <p className="font-bold text-slate-200">
-                            {role.userId?.fullName || "Không rõ tên"}
-                          </p>
-                          <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                            {role.userId?.email}
-                          </p>
-                          <p className="text-[10px] text-indigo-400 font-mono mt-0.5 uppercase font-bold">
-                            {role.role}{" "}
-                            {role.trackId
-                              ? `// Bảng: ${role.trackId.name}`
-                              : "// Toàn cuộc thi"}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => handleRemoveRole(role._id)}
-                          className="text-rose-500 hover:text-rose-400 font-bold text-[10px] uppercase font-mono border border-rose-500/20 hover:border-rose-500/40 px-2 py-1 rounded bg-rose-500/5 cursor-pointer"
-                        >
-                          Xóa
-                        </button>
-                      </div>
-                    ))}
-                    {eventRoles.length === 0 && (
-                      <p className="text-xs text-slate-500 italic py-2 text-center">
-                        Chưa có ai được phân quyền cho cuộc thi này.
-                      </p>
-                    )}
+                    <p className="text-xs text-slate-500 mt-2 line-clamp-3 font-sans font-normal leading-normal">
+                      {e.description || "Chưa có mô tả chi tiết."}
+                    </p>
                   </div>
-                </div>
-              </>
-            ) : (
-              <div className="glass p-6 rounded-2xl text-center py-12 text-slate-500 font-mono border-dashed border-slate-800">
-                <Users size={32} className="mx-auto mb-3 text-slate-600" />
-                <p className="text-xs">
-                  Vui lòng chọn sự kiện ở danh sách bên trái để thực hiện phân
-                  quyền.
-                </p>
-              </div>
-            )}
-          </div>
+
+                  <div className="flex justify-between items-center w-full mt-4 pt-2 border-t border-slate-800/40 text-[10px] font-mono">
+                    <span>
+                      Trạng thái:{" "}
+                      <strong className="text-cyan-300 uppercase">
+                        {e.status}
+                      </strong>
+                    </span>
+                    <span className="text-cyan-400 font-bold bg-cyan-500/5 px-2.5 py-0.5 rounded">
+                      {e.teamCount || 0} Đội tham gia
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500 italic font-mono">
+              Chưa có cuộc thi nào được khởi tạo.
+            </p>
+          )}
         </div>
       )}
 
@@ -1596,13 +1419,13 @@ export default function AdminDashboard({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main settings form */}
           <div className="lg:col-span-2 glass p-6 rounded-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl"></div>
+            <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/5 rounded-full blur-3xl"></div>
 
             {selectedEvent ? (
               // EDIT SELECTED EVENT FORM
               <>
                 <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2 font-mono">
-                  <CalendarPlus size={20} className="text-indigo-400" />
+                  <CalendarPlus size={20} className="text-cyan-400" />
                   <span>CẬP NHẬT THÔNG TIN SỰ KIỆN</span>
                 </h2>
 
@@ -1702,7 +1525,7 @@ export default function AdminDashboard({
                     <button
                       type="submit"
                       disabled={loading}
-                      className="bg-indigo-600 hover:bg-indigo-500 font-bold px-6 py-2.5 rounded-xl text-sm transition-all flex items-center gap-2 cursor-pointer font-mono"
+                      className="bg-cyan-500 hover:bg-cyan-500 font-bold px-6 py-2.5 rounded-xl text-sm transition-all flex items-center gap-2 cursor-pointer font-mono"
                     >
                       <span>
                         {loading ? "Đang cập nhật..." : "Lưu thay đổi"}
@@ -1716,7 +1539,7 @@ export default function AdminDashboard({
               // CREATE NEW EVENT FORM
               <>
                 <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2 font-mono">
-                  <CalendarPlus size={20} className="text-indigo-400" />
+                  <CalendarPlus size={20} className="text-cyan-400" />
                   <span>THIẾT LẬP SỰ KIỆN: KHỞI TẠO CUỘC THI MỚI</span>
                 </h2>
 
@@ -1807,7 +1630,7 @@ export default function AdminDashboard({
                     <button
                       type="submit"
                       disabled={loading}
-                      className="bg-indigo-600 hover:bg-indigo-500 font-bold px-6 py-2.5 rounded-xl text-sm transition-all flex items-center gap-2 cursor-pointer font-mono"
+                      className="bg-cyan-500 hover:bg-cyan-500 font-bold px-6 py-2.5 rounded-xl text-sm transition-all flex items-center gap-2 cursor-pointer font-mono"
                     >
                       <span>
                         {loading ? "Đang khởi tạo..." : "Khởi tạo Cuộc thi"}
@@ -1824,7 +1647,7 @@ export default function AdminDashboard({
           <div className="lg:col-span-1 space-y-6">
             <div className="glass p-6 rounded-2xl">
               <h3 className="text-md font-bold text-white mb-3 flex items-center gap-1.5 font-mono">
-                <Info size={16} className="text-indigo-400" />
+                <Info size={16} className="text-cyan-400" />
                 <span>HƯỚNG DẪN THIẾT LẬP</span>
               </h3>
               <p className="text-xs text-slate-400 leading-relaxed font-sans">
@@ -1832,7 +1655,7 @@ export default function AdminDashboard({
                   ? "Bạn đang chỉnh sửa cấu hình của cuộc thi được chọn. Thay đổi các thông tin chi tiết như tên, mô tả hoặc giới hạn số đội, sau đó bấm Lưu thay đổi."
                   : "Khởi tạo một cuộc thi mới đại diện cho học kỳ cụ thể. Cuộc thi này sẽ chứa các bảng đấu (Tracks) và vòng thi (Rounds) tiếp theo."}
               </p>
-              <div className="mt-4 p-3 bg-slate-900/60 rounded-xl border border-slate-800 text-[11px] text-indigo-300 font-mono">
+              <div className="mt-4 p-3 bg-slate-900/60 rounded-xl border border-slate-800 text-[11px] text-cyan-300 font-mono">
                 Lưu ý: Chỉ hệ thống Admin/Ban tổ chức mới được quyền khởi tạo
                 hoặc cấu hình cuộc thi mới.
               </div>

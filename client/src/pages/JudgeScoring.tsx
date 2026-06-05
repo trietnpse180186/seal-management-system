@@ -270,7 +270,7 @@ export default function JudgeScoring() {
 
   if (!team) {
     return (
-      <div className="text-center py-20 text-indigo-400 text-xs animate-pulse font-mono">
+      <div className="text-center py-20 text-cyan-400 text-xs animate-pulse font-mono">
         [ĐANG TẢI THÔNG TIN ĐỘI THI...]
       </div>
     );
@@ -283,7 +283,7 @@ export default function JudgeScoring() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => navigate('/judge/projects')}
-            className="text-indigo-400 hover:text-indigo-300 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors drop-shadow-[0_0_5px_rgba(99,102,241,0.5)]"
+            className="text-cyan-400 hover:text-cyan-300 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]"
           >
             <ArrowLeft size={14} />
             <span>Danh sách dự án</span>
@@ -315,11 +315,11 @@ export default function JudgeScoring() {
             {/* Project Details */}
             <div className="border-b border-white/5 pb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <span className="text-[9px] text-indigo-300 font-bold uppercase tracking-wider bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded shadow-[0_0_8px_rgba(99,102,241,0.2)]">
+                <span className="text-[9px] text-cyan-300 font-bold uppercase tracking-wider bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded shadow-[0_0_8px_rgba(6,182,212,0.2)]">
                   Chi tiết đề tài của đội thi
                 </span>
                 <h2 className="text-2xl font-black text-white mt-2 uppercase drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">{team.name}</h2>
-                <p className="text-xs font-bold text-slate-300 mt-1">Đề tài: <span className="text-indigo-200">{team.topicSubmission?.title || 'Chưa đăng ký'}</span></p>
+                <p className="text-xs font-bold text-slate-300 mt-1">Đề tài: <span className="text-cyan-200">{team.topicSubmission?.title || 'Chưa đăng ký'}</span></p>
               </div>
 
               {team.topicSubmission?.demoUrl && (
@@ -327,7 +327,7 @@ export default function JudgeScoring() {
                   href={team.topicSubmission.demoUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-1.5 text-xs font-bold text-indigo-300 hover:text-white border border-indigo-500/30 hover:border-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 px-4 py-2 rounded-lg transition-all uppercase tracking-wider shadow-[0_0_10px_rgba(99,102,241,0.1)]"
+                  className="flex items-center gap-1.5 text-xs font-bold text-cyan-300 hover:text-white border border-cyan-500/30 hover:border-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-4 py-2 rounded-lg transition-all uppercase tracking-wider shadow-[0_0_10px_rgba(6,182,212,0.1)]"
                 >
                   <ExternalLink size={14} />
                   <span>Xem Demo</span>
@@ -337,7 +337,7 @@ export default function JudgeScoring() {
 
             {team.topicSubmission?.description && (
               <div className="bg-slate-800/40 p-4 rounded-xl border border-white/5 shadow-inner">
-                <p className="text-[9px] text-indigo-400 font-bold uppercase tracking-wider mb-1.5 font-mono drop-shadow-[0_0_5px_rgba(99,102,241,0.3)]">Mô tả chi tiết giải pháp:</p>
+                <p className="text-[9px] text-cyan-400 font-bold uppercase tracking-wider mb-1.5 font-mono drop-shadow-[0_0_5px_rgba(6,182,212,0.3)]">Mô tả chi tiết giải pháp:</p>
                 <p className="text-xs text-slate-300 leading-relaxed font-sans">{team.topicSubmission.description}</p>
               </div>
             )}
@@ -367,10 +367,10 @@ export default function JudgeScoring() {
                   type="button"
                   onClick={handleGetAiSuggestion}
                   disabled={aiLoading}
-                  className="flex items-center gap-1.5 bg-gradient-to-r from-violet-600/20 to-indigo-600/20 hover:from-violet-600/40 hover:to-indigo-600/40 text-violet-300 border border-violet-500/30 hover:border-violet-400 px-4 py-2.5 rounded-xl text-xs font-bold transition-all uppercase tracking-wider shadow-[0_0_15px_rgba(139,92,246,0.3)] hover:shadow-[0_0_20px_rgba(139,92,246,0.5)]"
+                  className="flex items-center gap-1.5 bg-gradient-to-r from-teal-500/20 to-cyan-500/20 hover:from-teal-500/40 hover:to-cyan-500/40 text-teal-300 border border-teal-500/30 hover:border-teal-400 px-4 py-2.5 rounded-xl text-xs font-bold transition-all uppercase tracking-wider shadow-[0_0_15px_rgba(20,184,166,0.3)] hover:shadow-[0_0_20px_rgba(20,184,166,0.5)]"
                 >
-                  <Sparkles size={14} className={aiLoading ? 'animate-spin' : 'text-violet-400'} />
-                  <span className="drop-shadow-[0_0_5px_rgba(167,139,250,0.5)]">{aiLoading ? 'AI đang phân tích...' : 'Lấy gợi ý từ Gemini AI'}</span>
+                  <Sparkles size={14} className={aiLoading ? 'animate-spin' : 'text-teal-400'} />
+                  <span className="drop-shadow-[0_0_5px_rgba(20,184,166,0.5)]">{aiLoading ? 'AI đang phân tích...' : 'Lấy gợi ý từ Gemini AI'}</span>
                 </button>
               </div>
             )}
@@ -386,7 +386,7 @@ export default function JudgeScoring() {
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-indigo-400 font-mono drop-shadow-[0_0_5px_rgba(99,102,241,0.3)]">[{c.code}]</span>
+                            <span className="text-xs font-bold text-cyan-400 font-mono drop-shadow-[0_0_5px_rgba(6,182,212,0.3)]">[{c.code}]</span>
                             <span className="text-xs font-bold text-white uppercase drop-shadow-[0_0_5px_rgba(255,255,255,0.1)]">{c.name}</span>
                           </div>
                           <p className="text-[11px] text-slate-400 leading-relaxed font-sans">{c.description || 'Không có mô tả.'}</p>
@@ -403,7 +403,7 @@ export default function JudgeScoring() {
                             value={scores[c._id]?.scoreValue || ''}
                             onChange={e => handleScoreChange(c._id, 'scoreValue', e.target.value)}
                             disabled={isRoundLocked}
-                            className="bg-slate-900 border border-slate-600 rounded-lg text-white text-center text-xs px-2 py-2 w-24 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 focus:outline-none disabled:opacity-50 font-bold shadow-inner placeholder-slate-600"
+                            className="bg-slate-900 border border-slate-600 rounded-lg text-white text-center text-xs px-2 py-2 w-24 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 focus:outline-none disabled:opacity-50 font-bold shadow-inner placeholder-slate-600"
                           />
                           <span className="text-[10px] text-slate-500 font-mono">/ {c.maxScore}đ</span>
                         </div>
@@ -423,16 +423,16 @@ export default function JudgeScoring() {
                                   key={idx}
                                   className={`p-3 rounded-lg border transition-all duration-300 ${
                                     isMatched
-                                      ? 'bg-indigo-500/20 border-indigo-400 text-indigo-300 shadow-[0_0_15px_rgba(99,102,241,0.2)]'
+                                      ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
                                       : 'bg-slate-800/30 border-white/5 hover:border-white/10 text-slate-400'
                                   }`}
                                 >
                                   <div className="flex justify-between items-center text-[10px] font-bold">
-                                    <span className={isMatched ? 'text-indigo-200 drop-shadow-[0_0_5px_rgba(165,180,252,0.5)]' : 'text-slate-300'}>{lvl.label}</span>
-                                    <span className={isMatched ? 'text-indigo-300 font-mono' : 'text-slate-500 font-mono'}>{lvl.minScore} - {lvl.maxScore}đ</span>
+                                    <span className={isMatched ? 'text-cyan-200 drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]' : 'text-slate-300'}>{lvl.label}</span>
+                                    <span className={isMatched ? 'text-cyan-300 font-mono' : 'text-slate-500 font-mono'}>{lvl.minScore} - {lvl.maxScore}đ</span>
                                   </div>
                                   {lvl.description && (
-                                    <p className={`text-[9px] mt-1 leading-relaxed font-sans ${isMatched ? 'text-indigo-200/70' : 'text-slate-500'}`}>{lvl.description}</p>
+                                    <p className={`text-[9px] mt-1 leading-relaxed font-sans ${isMatched ? 'text-cyan-200/70' : 'text-slate-500'}`}>{lvl.description}</p>
                                   )}
                                 </div>
                               );
@@ -449,7 +449,7 @@ export default function JudgeScoring() {
                           value={scores[c._id]?.comment || ''}
                           onChange={e => handleScoreChange(c._id, 'comment', e.target.value)}
                           disabled={isRoundLocked}
-                          className="bg-slate-900 border border-slate-700 rounded-lg text-slate-300 text-xs px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 disabled:opacity-50 shadow-inner placeholder-slate-600"
+                          className="bg-slate-900 border border-slate-700 rounded-lg text-slate-300 text-xs px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 disabled:opacity-50 shadow-inner placeholder-slate-600"
                         />
                       </div>
                     </div>
@@ -467,7 +467,7 @@ export default function JudgeScoring() {
                     value={overallComment}
                     onChange={e => setOverallComment(e.target.value)}
                     disabled={isRoundLocked}
-                    className="bg-slate-900 border border-slate-700 rounded-lg text-slate-300 text-xs px-3 py-2.5 w-full focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 disabled:opacity-50 font-sans shadow-inner placeholder-slate-600"
+                    className="bg-slate-900 border border-slate-700 rounded-lg text-slate-300 text-xs px-3 py-2.5 w-full focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 disabled:opacity-50 font-sans shadow-inner placeholder-slate-600"
                   ></textarea>
                 </div>
 
@@ -476,7 +476,7 @@ export default function JudgeScoring() {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold py-3.5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-[0_0_20px_rgba(99,102,241,0.4)] hover:shadow-[0_0_30px_rgba(99,102,241,0.6)] uppercase tracking-widest"
+                    className="w-full bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-white font-bold py-3.5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-[0_0_20px_rgba(6,182,212,0.4)] hover:shadow-[0_0_30px_rgba(6,182,212,0.6)] uppercase tracking-widest"
                   >
                     <Save size={16} />
                     <span>{saving ? 'Đang lưu điểm...' : 'Nộp điểm chính thức'}</span>
@@ -507,13 +507,13 @@ export default function JudgeScoring() {
                 onClick={() => setSidebarTab('commits')}
                 className={`flex-1 text-center py-1.5 text-xs font-bold transition-all uppercase tracking-wider relative ${
                   sidebarTab === 'commits' 
-                    ? 'text-indigo-400 font-extrabold drop-shadow-[0_0_5px_rgba(99,102,241,0.5)]' 
+                    ? 'text-cyan-400 font-extrabold drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]' 
                     : 'text-slate-500 hover:text-slate-300'
                 }`}
               >
                 Commit ({commits.length})
                 {sidebarTab === 'commits' && (
-                  <div className="absolute bottom-[-9px] left-0 w-full h-[2px] bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]"></div>
+                  <div className="absolute bottom-[-9px] left-0 w-full h-[2px] bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)]"></div>
                 )}
               </button>
               <button
@@ -521,13 +521,13 @@ export default function JudgeScoring() {
                 onClick={() => setSidebarTab('ai')}
                 className={`flex-1 text-center py-1.5 text-xs font-bold transition-all uppercase tracking-wider relative ${
                   sidebarTab === 'ai' 
-                    ? 'text-violet-400 font-extrabold drop-shadow-[0_0_5px_rgba(167,139,250,0.5)]' 
+                    ? 'text-teal-400 font-extrabold drop-shadow-[0_0_5px_rgba(20,184,166,0.5)]' 
                     : 'text-slate-500 hover:text-slate-300'
                 }`}
               >
                 Phân tích AI
                 {sidebarTab === 'ai' && (
-                  <div className="absolute bottom-[-9px] left-0 w-full h-[2px] bg-violet-500 shadow-[0_0_8px_rgba(139,92,246,0.8)]"></div>
+                  <div className="absolute bottom-[-9px] left-0 w-full h-[2px] bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.8)]"></div>
                 )}
               </button>
             </div>
@@ -560,9 +560,9 @@ export default function JudgeScoring() {
                 {aiInsight ? (
                   <>
                     {/* RAG Level Badge */}
-                    <div className="bg-indigo-900/20 p-3.5 rounded-xl border border-indigo-500/20 shadow-[0_0_15px_rgba(99,102,241,0.1)]">
-                      <span className="text-[9px] text-indigo-300/70 font-bold uppercase tracking-wider block font-mono flex items-center gap-1.5"><Zap size={12} className="text-indigo-400" /> Phân cấp RAG phát hiện</span>
-                      <p className="text-indigo-400 font-black mt-1 text-sm drop-shadow-[0_0_8px_rgba(129,140,248,0.5)]">
+                    <div className="bg-cyan-950/20 p-3.5 rounded-xl border border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+                      <span className="text-[9px] text-cyan-300/70 font-bold uppercase tracking-wider block font-mono flex items-center gap-1.5"><Zap size={12} className="text-cyan-400" /> Phân cấp RAG phát hiện</span>
+                      <p className="text-cyan-400 font-black mt-1 text-sm drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]">
                         {aiInsight.smb_scale_advisory?.system_identity_recap?.includes('Agentic') ? 'Agentic RAG' : 'Advanced RAG'}
                       </p>
                     </div>
@@ -587,7 +587,7 @@ export default function JudgeScoring() {
                                 <span className="font-bold text-slate-300">{displayName}</span>
                                 <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase shadow-[0_0_8px_rgba(0,0,0,0.5)] ${
                                   value.grade === 'Xuất sắc' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]' :
-                                  value.grade === 'Tốt' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 drop-shadow-[0_0_5px_rgba(99,102,241,0.5)]' :
+                                  value.grade === 'Tốt' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]' :
                                   value.grade === 'Khá' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 drop-shadow-[0_0_5px_rgba(245,158,11,0.5)]' :
                                   value.grade === 'Trung bình' ? 'bg-slate-800/60 text-slate-300 border border-slate-700' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                                 }`}>
@@ -605,14 +605,14 @@ export default function JudgeScoring() {
                     </div>
 
                     {/* Judge Q&A Questions */}
-                    <div className="space-y-3 bg-violet-900/10 p-4 rounded-xl border border-violet-500/20 border-l-4 border-l-violet-500 shadow-[0_0_15px_rgba(139,92,246,0.1)]">
-                      <span className="text-xs font-bold text-violet-400 uppercase tracking-wider flex items-center gap-1.5 border-b border-violet-500/20 pb-2">
+                    <div className="space-y-3 bg-teal-950/10 p-4 rounded-xl border border-teal-500/20 border-l-4 border-l-teal-500 shadow-[0_0_15px_rgba(20,184,166,0.1)]">
+                      <span className="text-xs font-bold text-teal-400 uppercase tracking-wider flex items-center gap-1.5 border-b border-teal-500/20 pb-2">
                         <ShieldAlert size={14} className="text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.8)]" />
-                        <span className="drop-shadow-[0_0_5px_rgba(167,139,250,0.3)]">Câu hỏi phản biện gợi ý</span>
+                        <span className="drop-shadow-[0_0_5px_rgba(20,184,166,0.3)]">Câu hỏi phản biện gợi ý</span>
                       </span>
                       <ul className="list-disc pl-5 space-y-2 mt-2 text-slate-300 text-[11px] font-medium leading-relaxed">
                         {aiQuestions.map((q: string, idx: number) => (
-                          <li key={idx} className="hover:text-violet-300 transition-colors marker:text-violet-500">{q}</li>
+                          <li key={idx} className="hover:text-teal-300 transition-colors marker:text-teal-500">{q}</li>
                         ))}
                         {aiQuestions.length === 0 && (
                           <li className="list-none text-slate-500 italic font-mono">[KHÔNG CÓ GỢI Ý]</li>

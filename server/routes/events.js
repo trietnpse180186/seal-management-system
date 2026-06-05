@@ -91,19 +91,6 @@ router.post('/', authenticateToken, requireSystemAdmin, async (req, res) => {
     });
     await creatorRole.save();
 
-    // Send email notifications to all members (non-admins) in the background
-    User.find({ isSystemAdmin: false }).then(users => {
-      users.forEach(user => {
-        emailService.sendEventCreationNotification(
-          user.email,
-          user.fullName,
-          newEvent.name,
-          newEvent.semester,
-          newEvent.year
-        ).catch(err => console.error(`Failed to send event notification to ${user.email}:`, err.message));
-      });
-    }).catch(err => console.error('Error fetching users for event creation notification:', err.message));
-
     res.status(201).json({
       message: 'Event created successfully!',
       event: newEvent
@@ -486,6 +473,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const event = await Event.findById(req.params.id);
     if (!event) return res.status(404).json({ message: 'Event not found.' });
 
+    const oldStatus = event.status;
+
     // Auth check
     if (!req.user.isSystemAdmin) {
       const coordinatorRole = await EventRole.findOne({
@@ -515,6 +504,23 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (status) event.status = status;
 
     await event.save();
+
+    // Send email notifications to all members (non-admins) in the background when status shifts to 'registration'
+    if (status === 'registration' && oldStatus !== 'registration') {
+      console.log(`[EVENT] Event "${event.name}" status updated to registration. Sending email notifications to all members...`);
+      User.find({ isSystemAdmin: false }).then(users => {
+        users.forEach(user => {
+          emailService.sendEventCreationNotification(
+            user.email,
+            user.fullName,
+            event.name,
+            event.semester,
+            event.year
+          ).catch(err => console.error(`Failed to send event notification to ${user.email}:`, err.message));
+        });
+      }).catch(err => console.error('Error fetching users for event registration notification:', err.message));
+    }
+
     res.json({ message: 'Event updated successfully!', event });
   } catch (error) {
     console.error('Update Event Error:', error.message);

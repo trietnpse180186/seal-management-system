@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import {
   BarChart3,
-  Trophy,
   CheckSquare,
   Lock,
   RefreshCw,
@@ -98,9 +97,6 @@ export default function JudgeLeaderboard() {
       {/* Page Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
-          <div className="bg-gradient-premium p-3 rounded-2xl text-white shadow-lg shadow-indigo-500/20">
-            <Trophy size={28} />
-          </div>
           <div>
             <h2 className="text-3xl font-extrabold text-white tracking-tight drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]">
               Bảng Xếp Hạng Chung Cuộc
@@ -119,7 +115,7 @@ export default function JudgeLeaderboard() {
             <button
               onClick={fetchRankings}
               disabled={loading}
-              className="text-indigo-400 hover:text-indigo-300 disabled:opacity-50 transition-colors"
+              className="text-cyan-400 hover:text-cyan-300 disabled:opacity-50 transition-colors"
             >
               <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
             </button>
@@ -244,7 +240,7 @@ export default function JudgeLeaderboard() {
                           {row.teamId?.name}
                         </span>
                         {row.trackName && (
-                          <span className="text-[9px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded font-mono mt-1 inline-block">
+                          <span className="text-[9px] font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-1.5 py-0.5 rounded font-mono mt-1 inline-block">
                             Bảng: {row.trackName}{" "}
                             {row.trackRank ? `(Hạng ${row.trackRank})` : ""}
                           </span>
@@ -252,7 +248,7 @@ export default function JudgeLeaderboard() {
                       </td>
 
                       {/* Avg Score */}
-                      <td className="py-4 px-4 text-center font-black text-indigo-400 text-sm">
+                      <td className="py-4 px-4 text-center font-black text-cyan-400 text-sm">
                         {row.averageScore != null
                           ? row.averageScore.toFixed(2)
                           : "—"}

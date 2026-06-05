@@ -226,7 +226,7 @@ export default function JudgeDashboard() {
           <select
             value={selectedEventId}
             onChange={(e) => setSelectedEventId(e.target.value)}
-            className="bg-slate-800/80 border border-white/10 rounded-lg text-white text-xs px-3 py-1.5 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 focus:outline-none w-56 font-bold shadow-inner"
+            className="bg-slate-800/80 border border-white/10 rounded-lg text-white text-xs px-3 py-1.5 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 focus:outline-none w-56 font-bold shadow-inner"
           >
             {events.map((e: any) => (
               <option key={e._id} value={e._id} className="bg-slate-800 text-white">
@@ -243,7 +243,7 @@ export default function JudgeDashboard() {
           <select
             value={selectedRoundId}
             onChange={(e) => setSelectedRoundId(e.target.value)}
-            className="bg-slate-800/80 border border-white/10 rounded-lg text-white text-xs px-3 py-1.5 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 focus:outline-none w-56 font-bold shadow-inner"
+            className="bg-slate-800/80 border border-white/10 rounded-lg text-white text-xs px-3 py-1.5 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 focus:outline-none w-56 font-bold shadow-inner"
           >
             {rounds.map((r: any) => (
               <option key={r._id} value={r._id} className="bg-slate-800 text-white">
@@ -257,14 +257,14 @@ export default function JudgeDashboard() {
 
       {/* Bento Grid Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-xl p-5 border-l-4 border-l-indigo-500 shadow-lg hover:shadow-[0_0_15px_rgba(99,102,241,0.2)] transition-all">
+        <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-xl p-5 border-l-4 border-l-cyan-500 shadow-lg hover:shadow-[0_0_15px_rgba(6,182,212,0.2)] transition-all">
           <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
             Tổng số đội thi
           </p>
           <p className="text-3xl font-black text-white mt-2 font-mono drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">
             {stats.activeTeamsCount || teams.length}
           </p>
-          <p className="text-[9px] text-indigo-400 mt-1 uppercase font-semibold">
+          <p className="text-[9px] text-cyan-400 mt-1 uppercase font-semibold">
             Tham gia sự kiện
           </p>
         </div>
@@ -281,7 +281,7 @@ export default function JudgeDashboard() {
           </p>
         </div>
 
-        <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-xl p-5 border-l-4 border-l-violet-500 shadow-lg hover:shadow-[0_0_15px_rgba(139,92,246,0.2)] transition-all">
+        <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-xl p-5 border-l-4 border-l-teal-500 shadow-lg hover:shadow-[0_0_15px_rgba(20,184,166,0.2)] transition-all">
           <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
             Hoạt động code gần nhất
           </p>
@@ -290,7 +290,7 @@ export default function JudgeDashboard() {
               ? new Date(stats.lastSyncTime).toLocaleString("vi-VN")
               : "Chưa cập nhật"}
           </p>
-          <p className="text-[9px] text-violet-400 mt-1 uppercase font-semibold">
+          <p className="text-[9px] text-teal-400 mt-1 uppercase font-semibold">
             {getSyncTimeElapsed(stats.lastSyncTime)}
           </p>
         </div>
@@ -310,11 +310,11 @@ export default function JudgeDashboard() {
 
       {/* Quick Resume Grading Banner */}
       {lastGradedTeamId && (
-        <div className="bg-gradient-to-r from-indigo-900/40 to-violet-900/40 backdrop-blur-md border border-indigo-500/30 p-6 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[0_0_20px_rgba(99,102,241,0.15)] relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,0.15),transparent_50%)] pointer-events-none"></div>
+        <div className="bg-gradient-to-r from-cyan-950/40 to-teal-950/40 backdrop-blur-md border border-cyan-500/30 p-6 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[0_0_20px_rgba(6,182,212,0.15)] relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(20,184,166,0.15),transparent_50%)] pointer-events-none"></div>
           <div className="flex items-center gap-4 relative z-10">
-            <div className="w-12 h-12 bg-indigo-500/20 border border-indigo-500/50 rounded-full flex items-center justify-center text-indigo-400 shrink-0 shadow-[0_0_15px_rgba(99,102,241,0.3)]">
-              <Play size={20} className="fill-indigo-400 animate-pulse ml-0.5" />
+            <div className="w-12 h-12 bg-cyan-500/20 border border-cyan-500/50 rounded-full flex items-center justify-center text-cyan-400 shrink-0 shadow-[0_0_15px_rgba(6,182,212,0.3)]">
+              <Play size={20} className="fill-cyan-400 animate-pulse ml-0.5" />
             </div>
             <div>
               <h3 className="text-sm font-extrabold text-white uppercase tracking-wider drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]">
@@ -322,7 +322,7 @@ export default function JudgeDashboard() {
               </h3>
               <p className="text-xs text-slate-300 mt-0.5">
                 Tiếp tục xem chi tiết và chấm điểm cho đội thi:{" "}
-                <strong className="text-indigo-300 font-bold drop-shadow-[0_0_5px_rgba(165,180,252,0.5)]">
+                <strong className="text-cyan-300 font-bold drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]">
                   "{lastGradedTeamName}"
                 </strong>
               </p>
@@ -330,7 +330,7 @@ export default function JudgeDashboard() {
           </div>
           <button
             onClick={() => navigate(`/judge/score/${lastGradedTeamId}?roundId=${selectedRoundId}`)}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-6 py-3 rounded-lg shadow-[0_0_15px_rgba(99,102,241,0.4)] hover:shadow-[0_0_25px_rgba(99,102,241,0.6)] transition-all uppercase tracking-wider shrink-0 relative z-10"
+            className="bg-cyan-500 hover:bg-cyan-500 text-white font-bold text-xs px-6 py-3 rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.4)] hover:shadow-[0_0_25px_rgba(6,182,212,0.6)] transition-all uppercase tracking-wider shrink-0 relative z-10"
           >
             Vào Bàn Chấm Điểm
           </button>
@@ -346,7 +346,7 @@ export default function JudgeDashboard() {
           </h3>
           <button
             onClick={() => navigate("/judge/projects")}
-            className="text-indigo-400 hover:text-indigo-300 font-bold text-[10px] uppercase tracking-wider transition-colors drop-shadow-[0_0_5px_rgba(99,102,241,0.3)]"
+            className="text-cyan-400 hover:text-cyan-300 font-bold text-[10px] uppercase tracking-wider transition-colors drop-shadow-[0_0_5px_rgba(6,182,212,0.3)]"
           >
             Xem tất cả dự án &rarr;
           </button>
@@ -393,7 +393,7 @@ export default function JudgeDashboard() {
 
                 <button
                   onClick={() => navigate(`/judge/activity/${c.teamId}`)}
-                  className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-300 hover:text-white border border-indigo-500/30 hover:border-indigo-400 hover:bg-indigo-500/20 bg-indigo-500/10 px-4 py-2 rounded-lg transition-all uppercase tracking-wider shrink-0 shadow-[0_0_10px_rgba(99,102,241,0.1)]"
+                  className="flex items-center gap-1.5 text-[10px] font-bold text-cyan-300 hover:text-white border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/20 bg-cyan-500/10 px-4 py-2 rounded-lg transition-all uppercase tracking-wider shrink-0 shadow-[0_0_10px_rgba(6,182,212,0.1)]"
                 >
                   <span>Hoạt động</span>
                   <ArrowRight size={12} />

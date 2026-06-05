@@ -144,7 +144,7 @@ export default function JudgeProjects() {
             <select
               value={selectedEventId}
               onChange={(e) => setSelectedEventId(e.target.value)}
-              className="bg-slate-800/80 border border-white/10 rounded-lg text-white text-xs px-3 py-1.5 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 focus:outline-none w-56 font-bold shadow-inner"
+              className="bg-slate-800/80 border border-white/10 rounded-lg text-white text-xs px-3 py-1.5 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 focus:outline-none w-56 font-bold shadow-inner"
             >
               {events.map((e: any) => (
                 <option key={e._id} value={e._id} className="bg-slate-800 text-white">
@@ -161,7 +161,7 @@ export default function JudgeProjects() {
             <select
               value={selectedRoundId}
               onChange={(e) => setSelectedRoundId(e.target.value)}
-              className="bg-slate-800/80 border border-white/10 rounded-lg text-white text-xs px-3 py-1.5 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 focus:outline-none w-56 font-bold shadow-inner"
+              className="bg-slate-800/80 border border-white/10 rounded-lg text-white text-xs px-3 py-1.5 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 focus:outline-none w-56 font-bold shadow-inner"
             >
               {rounds.map((r: any) => (
                 <option key={r._id} value={r._id} className="bg-slate-800 text-white">
@@ -176,7 +176,7 @@ export default function JudgeProjects() {
         {/* Filter Tab buttons & Search */}
         <div className="flex flex-col sm:flex-row gap-4 items-center w-full md:w-auto">
           <div className="relative w-full sm:w-64">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-cyan-400">
               <Search size={14} />
             </span>
             <input
@@ -184,7 +184,7 @@ export default function JudgeProjects() {
               placeholder="Tìm kiếm dự án, đội..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-slate-800/80 border border-white/10 rounded-full text-xs pl-9 pr-4 py-2 w-full text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 shadow-inner"
+              className="bg-slate-800/80 border border-white/10 rounded-full text-xs pl-9 pr-4 py-2 w-full text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 shadow-inner"
             />
           </div>
 
@@ -193,7 +193,7 @@ export default function JudgeProjects() {
               onClick={() => setStatusFilter("all")}
               className={`px-3 py-1 text-[10px] font-bold rounded uppercase transition-all ${
                 statusFilter === "all"
-                  ? "bg-indigo-600 text-white shadow-[0_0_10px_rgba(99,102,241,0.4)]"
+                  ? "bg-cyan-500 text-white shadow-[0_0_10px_rgba(6,182,212,0.4)]"
                   : "text-slate-500 hover:text-slate-300"
               }`}
             >
@@ -247,12 +247,12 @@ export default function JudgeProjects() {
                   return (
                     <tr
                       key={team._id}
-                      className="hover:bg-indigo-900/20 transition-colors"
+                      className="hover:bg-cyan-950/20 transition-colors"
                     >
                       {/* Column 1: Team Info */}
                       <td className="px-6 py-5 whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-extrabold font-mono shadow-[0_0_10px_rgba(99,102,241,0.2)]">
+                          <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-extrabold font-mono shadow-[0_0_10px_rgba(6,182,212,0.2)]">
                             {team.name.charAt(0)}
                           </div>
                           <div>
@@ -287,7 +287,7 @@ export default function JudgeProjects() {
                             {scoreObj?.totalWeightedScore}/10)
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider shadow-[0_0_10px_rgba(99,102,241,0.1)]">
+                          <span className="inline-flex items-center gap-1 bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider shadow-[0_0_10px_rgba(6,182,212,0.1)]">
                             Chờ chấm
                           </span>
                         )}
@@ -297,10 +297,10 @@ export default function JudgeProjects() {
                       <td className="px-6 py-5 whitespace-nowrap text-right">
                         <button
                           onClick={() => navigate(`/judge/score/${team._id}?roundId=${selectedRoundId}`)}
-                          className={`inline-flex items-center gap-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(99,102,241,0.2)] ${
+                          className={`inline-flex items-center gap-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(6,182,212,0.2)] ${
                             isGraded
                               ? "bg-slate-800 border border-white/10 text-slate-300 hover:bg-slate-700 hover:text-white"
-                              : "bg-indigo-600 hover:bg-indigo-500 text-white hover:shadow-[0_0_15px_rgba(99,102,241,0.5)]"
+                              : "bg-cyan-500 hover:bg-cyan-500 text-white hover:shadow-[0_0_15px_rgba(6,182,212,0.5)]"
                           }`}
                         >
                           <span>{isGraded ? "Xem & Sửa" : "Bắt đầu chấm"}</span>

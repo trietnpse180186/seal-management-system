@@ -75,7 +75,7 @@ export default function TracksTab({
       <div className="glass p-6 rounded-2xl flex flex-col justify-between">
         <div>
           <h3 className="text-md font-bold text-white mb-4 flex items-center gap-1.5 font-mono">
-            <FolderKanban size={16} className="text-indigo-400" />
+            <FolderKanban size={16} className="text-cyan-400" />
             <span>Các bảng đấu (Tracks)</span>
           </h3>
           <div className="space-y-2 mb-6 max-h-[300px] overflow-y-auto pr-1">
@@ -98,7 +98,7 @@ export default function TracksTab({
                 }}
                 className={`w-full text-left p-3 rounded-xl border text-xs flex justify-between items-center transition-all ${
                   selectedTrack?._id === t._id
-                    ? "bg-indigo-600/10 border-indigo-500/50 text-white"
+                    ? "bg-cyan-500/10 border-cyan-500/50 text-white"
                     : "border-slate-800/80 bg-slate-900/10 hover:border-slate-700 text-slate-400"
                 }`}
               >
@@ -132,7 +132,7 @@ export default function TracksTab({
             required
             value={trackRoundId}
             onChange={(e) => setTrackRoundId(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-900 border border-slate-850 text-slate-200 focus:outline-none focus:border-indigo-500"
+            className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-900 border border-slate-850 text-slate-200 focus:outline-none focus:border-cyan-500"
           >
             <option value="">-- Chọn Vòng thi --</option>
             {rounds.map((r: any) => (
@@ -158,7 +158,7 @@ export default function TracksTab({
           />
           <button
             type="submit"
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2 rounded-lg cursor-pointer font-mono"
+            className="w-full bg-cyan-500 hover:bg-cyan-500 text-white text-xs font-semibold py-2 rounded-lg cursor-pointer font-mono"
           >
             + Thêm Bảng đấu
           </button>
@@ -170,7 +170,7 @@ export default function TracksTab({
         {/* Exam Upload / Attachments */}
         <div className="glass p-6 rounded-2xl">
           <h3 className="text-md font-bold text-white mb-4 flex items-center gap-1.5 font-mono">
-            <BookOpen size={16} className="text-indigo-400" />
+            <BookOpen size={16} className="text-cyan-400" />
             <span>Đề bài & Tài liệu đính kèm</span>
           </h3>
 
@@ -210,7 +210,7 @@ export default function TracksTab({
 
             <button
               type="submit"
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2 rounded-lg cursor-pointer font-mono"
+              className="w-full bg-cyan-500 hover:bg-cyan-500 text-white text-xs font-bold py-2 rounded-lg cursor-pointer font-mono"
             >
               Tải Lên Tài Liệu
             </button>
@@ -221,7 +221,7 @@ export default function TracksTab({
         {selectedTrack ? (
           <div className="glass p-6 rounded-2xl space-y-4">
             <h3 className="text-md font-bold text-white flex items-center gap-1.5 font-mono border-b border-slate-800/80 pb-3">
-              <Users size={16} className="text-indigo-400" />
+              <Users size={16} className="text-cyan-400" />
               <span>Giám khảo Bảng đấu ({selectedTrack.name})</span>
             </h3>
 
@@ -278,11 +278,11 @@ export default function TracksTab({
                     placeholder="giamkhao@domain.com"
                     value={judgeEmail}
                     onChange={(e) => setJudgeEmail(e.target.value)}
-                    className="flex-1 px-3 py-2.5 rounded-xl text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200 focus:outline-none focus:border-indigo-500"
+                    className="flex-1 px-3 py-2.5 rounded-xl text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200 focus:outline-none focus:border-cyan-500"
                   />
                   <button
                     type="submit"
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer font-mono whitespace-nowrap"
+                    className="bg-cyan-500 hover:bg-cyan-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer font-mono whitespace-nowrap"
                   >
                     + Thêm
                   </button>

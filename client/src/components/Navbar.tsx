@@ -129,7 +129,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
 
   return (
     <nav className="glass-nav sticky top-0 z-50 w-full px-6 py-4">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
+      <div className="w-full flex items-center justify-between">
         {/* Brand Logo */}
         <div className="flex-1 flex justify-start">
           <Link to="/" className="flex items-center gap-2 group">

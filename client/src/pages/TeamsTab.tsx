@@ -21,7 +21,7 @@ export default function TeamsTab({
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-3 border-b border-slate-800">
         <div>
           <h3 className="text-md font-bold text-white flex items-center gap-1.5 font-mono">
-            <Users size={18} className="text-indigo-400" />
+            <Users size={18} className="text-cyan-400" />
             <span>Đội thi & Thí sinh ({teamsList.length} đội)</span>
           </h3>
           <p className="text-[10px] text-slate-400 font-mono mt-0.5">
@@ -45,7 +45,7 @@ export default function TeamsTab({
               teamsList.some(
                 (t) => t.status === "confirmed" && !t.trackId,
               )
-                ? "bg-indigo-600 hover:bg-indigo-500 cursor-pointer shadow-lg shadow-indigo-600/25"
+                ? "bg-cyan-500 hover:bg-cyan-500 cursor-pointer shadow-lg shadow-cyan-500/25"
                 : "bg-slate-800/80 text-slate-500 cursor-not-allowed border border-slate-700/50"
             }`}
           >
@@ -88,7 +88,7 @@ export default function TeamsTab({
                 >
                   <div className="flex justify-between items-start">
                     <div>
-                      <span className="text-[10px] font-bold text-indigo-400 font-mono">
+                      <span className="text-[10px] font-bold text-cyan-400 font-mono">
                         ĐỘI
                       </span>
                       <h5 className="font-bold text-slate-200 text-sm">
@@ -123,7 +123,7 @@ export default function TeamsTab({
                           href={team.repository.repoUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-indigo-400 hover:underline"
+                          className="text-cyan-400 hover:underline"
                         >
                           {team.repository.repoName}
                         </a>
@@ -151,7 +151,7 @@ export default function TeamsTab({
                             {m.userId?.studentId && `(${m.userId.studentId}) `}
                             {m.userId?.university && `- ${m.userId.university} `}
                             {m.role === "leader" && (
-                              <span className="text-[9px] text-indigo-400 font-mono font-bold">
+                              <span className="text-[9px] text-cyan-400 font-mono font-bold">
                                 (Trưởng nhóm)
                               </span>
                             )}
@@ -168,7 +168,7 @@ export default function TeamsTab({
                   {/* Assign Track controls */}
                   {!team.trackId && (
                     <div className="border-t border-slate-800/80 pt-2 flex flex-col gap-1.5">
-                      <p className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider font-mono">
+                      <p className="text-[9px] font-bold text-cyan-400 uppercase tracking-wider font-mono">
                         Phân chia vào bảng đấu:
                       </p>
                       <div className="flex gap-2">
@@ -177,7 +177,7 @@ export default function TeamsTab({
                             handleAssignTrack(team._id, "random")
                           }
                           disabled={loading || tracks.length === 0}
-                          className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-[10px] text-white font-bold py-1.5 px-2 rounded-lg font-mono transition-all flex items-center justify-center gap-1 cursor-pointer disabled:cursor-not-allowed border border-indigo-500/20"
+                          className="flex-1 bg-cyan-500 hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-slate-500 text-[10px] text-white font-bold py-1.5 px-2 rounded-lg font-mono transition-all flex items-center justify-center gap-1 cursor-pointer disabled:cursor-not-allowed border border-cyan-500/20"
                         >
                           🎲 Phân ngẫu nhiên
                         </button>
@@ -193,7 +193,7 @@ export default function TeamsTab({
                               }
                             }}
                             disabled={loading}
-                            className="flex-1 bg-slate-900 border border-slate-700 text-slate-300 text-[10px] font-bold py-1 px-2 rounded-lg font-mono focus:outline-none focus:border-indigo-500"
+                            className="flex-1 bg-slate-900 border border-slate-700 text-slate-300 text-[10px] font-bold py-1 px-2 rounded-lg font-mono focus:outline-none focus:border-cyan-500"
                             defaultValue=""
                           >
                             <option value="" disabled>

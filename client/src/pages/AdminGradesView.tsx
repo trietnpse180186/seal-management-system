@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { 
-  Search, 
-  Trophy, 
-  Users, 
-  Award, 
-  Lock, 
-  ShieldAlert, 
-  BookOpen, 
+import {
+  Search,
+  Trophy,
+  Users,
+  Award,
+  Lock,
+  BookOpen,
   RefreshCw,
   ExternalLink,
   MessageSquare
@@ -106,14 +105,14 @@ export default function AdminGradesView() {
         const fetchedRounds = res.data.rounds || [];
         setTracks(fetchedTracks);
         setRounds(fetchedRounds);
-        
+
         const uniqueNames = Array.from(new Set(fetchedRounds.map((r: any) => r.name))) as string[];
         if (uniqueNames.length > 0) {
           setSelectedRoundName(uniqueNames[0]);
         } else {
           setSelectedRoundName('');
         }
-        
+
         if (fetchedTracks.length > 0) {
           setSelectedTrackId(fetchedTracks[0]._id);
         } else {
@@ -201,7 +200,7 @@ export default function AdminGradesView() {
 
 
 
-  const filteredTeams = teams.filter(t => 
+  const filteredTeams = teams.filter(t =>
     t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (t.topicSubmission?.title && t.topicSubmission.title.toLowerCase().includes(searchQuery.toLowerCase()))
   );
@@ -216,9 +215,6 @@ export default function AdminGradesView() {
     <div className="max-w-7xl mx-auto px-6 py-10 space-y-8 animate-fadeIn">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="bg-gradient-premium p-3 rounded-2xl text-white shadow-lg shadow-indigo-500/20">
-          <ShieldAlert size={28} />
-        </div>
         <div>
           <h1 className="text-3xl font-extrabold text-white">
             Chi tiết Điểm số (Ban tổ chức)
@@ -238,7 +234,7 @@ export default function AdminGradesView() {
           <select
             value={selectedEventId}
             onChange={(e) => setSelectedEventId(e.target.value)}
-            className="bg-slate-950 border border-slate-800 rounded-lg text-slate-200 text-xs px-3 py-2 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none w-56 font-bold"
+            className="bg-slate-950 border border-slate-800 rounded-lg text-slate-200 text-xs px-3 py-2 focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 focus:outline-none w-56 font-bold"
           >
             {events.map((e: any) => (
               <option key={e._id} value={e._id}>
@@ -255,7 +251,7 @@ export default function AdminGradesView() {
           <select
             value={selectedRoundName}
             onChange={(e) => setSelectedRoundName(e.target.value)}
-            className="bg-slate-950 border border-slate-800 rounded-lg text-slate-200 text-xs px-3 py-2 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none w-56 font-bold"
+            className="bg-slate-950 border border-slate-800 rounded-lg text-slate-200 text-xs px-3 py-2 focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 focus:outline-none w-56 font-bold"
           >
             {Array.from(new Set(rounds.map((r: any) => r.name))).map((name: any) => (
               <option key={name} value={name}>
@@ -273,7 +269,7 @@ export default function AdminGradesView() {
           <select
             value={selectedTrackId}
             onChange={(e) => setSelectedTrackId(e.target.value)}
-            className="bg-slate-950 border border-slate-800 rounded-lg text-slate-200 text-xs px-3 py-2 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none w-64 font-bold"
+            className="bg-slate-950 border border-slate-800 rounded-lg text-slate-200 text-xs px-3 py-2 focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 focus:outline-none w-64 font-bold"
           >
             {filteredTracksForDropdown.map((t: any) => (
               <option key={t._id} value={t._id}>
@@ -287,12 +283,12 @@ export default function AdminGradesView() {
 
       {/* Main 2-column Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
+
         {/* Left Column: Teams Sidebar */}
         <div className="lg:col-span-4 space-y-4">
           <div className="glass p-5 rounded-2xl space-y-4">
             <h2 className="text-sm font-bold text-slate-200 flex items-center gap-1.5 border-b border-slate-800 pb-3">
-              <Users size={16} className="text-indigo-400" />
+              <Users size={16} className="text-cyan-400" />
               <span>Danh sách Đội thi ({filteredTeams.length})</span>
             </h2>
 
@@ -305,7 +301,7 @@ export default function AdminGradesView() {
                 placeholder="Tìm kiếm đội thi..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-slate-950/80 border border-slate-800 rounded-xl text-xs pl-9 pr-4 py-2 w-full text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                className="bg-slate-950/80 border border-slate-800 rounded-xl text-xs pl-9 pr-4 py-2 w-full text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500"
               />
             </div>
 
@@ -317,15 +313,13 @@ export default function AdminGradesView() {
                   <button
                     key={t._id}
                     onClick={() => setSelectedTeamId(t._id)}
-                    className={`w-full text-left p-3.5 rounded-xl border transition-all text-xs flex items-center gap-3 ${
-                      selectedTeamId === t._id
-                        ? 'bg-indigo-600/20 border-indigo-500/60 shadow-md text-white'
+                    className={`w-full text-left p-3.5 rounded-xl border transition-all text-xs flex items-center gap-3 ${selectedTeamId === t._id
+                        ? 'bg-cyan-500/20 border-cyan-500/60 shadow-md text-white'
                         : 'bg-slate-900/30 border-slate-800/80 text-slate-400 hover:bg-slate-900/50 hover:text-slate-200'
-                    }`}
+                      }`}
                   >
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold font-mono ${
-                      selectedTeamId === t._id ? 'bg-indigo-500 text-white' : 'bg-slate-850 text-slate-400'
-                    }`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold font-mono ${selectedTeamId === t._id ? 'bg-cyan-500 text-white' : 'bg-slate-850 text-slate-400'
+                      }`}>
                       {t.name.charAt(0)}
                     </div>
                     <div className="truncate flex-1">
@@ -349,7 +343,7 @@ export default function AdminGradesView() {
         <div className="lg:col-span-8 space-y-6">
           {loadingGrades ? (
             <div className="glass p-12 text-center text-slate-400 flex flex-col items-center justify-center min-h-[400px]">
-              <RefreshCw size={32} className="animate-spin text-indigo-500 mb-3" />
+              <RefreshCw size={32} className="animate-spin text-cyan-500 mb-3" />
               <p className="text-xs">Đang tải chi tiết bảng điểm...</p>
             </div>
           ) : errorGrades ? (
@@ -358,12 +352,12 @@ export default function AdminGradesView() {
             </div>
           ) : gradingsData && gradingsData.team ? (
             <div className="space-y-6">
-              
+
               {/* Solution Summary */}
               <div className="glass p-6 rounded-3xl space-y-4">
                 <div className="flex justify-between items-start flex-wrap gap-4 border-b border-slate-800 pb-4">
                   <div>
-                    <span className="text-[9px] text-indigo-400 font-bold uppercase tracking-wider bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-md">
+                    <span className="text-[9px] text-cyan-400 font-bold uppercase tracking-wider bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-1 rounded-md">
                       Thông tin đề tài
                     </span>
                     <h2 className="text-2xl font-black text-white mt-2 uppercase">{gradingsData.team.name}</h2>
@@ -388,13 +382,13 @@ export default function AdminGradesView() {
                     <p className="text-xs text-slate-300 leading-relaxed font-sans">{gradingsData.team.topicSubmission.description}</p>
                   </div>
                 )}
-                
+
                 {/* Final calculated live average */}
-                <div className="flex items-center gap-3 bg-indigo-600/10 border border-indigo-500/25 p-4 rounded-xl">
-                  <Trophy className="text-indigo-400 shrink-0" size={24} />
+                <div className="flex items-center gap-3 bg-cyan-500/10 border border-cyan-500/25 p-4 rounded-xl">
+                  <Trophy className="text-cyan-400 shrink-0" size={24} />
                   <div>
                     <span className="text-xs font-semibold text-slate-300">Điểm trung bình chung cuộc: </span>
-                    <span className="text-lg font-black text-indigo-300 font-mono ml-1">
+                    <span className="text-lg font-black text-cyan-300 font-mono ml-1">
                       {calculateFinalAverage()} / 10.0đ
                     </span>
                     <span className="text-[10px] text-slate-400 block mt-0.5">
@@ -407,7 +401,7 @@ export default function AdminGradesView() {
               {/* Judges score breakdowns */}
               <div className="space-y-6">
                 <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-                  <Award size={18} className="text-indigo-400" />
+                  <Award size={18} className="text-cyan-400" />
                   <span>Chi tiết bảng điểm từ từng Giám khảo</span>
                 </h3>
 
@@ -419,13 +413,12 @@ export default function AdminGradesView() {
                         <button
                           key={g.score?._id || idx}
                           onClick={() => setActiveJudgeIndex(idx)}
-                          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-2 ${
-                            activeJudgeIndex === idx
-                              ? 'bg-indigo-600/20 border-indigo-500/60 text-white shadow-md'
+                          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-2 ${activeJudgeIndex === idx
+                              ? 'bg-cyan-500/20 border-cyan-500/60 text-white shadow-md'
                               : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-900/70'
-                          }`}
+                            }`}
                         >
-                          <div className={`w-2 h-2 rounded-full ${activeJudgeIndex === idx ? 'bg-indigo-400 animate-pulse' : 'bg-slate-600'}`} />
+                          <div className={`w-2 h-2 rounded-full ${activeJudgeIndex === idx ? 'bg-cyan-400 animate-pulse' : 'bg-slate-600'}`} />
                           <span>{g.judge?.fullName || `Giám khảo ${idx + 1}`}</span>
                         </button>
                       ))}
@@ -435,8 +428,8 @@ export default function AdminGradesView() {
                     {gradingsData.gradings[activeJudgeIndex] && (() => {
                       const g = gradingsData.gradings[activeJudgeIndex];
                       return (
-                        <div key={g.score?._id || activeJudgeIndex} className="glass p-6 rounded-3xl space-y-4 border-l-4 border-l-indigo-500 animate-fadeIn">
-                          
+                        <div key={g.score?._id || activeJudgeIndex} className="glass p-6 rounded-3xl space-y-4 border-l-4 border-l-cyan-500 animate-fadeIn">
+
                           {/* Judge Header */}
                           <div className="flex justify-between items-start gap-4 border-b border-slate-800 pb-3 flex-wrap">
                             <div>
@@ -449,7 +442,7 @@ export default function AdminGradesView() {
                             </div>
                             <div className="text-right shrink-0">
                               <span className="text-xs text-slate-450 block font-mono">Điểm trung bình:</span>
-                              <span className="text-xl font-black text-indigo-400 font-mono">
+                              <span className="text-xl font-black text-cyan-400 font-mono">
                                 {g.score?.totalWeightedScore || 0}
                               </span>
                               <span className="text-slate-550 text-xs font-bold font-mono"> / 10đ</span>
@@ -472,7 +465,7 @@ export default function AdminGradesView() {
                                   const detail = g.details?.find((d: any) => d.criterionId === c._id);
                                   return (
                                     <tr key={c._id} className="hover:bg-slate-900/10">
-                                      <td className="p-3 font-mono font-bold text-indigo-400">{c.code}</td>
+                                      <td className="p-3 font-mono font-bold text-cyan-400">{c.code}</td>
                                       <td className="p-3">
                                         <p className="font-bold text-slate-200">{c.name}</p>
                                         {detail?.comment && (

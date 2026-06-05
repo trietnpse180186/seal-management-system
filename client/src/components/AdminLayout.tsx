@@ -3,20 +3,20 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { 
   LayoutDashboard, 
-  BookOpen, 
+  Settings2, 
+  Award, 
   Trophy, 
   LogOut, 
   Bell,
-  Award
+  ShieldAlert
 } from 'lucide-react';
 
-interface JudgeLayoutProps {
+interface AdminLayoutProps {
   user: any;
-  roles: any[];
   onLogout: () => void;
 }
 
-export default function JudgeLayout({ user, onLogout }: JudgeLayoutProps) {
+export default function AdminLayout({ user, onLogout }: AdminLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -83,21 +83,31 @@ export default function JudgeLayout({ user, onLogout }: JudgeLayoutProps) {
     }
   };
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => {
+    if (path === '/admin') {
+      return location.pathname === '/admin';
+    }
+    return location.pathname.startsWith(path);
+  };
 
   const navItems = [
     {
-      path: '/judge/dashboard',
+      path: '/admin',
       label: 'Bảng điều khiển',
       icon: LayoutDashboard
     },
     {
-      path: '/judge/projects',
-      label: 'Dự án cần chấm',
-      icon: BookOpen
+      path: '/admin/events',
+      label: 'Thiết lập sự kiện',
+      icon: Settings2
     },
     {
-      path: '/judge/leaderboard',
+      path: '/admin/grades',
+      label: 'Xem chi tiết điểm',
+      icon: Award
+    },
+    {
+      path: '/admin/leaderboard',
       label: 'Bảng xếp hạng',
       icon: Trophy
     }
@@ -116,20 +126,20 @@ export default function JudgeLayout({ user, onLogout }: JudgeLayoutProps) {
         <div className="p-6 border-b border-white/5 flex flex-col items-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-50"></div>
           <div className="w-16 h-16 bg-cyan-500/10 rounded-full border border-cyan-500/30 flex items-center justify-center text-cyan-400 mb-3 shadow-[0_0_15px_rgba(6,182,212,0.2)]">
-            <Award size={32} />
+            <ShieldAlert size={32} />
           </div>
-          <h2 className="font-extrabold text-white text-lg tracking-wider drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">SEAL Adjudicator</h2>
-          <p className="text-[10px] text-cyan-400 font-semibold uppercase tracking-widest mt-1">Hackathon Edition</p>
+          <h2 className="font-extrabold text-white text-lg tracking-wider drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">SEAL Admin</h2>
+          <p className="text-[10px] text-cyan-400 font-semibold uppercase tracking-widest mt-1">Coordinator Edition</p>
         </div>
 
         {/* User Quick Info */}
         <div className="px-6 py-4 border-b border-white/5 flex items-center gap-3 bg-slate-900/20">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-teal-600 text-white flex items-center justify-center font-bold text-sm shadow-[0_0_10px_rgba(6,182,212,0.4)]">
-            {user?.fullName?.charAt(0) || 'J'}
+            {user?.fullName?.charAt(0) || 'A'}
           </div>
           <div className="overflow-hidden">
-            <h4 className="text-xs font-bold text-white truncate">{user?.fullName || 'Judge Name'}</h4>
-            <p className="text-[9px] text-cyan-400 font-mono uppercase tracking-wider">Vai trò: Giám khảo</p>
+            <h4 className="text-xs font-bold text-white truncate">{user?.fullName || 'Admin Name'}</h4>
+            <p className="text-[9px] text-cyan-400 font-mono uppercase tracking-wider">Vai trò: Ban tổ chức</p>
           </div>
         </div>
 
@@ -178,7 +188,7 @@ export default function JudgeLayout({ user, onLogout }: JudgeLayoutProps) {
         {/* TopAppBar */}
         <header className="h-16 w-full px-8 bg-slate-950/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center z-10 sticky top-0 shadow-lg">
           <div className="flex items-center gap-3">
-            <span className="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-teal-400 text-sm tracking-widest uppercase drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]">
+            <span className="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-teal-400 text-sm tracking-widest uppercase drop-shadow-[0_0_8px_rgba(6,182,212,0.5)] font-mono">
               Hệ thống SEAL Hackathon
             </span>
           </div>
@@ -202,13 +212,13 @@ export default function JudgeLayout({ user, onLogout }: JudgeLayoutProps) {
               {showNotifications && (
                 <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-slate-900 border border-slate-700 rounded-xl shadow-[0_0_20px_rgba(0,0,0,0.5)] z-50">
                   <div className="flex justify-between items-center p-3 border-b border-slate-800 sticky top-0 bg-slate-900/95 backdrop-blur z-10">
-                    <h4 className="text-sm font-semibold text-white">
+                    <h4 className="text-sm font-semibold text-white font-mono">
                       Thông báo
                     </h4>
                     {unreadCount > 0 && (
                       <button
                         onClick={markAllAsRead}
-                        className="text-xs text-cyan-400 hover:text-cyan-300"
+                        className="text-xs text-cyan-400 hover:text-cyan-300 font-mono"
                       >
                         Đánh dấu đã đọc
                       </button>
@@ -216,7 +226,7 @@ export default function JudgeLayout({ user, onLogout }: JudgeLayoutProps) {
                   </div>
                   <div className="flex flex-col">
                     {notifications.length === 0 ? (
-                      <div className="p-4 text-center text-xs text-slate-500">
+                      <div className="p-4 text-center text-xs text-slate-500 font-mono">
                         Chưa có thông báo nào.
                       </div>
                     ) : (
@@ -249,8 +259,8 @@ export default function JudgeLayout({ user, onLogout }: JudgeLayoutProps) {
             </div>
 
             <div className="flex items-center gap-3 border-l border-white/10 pl-6">
-              <span className="text-xs font-bold text-slate-300">{user?.fullName}</span>
-              <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-cyan-400 font-bold text-xs shadow-sm">
+              <span className="text-xs font-bold text-slate-300 font-mono">{user?.fullName}</span>
+              <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-cyan-400 font-bold text-xs shadow-sm font-mono">
                 {user?.fullName?.charAt(0)}
               </div>
             </div>

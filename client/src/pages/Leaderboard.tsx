@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import {
   BarChart3,
-  Trophy,
   CheckSquare,
   Lock,
   RefreshCw,
@@ -32,7 +31,6 @@ export default function Leaderboard({
   const [isLive, setIsLive] = useState(false);
   const [lockedMessage, setLockedMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   // Detect if coordinator for selectedEvent
   const isCoordinator =
@@ -102,7 +100,6 @@ export default function Leaderboard({
         }
         setIsLive(false);
       }
-      setLastUpdated(new Date());
     } catch (err) {
       console.error(err);
       setStandings([]);
@@ -135,9 +132,6 @@ export default function Leaderboard({
       {/* Page header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
-          <div className="bg-cyan-950/50 p-3 rounded-2xl text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.15)] border border-cyan-500/20">
-            <Trophy size={28} />
-          </div>
           <div>
             <h1 className="text-3xl font-extrabold text-white">
               <span className="text-cyan-400 text-cyan-glow font-mono-tech">BẢNG XẾP HẠNG CHUNG CUỘC</span>
@@ -172,31 +166,6 @@ export default function Leaderboard({
           )}
         </div>
       </div>
-
-      {/* Coordinator info banner */}
-      {isCoordinator && (
-        <div className="bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 px-5 py-3.5 rounded-xl text-xs leading-relaxed font-mono">
-          <p className="font-bold text-cyan-400 mb-1">
-            🔒 Chế độ xem Điều phối viên
-          </p>
-          <p>
-            Bạn đang xem bảng xếp hạng{" "}
-            <span className="font-bold text-white">thời gian thực (LIVE)</span>{" "}
-            — điểm được tính trung bình từ tất cả giám khảo đã nộp điểm. Bảng
-            này chỉ hiển thị riêng với bạn. Thành viên đội thi chỉ thấy kết quả
-            sau khi bạn{" "}
-            <span className="font-bold text-white">
-              Khoá & Công bố Vòng thi
-            </span>
-            .
-          </p>
-          {lastUpdated && (
-            <p className="mt-1 text-cyan-400/70">
-              Cập nhật lần cuối: {lastUpdated.toLocaleTimeString("vi-VN")}
-            </p>
-          )}
-        </div>
-      )}
 
       {/* Selectors */}
       <div className="glass p-6 rounded-2xl flex flex-wrap gap-4 items-center border border-slate-800 hover:border-cyan-500/20 transition-all">

@@ -498,6 +498,13 @@ export default function AdminDashboard({ defaultTab = "admin" }: AdminDashboardP
       setMessage({ type: "error", text: "Vui lòng chọn Vòng thi cho Bảng đấu." });
       return;
     }
+
+    const selectedRound = rounds.find((r) => r._id === trackRoundId);
+    if (selectedRound && selectedRound.status === 'completed') {
+      setMessage({ type: "error", text: "Không thể tạo bảng đấu mới cho vòng thi đã kết thúc." });
+      return;
+    }
+
     setMessage({ type: "", text: "" });
     setLoading(true);
 

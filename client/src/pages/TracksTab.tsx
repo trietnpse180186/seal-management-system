@@ -118,8 +118,8 @@ export default function TracksTab({
           >
             <option value="">-- Chọn Vòng thi --</option>
             {rounds.map((r: any) => (
-              <option key={r._id} value={r._id}>
-                {r.name} (Vòng {r.order})
+              <option key={r._id} value={r._id} disabled={r.status === 'completed'}>
+                {r.name} (Vòng {r.order}){r.status === 'completed' ? ' - Đã kết thúc' : ''}
               </option>
             ))}
           </select>

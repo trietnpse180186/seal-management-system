@@ -92,6 +92,28 @@ router.post('/register', authenticateToken, async (req, res) => {
     });
     await leaderMember.save();
 
+    // Update/Create EventRole for the Leader to 'team-leader'
+    let leaderRoleRecord = await EventRole.findOne({
+      userId: req.user._id,
+      eventId,
+      status: 'active'
+    });
+
+    if (leaderRoleRecord) {
+      if (leaderRoleRecord.role === 'participant') {
+        leaderRoleRecord.role = 'team-leader';
+        await leaderRoleRecord.save();
+      }
+    } else {
+      const newLeaderRole = new EventRole({
+        userId: req.user._id,
+        eventId,
+        role: 'team-leader',
+        assignedBy: req.user._id
+      });
+      await newLeaderRole.save();
+    }
+
     // 5. Loop through and invite other members
     for (const memberData of membersList) {
       const { email, fullName, githubUsername, studentId, university } = memberData;
@@ -249,6 +271,31 @@ router.get('/confirm-invite', async (req, res) => {
 
     // Check if ALL team members are now confirmed
     const team = await Team.findById(member.teamId);
+
+    // Update/Create EventRole for the Member to 'team-member'
+    if (team) {
+      let memberRoleRecord = await EventRole.findOne({
+        userId: member.userId,
+        eventId: team.eventId,
+        status: 'active'
+      });
+
+      if (memberRoleRecord) {
+        if (memberRoleRecord.role === 'participant') {
+          memberRoleRecord.role = 'team-member';
+          await memberRoleRecord.save();
+        }
+      } else {
+        const newMemberRole = new EventRole({
+          userId: member.userId,
+          eventId: team.eventId,
+          role: 'team-member',
+          assignedBy: team.leaderId
+        });
+        await newMemberRole.save();
+      }
+    }
+
     const totalMembers = await TeamMember.find({ teamId: team._id });
     const pendingCount = totalMembers.filter(m => m.confirmStatus !== 'confirmed').length;
 
@@ -342,7 +389,62 @@ router.get('/confirm-invite', async (req, res) => {
 });
 
 /**
+ * @route   GET /api/teams/history
+ * @desc    Get previous teams the logged in user has participated in
+ * @access  Private
+ */
+router.get('/history', authenticateToken, async (req, res) => {
+  try {
+    const memberRecords = await TeamMember.find({
+      userId: req.user._id,
+      confirmStatus: 'confirmed'
+    });
+
+    if (!memberRecords || memberRecords.length === 0) {
+      return res.json([]);
+    }
+
+    const teamIds = memberRecords.map(r => r.teamId);
+
+    const teams = await Team.find({ _id: { $in: teamIds } })
+      .populate('eventId', 'name semester year status')
+      .lean();
+
+    const teamsWithMembers = [];
+
+    for (const team of teams) {
+      const allMembers = await TeamMember.find({ teamId: team._id })
+        .populate('userId', 'fullName email studentId githubUsername university')
+        .lean();
+
+      const otherMembers = allMembers
+        .filter(m => m.userId && m.userId._id.toString() !== req.user._id.toString())
+        .map(m => ({
+          email: m.userId.email || '',
+          fullName: m.userId.fullName || '',
+          githubUsername: m.userId.githubUsername || '',
+          studentId: m.userId.studentId || '',
+          university: m.userId.university || ''
+        }));
+
+      teamsWithMembers.push({
+        _id: team._id,
+        name: team.name,
+        event: team.eventId,
+        members: otherMembers
+      });
+    }
+
+    res.json(teamsWithMembers);
+  } catch (error) {
+    console.error('Fetch Team History Error:', error.message);
+    res.status(500).json({ message: 'Server error retrieving team history.' });
+  }
+});
+
+/**
  * @route   GET /api/teams/my-team
+
  * @desc    Get logged in user's team details
  * @access  Private
  */
@@ -623,6 +725,37 @@ router.put('/:teamId/assign-track', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Assign Track Error:', error.message);
     res.status(500).json({ message: 'Server error during track assignment.' });
+  }
+});
+
+/**
+ * @route   GET /api/teams/:teamId
+ * @desc    Get details of a single team by ID
+ * @access  Private
+ */
+router.get('/:teamId', authenticateToken, async (req, res) => {
+  try {
+    const team = await Team.findById(req.params.teamId)
+      .populate('eventId', 'name semester year status')
+      .populate('trackId', 'name description');
+      
+    if (!team) {
+      return res.status(404).json({ message: 'Không tìm thấy thông tin đội thi.' });
+    }
+
+    const members = await TeamMember.find({ teamId: team._id })
+      .populate('userId', 'fullName email studentId githubUsername avatarUrl');
+
+    const repo = await GithubRepository.findOne({ teamId: team._id });
+
+    res.json({
+      team,
+      members,
+      repository: repo
+    });
+  } catch (error) {
+    console.error('Fetch Single Team Error:', error.message);
+    res.status(500).json({ message: 'Server error retrieving team details.' });
   }
 });
 

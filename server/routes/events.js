@@ -152,6 +152,10 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'Round not found.' });
     }
 
+    if (round.status === 'completed') {
+      return res.status(400).json({ message: 'Không thể tạo bảng đấu mới cho vòng thi đã kết thúc.' });
+    }
+
     // Auth check: System Admin or has coordinator role
     if (!req.user.isSystemAdmin) {
       const coordinatorRole = await EventRole.findOne({

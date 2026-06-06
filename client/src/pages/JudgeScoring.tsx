@@ -50,21 +50,23 @@ export default function JudgeScoring() {
   const currentRound = rounds.find((r: any) => r._id === selectedRoundId);
   const isRoundLocked = currentRound?.status === 'completed';
 
-  // Fetch specific team info directly
+  // Fetch specific team info & set event context
   useEffect(() => {
     if (!teamId) return;
     axios.get(`http://localhost:5000/api/teams/${teamId}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then((res: any) => {
-        setTeam(res.data);
-        if (res.data.eventId) {
-          // If populated eventId is an object
-          const evId = res.data.eventId._id || res.data.eventId;
-          setSelectedEventId(evId);
+        const teamData = res.data.team;
+        if (teamData) {
+          setTeam(teamData);
+          const evId = teamData.eventId?._id || teamData.eventId;
+          if (evId) {
+            setSelectedEventId(evId);
+          }
         }
       })
-      .catch((err: any) => console.error('Error fetching team info:', err));
+      .catch((err: any) => console.error('Error fetching team details:', err));
   }, [teamId, token]);
 
   // Fetch event details (rounds, tracks)

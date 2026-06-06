@@ -522,6 +522,13 @@ export default function AdminDashboard({
       });
       return;
     }
+
+    const selectedRound = rounds.find((r) => r._id === trackRoundId);
+    if (selectedRound && selectedRound.status === 'completed') {
+      setMessage({ type: "error", text: "Không thể tạo bảng đấu mới cho vòng thi đã kết thúc." });
+      return;
+    }
+
     setMessage({ type: "", text: "" });
     setLoading(true);
 
@@ -1198,7 +1205,6 @@ export default function AdminDashboard({
             quyền ban tổ chức.
           </p>
         </div>
-
         {/* Quick select event */}
         {events.length > 0 && (
           <div className="flex items-center gap-2">
@@ -1302,7 +1308,6 @@ export default function AdminDashboard({
           )}
         </div>
       )}
-
       {/* TAB NAVIGATION BAR */}
       {defaultTab === "events" && (
         <div className="flex flex-wrap gap-3 border-b border-slate-800/80 pb-3">

@@ -230,39 +230,62 @@ export default function RoundsTab({
           <p className="text-[10px] font-bold text-slate-300 uppercase font-mono">
             Tạo thêm vòng thi mới:
           </p>
-          <input
-            type="text"
-            required
-            placeholder="Tên vòng (e.g. Bán kết)"
-            value={roundName}
-            onChange={(e) => setRoundName(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg text-xs font-mono"
-          />
-          <div className="grid grid-cols-2 gap-2">
+
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
+              Tên vòng thi
+            </label>
             <input
-              type="number"
+              type="text"
               required
-              placeholder="Thứ tự (e.g. 2)"
-              value={roundOrder}
-              onChange={(e) => setRoundOrder(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-xs font-mono"
-            />
-            <input
-              type="number"
-              required
-              placeholder="Lấy Top N (e.g. 5)"
-              value={roundLimit}
-              onChange={(e) => setRoundLimit(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-xs font-mono"
+              placeholder="Tên vòng (e.g. Bán kết)"
+              value={roundName}
+              onChange={(e) => setRoundName(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
             />
           </div>
-          <input
-            type="datetime-local"
-            required
-            value={roundDeadline}
-            onChange={(e) => setRoundDeadline(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg text-xs font-mono"
-          />
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
+                Thứ tự vòng
+              </label>
+              <input
+                type="number"
+                required
+                placeholder="Thứ tự (e.g. 2)"
+                value={roundOrder}
+                onChange={(e) => setRoundOrder(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
+                Lấy Top N đội đi tiếp
+              </label>
+              <input
+                type="number"
+                required
+                placeholder="Lấy Top N (e.g. 5)"
+                value={roundLimit}
+                onChange={(e) => setRoundLimit(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
+              Thời hạn nộp bài (Deadline)
+            </label>
+            <input
+              type="datetime-local"
+              required
+              value={roundDeadline}
+              onChange={(e) => setRoundDeadline(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
+            />
+          </div>
 
           {/* Rubric Configuration */}
           <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80 space-y-2">
@@ -295,18 +318,23 @@ export default function RoundsTab({
             </div>
 
             {rubricTypeOption === "existing" && (
-              <select
-                value={selectedSourceRubricId}
-                onChange={(e) => setSelectedSourceRubricId(e.target.value)}
-                className="w-full px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] text-slate-300 font-mono"
-              >
-                <option value="">-- Chọn Rubric cũ --</option>
-                {existingRubrics.map((r: any) => (
-                  <option key={r._id} value={r._id}>
-                    {r.name} ({r.eventId?.name || "Sự kiện cũ"})
-                  </option>
-                ))}
-              </select>
+              <div>
+                <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 font-mono">
+                  Chọn Rubric cũ để sao chép
+                </label>
+                <select
+                  value={selectedSourceRubricId}
+                  onChange={(e) => setSelectedSourceRubricId(e.target.value)}
+                  className="w-full px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] text-slate-300 font-mono"
+                >
+                  <option value="">-- Chọn Rubric cũ --</option>
+                  {existingRubrics.map((r: any) => (
+                    <option key={r._id} value={r._id}>
+                      {r.name} ({r.eventId?.name || "Sự kiện cũ"})
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
           </div>
 
@@ -661,50 +689,75 @@ export default function RoundsTab({
                     </p>
 
                     <div className="grid grid-cols-3 gap-2">
-                      <input
-                        type="text"
-                        required
-                        placeholder="MÃ (e.g. CODE)"
-                        value={critCode}
-                        onChange={(e) => setCritCode(e.target.value)}
-                        className="w-full px-2 py-1.5 rounded text-xs bg-slate-900 border border-slate-800 text-slate-200"
-                      />
-                      <input
-                        type="text"
-                        required
-                        placeholder="Tên tiêu chí (e.g. Clean Code)"
-                        value={critName}
-                        onChange={(e) => setCritName(e.target.value)}
-                        className="w-full px-2 py-1.5 rounded text-xs col-span-2 bg-slate-900 border border-slate-800 text-slate-200"
-                      />
+                      <div>
+                        <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-0.5 font-mono">
+                          Mã tiêu chí
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="MÃ (e.g. CODE)"
+                          value={critCode}
+                          onChange={(e) => setCritCode(e.target.value)}
+                          className="w-full px-2 py-1.5 rounded text-xs bg-slate-900 border border-slate-800 text-slate-200"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-0.5 font-mono">
+                          Tên tiêu chí
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Tên tiêu chí (e.g. Clean Code)"
+                          value={critName}
+                          onChange={(e) => setCritName(e.target.value)}
+                          className="w-full px-2 py-1.5 rounded text-xs bg-slate-900 border border-slate-800 text-slate-200"
+                        />
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="number"
-                        required
-                        placeholder="Trọng số %"
-                        value={critWeight}
-                        onChange={(e) => setCritWeight(e.target.value)}
-                        className="w-full px-2 py-1.5 rounded text-xs bg-slate-900 border border-slate-800 text-slate-200"
-                      />
-                      <input
-                        type="number"
-                        required
-                        placeholder="Max Điểm"
-                        value={critMaxScore}
-                        onChange={(e) => setCritMaxScore(e.target.value)}
-                        className="w-full px-2 py-1.5 rounded text-xs bg-slate-900 border border-slate-800 text-slate-200"
-                      />
+                      <div>
+                        <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-0.5 font-mono">
+                          Trọng số %
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          placeholder="Trọng số %"
+                          value={critWeight}
+                          onChange={(e) => setCritWeight(e.target.value)}
+                          className="w-full px-2 py-1.5 rounded text-xs bg-slate-900 border border-slate-800 text-slate-200"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-0.5 font-mono">
+                          Max Điểm
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          placeholder="Max Điểm"
+                          value={critMaxScore}
+                          onChange={(e) => setCritMaxScore(e.target.value)}
+                          className="w-full px-2 py-1.5 rounded text-xs bg-slate-900 border border-slate-800 text-slate-200"
+                        />
+                      </div>
                     </div>
 
-                    <input
-                      type="text"
-                      placeholder="Mô tả tiêu chí"
-                      value={critDesc}
-                      onChange={(e) => setCritDesc(e.target.value)}
-                      className="w-full px-3 py-1.5 rounded text-xs bg-slate-900 border border-slate-800 text-slate-200"
-                    />
+                    <div>
+                      <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-0.5 font-mono">
+                        Mô tả tiêu chí
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Mô tả tiêu chí"
+                        value={critDesc}
+                        onChange={(e) => setCritDesc(e.target.value)}
+                        className="w-full px-3 py-1.5 rounded text-xs bg-slate-900 border border-slate-800 text-slate-200"
+                      />
+                    </div>
 
                     {/* Grading Levels Management in Form */}
                     <div className="bg-slate-950/40 p-3 rounded-lg border border-slate-900 space-y-2">
@@ -740,45 +793,65 @@ export default function RoundsTab({
 
                       {/* Form inputs for new level */}
                       <div className="grid grid-cols-3 gap-2">
-                        <input
-                          type="text"
-                          placeholder="Nhãn (Tốt)"
-                          value={levelLabel}
-                          onChange={(e) => setLevelLabel(e.target.value)}
-                          className="w-full px-2 py-1 rounded text-[10px] bg-slate-900 border border-slate-800 text-slate-200"
-                        />
-                        <input
-                          type="number"
-                          step="0.1"
-                          placeholder="Điểm min (7.0)"
-                          value={levelMinScore}
-                          onChange={(e) => setLevelMinScore(e.target.value)}
-                          className="w-full px-2 py-1 rounded text-[10px] bg-slate-900 border border-slate-800 text-slate-200"
-                        />
-                        <input
-                          type="number"
-                          step="0.1"
-                          placeholder="Điểm max (8.5)"
-                          value={levelMaxScore}
-                          onChange={(e) => setLevelMaxScore(e.target.value)}
-                          className="w-full px-2 py-1 rounded text-[10px] bg-slate-900 border border-slate-800 text-slate-200"
-                        />
+                        <div>
+                          <label className="block text-[8px] font-bold uppercase tracking-wider text-slate-500 mb-0.5 font-mono">
+                            Nhãn
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Nhãn (Tốt)"
+                            value={levelLabel}
+                            onChange={(e) => setLevelLabel(e.target.value)}
+                            className="w-full px-2 py-1 rounded text-[10px] bg-slate-900 border border-slate-800 text-slate-200"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[8px] font-bold uppercase tracking-wider text-slate-500 mb-0.5 font-mono">
+                            Điểm min
+                          </label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            placeholder="Điểm min (7.0)"
+                            value={levelMinScore}
+                            onChange={(e) => setLevelMinScore(e.target.value)}
+                            className="w-full px-2 py-1 rounded text-[10px] bg-slate-900 border border-slate-800 text-slate-200"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[8px] font-bold uppercase tracking-wider text-slate-500 mb-0.5 font-mono">
+                            Điểm max
+                          </label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            placeholder="Điểm max (8.5)"
+                            value={levelMaxScore}
+                            onChange={(e) => setLevelMaxScore(e.target.value)}
+                            className="w-full px-2 py-1 rounded text-[10px] bg-slate-900 border border-slate-800 text-slate-200"
+                          />
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="Mô tả chi tiết mức chấm này..."
-                          value={levelDesc}
-                          onChange={(e) => setLevelDesc(e.target.value)}
-                          className="flex-1 px-2 py-1 rounded text-[10px] bg-slate-900 border border-slate-800 text-slate-200"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleAddGradingLevel}
-                          className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1 rounded text-[10px] font-bold cursor-pointer"
-                        >
-                          + Thêm
-                        </button>
+                      <div>
+                        <label className="block text-[8px] font-bold uppercase tracking-wider text-slate-500 mb-0.5 font-mono">
+                          Mô tả chi tiết mức chấm
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Mô tả chi tiết mức chấm này..."
+                            value={levelDesc}
+                            onChange={(e) => setLevelDesc(e.target.value)}
+                            className="flex-1 px-2 py-1 rounded text-[10px] bg-slate-900 border border-slate-800 text-slate-200"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddGradingLevel}
+                            className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1 rounded text-[10px] font-bold cursor-pointer whitespace-nowrap"
+                          >
+                            + Thêm
+                          </button>
+                        </div>
                       </div>
                     </div>
 
@@ -809,14 +882,19 @@ export default function RoundsTab({
               <p className="text-xs text-slate-400">
                 Chưa khởi tạo Rubric cho Vòng Đấu này.
               </p>
-              <input
-                type="text"
-                required
-                placeholder="Tên Rubric (e.g. Rubric Đánh giá Vòng 1)"
-                value={rubricName}
-                onChange={(e) => setRubricName(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg text-xs bg-slate-900 border border-slate-800 text-slate-200"
-              />
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  Tên Rubric mới
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Tên Rubric (e.g. Rubric Đánh giá Vòng 1)"
+                  value={rubricName}
+                  onChange={(e) => setRubricName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg text-xs bg-slate-900 border border-slate-800 text-slate-200"
+                />
+              </div>
               <button
                 type="submit"
                 className="w-full bg-cyan-500 hover:bg-cyan-500 text-white text-xs font-semibold py-2 rounded-lg cursor-pointer"

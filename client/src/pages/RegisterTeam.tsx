@@ -25,6 +25,11 @@ export default function RegisterTeam() {
 
   const [members, setMembers] = useState<MemberInput[]>([]);
 
+  // History reuse states
+  const [pastTeams, setPastTeams] = useState<any[]>([]);
+  const [selectedPastTeamId, setSelectedPastTeamId] = useState('');
+  const [infoMessage, setInfoMessage] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -45,7 +50,37 @@ export default function RegisterTeam() {
       .catch(err => console.error('Error fetching events:', err));
   }, []);
 
+  useEffect(() => {
+    if (!token) return;
+    axios.get('http://localhost:5000/api/teams/history', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => {
+        setPastTeams(res.data || []);
+      })
+      .catch(err => console.error('Error fetching past teams:', err));
+  }, [token]);
 
+  const handleApplyPastTeam = () => {
+    if (!selectedPastTeamId) return;
+    const team = pastTeams.find(t => t._id === selectedPastTeamId);
+    if (!team) return;
+
+    setTeamName(team.name);
+
+    if (team.members && Array.isArray(team.members)) {
+      setMembers(team.members.map((m: any) => ({
+        email: m.email || '',
+        fullName: m.fullName || '',
+        githubUsername: m.githubUsername || '',
+        studentId: m.studentId || '',
+        university: m.university || ''
+      })));
+    }
+
+    setInfoMessage('Đã điền thông tin nhóm và thành viên từ đội cũ. Bạn có thể tự do chỉnh sửa nếu cần.');
+    setTimeout(() => setInfoMessage(''), 5000);
+  };
 
   useEffect(() => {
     if (!token) return;
@@ -188,6 +223,39 @@ export default function RegisterTeam() {
                   {events.length === 0 && <option className="bg-slate-950 text-white">Không có cuộc thi nào mở đăng ký</option>}
                 </select>
               </div>
+
+              {pastTeams.length > 0 && (
+                <div className="bg-cyan-500/5 p-4 rounded-xl border border-cyan-500/20 space-y-2">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-cyan-400">
+                    Tái sử dụng thông tin đội cũ
+                  </label>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <select
+                      value={selectedPastTeamId}
+                      onChange={e => setSelectedPastTeamId(e.target.value)}
+                      className="flex-1 bg-slate-950 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500 transition-all font-mono"
+                    >
+                      <option value="">-- Chọn đội cũ --</option>
+                      {pastTeams.map(t => (
+                        <option key={t._id} value={t._id} className="bg-slate-950 text-white">
+                          {t.name} (Sự kiện: {t.event?.name || 'Không rõ'})
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleApplyPastTeam}
+                      disabled={!selectedPastTeamId}
+                      className="bg-cyan-500 hover:bg-cyan-600 disabled:bg-slate-800 disabled:text-slate-500 disabled:border-transparent text-slate-950 font-bold px-4 py-2 rounded-lg text-xs transition-all uppercase tracking-wider cursor-pointer border border-cyan-400/30"
+                    >
+                      Áp dụng
+                    </button>
+                  </div>
+                  {infoMessage && (
+                    <p className="text-[10px] text-cyan-400 font-mono italic mt-1">{infoMessage}</p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>

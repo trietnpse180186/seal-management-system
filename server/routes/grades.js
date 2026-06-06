@@ -646,6 +646,74 @@ router.get('/live-ranking/:roundId', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @route   GET /api/grades/judge-ranking/:roundId
+ * @desc    Real-time ranking for judges (no individual judge score breakdown, but live average)
+ * @access  Private (Judge / Coordinator / SystemAdmin)
+ */
+router.get('/judge-ranking/:roundId', authenticateToken, async (req, res) => {
+  try {
+    const round = await Round.findById(req.params.roundId);
+    if (!round) return res.status(404).json({ message: 'Round not found.' });
+
+    // Verify user is a judge (or coordinator/admin) for this event
+    let hasAccess = req.user.isSystemAdmin;
+    if (!hasAccess) {
+      const roleRecord = await EventRole.findOne({
+        userId: req.user._id,
+        eventId: round.eventId,
+        role: { $in: ['judge', 'coordinator'] },
+        status: 'active'
+      });
+      hasAccess = !!roleRecord;
+    }
+
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Bạn không có quyền xem bảng xếp hạng này.' });
+    }
+
+    // Get all teams in this round's track
+    const teams = await Team.find({ eventId: round.eventId, trackId: round.trackId, status: 'confirmed' })
+      .populate('topicSubmission');
+
+    // Get all submitted/locked scores for this round
+    const scores = await Score.find({
+      roundId: req.params.roundId,
+      status: { $in: ['submitted', 'locked'] }
+    });
+
+    // Calculate live average per team (excluding detailed judge breakdown for judges' view)
+    const rankingData = teams.map((team) => {
+      const teamScores = scores.filter(s => s.teamId.toString() === team._id.toString());
+      const judgeCount = teamScores.length;
+      let averageScore = 0;
+      if (judgeCount > 0) {
+        const sum = teamScores.reduce((acc, s) => acc + s.totalWeightedScore, 0);
+        averageScore = Math.round((sum / judgeCount) * 100) / 100;
+      }
+      return {
+        teamId: { _id: team._id, name: team.name, topicSubmission: team.topicSubmission },
+        averageScore,
+        judgeCount,
+        isLive: true
+      };
+    });
+
+    // Sort and assign live rank
+    rankingData.sort((a, b) => b.averageScore - a.averageScore);
+    const advanceLimit = round.advanceTopN || 999;
+    rankingData.forEach((item, idx) => {
+      item.rank = idx + 1;
+      item.isAdvanced = (idx + 1) <= advanceLimit;
+    });
+
+    res.json({ isLive: true, roundStatus: round.status, standings: rankingData });
+  } catch (error) {
+    console.error('Judge Ranking Error:', error.message);
+    res.status(500).json({ message: 'Server error retrieving judge ranking.' });
+  }
+});
+
+/**
  * @route   POST /api/grades/advance-round
  * @desc    Finalize the current round and advance qualified teams (isAdvanced: true) to the next round
  * @access  Private (Coordinator or Admin)

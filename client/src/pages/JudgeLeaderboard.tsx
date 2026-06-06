@@ -103,23 +103,24 @@ export default function JudgeLeaderboard() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-slate-900/40 backdrop-blur-md p-6 rounded-2xl border border-white/10 shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
         <div className="flex items-center gap-3">
-          <div className="bg-blue-100 p-3 rounded-xl text-blue-600 shadow-inner">
+          <div className="bg-cyan-500/10 p-3 rounded-xl text-cyan-400 border border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.15)]">
             <Trophy size={24} />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800">
+            <h1 className="text-xl font-bold text-white tracking-wide drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]">
               Bảng Xếp Hạng Giám Khảo
             </h1>
-            <p className="text-slate-500 text-xs mt-0.5">
+            <p className="text-slate-400 text-xs mt-0.5">
               Xem xếp hạng thời gian thực dựa trên điểm trung bình của Ban giám khảo.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 self-start md:self-center">
-          <span className="flex items-center gap-1.5 bg-blue-50 text-blue-600 border border-blue-200/50 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider">
+          <span className="flex items-center gap-1.5 bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(6,182,212,0.1)]">
             <Users size={12} />
             Chế độ Giám khảo
           </span>
@@ -127,7 +128,7 @@ export default function JudgeLeaderboard() {
           <button
             onClick={fetchRankings}
             disabled={loading}
-            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 transition-all cursor-pointer"
+            className="flex items-center gap-1.5 bg-slate-850 hover:bg-slate-800 hover:text-white text-slate-300 border border-white/5 hover:border-white/10 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 cursor-pointer"
           >
             <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
             <span>Làm mới</span>
@@ -136,19 +137,19 @@ export default function JudgeLeaderboard() {
       </div>
 
       {/* Selectors and Search */}
-      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-wrap gap-4 items-center justify-between">
+      <div className="bg-slate-900/40 backdrop-blur-md p-6 rounded-2xl border border-white/10 shadow-xl flex flex-wrap gap-4 items-center justify-between">
         <div className="flex flex-wrap gap-4 items-center">
           <div>
-            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1 tracking-wider">
+            <label className="block text-[9px] font-bold uppercase text-slate-400 mb-1 tracking-wider font-mono">
               Cuộc thi
             </label>
             <select
               value={selectedEventId}
               onChange={(e) => setSelectedEventId(e.target.value)}
-              className="bg-slate-50 border border-slate-200 rounded-lg text-slate-700 text-xs px-3 py-1.5 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none w-56 font-bold"
+              className="bg-slate-950/80 border border-slate-800 rounded-xl text-slate-200 text-xs px-3 py-2 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition-all w-56 font-bold font-mono"
             >
               {events.map((e: any) => (
-                <option key={e._id} value={e._id}>
+                <option key={e._id} value={e._id} className="bg-slate-900 text-slate-200">
                   {e.name}
                 </option>
               ))}
@@ -156,26 +157,26 @@ export default function JudgeLeaderboard() {
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1 tracking-wider">
+            <label className="block text-[9px] font-bold uppercase text-slate-400 mb-1 tracking-wider font-mono">
               Vòng đấu
             </label>
             <select
               value={selectedRoundId}
               onChange={(e) => handleRoundChange(e.target.value)}
-              className="bg-slate-50 border border-slate-200 rounded-lg text-slate-700 text-xs px-3 py-1.5 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none w-56 font-bold"
+              className="bg-slate-950/80 border border-slate-800 rounded-xl text-slate-200 text-xs px-3 py-2 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition-all w-56 font-bold font-mono"
             >
               {rounds.map((r: any) => (
-                <option key={r._id} value={r._id}>
+                <option key={r._id} value={r._id} className="bg-slate-900 text-slate-200">
                   {r.name}
                 </option>
               ))}
-              {rounds.length === 0 && <option>Không có vòng đấu</option>}
+              {rounds.length === 0 && <option className="bg-slate-900 text-slate-200">Không có vòng đấu</option>}
             </select>
           </div>
 
           {selectedRound?.status === "completed" && (
             <div className="self-end pb-0.5">
-              <span className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-sm">
+              <span className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(16,185,129,0.1)]">
                 <CheckSquare size={12} />
                 Đã khóa & Công bố
               </span>
@@ -185,7 +186,7 @@ export default function JudgeLeaderboard() {
 
         {/* Search */}
         <div className="relative w-full md:w-64">
-          <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+          <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500">
             <Search size={14} />
           </span>
           <input
@@ -193,15 +194,15 @@ export default function JudgeLeaderboard() {
             placeholder="Tìm kiếm đội, đề tài..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-slate-50 border border-slate-200 rounded-lg text-xs pl-9 pr-4 py-1.5 w-full text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+            className="bg-slate-950/80 border border-slate-800 rounded-xl text-xs pl-9 pr-4 py-2 w-full text-slate-200 placeholder-slate-650 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 focus:border-cyan-500 transition-all"
           />
         </div>
       </div>
 
       {/* Standings Table Card */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-slate-900/40 backdrop-blur-md rounded-2xl border border-white/10 shadow-xl overflow-hidden">
         {lastUpdated && (
-          <div className="bg-slate-50 px-6 py-3 border-b border-slate-200 flex justify-between items-center text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+          <div className="bg-slate-950/40 px-6 py-3 border-b border-white/5 flex justify-between items-center text-[9px] font-bold text-slate-400 tracking-wider font-mono uppercase">
             <span>Danh sách xếp hạng tạm thời (Live)</span>
             <span>Cập nhật lúc: {lastUpdated.toLocaleTimeString("vi-VN")}</span>
           </div>
@@ -209,14 +210,14 @@ export default function JudgeLeaderboard() {
 
         {loading && standings.length === 0 ? (
           <div className="text-center py-16 text-slate-500 text-xs">
-            <RefreshCw size={24} className="animate-spin mx-auto text-blue-500 mb-2" />
+            <RefreshCw size={24} className="animate-spin mx-auto text-cyan-400 mb-2" />
             Đang tải bảng xếp hạng...
           </div>
         ) : filteredStandings.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-slate-200 text-slate-400 uppercase tracking-wider text-[10px] font-bold bg-slate-50/50">
+                <tr className="border-b border-white/5 text-slate-400 uppercase tracking-wider text-[9px] font-bold bg-slate-950/20 font-mono">
                   <th className="py-4 px-6 w-20 text-center">Hạng</th>
                   <th className="py-4 px-6">Tên Đội</th>
                   <th className="py-4 px-6">Đề Tài Dự Án</th>
@@ -230,17 +231,17 @@ export default function JudgeLeaderboard() {
                   const rank = row.rank ?? idx + 1;
                   const rankStyles =
                     rank === 1
-                      ? "bg-amber-100 text-amber-800 border-amber-200"
+                      ? "bg-amber-500/10 text-amber-400 border-amber-500/30 shadow-[0_0_12px_rgba(245,158,11,0.2)]"
                       : rank === 2
-                        ? "bg-slate-100 text-slate-800 border-slate-200"
+                        ? "bg-slate-300/10 text-slate-300 border-slate-400/25 shadow-[0_0_10px_rgba(203,213,225,0.1)]"
                         : rank === 3
-                          ? "bg-orange-100 text-orange-850 border-orange-200"
-                          : "bg-slate-50 text-slate-650 border-slate-150";
+                          ? "bg-orange-500/10 text-orange-400 border-orange-500/30 shadow-[0_0_10px_rgba(249,115,22,0.15)]"
+                          : "bg-slate-950/40 text-slate-400 border-white/5";
 
                   return (
                     <tr
                       key={row.teamId?._id || idx}
-                      className="border-b border-slate-100 hover:bg-slate-50/30 transition-colors"
+                      className="border-b border-white/5 hover:bg-white/[0.02] transition-colors duration-200"
                     >
                       <td className="py-4 px-6 text-center font-black">
                         <span
@@ -250,42 +251,42 @@ export default function JudgeLeaderboard() {
                         </span>
                       </td>
                       <td className="py-4 px-6">
-                        <span className="font-extrabold text-slate-800 text-sm block">
+                        <span className="font-extrabold text-slate-100 text-sm block">
                           {row.teamId?.name}
                         </span>
-                        <span className="text-[10px] text-slate-400 block font-mono mt-0.5">
+                        <span className="text-[10px] text-slate-500 block font-mono mt-0.5">
                           ID: {row.teamId?._id?.slice(-6)}
                         </span>
                       </td>
                       <td className="py-4 px-6">
-                        <span className="font-bold text-slate-700 block max-w-xs truncate">
+                        <span className="font-bold text-slate-200 block max-w-xs truncate">
                           {row.teamId?.topicSubmission?.title || "Chưa nộp đề tài"}
                         </span>
-                        <span className="text-[10px] text-slate-400 block truncate mt-0.5 max-w-xs">
+                        <span className="text-[10px] text-slate-400 block truncate mt-0.5 max-w-xs leading-relaxed">
                           {row.teamId?.topicSubmission?.description || "Không có mô tả chi tiết."}
                         </span>
                       </td>
-                      <td className="py-4 px-6 text-center text-slate-600 font-medium">
-                        <span className="bg-slate-100 text-slate-750 px-2 py-1 rounded text-[10px] font-bold">
+                      <td className="py-4 px-6 text-center text-slate-300 font-medium">
+                        <span className="bg-slate-950/60 text-slate-300 px-2 py-1 rounded text-[10px] font-bold border border-white/5">
                           {row.judgeCount} Giám khảo
                         </span>
                       </td>
                       <td className="py-4 px-6 text-center">
-                        <span className="text-blue-600 font-black text-sm">
+                        <span className="text-cyan-400 font-black text-sm drop-shadow-[0_0_8px_rgba(6,182,212,0.4)]">
                           {row.averageScore != null ? row.averageScore.toFixed(2) : "—"}
                         </span>
                       </td>
                       <td className="py-4 px-6 text-center">
                         {selectedRound?.status !== "completed" ? (
-                          <span className="inline-flex items-center bg-blue-50 text-blue-650 border border-blue-100 px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase">
+                          <span className="inline-flex items-center bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase">
                             Đang Đánh Giá
                           </span>
                         ) : row.isAdvanced ? (
-                          <span className="inline-flex items-center gap-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                          <span className="inline-flex items-center gap-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
                             Đã Đi Tiếp
                           </span>
                         ) : (
-                          <span className="inline-flex items-center bg-slate-100 text-slate-400 border border-slate-200 px-2 py-0.5 rounded text-[10px] font-medium uppercase">
+                          <span className="inline-flex items-center bg-slate-950/40 text-slate-500 border border-white/5 px-2 py-0.5 rounded text-[10px] font-medium uppercase">
                             Dừng Bước
                           </span>
                         )}
@@ -297,8 +298,8 @@ export default function JudgeLeaderboard() {
             </table>
           </div>
         ) : (
-          <div className="text-center py-20 text-slate-400">
-            <Award size={36} className="mx-auto text-slate-300 mb-2" />
+          <div className="text-center py-20 text-slate-500 bg-slate-900/10 border border-white/5 rounded-2xl">
+            <Award size={36} className="mx-auto text-slate-600 mb-2" />
             <p className="text-xs font-bold uppercase tracking-wider">Không có dữ liệu xếp hạng</p>
             <p className="text-[10px] text-slate-400 mt-1 max-w-xs mx-auto">
               Không tìm thấy kết quả xếp hạng nào cho vòng đấu hiện tại hoặc chưa có điểm số nào được nộp.

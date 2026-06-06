@@ -5,7 +5,6 @@ import {
   CalendarPlus,
   FolderKanban,
   Info,
-  Users,
 } from "lucide-react";
 import TeamsTab from "./TeamsTab";
 import TracksTab from "./TracksTab";

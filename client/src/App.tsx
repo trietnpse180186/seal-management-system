@@ -17,14 +17,17 @@ import JudgeProjects from './pages/JudgeProjects';
 import JudgeScoring from './pages/JudgeScoring';
 import JudgeTeamActivity from './pages/JudgeTeamActivity';
 import JudgeLeaderboard from './pages/JudgeLeaderboard';
+import AdminGradesView from './pages/AdminGradesView';
+import AdminLayout from './components/AdminLayout';
 
 function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
   const location = useLocation();
   const isJudgeRoute = location.pathname.startsWith('/judge');
+  const isAdminRoute = location.pathname.startsWith('/admin');
 
   return (
     <div className="min-h-screen bg-gradient-dark flex flex-col">
-      {!isJudgeRoute && <Navbar user={user} roles={roles} onLogout={handleLogout} />}
+      {!isJudgeRoute && !isAdminRoute && <Navbar user={user} roles={roles} onLogout={handleLogout} />}
       
       <main className="flex-1">
         <Routes>
@@ -61,17 +64,17 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
             </ProtectedRoute>
           } />
           
+          {/* Admin Routes under AdminLayout */}
           <Route path="/admin" element={
             <ProtectedRoute user={user} roles={roles} allowedRoles={['coordinator']}>
-              <AdminDashboard defaultTab="admin" />
+              <AdminLayout user={user} onLogout={handleLogout} />
             </ProtectedRoute>
-          } />
-          
-          <Route path="/admin/events" element={
-            <ProtectedRoute user={user} roles={roles} allowedRoles={['coordinator']}>
-              <AdminDashboard defaultTab="events" />
-            </ProtectedRoute>
-          } />
+          }>
+            <Route index element={<AdminDashboard defaultTab="admin" />} />
+            <Route path="events" element={<AdminDashboard defaultTab="events" />} />
+            <Route path="grades" element={<AdminGradesView />} />
+            <Route path="leaderboard" element={<Leaderboard user={user} roles={roles} />} />
+          </Route>
           
           {/* Judge Sub-Routes under JudgeLayout */}
           <Route path="/judge" element={
@@ -87,11 +90,11 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
             <Route path="leaderboard" element={<JudgeLeaderboard />} />
           </Route>
           
-          <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/leaderboard" element={<Leaderboard user={user} roles={roles} />} />
         </Routes>
       </main>
 
-      {!isJudgeRoute && <Footer />}
+      {!isJudgeRoute && !isAdminRoute && <Footer />}
     </div>
   );
 }
@@ -315,7 +318,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <p className="text-indigo-400 text-lg font-semibold animate-pulse">Đang tải Nền tảng SEAL Hackathon...</p>
+        <p className="text-cyan-400 text-lg font-semibold animate-pulse">Đang tải Nền tảng SEAL Hackathon...</p>
       </div>
     );
   }

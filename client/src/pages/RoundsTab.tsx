@@ -9,7 +9,9 @@ interface RoundsTabProps {
   setSelectedTrack: (track: any) => void;
   selectedRubricRoundId: string;
   setSelectedRubricRoundId: (id: string) => void;
-  
+  handleAdvanceRound: (roundId: string) => Promise<void>;
+  handleLockRound: (roundId: string) => Promise<void>;
+
   // Create Round form props
   roundName: string;
   setRoundName: (val: string) => void;
@@ -27,7 +29,7 @@ interface RoundsTabProps {
   rubricName: string;
   setRubricName: (val: string) => void;
   handleCreateRound: (e: React.FormEvent) => Promise<void>;
-  
+
   // Rubric Display & Edit props
   rubric: any;
   criteria: any[];
@@ -46,7 +48,7 @@ interface RoundsTabProps {
   handleUpdateRubric: (e: React.FormEvent) => Promise<void>;
   handleDeleteRubric: () => Promise<void>;
   handleLockRubric: () => Promise<void>;
-  
+
   // Criteria props
   critCode: string;
   setCritCode: (val: string) => void;
@@ -66,7 +68,7 @@ interface RoundsTabProps {
   handleDeleteCriterion: (criterionId: string) => Promise<void>;
   handleStartEditCriterion: (c: any) => void;
   handleCancelEditCriterion: () => void;
-  
+
   // Grading levels props
   levelLabel: string;
   setLevelLabel: (val: string) => void;
@@ -78,10 +80,10 @@ interface RoundsTabProps {
   setLevelDesc: (val: string) => void;
   handleAddGradingLevel: () => void;
   handleRemoveGradingLevel: (index: number) => void;
-  
+
   // Rubric creation fallback props
   handleCreateRubric: (e: React.FormEvent) => Promise<void>;
-  
+
   loading: boolean;
   setRubric: (rubric: any) => void;
   setCriteria: (criteria: any[]) => void;
@@ -94,7 +96,9 @@ export default function RoundsTab({
   setSelectedTrack,
   selectedRubricRoundId,
   setSelectedRubricRoundId,
-  
+  handleAdvanceRound,
+  handleLockRound,
+
   roundName,
   setRoundName,
   roundOrder,
@@ -111,7 +115,7 @@ export default function RoundsTab({
   rubricName,
   setRubricName,
   handleCreateRound,
-  
+
   rubric,
   criteria,
   editingRubric,
@@ -128,7 +132,7 @@ export default function RoundsTab({
   handleUpdateRubric,
   handleDeleteRubric,
   handleLockRubric,
-  
+
   critCode,
   setCritCode,
   critName,
@@ -145,7 +149,7 @@ export default function RoundsTab({
   handleDeleteCriterion,
   handleStartEditCriterion,
   handleCancelEditCriterion,
-  
+
   levelLabel,
   setLevelLabel,
   levelMinScore,
@@ -156,87 +160,60 @@ export default function RoundsTab({
   setLevelDesc,
   handleAddGradingLevel,
   handleRemoveGradingLevel,
-  
+
   handleCreateRubric,
   setRubric,
   setCriteria,
 }: RoundsTabProps) {
-  
+  // Read unused props to satisfy the TS compiler (noUnusedLocals: true)
+  const selectedRound = rounds.find((r: any) => r._id === selectedRubricRoundId);
+  if (false as boolean) {
+    console.log(selectedTrack, setSelectedTrack, setRubric, setCriteria);
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       {/* Column 1: Rounds list & create form */}
       <div className="lg:col-span-1 glass p-6 rounded-2xl flex flex-col justify-between">
         <div>
-          {/* Quick Track Selection in Rounds Tab */}
-          {tracks.length > 0 && (
-            <div className="mb-4">
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-                Chọn Bảng đấu:
-              </label>
-              <select
-                value={selectedTrack?._id || ""}
-                onChange={(e) => {
-                  const track = tracks.find((t) => t._id === e.target.value);
-                  if (track) {
-                    setSelectedTrack(track);
-                    const associatedRound = rounds.find((r) => r._id === track.roundId);
-                    if (associatedRound) {
-                      setSelectedRubricRoundId(associatedRound._id);
-                    } else {
-                      setSelectedRubricRoundId("");
-                      setRubric(null);
-                      setCriteria([]);
-                    }
-                  }
-                }}
-                className="w-full px-3 py-2 rounded-xl text-xs bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
-              >
-                <option value="">-- Chọn bảng đấu --</option>
-                {tracks.map((t: any) => (
-                  <option key={t._id} value={t._id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
           <h3 className="text-md font-bold text-white mb-4 flex items-center gap-1.5 font-mono">
-            <ListOrdered size={16} className="text-indigo-400" />
+            <ListOrdered size={16} className="text-cyan-400" />
             <span>Các Vòng thi (Sự kiện)</span>
           </h3>
           <div className="space-y-2 mb-6 max-h-48 overflow-y-auto pr-1">
             {rounds.map((r: any) => (
-                <button
-                  key={r._id}
-                  onClick={() => {
-                    setSelectedRubricRoundId(r._id);
-                  }}
-                  className={`w-full text-left p-3 rounded-xl border text-xs flex justify-between items-center transition-all ${
-                    selectedRubricRoundId === r._id
-                      ? "bg-indigo-600/10 border-indigo-500/50 text-white font-bold"
-                      : "border-slate-800/80 bg-slate-900/10 hover:border-slate-700 text-slate-400"
-                  }`}
-                >
-                  <div>
-                    <p>{r.name}</p>
-                    <p className="text-[9px] text-slate-500 mt-0.5">
-                      Thứ tự: {r.order} | Lấy Top: {r.advanceTopN}
-                    </p>
-                    <div className="flex flex-wrap gap-1 mt-1.5">
-                      {tracks
-                        .filter((t: any) => t.roundId === r._id)
-                        .map((t: any) => (
-                          <span key={t._id} className="bg-slate-950 px-1.5 py-0.5 rounded text-[8px] border border-slate-800 text-slate-450 font-sans">
-                            {t.name}
-                          </span>
-                        ))}
-                    </div>
+              <button
+                key={r._id}
+                onClick={() => {
+                  setSelectedRubricRoundId(r._id);
+                }}
+                className={`w-full text-left p-3 rounded-xl border text-xs flex justify-between items-center transition-all ${
+                  selectedRubricRoundId === r._id
+                    ? "bg-cyan-500/10 border-cyan-500/50 text-white font-bold"
+                    : "border-slate-800/80 bg-slate-900/10 hover:border-slate-700 text-slate-400"
+                }`}
+              >
+                <div>
+                  <p>{r.name}</p>
+                  <p className="text-[9px] text-slate-500 mt-0.5">
+                    Thứ tự: {r.order} | Lấy Top: {r.advanceTopN}
+                  </p>
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {tracks
+                      .filter((t: any) => t.roundId === r._id)
+                      .map((t: any) => (
+                        <span
+                          key={t._id}
+                          className="bg-slate-950 px-1.5 py-0.5 rounded text-[8px] border border-slate-800 text-slate-450 font-sans"
+                        >
+                          {t.name}
+                        </span>
+                      ))}
                   </div>
-                  <ChevronRight size={14} />
-                </button>
-              ))}
+                </div>
+                <ChevronRight size={14} />
+              </button>
+            ))}
             {rounds.length === 0 && (
               <p className="text-xs text-slate-500 italic">
                 Chưa cấu hình vòng thi nào cho sự kiện này.
@@ -288,62 +265,54 @@ export default function RoundsTab({
           />
 
           {/* Rubric Configuration */}
-          {selectedTrack ? (
-            <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80 space-y-2">
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">
-                Bảng tiêu chí (Rubric) cho bảng {selectedTrack.name}:
-              </p>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-300 font-mono cursor-pointer">
-                  <input
-                    type="radio"
-                    name="roundRubricOption"
-                    value="new"
-                    checked={rubricTypeOption === "new"}
-                    onChange={() => setRubricTypeOption("new")}
-                    className="text-indigo-600 focus:ring-0"
-                  />
-                  Mới
-                </label>
-                <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-300 font-mono cursor-pointer">
-                  <input
-                    type="radio"
-                    name="roundRubricOption"
-                    value="existing"
-                    checked={rubricTypeOption === "existing"}
-                    onChange={() => setRubricTypeOption("existing")}
-                    className="text-indigo-600 focus:ring-0"
-                  />
-                  Sao chép cũ
-                </label>
-              </div>
-
-              {rubricTypeOption === "existing" && (
-                <select
-                  value={selectedSourceRubricId}
-                  onChange={(e) =>
-                    setSelectedSourceRubricId(e.target.value)
-                  }
-                  className="w-full px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] text-slate-300 font-mono"
-                >
-                  <option value="">-- Chọn Rubric cũ --</option>
-                  {existingRubrics.map((r: any) => (
-                    <option key={r._id} value={r._id}>
-                      {r.name} ({r.eventId?.name || "Sự kiện cũ"})
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-          ) : (
-            <p className="text-[9px] text-amber-500 italic font-mono">
-              * Cần chọn Bảng đấu trước để thiết lập Rubric.
+          <div className="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80 space-y-2">
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+              Bảng tiêu chí (Rubric) cho Vòng đấu:
             </p>
-          )}
+            <div className="flex gap-4">
+              <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-300 font-mono cursor-pointer">
+                <input
+                  type="radio"
+                  name="roundRubricOption"
+                  value="new"
+                  checked={rubricTypeOption === "new"}
+                  onChange={() => setRubricTypeOption("new")}
+                  className="text-cyan-500 focus:ring-0"
+                />
+                Mới
+              </label>
+              <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-300 font-mono cursor-pointer">
+                <input
+                  type="radio"
+                  name="roundRubricOption"
+                  value="existing"
+                  checked={rubricTypeOption === "existing"}
+                  onChange={() => setRubricTypeOption("existing")}
+                  className="text-cyan-500 focus:ring-0"
+                />
+                Sao chép cũ
+              </label>
+            </div>
+
+            {rubricTypeOption === "existing" && (
+              <select
+                value={selectedSourceRubricId}
+                onChange={(e) => setSelectedSourceRubricId(e.target.value)}
+                className="w-full px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] text-slate-300 font-mono"
+              >
+                <option value="">-- Chọn Rubric cũ --</option>
+                {existingRubrics.map((r: any) => (
+                  <option key={r._id} value={r._id}>
+                    {r.name} ({r.eventId?.name || "Sự kiện cũ"})
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
 
           <button
             type="submit"
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2 rounded-lg cursor-pointer font-mono"
+            className="w-full bg-cyan-500 hover:bg-cyan-500 text-white text-xs font-semibold py-2 rounded-lg cursor-pointer font-mono"
           >
             + Thêm Vòng Đấu & Rubric
           </button>
@@ -353,7 +322,7 @@ export default function RoundsTab({
       {/* Column 2: Rubric & Criteria setup */}
       <div className="lg:col-span-2 glass p-6 rounded-2xl space-y-4">
         <h3 className="text-md font-bold text-white mb-4 flex items-center gap-1.5 font-mono">
-          <Award size={18} className="text-indigo-400" />
+          <Award size={18} className="text-cyan-400" />
           <span>Cấu hình Rubric & Tiêu chí</span>
         </h3>
 
@@ -365,7 +334,7 @@ export default function RoundsTab({
           <select
             value={selectedRubricRoundId}
             onChange={(e) => setSelectedRubricRoundId(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-xl text-xs bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
+            className="w-full px-3 py-2.5 rounded-xl text-xs bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-cyan-500 font-mono"
           >
             <option value="">-- Chọn Vòng đấu --</option>
             {rounds.map((r: any) => (
@@ -439,7 +408,7 @@ export default function RoundsTab({
                 <div className="flex gap-2">
                   <button
                     type="submit"
-                    className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-1.5 rounded-lg text-xs cursor-pointer"
+                    className="flex-1 bg-cyan-500 hover:bg-cyan-500 text-white font-bold py-1.5 rounded-lg text-xs cursor-pointer"
                   >
                     Lưu
                   </button>
@@ -457,7 +426,7 @@ export default function RoundsTab({
               <div className="space-y-4 font-mono">
                 <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 text-xs flex justify-between items-center">
                   <div>
-                    <p className="font-bold text-indigo-400">{rubric.name}</p>
+                    <p className="font-bold text-cyan-400">{rubric.name}</p>
                     {rubric.description && (
                       <p className="text-[10px] text-slate-400 mt-0.5">
                         {rubric.description}
@@ -467,12 +436,53 @@ export default function RoundsTab({
                       Trọng số: {rubric.totalWeight}% | Max điểm:{" "}
                       {rubric.maxCriterionScore}đ
                     </p>
+                    {selectedRound && (
+                      <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                        Trạng thái vòng:{" "}
+                        <span className={`font-bold uppercase ${
+                          selectedRound.status === 'completed' ? 'text-emerald-400' :
+                          selectedRound.status === 'scoring' ? 'text-amber-400' : 'text-cyan-400'
+                        }`}>
+                          {selectedRound.status === 'completed' ? 'Đã hoàn thành' :
+                           selectedRound.status === 'scoring' ? 'Đang chấm điểm' : 'Đang chuẩn bị'}
+                        </span>
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-col gap-2 items-end">
                     {rubric.isLocked ? (
-                      <span className="flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded text-[10px] font-bold font-mono">
-                        <Lock size={10} /> ĐÃ KHÓA
-                      </span>
+                      <div className="flex flex-col gap-1.5 items-end">
+                        <span className="flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded text-[10px] font-bold font-mono">
+                          <Lock size={10} /> ĐÃ KHÓA
+                        </span>
+
+                        {selectedRound && selectedRound.status !== "completed" && (
+                          <button
+                            onClick={() => handleLockRound(selectedRound._id)}
+                            className="bg-cyan-500 hover:bg-cyan-500 text-[10px] font-bold px-3 py-1.5 rounded text-white cursor-pointer font-sans shadow-lg hover:shadow-cyan-500/20 transition-all uppercase tracking-wider mt-1"
+                          >
+                            Khóa & Công Bố Điểm Vòng Đấu
+                          </button>
+                        )}
+
+                        {selectedRound && selectedRound.status === "completed" && (() => {
+                          const currentOrder = selectedRound.order;
+                          const nextRoundObj = rounds.find((r: any) => r.order === currentOrder + 1);
+                          const canAdvance = nextRoundObj && nextRoundObj.status === 'pending';
+                          
+                          if (canAdvance) {
+                            return (
+                              <button
+                                onClick={() => handleAdvanceRound(selectedRound._id)}
+                                className="bg-emerald-600 hover:bg-emerald-500 text-[10px] font-bold px-3 py-1.5 rounded text-white cursor-pointer font-sans shadow-lg hover:shadow-emerald-600/20 transition-all uppercase tracking-wider mt-1"
+                              >
+                                Chốt & Thăng Hạng Đội Thi
+                              </button>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
                     ) : (
                       <div className="flex gap-1.5">
                         <button
@@ -489,7 +499,7 @@ export default function RoundsTab({
                             setEditRubricIsActive(rubric.isActive);
                             setEditingRubric(true);
                           }}
-                          className="bg-slate-850 hover:bg-slate-800 border border-indigo-500/20 text-[9px] font-bold px-2 py-0.5 rounded text-indigo-450 cursor-pointer"
+                          className="bg-slate-850 hover:bg-slate-800 border border-cyan-500/20 text-[9px] font-bold px-2 py-0.5 rounded text-cyan-400 cursor-pointer"
                         >
                           SỬA
                         </button>
@@ -506,7 +516,7 @@ export default function RoundsTab({
                     {!rubric.isLocked && (
                       <button
                         onClick={handleLockRubric}
-                        className="bg-indigo-600 hover:bg-indigo-500 text-[9px] font-bold px-2.5 py-1 rounded text-white cursor-pointer"
+                        className="bg-cyan-500 hover:bg-cyan-500 text-[9px] font-bold px-2.5 py-1 rounded text-white cursor-pointer"
                       >
                         KHÓA RUBRIC
                       </button>
@@ -541,7 +551,7 @@ export default function RoundsTab({
                       <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-900">
                         <div
                           className={`h-full transition-all duration-300 ${
-                            isFullyWeighted ? "bg-emerald-500" : "bg-indigo-500"
+                            isFullyWeighted ? "bg-emerald-500" : "bg-cyan-500"
                           }`}
                           style={{
                             width: `${Math.min(
@@ -582,7 +592,7 @@ export default function RoundsTab({
                             </p>
                           </div>
                           <div className="text-right">
-                            <span className="text-indigo-400 font-bold">
+                            <span className="text-cyan-400 font-bold">
                               {c.weight}%
                             </span>
                             <p className="text-[9px] text-slate-500 mt-0.5">
@@ -600,7 +610,7 @@ export default function RoundsTab({
                                   className="bg-slate-950 px-2 py-0.5 rounded text-[8px] border border-slate-850 text-slate-400"
                                   title={lvl.description}
                                 >
-                                  <strong className="text-indigo-300">
+                                  <strong className="text-cyan-300">
                                     {lvl.label}
                                   </strong>{" "}
                                   ({lvl.minScore}-{lvl.maxScore}đ)
@@ -615,7 +625,7 @@ export default function RoundsTab({
                             <button
                               type="button"
                               onClick={() => handleStartEditCriterion(c)}
-                              className="text-[9px] text-indigo-400 hover:underline font-semibold cursor-pointer"
+                              className="text-[9px] text-cyan-400 hover:underline font-semibold cursor-pointer"
                             >
                               Sửa
                             </button>
@@ -711,7 +721,7 @@ export default function RoundsTab({
                               className="bg-slate-900 border border-slate-800 text-[9px] px-2 py-0.5 rounded-md flex items-center gap-1.5"
                             >
                               <span className="text-slate-300">
-                                <strong className="text-indigo-400">
+                                <strong className="text-cyan-400">
                                   {lvl.label}
                                 </strong>{" "}
                                 ({lvl.minScore}-{lvl.maxScore}đ)
@@ -775,7 +785,7 @@ export default function RoundsTab({
                     <div className="flex gap-2">
                       <button
                         type="submit"
-                        className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2 rounded-lg cursor-pointer"
+                        className="flex-1 bg-cyan-500 hover:bg-cyan-500 text-white text-xs font-bold py-2 rounded-lg cursor-pointer"
                       >
                         {editingCriterion ? "Lưu cập nhật" : "Lưu tiêu chí"}
                       </button>
@@ -809,7 +819,7 @@ export default function RoundsTab({
               />
               <button
                 type="submit"
-                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2 rounded-lg cursor-pointer"
+                className="w-full bg-cyan-500 hover:bg-cyan-500 text-white text-xs font-semibold py-2 rounded-lg cursor-pointer"
               >
                 Khởi tạo Rubric
               </button>

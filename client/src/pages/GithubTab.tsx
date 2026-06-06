@@ -50,7 +50,7 @@ export default function GithubTab({
   return (
     <div className="glass p-6 rounded-2xl w-full mt-2 space-y-6 font-mono">
       <h3 className="text-lg font-bold text-white flex items-center gap-2">
-        <GithubIcon size={18} className="text-indigo-400" />
+        <GithubIcon size={18} className="text-cyan-400" />
         <span>Quản lý GitHub Repositories của các đội thi</span>
       </h3>
 
@@ -74,7 +74,7 @@ export default function GithubTab({
                     href={r.repoUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-indigo-400 hover:underline break-all block"
+                    className="text-cyan-400 hover:underline break-all block"
                   >
                     {r.repoUrl || r.repoName}
                   </a>
@@ -102,7 +102,7 @@ export default function GithubTab({
                       r.syncStatus === "success"
                         ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                         : r.syncStatus === "syncing"
-                        ? "bg-indigo-500/10 text-indigo-400 animate-pulse border border-indigo-500/20"
+                        ? "bg-cyan-500/10 text-cyan-400 animate-pulse border border-cyan-500/20"
                         : r.syncStatus === "failed"
                         ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
                         : "bg-slate-800 text-slate-400 border border-slate-700/50"
@@ -113,7 +113,7 @@ export default function GithubTab({
                   <button
                     onClick={() => handleSyncRepo(r._id)}
                     disabled={syncingRepoId === r._id}
-                    className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-850 text-white px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all cursor-pointer disabled:cursor-not-allowed"
+                    className="bg-cyan-500 hover:bg-cyan-500 disabled:bg-indigo-850 text-white px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all cursor-pointer disabled:cursor-not-allowed"
                   >
                     {syncingRepoId === r._id ? "Đang đồng bộ..." : "Đồng bộ AI"}
                   </button>

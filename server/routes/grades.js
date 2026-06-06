@@ -13,6 +13,7 @@ const RepositorySnapshot = mongoose.model('RepositorySnapshot');
 const Commit = mongoose.model('Commit');
 const Ranking = mongoose.model('Ranking');
 const EventRole = mongoose.model('EventRole');
+const Track = mongoose.model('Track');
 
 const aiService = require('../services/aiService');
 const { authenticateToken } = require('../middleware/authMiddleware');
@@ -30,6 +31,38 @@ router.get('/suggestion', authenticateToken, async (req, res) => {
   }
 
   try {
+    const team = await Team.findById(teamId);
+    if (!team) return res.status(404).json({ message: 'Team not found.' });
+
+    // Verify track permissions for judges
+    if (!req.user.isSystemAdmin) {
+      let userRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId: team.eventId,
+        roundId: roundId,
+        status: 'active'
+      });
+
+      if (!userRole) {
+        userRole = await EventRole.findOne({
+          userId: req.user._id,
+          eventId: team.eventId,
+          $or: [{ roundId: null }, { roundId: { $exists: false } }],
+          status: 'active'
+        });
+      }
+
+      if (!userRole) {
+        return res.status(403).json({ message: 'Only assigned judges or coordinators can request suggestions.' });
+      }
+
+      if (userRole.role === 'judge' && userRole.trackId) {
+        if (!team.trackId || team.trackId.toString() !== userRole.trackId.toString()) {
+          return res.status(403).json({ message: 'Bạn chỉ có quyền lấy gợi ý chấm điểm cho đội thuộc bảng đấu được phân công.' });
+        }
+      }
+    }
+
     // 1. Fetch criteria
     const criteria = await Criterion.find({ rubricId }).sort({ order: 1 });
     if (criteria.length === 0) {
@@ -96,6 +129,35 @@ router.get('/team/:teamId/round/:roundId', authenticateToken, async (req, res) =
       status: 'active'
     });
     const isCoordinator = req.user.isSystemAdmin || !!coordinatorRole;
+
+    // Verify track permissions for judges
+    if (!isCoordinator) {
+      let userRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId: team.eventId,
+        roundId: req.params.roundId,
+        status: 'active'
+      });
+
+      if (!userRole) {
+        userRole = await EventRole.findOne({
+          userId: req.user._id,
+          eventId: team.eventId,
+          $or: [{ roundId: null }, { roundId: { $exists: false } }],
+          status: 'active'
+        });
+      }
+
+      if (!userRole) {
+        return res.status(403).json({ message: 'Only assigned judges or coordinators can access scores.' });
+      }
+
+      if (userRole.trackId) {
+        if (!team.trackId || team.trackId.toString() !== userRole.trackId.toString()) {
+          return res.status(403).json({ message: 'Bạn chỉ có quyền xem điểm của các đội thuộc bảng đấu được phân công.' });
+        }
+      }
+    }
 
     if (isCoordinator) {
       // Coordinator views all scores submitted/locked by all judges for this team/round
@@ -169,15 +231,31 @@ router.post('/submit', authenticateToken, async (req, res) => {
     }
 
     // Verify user is a Judge or Coordinator in this event
-    const userRole = await EventRole.findOne({
+    let userRole = await EventRole.findOne({
       userId: req.user._id,
       eventId: team.eventId,
-      role: { $in: ['judge', 'coordinator'] },
+      roundId: roundId,
       status: 'active'
     });
 
+    if (!userRole) {
+      userRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId: team.eventId,
+        $or: [{ roundId: null }, { roundId: { $exists: false } }],
+        status: 'active'
+      });
+    }
+
     if (!userRole && !req.user.isSystemAdmin) {
       return res.status(403).json({ message: 'Only assigned judges or coordinators can submit scores.' });
+    }
+
+    // Verify track assignment if user is a judge
+    if (userRole && userRole.role === 'judge' && userRole.trackId) {
+      if (!team.trackId || team.trackId.toString() !== userRole.trackId.toString()) {
+        return res.status(403).json({ message: 'Bạn chỉ có quyền chấm điểm cho các đội thuộc bảng đấu được phân công.' });
+      }
     }
 
     const repo = await GithubRepository.findOne({ teamId });
@@ -279,8 +357,8 @@ router.post('/submit', authenticateToken, async (req, res) => {
 router.post('/lock-round', authenticateToken, async (req, res) => {
   const { eventId, roundId, trackId } = req.body;
 
-  if (!eventId || !roundId || !trackId) {
-    return res.status(400).json({ message: 'Event ID, Round ID, and Track ID are required.' });
+  if (!eventId || !roundId) {
+    return res.status(400).json({ message: 'Event ID and Round ID are required.' });
   }
 
   try {
@@ -290,18 +368,21 @@ router.post('/lock-round', authenticateToken, async (req, res) => {
       if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
     }
 
-    // 1. Get all teams in this track
-    const teams = await Team.find({ eventId, trackId, status: 'confirmed' });
+    // 1. Get all tracks in this round
+    const tracks = await Track.find({ roundId });
+    const trackIds = tracks.map(t => t._id);
+
+    // 2. Get all confirmed teams in these tracks
+    const teams = await Team.find({ eventId, trackId: { $in: trackIds }, status: 'confirmed' });
     if (teams.length === 0) {
-      return res.status(400).json({ message: 'No confirmed teams found in this track.' });
+      return res.status(400).json({ message: 'No confirmed teams found in this round.' });
     }
 
-    // 2. Fetch all scores submitted for this round
+    // 3. Fetch all scores submitted for this round
     const scores = await Score.find({ roundId, status: { $in: ['submitted', 'locked'] } });
 
-    // 3. For each team, calculate average weighted score
+    // 4. For each team, calculate average weighted score
     const rankingsData = [];
-
     for (const team of teams) {
       const teamScores = scores.filter(s => s.teamId.toString() === team._id.toString());
       const judgeCount = teamScores.length;
@@ -314,20 +395,48 @@ router.post('/lock-round', authenticateToken, async (req, res) => {
 
       rankingsData.push({
         teamId: team._id,
+        trackId: team.trackId,
         averageScore,
         judgeCount
       });
     }
 
-    // Sort by averageScore descending to determine ranks
-    rankingsData.sort((a, b) => b.averageScore - a.averageScore);
+    // 5. Group by trackId and sort within each track to calculate trackRank
+    const tracksMap = {};
+    rankingsData.forEach(item => {
+      if (item.trackId) {
+        const tId = item.trackId.toString();
+        if (!tracksMap[tId]) {
+          tracksMap[tId] = [];
+        }
+        tracksMap[tId].push(item);
+      }
+    });
+
+    for (const tId in tracksMap) {
+      const trackTeams = tracksMap[tId];
+      trackTeams.sort((a, b) => b.averageScore - a.averageScore);
+      trackTeams.forEach((item, idx) => {
+        item.trackRank = idx + 1;
+      });
+    }
+
+    // 6. Sort overall by trackRank ascending, then averageScore descending
+    rankingsData.sort((a, b) => {
+      const aTrackRank = a.trackRank || 999;
+      const bTrackRank = b.trackRank || 999;
+      if (aTrackRank !== bTrackRank) {
+        return aTrackRank - bTrackRank;
+      }
+      return b.averageScore - a.averageScore;
+    });
 
     // Get event/round details to check advanceTopN
     const round = await Round.findById(roundId);
     const advanceLimit = round.advanceTopN || 999;
 
     // Save rankings
-    await Ranking.deleteMany({ roundId, trackId });
+    await Ranking.deleteMany({ roundId });
 
     const rankingsToSave = [];
     for (let idx = 0; idx < rankingsData.length; idx++) {
@@ -337,7 +446,7 @@ router.post('/lock-round', authenticateToken, async (req, res) => {
 
       const rankingRecord = new Ranking({
         eventId,
-        trackId,
+        trackId: item.trackId,
         roundId,
         teamId: item.teamId,
         averageScore: item.averageScore,
@@ -360,6 +469,24 @@ router.post('/lock-round', authenticateToken, async (req, res) => {
     // Update Round status to completed
     round.status = 'completed';
     await round.save();
+
+    // Gửi thông báo in-app tới toàn bộ thành viên trong bảng đấu
+    const Notification = mongoose.model('Notification');
+    const TeamMember = mongoose.model('TeamMember');
+
+    for (const team of teams) {
+      const members = await TeamMember.find({ teamId: team._id, confirmStatus: 'confirmed' });
+      for (const member of members) {
+        await new Notification({
+          userId: member.userId,
+          type: 'round_result',
+          title: `Kết quả vòng "${round.name}" đã công bố`,
+          body: `Vòng "${round.name}" đã hoàn tất chấm điểm và công bố kết quả. Hãy kiểm tra bảng xếp hạng ngay!`,
+          channel: 'in_app',
+          metadata: { roundId: round._id, roundName: round.name, eventId, trackId }
+        }).save();
+      }
+    }
 
     res.json({
       message: 'Round scores finalized, locked, and team rankings generated successfully!',
@@ -442,8 +569,12 @@ router.get('/live-ranking/:roundId', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: 'Chỉ Điều phối viên mới có thể xem bảng xếp hạng thời gian thực.' });
     }
 
-    // Get all teams in this round's track
-    const teams = await Team.find({ eventId: round.eventId, trackId: round.trackId, status: 'confirmed' })
+    // 1. Get all tracks in this round
+    const tracks = await Track.find({ roundId: req.params.roundId });
+    const trackIds = tracks.map(t => t._id);
+
+    // 2. Get all confirmed teams in these tracks
+    const teams = await Team.find({ eventId: round.eventId, trackId: { $in: trackIds }, status: 'confirmed' })
       .populate('topicSubmission');
 
     // Get all submitted/locked scores for this round
@@ -463,6 +594,7 @@ router.get('/live-ranking/:roundId', authenticateToken, async (req, res) => {
       }
       return {
         teamId: { _id: team._id, name: team.name, topicSubmission: team.topicSubmission },
+        trackId: team.trackId,
         averageScore,
         judgeCount,
         judges: teamScores.map(s => ({ fullName: s.judgeId?.fullName, score: s.totalWeightedScore })),
@@ -470,8 +602,36 @@ router.get('/live-ranking/:roundId', authenticateToken, async (req, res) => {
       };
     });
 
-    // Sort and assign live rank
-    rankingData.sort((a, b) => b.averageScore - a.averageScore);
+    // Group by trackId and sort within each track to calculate trackRank
+    const tracksMap = {};
+    rankingData.forEach(item => {
+      if (item.trackId) {
+        const tId = item.trackId.toString();
+        if (!tracksMap[tId]) {
+          tracksMap[tId] = [];
+        }
+        tracksMap[tId].push(item);
+      }
+    });
+
+    for (const tId in tracksMap) {
+      const trackTeams = tracksMap[tId];
+      trackTeams.sort((a, b) => b.averageScore - a.averageScore);
+      trackTeams.forEach((item, idx) => {
+        item.trackRank = idx + 1;
+      });
+    }
+
+    // Sort overall by trackRank ascending, then averageScore descending
+    rankingData.sort((a, b) => {
+      const aTrackRank = a.trackRank || 999;
+      const bTrackRank = b.trackRank || 999;
+      if (aTrackRank !== bTrackRank) {
+        return aTrackRank - bTrackRank;
+      }
+      return b.averageScore - a.averageScore;
+    });
+
     const advanceLimit = round.advanceTopN || 999;
     rankingData.forEach((item, idx) => {
       item.rank = idx + 1;
@@ -550,6 +710,120 @@ router.get('/judge-ranking/:roundId', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Judge Ranking Error:', error.message);
     res.status(500).json({ message: 'Server error retrieving judge ranking.' });
+  }
+});
+
+/**
+ * @route   POST /api/grades/advance-round
+ * @desc    Finalize the current round and advance qualified teams (isAdvanced: true) to the next round
+ * @access  Private (Coordinator or Admin)
+ */
+router.post('/advance-round', authenticateToken, async (req, res) => {
+  const { eventId, currentRoundId } = req.body;
+
+  if (!eventId || !currentRoundId) {
+    return res.status(400).json({ message: 'Event ID and Current Round ID are required.' });
+  }
+
+  try {
+    // Auth Check
+    if (!req.user.isSystemAdmin) {
+      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator' });
+      if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
+    }
+
+    const currentRound = await Round.findById(currentRoundId);
+    if (!currentRound) return res.status(404).json({ message: 'Current round not found.' });
+
+    // 1. Verify if all tracks in the current round are locked
+    const tracks = await Track.find({ roundId: currentRoundId });
+    if (tracks.length === 0) {
+      return res.status(400).json({ message: 'No tracks found in the current round.' });
+    }
+
+    const trackIds = tracks.map(t => t._id);
+    for (const trackId of trackIds) {
+      const rankingsExist = await Ranking.exists({ roundId: currentRoundId, trackId });
+      if (!rankingsExist) {
+        const track = tracks.find(t => t._id.toString() === trackId.toString());
+        return res.status(400).json({ 
+          message: `Bảng đấu "${track ? track.name : trackId}" chưa được khóa điểm. Vui lòng khóa điểm và công bố tất cả bảng đấu trước khi chốt vòng.` 
+        });
+      }
+    }
+
+    // 2. Find the next round in order
+    const nextRound = await Round.findOne({ eventId, order: currentRound.order + 1 });
+    
+    // 3. Get all advanced teams in the current round
+    const advancedRankings = await Ranking.find({ roundId: currentRoundId, isAdvanced: true });
+    const advancedTeamIds = advancedRankings.map(r => r.teamId);
+
+    if (advancedTeamIds.length === 0) {
+      return res.status(400).json({ message: 'Không tìm thấy đội nào được thăng hạng (isAdvanced) trong vòng hiện tại.' });
+    }
+
+    const Event = mongoose.model('Event');
+
+    if (nextRound) {
+      // Find or create a consolidated track for the next round (e.g. "Chung kết")
+      let nextRoundTrack = await Track.findOne({ roundId: nextRound._id });
+      if (!nextRoundTrack) {
+        nextRoundTrack = new Track({
+          eventId,
+          roundId: nextRound._id,
+          name: nextRound.name === 'Chung kết' || nextRound.name.includes('Chung') ? 'Bảng Chung Kết' : `Bảng Đấu ${nextRound.name}`,
+          description: `Bảng đấu tập trung dành cho các đội xuất sắc nhất vượt qua ${currentRound.name}`,
+          maxTeams: advancedTeamIds.length,
+          topicSubmissionOpen: true
+        });
+        await nextRoundTrack.save();
+      }
+
+      // Promote teams to next round and assign to the consolidated track
+      await Team.updateMany(
+        { _id: { $in: advancedTeamIds } },
+        { 
+          currentRoundId: nextRound._id, 
+          trackId: nextRoundTrack._id 
+        }
+      );
+
+      // Transition round statuses
+      currentRound.status = 'completed';
+      await currentRound.save();
+
+      nextRound.status = 'active';
+      await nextRound.save();
+
+      return res.json({
+        message: `Đã chốt thành công vòng đấu "${currentRound.name}". Cả ${advancedTeamIds.length} đội xuất sắc đã được thăng hạng tiến vào "${nextRound.name}" thuộc "${nextRoundTrack.name}".`,
+        nextRoundId: nextRound._id,
+        nextTrackId: nextRoundTrack._id,
+        advancedTeamsCount: advancedTeamIds.length
+      });
+    } else {
+      // No next round - this is the final round!
+      currentRound.status = 'completed';
+      await currentRound.save();
+
+      // Update Event status to completed
+      const eventObj = await Event.findById(eventId);
+      if (eventObj) {
+        eventObj.status = 'completed';
+        await eventObj.save();
+      }
+
+      return res.json({
+        message: `Đã chốt thành công Vòng Chung Kết "${currentRound.name}". Sự kiện đã kết thúc và toàn bộ kết quả xếp hạng chung cuộc đã được công bố!`,
+        isEventCompleted: true,
+        advancedTeamsCount: advancedTeamIds.length
+      });
+    }
+
+  } catch (error) {
+    console.error('Advance Round Error:', error.message);
+    res.status(500).json({ message: 'Server error during round advancement.' });
   }
 });
 

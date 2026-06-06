@@ -8,16 +8,15 @@ interface MemberInput {
   fullName: string;
   githubUsername: string;
   studentId: string;
+  university: string;
 }
 
 export default function RegisterTeam() {
   const [events, setEvents] = useState<any[]>([]);
   const [selectedEventId, setSelectedEventId] = useState('');
-  const [tracks, setTracks] = useState<any[]>([]);
-  const [selectedTrackId, setSelectedTrackId] = useState('');
-  
+
   const [teamName, setTeamName] = useState('');
-  
+
   // Leader info states (to capture missing profile info from Google OAuth)
   const [leaderFullName, setLeaderFullName] = useState('');
   const [leaderStudentId, setLeaderStudentId] = useState('');
@@ -37,7 +36,7 @@ export default function RegisterTeam() {
     // Fetch active events
     axios.get('http://localhost:5000/api/events')
       .then(res => {
-        const activeEvents = res.data.filter((e: any) => e.status === 'draft' || e.status === 'registration');
+        const activeEvents = res.data.filter((e: any) => e.status === 'registration');
         setEvents(activeEvents);
         if (activeEvents.length > 0) {
           setSelectedEventId(activeEvents[0]._id);
@@ -46,36 +45,23 @@ export default function RegisterTeam() {
       .catch(err => console.error('Error fetching events:', err));
   }, []);
 
-  useEffect(() => {
-    if (!selectedEventId) return;
-    // Fetch tracks for the event
-    axios.get(`http://localhost:5000/api/events/${selectedEventId}`)
-      .then(res => {
-        setTracks(res.data.tracks || []);
-        if (res.data.tracks && res.data.tracks.length > 0) {
-          setSelectedTrackId(res.data.tracks[0]._id);
-        } else {
-          setSelectedTrackId('');
-        }
-      })
-      .catch(err => console.error('Error fetching tracks:', err));
-  }, [selectedEventId]);
+
 
   useEffect(() => {
     if (!token) return;
     axios.get('http://localhost:5000/api/auth/me', {
       headers: { Authorization: `Bearer ${token}` }
     })
-    .then(res => {
-      const u = res.data.user;
-      if (u) {
-        setLeaderFullName(u.fullName || '');
-        setLeaderStudentId(u.studentId || '');
-        setLeaderGithubUsername(u.githubUsername || '');
-        setLeaderUniversity(u.university || '');
-      }
-    })
-    .catch(err => console.error('Error fetching user profile:', err));
+      .then(res => {
+        const u = res.data.user;
+        if (u) {
+          setLeaderFullName(u.fullName || '');
+          setLeaderStudentId(u.studentId || '');
+          setLeaderGithubUsername(u.githubUsername || '');
+          setLeaderUniversity(u.university || '');
+        }
+      })
+      .catch(err => console.error('Error fetching user profile:', err));
   }, [token]);
 
   const handleMemberChange = (index: number, field: keyof MemberInput, value: string) => {
@@ -85,7 +71,7 @@ export default function RegisterTeam() {
   };
 
   const addMemberRow = () => {
-    setMembers([...members, { email: '', fullName: '', githubUsername: '', studentId: '' }]);
+    setMembers([...members, { email: '', fullName: '', githubUsername: '', studentId: '', university: '' }]);
   };
 
   const removeMemberRow = (index: number) => {
@@ -106,18 +92,12 @@ export default function RegisterTeam() {
       return;
     }
 
-    if (tracks.length > 0 && !selectedTrackId) {
-      setError('Vui lòng chọn bảng đấu/chủ đề.');
-      setLoading(false);
-      return;
-    }
-
     try {
       const response = await axios.post(
         'http://localhost:5000/api/teams/register',
         {
           eventId: selectedEventId,
-          trackId: selectedTrackId || undefined,
+          trackId: undefined,
           teamName: teamName.trim(),
           membersList: members.filter(m => m.email.trim() !== ''),
           leaderInfo: {
@@ -136,7 +116,7 @@ export default function RegisterTeam() {
       // Reset form
       setTeamName('');
       setMembers([]);
-      
+
       setTimeout(() => {
         navigate('/team-area');
       }, 3000);
@@ -150,81 +130,62 @@ export default function RegisterTeam() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12">
-      
+    <div className="max-w-4xl mx-auto px-4 py-12 font-mono">
+
       <div className="flex items-center gap-3 mb-8">
-        <div className="bg-gradient-premium p-3 rounded-2xl text-white shadow-lg shadow-indigo-500/20">
-          <Users size={28} />
-        </div>
+
         <div>
-          <h1 className="text-3xl font-extrabold text-white">Đăng ký Đội thi</h1>
-          <p className="text-slate-400 text-sm">Thành lập nhóm và mời các thành viên tham gia SEAL Hackathon</p>
+          <h1 className="text-3xl font-extrabold text-white">
+            <span className="text-cyan-400 text-cyan-glow font-mono-tech">ĐĂNG KÝ ĐỘI THI</span>
+          </h1>
+          <p className="text-slate-400 text-sm mt-1">Thành lập nhóm và mời các thành viên tham gia</p>
         </div>
       </div>
 
       {success ? (
-        <div className="glass glow-blue p-8 rounded-3xl text-center mb-8 border-emerald-500/30">
+        <div className="glass glow-blue p-8 rounded-3xl text-center mb-8 border-emerald-500/30 font-mono">
           <div className="inline-flex bg-emerald-500/20 p-4 rounded-full text-emerald-400 mb-4 border border-emerald-500/30">
             <CheckCircle size={40} />
           </div>
-          <h3 className="text-2xl font-bold text-white mb-2">Đăng ký Nhóm Thành công!</h3>
+          <h3 className="text-2xl font-bold text-white mb-2">ĐĂNG KÝ NHÓM THÀNH CÔNG</h3>
           <p className="text-slate-300 max-w-md mx-auto mb-6">{success}</p>
-          <div className="inline-flex items-center gap-2 text-sm text-indigo-400 animate-pulse">
+          <div className="inline-flex items-center gap-2 text-sm text-cyan-400 animate-pulse">
             <span>Đang chuyển hướng về Khu vực Đội thi...</span>
           </div>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-8">
-          
+
           {/* Step 1: Event & Team Info */}
-          <div className="glass p-6 rounded-2xl space-y-6">
-            <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2 border-b border-slate-800 pb-3">
-              <Calendar size={18} className="text-indigo-400" />
-              <span>1. Thông tin Chung</span>
+          <div className="glass p-6 rounded-2xl space-y-6 border border-slate-800 hover:border-cyan-500/30 transition-all">
+            <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2 border-b border-slate-800 pb-3 font-mono-tech">
+              <Calendar size={18} className="text-cyan-400" />
+              <span className="text-cyan-400">1. THÔNG TIN CHUNG</span>
             </h2>
 
             {error && (
               <div className="bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm px-4 py-3 rounded-xl flex items-center gap-2">
                 <AlertTriangle size={18} className="text-rose-400 shrink-0" />
-                <span>{error}</span>
+                <span>[LỖI] {error}</span>
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                  Lựa chọn Học kỳ / Cuộc thi
+                  Lựa chọn Cuộc thi
                 </label>
                 <select
                   value={selectedEventId}
                   onChange={e => setSelectedEventId(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl text-sm"
+                  className="w-full bg-slate-900/50 border border-slate-800 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(0,240,255,0.05)] transition-all font-mono"
                 >
                   {events.map(e => (
-                    <option key={e._id} value={e._id}>
+                    <option key={e._id} value={e._id} className="bg-slate-950 text-white">
                       {e.name} ({e.semester} {e.year})
                     </option>
                   ))}
-                  {events.length === 0 && <option>Không có cuộc thi nào mở đăng ký</option>}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                  Bảng đấu / Lĩnh vực chuyên môn
-                </label>
-                <select
-                  value={selectedTrackId}
-                  onChange={e => setSelectedTrackId(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl text-sm"
-                  disabled={tracks.length === 0}
-                >
-                  {tracks.map(t => (
-                    <option key={t._id} value={t._id}>
-                      {t.name} (Tối đa: {t.maxTeams || 10} đội)
-                    </option>
-                  ))}
-                  {tracks.length === 0 && <option value="">[TỰ ĐỘNG CHIA BẢNG ĐẤU SAU]</option>}
+                  {events.length === 0 && <option className="bg-slate-950 text-white">Không có cuộc thi nào mở đăng ký</option>}
                 </select>
               </div>
             </div>
@@ -236,22 +197,22 @@ export default function RegisterTeam() {
               <input
                 type="text"
                 required
-                placeholder="Nhập tên nhóm độc đáo của bạn"
+                placeholder="Nhập tên nhóm của bạn"
                 value={teamName}
                 onChange={e => setTeamName(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl text-sm"
+                className="w-full bg-slate-900/50 border border-slate-800 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(0,240,255,0.05)] transition-all font-mono"
               />
             </div>
           </div>
 
-          {/* Step 1.5: Leader Profile Capture */}
-          <div className="glass p-6 rounded-2xl space-y-6">
-            <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2 border-b border-slate-800 pb-3">
-              <Users size={18} className="text-indigo-400" />
-              <span>1.5. Thông tin Trưởng nhóm (Bạn)</span>
+          {/* Step 2: Leader Profile Capture */}
+          <div className="glass p-6 rounded-2xl space-y-6 border border-slate-800 hover:border-cyan-500/30 transition-all">
+            <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2 border-b border-slate-800 pb-3 font-mono-tech">
+              <Users size={18} className="text-cyan-400" />
+              <span className="text-cyan-400">2. THÔNG TIN TRƯỞNG NHÓM</span>
             </h2>
             <p className="text-xs text-slate-400">
-              * Điền chính xác thông tin cá nhân của bạn. <strong>GitHub Username</strong> bắt buộc phải đúng để hệ thống tự động mời bạn tham gia Repository của nhóm.
+              * Điền chính xác thông tin cá nhân của bạn. <strong>GitHub Username</strong> bắt buộc đúng để truy cập vào Repository của nhóm.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -263,7 +224,7 @@ export default function RegisterTeam() {
                   required
                   value={leaderFullName}
                   onChange={e => setLeaderFullName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl text-sm"
+                  className="w-full bg-slate-900/50 border border-slate-800 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(0,240,255,0.05)] transition-all font-mono"
                   placeholder="Họ và Tên của bạn"
                 />
               </div>
@@ -276,8 +237,8 @@ export default function RegisterTeam() {
                   required
                   value={leaderStudentId}
                   onChange={e => setLeaderStudentId(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl text-sm"
-                  placeholder="MSSV (e.g. SE180186)"
+                  className="w-full bg-slate-900/50 border border-slate-800 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(0,240,255,0.05)] transition-all font-mono"
+                  placeholder="Ví dụ: SE1XXXXX"
                 />
               </div>
               <div>
@@ -289,7 +250,7 @@ export default function RegisterTeam() {
                   required
                   value={leaderGithubUsername}
                   onChange={e => setLeaderGithubUsername(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl text-sm"
+                  className="w-full bg-slate-900/50 border border-slate-800 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(0,240,255,0.05)] transition-all font-mono"
                   placeholder="github-username của bạn"
                 />
               </div>
@@ -302,24 +263,24 @@ export default function RegisterTeam() {
                   required
                   value={leaderUniversity}
                   onChange={e => setLeaderUniversity(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl text-sm"
+                  className="w-full bg-slate-900/50 border border-slate-800 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(0,240,255,0.05)] transition-all font-mono"
                   placeholder="Tên trường đại học của bạn"
                 />
               </div>
             </div>
           </div>
 
-          {/* Step 2: Member invites */}
-          <div className="glass p-6 rounded-2xl space-y-6">
+          {/* Step 3: Member invites */}
+          <div className="glass p-6 rounded-2xl space-y-6 border border-slate-800 hover:border-cyan-500/30 transition-all">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                <FolderGit2 size={18} className="text-indigo-400" />
-                <span>2. Thành viên nhóm</span>
+              <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2 font-mono-tech">
+                <FolderGit2 size={18} className="text-cyan-400" />
+                <span className="text-cyan-400">3. THÀNH VIÊN NHÓM</span>
               </h2>
               <button
                 type="button"
                 onClick={addMemberRow}
-                className="flex items-center gap-1 text-xs font-semibold text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20 transition-all"
+                className="flex items-center gap-1 text-xs font-semibold text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 px-3 py-1.5 rounded-lg border border-cyan-500/20 transition-all cursor-pointer"
               >
                 <UserPlus size={14} />
                 <span>Thêm thành viên</span>
@@ -327,7 +288,7 @@ export default function RegisterTeam() {
             </div>
 
             <p className="text-xs text-slate-400">
-              * Bạn (Trưởng nhóm) sẽ tự động được thêm vào danh sách và được xác nhận ngay. Điền email các thành viên còn lại dưới đây. Hệ thống sẽ gửi email yêu cầu xác nhận.
+              * Điền thông tin thành viên dưới đây. Hệ thống sẽ gửi email yêu cầu xác nhận tham gia.
             </p>
 
             <div className="space-y-4">
@@ -345,7 +306,7 @@ export default function RegisterTeam() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-slate-300">
                     <div>
                       <label className="block text-xs font-semibold text-slate-400 mb-1">Email</label>
                       <input
@@ -354,7 +315,7 @@ export default function RegisterTeam() {
                         placeholder="member@student.edu.vn"
                         value={member.email}
                         onChange={e => handleMemberChange(index, 'email', e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg text-xs"
+                        className="w-full bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
                       />
                     </div>
                     <div>
@@ -365,7 +326,7 @@ export default function RegisterTeam() {
                         placeholder="Họ và Tên"
                         value={member.fullName}
                         onChange={e => handleMemberChange(index, 'fullName', e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg text-xs"
+                        className="w-full bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
                       />
                     </div>
                     <div>
@@ -376,7 +337,7 @@ export default function RegisterTeam() {
                         placeholder="github-username"
                         value={member.githubUsername}
                         onChange={e => handleMemberChange(index, 'githubUsername', e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg text-xs"
+                        className="w-full bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
                       />
                     </div>
                     <div>
@@ -386,7 +347,18 @@ export default function RegisterTeam() {
                         placeholder="SE18XXXX"
                         value={member.studentId}
                         onChange={e => handleMemberChange(index, 'studentId', e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg text-xs"
+                        className="w-full bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-400 mb-1">Trường Đại học</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Tên trường đại học"
+                        value={member.university}
+                        onChange={e => handleMemberChange(index, 'university', e.target.value)}
+                        className="w-full bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
                       />
                     </div>
                   </div>
@@ -400,9 +372,9 @@ export default function RegisterTeam() {
             <button
               type="submit"
               disabled={loading}
-              className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-white font-semibold px-8 py-3 rounded-xl shadow-lg shadow-indigo-600/30 transition-all duration-200"
+              className="btn-primary font-bold text-sm px-12 py-4 uppercase tracking-widest flex items-center gap-2 group"
             >
-              {loading ? 'Đang gửi thông tin...' : 'Xác nhận Đăng ký'}
+              {loading ? 'ĐANG GỬI THÔNG TIN...' : 'XÁC NHẬN ĐĂNG KÝ'}
             </button>
           </div>
 

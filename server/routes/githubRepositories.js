@@ -104,11 +104,13 @@ router.post('/create', authenticateToken, async (req, res) => {
     const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
     const gitResult = await githubService.createTeamRepository(slugRepoName, 'private', orgName);
 
+    const actualOrgName = gitResult.owner || orgName;
+
     const newRepo = new GithubRepository({
       eventId: team.eventId,
       trackId: team.trackId,
       teamId: team._id,
-      orgName: orgName,
+      orgName: actualOrgName,
       repoName: slugRepoName,
       repoUrl: gitResult.repoUrl,
       githubRepoId: gitResult.githubRepoId,
@@ -122,7 +124,7 @@ router.post('/create', authenticateToken, async (req, res) => {
     const members = await TeamMember.find({ teamId: team._id }).populate('userId');
     for (const tm of members) {
       if (tm.userId && tm.userId.githubUsername) {
-        await githubService.addCollaborator(slugRepoName, tm.userId.githubUsername, 'push', orgName);
+        await githubService.addCollaborator(slugRepoName, tm.userId.githubUsername, 'push', actualOrgName);
       }
     }
 

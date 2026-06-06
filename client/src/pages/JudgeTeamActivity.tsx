@@ -17,7 +17,6 @@ export default function JudgeTeamActivity() {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
 
-  const [selectedEventId, setSelectedEventId] = useState('');
   const [team, setTeam] = useState<any>(null);
   const [commits, setCommits] = useState<any[]>([]);
   const [aiInsight, setAiInsight] = useState<any>(null);
@@ -25,37 +24,22 @@ export default function JudgeTeamActivity() {
   
   const [loading, setLoading] = useState(true);
 
-  // Fetch events
+  // Fetch specific team info directly
   useEffect(() => {
-    axios.get('http://localhost:5000/api/events')
-      .then((res: any) => {
-        if (res.data.length > 0) {
-          setSelectedEventId(res.data[0]._id);
-        }
-      })
-      .catch((err: any) => {
-        console.error(err);
-        setLoading(false);
-      });
-  }, []);
-
-  // Fetch specific team info
-  useEffect(() => {
-    if (!selectedEventId || !teamId) return;
+    if (!teamId) return;
     
     setLoading(true);
-    axios.get(`http://localhost:5000/api/teams/all/${selectedEventId}`, {
+    axios.get(`http://localhost:5000/api/teams/${teamId}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then((res: any) => {
-        const found = res.data.find((t: any) => t._id === teamId);
-        if (found) {
-          setTeam(found);
-        }
+        setTeam(res.data);
       })
-      .catch((err: any) => console.error(err))
+      .catch((err: any) => {
+        console.error('Error fetching team info:', err);
+      })
       .finally(() => setLoading(false));
-  }, [selectedEventId, teamId, token]);
+  }, [teamId, token]);
 
   // Fetch commits & AI reports for active team
   useEffect(() => {
@@ -110,7 +94,7 @@ export default function JudgeTeamActivity() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => navigate('/judge/dashboard')}
-            className="text-blue-650 hover:text-blue-700 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5"
+            className="text-blue-600 hover:text-blue-700 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5"
           >
             <ArrowLeft size={14} />
             <span>Dashboard</span>
@@ -136,7 +120,7 @@ export default function JudgeTeamActivity() {
               Tổng quan dự án của đội
             </span>
             <h2 className="text-2xl font-black text-slate-800 mt-2 uppercase">{team.name}</h2>
-            <p className="text-xs font-bold text-slate-650 mt-1">Đề tài: {team.topicSubmission?.title || 'Chưa đăng ký'}</p>
+            <p className="text-xs font-bold text-slate-600 mt-1">Đề tài: {team.topicSubmission?.title || 'Chưa đăng ký'}</p>
           </div>
 
           {team.topicSubmission?.demoUrl && (
@@ -144,7 +128,7 @@ export default function JudgeTeamActivity() {
               href={team.topicSubmission.demoUrl}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-1.5 text-xs font-bold text-slate-650 hover:text-slate-900 border border-slate-200 hover:border-slate-300 bg-slate-50 px-4 py-2 rounded-lg transition-all uppercase tracking-wider shadow-sm"
+              className="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 border border-slate-200 hover:border-slate-300 bg-slate-50 px-4 py-2 rounded-lg transition-all uppercase tracking-wider shadow-sm"
             >
               <ExternalLink size={14} />
               <span>Xem Demo</span>

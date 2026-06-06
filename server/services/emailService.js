@@ -23,6 +23,7 @@ if (!isMock) {
 async function sendMailHelper(mailOptions) {
   const isBrevoApi = process.env.EMAIL_PASS && (process.env.EMAIL_PASS.startsWith('xsmtpsib-') || process.env.EMAIL_PASS.startsWith('xkeysib-'));
   const isResendApi = process.env.EMAIL_PASS && process.env.EMAIL_PASS.startsWith('re_');
+  const isSendGridApi = process.env.EMAIL_PASS && process.env.EMAIL_PASS.startsWith('SG.');
 
   // Parse recipient format: "Name" <email@domain.com> or email@domain.com
   let recipientEmail = mailOptions.to;
@@ -68,6 +69,67 @@ async function sendMailHelper(mailOptions) {
       return { messageId: resData.id };
     } catch (apiErr) {
       console.error(`[EMAIL] Resend HTTP API failed: ${apiErr.message}. Falling back to standard SMTP.`);
+      throw apiErr;
+    }
+  }
+
+  if (isSendGridApi) {
+    console.log('[EMAIL] Detected SendGrid API key. Routing mail through secure SendGrid HTTP API (Port 443)...');
+    try {
+      let senderName = 'SEAL Hackathon';
+      let senderEmail = process.env.EMAIL_FROM || 'no-reply@domain.com';
+
+      // Parse sender format: "Name" <email@domain.com>
+      const fromMatch = senderEmail.match(/^(?:"?([^"]*)"?\s)?(?:<(.+)>)$/);
+      if (fromMatch) {
+        senderName = fromMatch[1] || senderName;
+        senderEmail = fromMatch[2];
+      } else if (senderEmail.includes('@')) {
+        senderName = senderEmail.split('@')[0];
+      }
+
+      const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.EMAIL_PASS}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          personalizations: [{
+            to: [{
+              email: recipientEmail,
+              name: recipientName || undefined
+            }]
+          }],
+          from: {
+            email: senderEmail,
+            name: senderName
+          },
+          subject: mailOptions.subject,
+          content: [{
+            type: 'text/html',
+            value: mailOptions.html
+          }]
+        })
+      });
+
+      if (!response.ok) {
+        let errMsg = `HTTP ${response.status}`;
+        try {
+          const errData = await response.json();
+          if (errData && errData.errors && errData.errors.length > 0) {
+            errMsg = errData.errors.map(e => e.message).join(', ');
+          }
+        } catch (e) {
+          // Non-JSON response
+        }
+        throw new Error(errMsg);
+      }
+
+      console.log(`[EMAIL] SendGrid HTTP API Success!`);
+      return { messageId: `sg-${Date.now()}` };
+    } catch (apiErr) {
+      console.error(`[EMAIL] SendGrid HTTP API failed: ${apiErr.message}. Falling back to standard SMTP.`);
       throw apiErr;
     }
   }

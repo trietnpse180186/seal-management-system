@@ -91,19 +91,6 @@ router.post('/', authenticateToken, requireSystemAdmin, async (req, res) => {
     });
     await creatorRole.save();
 
-    // Send email notifications to all members (non-admins) in the background
-    User.find({ isSystemAdmin: false }).then(users => {
-      users.forEach(user => {
-        emailService.sendEventCreationNotification(
-          user.email,
-          user.fullName,
-          newEvent.name,
-          newEvent.semester,
-          newEvent.year
-        ).catch(err => console.error(`Failed to send event notification to ${user.email}:`, err.message));
-      });
-    }).catch(err => console.error('Error fetching users for event creation notification:', err.message));
-
     res.status(201).json({
       message: 'Event created successfully!',
       event: newEvent
@@ -385,6 +372,11 @@ router.post('/:eventId/distribute-teams', authenticateToken, async (req, res) =>
       if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator or Admin role required.' });
     }
 
+    // Fetch Event to get org name
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: 'Không tìm thấy sự kiện.' });
+    const orgName = event ? event.githubOrgName : undefined;
+
     // 2. Fetch tracks
     const tracks = await Track.find({ eventId });
     if (tracks.length === 0) {
@@ -422,15 +414,18 @@ router.post('/:eventId/distribute-teams', authenticateToken, async (req, res) =>
       // Trigger GitHub Repo creation in the background
       const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
       
-      githubService.createTeamRepository(slugRepoName, 'private')
+      githubService.createTeamRepository(slugRepoName, 'private', orgName)
         .then(async (gitResult) => {
           // Check if repo already exists for this team
           const existingRepo = await GithubRepository.findOne({ teamId: team._id });
           if (!existingRepo) {
+            const actualOrgName = gitResult.owner || orgName;
+
             const newRepo = new GithubRepository({
               eventId: team.eventId,
               trackId: track._id,
               teamId: team._id,
+              orgName: actualOrgName,
               repoName: slugRepoName,
               repoUrl: gitResult.repoUrl,
               githubRepoId: gitResult.githubRepoId,
@@ -442,7 +437,7 @@ router.post('/:eventId/distribute-teams', authenticateToken, async (req, res) =>
             const populatedMembers = await TeamMember.find({ teamId: team._id }).populate('userId');
             for (const tm of populatedMembers) {
               if (tm.userId && tm.userId.githubUsername) {
-                await githubService.addCollaborator(slugRepoName, tm.userId.githubUsername);
+                await githubService.addCollaborator(slugRepoName, tm.userId.githubUsername, 'push', actualOrgName);
               }
             }
             console.log(`[DISTRIBUTION] Provisioned GitHub repo and added collaborators for team: ${team.name}`);
@@ -482,6 +477,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const event = await Event.findById(req.params.id);
     if (!event) return res.status(404).json({ message: 'Event not found.' });
 
+    const oldStatus = event.status;
+
     // Auth check
     if (!req.user.isSystemAdmin) {
       const coordinatorRole = await EventRole.findOne({
@@ -511,6 +508,23 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (status) event.status = status;
 
     await event.save();
+
+    // Send email notifications to all members (non-admins) in the background when status shifts to 'registration'
+    if (status === 'registration' && oldStatus !== 'registration') {
+      console.log(`[EVENT] Event "${event.name}" status updated to registration. Sending email notifications to all members...`);
+      User.find({ isSystemAdmin: false }).then(users => {
+        users.forEach(user => {
+          emailService.sendEventCreationNotification(
+            user.email,
+            user.fullName,
+            event.name,
+            event.semester,
+            event.year
+          ).catch(err => console.error(`Failed to send event notification to ${user.email}:`, err.message));
+        });
+      }).catch(err => console.error('Error fetching users for event registration notification:', err.message));
+    }
+
     res.json({ message: 'Event updated successfully!', event });
   } catch (error) {
     console.error('Update Event Error:', error.message);

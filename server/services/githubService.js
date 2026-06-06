@@ -25,30 +25,55 @@ async function createTeamRepository(repoName, visibility = 'private', customOrgN
     const randomId = Math.floor(Math.random() * 100000000).toString();
     return {
       repoUrl: `https://github.com/${activeOrgName}/${repoName}`,
-      githubRepoId: randomId
+      githubRepoId: randomId,
+      owner: activeOrgName
     };
   }
 
   try {
     // Attempt to create org repo
+    console.log(`Attempting to create repository "${repoName}" in organization "${activeOrgName}"...`);
     const response = await octokit.repos.createInOrg({
       org: activeOrgName,
       name: repoName,
       private: visibility === 'private',
       auto_init: true
     });
+    const ownerName = response.data.owner ? response.data.owner.login : activeOrgName;
+    console.log(`Successfully created repository in organization: ${response.data.html_url} (owner: ${ownerName})`);
     return {
       repoUrl: response.data.html_url,
-      githubRepoId: response.data.id.toString()
+      githubRepoId: response.data.id.toString(),
+      owner: ownerName
     };
   } catch (error) {
-    console.error('Error creating GitHub repository:', error.message);
-    // If it fails or permissions are missing, fall back to mock to keep the app working
-    console.log(`[GITHUB FALLBACK] Failsafe: Mocking repo creation for ${repoName}`);
-    return {
-      repoUrl: `https://github.com/${activeOrgName}/${repoName}`,
-      githubRepoId: `fallback-${Date.now()}`
-    };
+    console.error('Error creating GitHub repository in org:', error.message);
+    
+    // Attempt to fall back to creating in the authenticated user's account
+    try {
+      console.log(`[GITHUB FALLBACK] Attempting to create repository "${repoName}" under authenticated user's account...`);
+      const response = await octokit.repos.createForAuthenticatedUser({
+        name: repoName,
+        private: visibility === 'private',
+        auto_init: true
+      });
+      const ownerName = response.data.owner ? response.data.owner.login : activeOrgName;
+      console.log(`[GITHUB FALLBACK] Successfully created repository under personal account: ${response.data.html_url} (owner: ${ownerName})`);
+      return {
+        repoUrl: response.data.html_url,
+        githubRepoId: response.data.id.toString(),
+        owner: ownerName
+      };
+    } catch (fallbackError) {
+      console.error('[GITHUB FALLBACK] Error creating GitHub repository under personal account:', fallbackError.message);
+      // If both fail, fall back to mock to keep the app working
+      console.log(`[GITHUB FALLBACK] Failsafe: Mocking repo creation for ${repoName}`);
+      return {
+        repoUrl: `https://github.com/${activeOrgName}/${repoName}`,
+        githubRepoId: `fallback-${Date.now()}`,
+        owner: activeOrgName
+      };
+    }
   }
 }
 

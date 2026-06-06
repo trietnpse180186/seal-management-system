@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { 
   Sparkles, 
@@ -9,12 +9,18 @@ import {
   Lock, 
   ArrowLeft,
   ExternalLink,
-  HelpCircle
+  Activity,
+  Code,
+  Zap,
+  ShieldAlert
 } from 'lucide-react';
+
 
 export default function JudgeScoring() {
   const { teamId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const queryRoundId = searchParams.get('roundId');
   const token = localStorage.getItem('token');
 
   const [selectedEventId, setSelectedEventId] = useState('');
@@ -68,13 +74,18 @@ export default function JudgeScoring() {
     if (!selectedEventId) return;
     axios.get(`http://localhost:5000/api/events/${selectedEventId}`)
       .then((res: any) => {
-        setRounds(res.data.rounds || []);
-        if (res.data.rounds && res.data.rounds.length > 0) {
-          setSelectedRoundId(res.data.rounds[0]._id);
+        const eventRounds = res.data.rounds || [];
+        setRounds(eventRounds);
+        
+        // Select the round based on query parameters or fallback to the first round
+        if (queryRoundId && eventRounds.some((r: any) => r._id === queryRoundId)) {
+          setSelectedRoundId(queryRoundId);
+        } else if (eventRounds.length > 0) {
+          setSelectedRoundId(eventRounds[0]._id);
         }
       })
-      .catch((err: any) => console.error(err));
-  }, [selectedEventId]);
+      .catch((err: any) => console.error('Error fetching event details:', err));
+  }, [selectedEventId, queryRoundId]);
 
   // Fetch rubric/criteria
   useEffect(() => {
@@ -176,8 +187,6 @@ export default function JudgeScoring() {
       });
   }, [teamId, selectedRoundId, criteria, token]);
 
-
-
   const handleScoreChange = (critId: string, field: string, val: any) => {
     setScores((prev: any) => ({
       ...prev,
@@ -224,11 +233,14 @@ export default function JudgeScoring() {
     setSaving(true);
     setMessage({ type: '', text: '' });
 
-    const details = Object.entries(scores).map(([critId, val]: [string, any]) => ({
-      criterionId: critId,
-      scoreValue: parseFloat(val.scoreValue),
-      comment: val.comment
-    }));
+    const details = criteria.map((c: any) => {
+      const val = scores[c._id] || {};
+      return {
+        criterionId: c._id,
+        scoreValue: parseFloat(val.scoreValue),
+        comment: val.comment || ''
+      };
+    });
 
     if (details.some(d => isNaN(d.scoreValue))) {
       setMessage({ type: 'error', text: 'Vui lòng điền đầy đủ điểm số cho tất cả tiêu chí.' });
@@ -260,7 +272,7 @@ export default function JudgeScoring() {
 
   if (!team) {
     return (
-      <div className="text-center py-20 text-slate-400 text-xs animate-pulse font-mono">
+      <div className="text-center py-20 text-cyan-400 text-xs animate-pulse font-mono">
         [ĐANG TẢI THÔNG TIN ĐỘI THI...]
       </div>
     );
@@ -269,26 +281,26 @@ export default function JudgeScoring() {
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Sub-header/Breadcrumb Row */}
-      <div className="flex justify-between items-center bg-white border border-slate-200 px-6 py-4 rounded-xl shadow-sm">
+      <div className="flex justify-between items-center bg-slate-900/40 backdrop-blur-md border border-white/10 px-6 py-4 rounded-xl shadow-lg">
         <div className="flex items-center gap-2">
           <button
             onClick={() => navigate('/judge/projects')}
-            className="text-blue-650 hover:text-blue-700 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5"
+            className="text-cyan-400 hover:text-cyan-300 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]"
           >
             <ArrowLeft size={14} />
             <span>Danh sách dự án</span>
           </button>
-          <span className="text-slate-300">/</span>
-          <span className="text-slate-800 text-xs font-bold font-mono">Chấm điểm: {team.name}</span>
+          <span className="text-slate-600">/</span>
+          <span className="text-white text-xs font-bold font-mono drop-shadow-[0_0_5px_rgba(255,255,255,0.2)]">Chấm điểm: {team.name}</span>
         </div>
 
         <div className="flex items-center gap-3">
           {isGraded ? (
-            <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm">
+            <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-[0_0_10px_rgba(16,185,129,0.2)]">
               Đã chấm điểm
             </span>
           ) : (
-            <span className="bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm">
+            <span className="bg-amber-500/10 text-amber-400 border border-amber-500/30 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-[0_0_10px_rgba(245,158,11,0.2)]">
               Chờ chấm điểm
             </span>
           )}
@@ -300,16 +312,16 @@ export default function JudgeScoring() {
         
         {/* Left Column: Project Info & Grading Rubric */}
         <div className="xl:col-span-8 space-y-6">
-          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-6">
+          <div className="bg-slate-900/40 backdrop-blur-md p-6 rounded-xl border border-white/10 shadow-lg space-y-6">
             
             {/* Project Details */}
-            <div className="border-b border-slate-100 pb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="border-b border-white/5 pb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <span className="text-[9px] text-blue-700 font-bold uppercase tracking-wider bg-blue-50 border border-blue-100 px-2 py-0.5 rounded">
+                <span className="text-[9px] text-cyan-300 font-bold uppercase tracking-wider bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded shadow-[0_0_8px_rgba(6,182,212,0.2)]">
                   Chi tiết đề tài của đội thi
                 </span>
-                <h2 className="text-2xl font-black text-slate-800 mt-2 uppercase">{team.name}</h2>
-                <p className="text-xs font-bold text-slate-650 mt-1">Đề tài: {team.topicSubmission?.title || 'Chưa đăng ký'}</p>
+                <h2 className="text-2xl font-black text-white mt-2 uppercase drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">{team.name}</h2>
+                <p className="text-xs font-bold text-slate-300 mt-1">Đề tài: <span className="text-cyan-200">{team.topicSubmission?.title || 'Chưa đăng ký'}</span></p>
               </div>
 
               {team.topicSubmission?.demoUrl && (
@@ -317,7 +329,7 @@ export default function JudgeScoring() {
                   href={team.topicSubmission.demoUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 border border-slate-200 hover:border-slate-300 bg-slate-50 px-4 py-2 rounded-lg transition-all uppercase tracking-wider shadow-sm"
+                  className="flex items-center gap-1.5 text-xs font-bold text-cyan-300 hover:text-white border border-cyan-500/30 hover:border-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-4 py-2 rounded-lg transition-all uppercase tracking-wider shadow-[0_0_10px_rgba(6,182,212,0.1)]"
                 >
                   <ExternalLink size={14} />
                   <span>Xem Demo</span>
@@ -326,24 +338,24 @@ export default function JudgeScoring() {
             </div>
 
             {team.topicSubmission?.description && (
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-1.5 font-mono">Mô tả chi tiết giải pháp:</p>
-                <p className="text-xs text-slate-700 leading-relaxed font-sans">{team.topicSubmission.description}</p>
+              <div className="bg-slate-800/40 p-4 rounded-xl border border-white/5 shadow-inner">
+                <p className="text-[9px] text-cyan-400 font-bold uppercase tracking-wider mb-1.5 font-mono drop-shadow-[0_0_5px_rgba(6,182,212,0.3)]">Mô tả chi tiết giải pháp:</p>
+                <p className="text-xs text-slate-300 leading-relaxed font-sans">{team.topicSubmission.description}</p>
               </div>
             )}
 
             {isRoundLocked && (
-              <div className="bg-emerald-50 border border-emerald-250 text-emerald-800 p-4 rounded-xl text-xs flex items-center gap-2 font-bold uppercase tracking-wider shadow-sm">
+              <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 p-4 rounded-xl text-xs flex items-center gap-2 font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(244,63,94,0.1)]">
                 <Lock size={16} className="shrink-0" />
                 <span>Vòng đấu này đã đóng và khóa điểm. Không thể chỉnh sửa điểm.</span>
               </div>
             )}
 
             {message.text && (
-              <div className={`p-4 rounded-xl text-xs border flex items-center gap-2 shadow-sm ${
+              <div className={`p-4 rounded-xl text-xs border flex items-center gap-2 shadow-[0_0_15px_rgba(0,0,0,0.2)] ${
                 message.type === 'success' 
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
-                  : 'bg-rose-50 border-rose-200 text-rose-800'
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                  : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
               }`}>
                 {message.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
                 <span>{message.text}</span>
@@ -357,10 +369,10 @@ export default function JudgeScoring() {
                   type="button"
                   onClick={handleGetAiSuggestion}
                   disabled={aiLoading}
-                  className="flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 px-4 py-2.5 rounded-xl text-xs font-bold transition-all uppercase tracking-wider shadow-sm"
+                  className="flex items-center gap-1.5 bg-gradient-to-r from-teal-500/20 to-cyan-500/20 hover:from-teal-500/40 hover:to-cyan-500/40 text-teal-300 border border-teal-500/30 hover:border-teal-400 px-4 py-2.5 rounded-xl text-xs font-bold transition-all uppercase tracking-wider shadow-[0_0_15px_rgba(20,184,166,0.3)] hover:shadow-[0_0_20px_rgba(20,184,166,0.5)]"
                 >
-                  <Sparkles size={14} className={aiLoading ? 'animate-spin' : ''} />
-                  <span>{aiLoading ? 'AI đang phân tích...' : 'Lấy gợi ý từ Gemini AI'}</span>
+                  <Sparkles size={14} className={aiLoading ? 'animate-spin' : 'text-teal-400'} />
+                  <span className="drop-shadow-[0_0_5px_rgba(20,184,166,0.5)]">{aiLoading ? 'AI đang phân tích...' : 'Lấy gợi ý từ Gemini AI'}</span>
                 </button>
               </div>
             )}
@@ -370,16 +382,16 @@ export default function JudgeScoring() {
               <form onSubmit={handleSubmitScores} className="space-y-6">
                 <div className="space-y-6">
                   {criteria.map((c: any) => (
-                    <div key={c._id} className="bg-slate-50/40 border border-slate-200 p-5 rounded-xl space-y-4">
+                    <div key={c._id} className="bg-slate-800/20 border border-white/5 p-5 rounded-xl space-y-4 hover:border-white/10 transition-colors shadow-inner">
                       
                       {/* Criterion Header & Score Input */}
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-blue-600 font-mono">[{c.code}]</span>
-                            <span className="text-xs font-bold text-slate-800 uppercase">{c.name}</span>
+                            <span className="text-xs font-bold text-cyan-400 font-mono drop-shadow-[0_0_5px_rgba(6,182,212,0.3)]">[{c.code}]</span>
+                            <span className="text-xs font-bold text-white uppercase drop-shadow-[0_0_5px_rgba(255,255,255,0.1)]">{c.name}</span>
                           </div>
-                          <p className="text-[11px] text-slate-500 leading-relaxed font-sans">{c.description || 'Không có mô tả.'}</p>
+                          <p className="text-[11px] text-slate-400 leading-relaxed font-sans">{c.description || 'Không có mô tả.'}</p>
                         </div>
                         
                         <div className="flex items-center gap-2 shrink-0">
@@ -393,16 +405,16 @@ export default function JudgeScoring() {
                             value={scores[c._id]?.scoreValue || ''}
                             onChange={e => handleScoreChange(c._id, 'scoreValue', e.target.value)}
                             disabled={isRoundLocked}
-                            className="bg-white border border-slate-300 rounded-lg text-slate-850 text-center text-xs px-2 py-2 w-24 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none disabled:opacity-50 font-bold"
+                            className="bg-slate-900 border border-slate-600 rounded-lg text-white text-center text-xs px-2 py-2 w-24 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 focus:outline-none disabled:opacity-50 font-bold shadow-inner placeholder-slate-600"
                           />
-                          <span className="text-[10px] text-slate-400 font-mono">/ {c.maxScore}đ</span>
+                          <span className="text-[10px] text-slate-500 font-mono">/ {c.maxScore}đ</span>
                         </div>
                       </div>
 
                       {/* Grading Levels Guides */}
                       {c.gradingLevels && c.gradingLevels.length > 0 && (
-                        <div className="pt-3 border-t border-slate-100 space-y-2">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest font-mono">Mức điểm hướng dẫn:</p>
+                        <div className="pt-3 border-t border-white/5 space-y-2">
+                          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest font-mono">Mức điểm hướng dẫn:</p>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {c.gradingLevels.map((lvl: any, idx: number) => {
                               const scoreVal = parseFloat(scores[c._id]?.scoreValue);
@@ -413,16 +425,16 @@ export default function JudgeScoring() {
                                   key={idx}
                                   className={`p-3 rounded-lg border transition-all duration-300 ${
                                     isMatched
-                                      ? 'bg-blue-50 border-blue-300 text-blue-900 shadow-sm'
-                                      : 'bg-white border-slate-200 hover:border-slate-300 text-slate-500'
+                                      ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
+                                      : 'bg-slate-800/30 border-white/5 hover:border-white/10 text-slate-400'
                                   }`}
                                 >
                                   <div className="flex justify-between items-center text-[10px] font-bold">
-                                    <span className={isMatched ? 'text-blue-700' : 'text-slate-700'}>{lvl.label}</span>
-                                    <span className="text-slate-400 font-mono">{lvl.minScore} - {lvl.maxScore}đ</span>
+                                    <span className={isMatched ? 'text-cyan-200 drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]' : 'text-slate-300'}>{lvl.label}</span>
+                                    <span className={isMatched ? 'text-cyan-300 font-mono' : 'text-slate-500 font-mono'}>{lvl.minScore} - {lvl.maxScore}đ</span>
                                   </div>
                                   {lvl.description && (
-                                    <p className="text-[9px] text-slate-500 mt-1 leading-relaxed font-sans">{lvl.description}</p>
+                                    <p className={`text-[9px] mt-1 leading-relaxed font-sans ${isMatched ? 'text-cyan-200/70' : 'text-slate-500'}`}>{lvl.description}</p>
                                   )}
                                 </div>
                               );
@@ -439,7 +451,7 @@ export default function JudgeScoring() {
                           value={scores[c._id]?.comment || ''}
                           onChange={e => handleScoreChange(c._id, 'comment', e.target.value)}
                           disabled={isRoundLocked}
-                          className="bg-white border border-slate-250 rounded-lg text-slate-700 text-xs px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:opacity-50"
+                          className="bg-slate-900 border border-slate-700 rounded-lg text-slate-300 text-xs px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 disabled:opacity-50 shadow-inner placeholder-slate-600"
                         />
                       </div>
                     </div>
@@ -447,7 +459,7 @@ export default function JudgeScoring() {
                 </div>
 
                 {/* Overall Comment */}
-                <div className="pt-4 border-t border-slate-100">
+                <div className="pt-4 border-t border-white/5">
                   <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider font-mono">
                     Ý kiến nhận xét tổng quan (Overall Comment)
                   </label>
@@ -457,7 +469,7 @@ export default function JudgeScoring() {
                     value={overallComment}
                     onChange={e => setOverallComment(e.target.value)}
                     disabled={isRoundLocked}
-                    className="bg-white border border-slate-350 rounded-lg text-slate-700 text-xs px-3 py-2.5 w-full focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:opacity-50 font-sans"
+                    className="bg-slate-900 border border-slate-700 rounded-lg text-slate-300 text-xs px-3 py-2.5 w-full focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 disabled:opacity-50 font-sans shadow-inner placeholder-slate-600"
                   ></textarea>
                 </div>
 
@@ -466,17 +478,17 @@ export default function JudgeScoring() {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/10 uppercase tracking-widest"
+                    className="w-full bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-white font-bold py-3.5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-[0_0_20px_rgba(6,182,212,0.4)] hover:shadow-[0_0_30px_rgba(6,182,212,0.6)] uppercase tracking-widest"
                   >
                     <Save size={16} />
-                    <span>{saving ? 'Đang nộp điểm...' : 'Xác nhận nộp điểm số'}</span>
+                    <span>{saving ? 'Đang lưu điểm...' : 'Nộp điểm chính thức'}</span>
                   </button>
                 )}
               </form>
             ) : (
-              <div className="bg-white p-12 text-center text-slate-400 flex flex-col items-center justify-center min-h-[350px] border border-slate-200 shadow-sm rounded-2xl">
-                <Lock size={48} className="text-slate-300 mb-3" />
-                <p className="font-semibold text-lg text-slate-800">Bảng Rubric chưa sẵn sàng</p>
+              <div className="bg-slate-900/20 p-12 text-center text-slate-500 flex flex-col items-center justify-center min-h-[350px] border border-white/5 shadow-inner rounded-2xl">
+                <Lock size={48} className="text-slate-600 mb-3 drop-shadow-[0_0_10px_rgba(0,0,0,0.5)]" />
+                <p className="font-semibold text-lg text-slate-300">Bảng Rubric chưa sẵn sàng</p>
                 <p className="text-xs text-slate-500 max-w-sm mt-1 leading-relaxed">
                   Bảng điểm Rubric của vòng đấu này chưa được cấu hình hoặc chưa khóa chính thức. Giám khảo vui lòng quay lại sau.
                 </p>
@@ -488,31 +500,37 @@ export default function JudgeScoring() {
 
         {/* Right Column: Commits & AI Analysis Sidebar (xl:col-span-4) */}
         <div className="xl:col-span-4 space-y-6">
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col h-fit space-y-4">
+          <div className="bg-slate-900/40 backdrop-blur-md p-5 rounded-xl border border-white/10 shadow-lg flex flex-col h-fit space-y-4">
             
             {/* Sidebar Tabs */}
-            <div className="flex border-b border-slate-200 pb-2">
+            <div className="flex border-b border-white/5 pb-2">
               <button
                 type="button"
                 onClick={() => setSidebarTab('commits')}
-                className={`flex-1 text-center py-1.5 text-xs font-bold transition-all uppercase tracking-wider ${
+                className={`flex-1 text-center py-1.5 text-xs font-bold transition-all uppercase tracking-wider relative ${
                   sidebarTab === 'commits' 
-                    ? 'text-blue-600 border-b-2 border-blue-600 font-extrabold' 
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'text-cyan-400 font-extrabold drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]' 
+                    : 'text-slate-500 hover:text-slate-300'
                 }`}
               >
-                Commits ({commits.length})
+                Commit ({commits.length})
+                {sidebarTab === 'commits' && (
+                  <div className="absolute bottom-[-9px] left-0 w-full h-[2px] bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)]"></div>
+                )}
               </button>
               <button
                 type="button"
                 onClick={() => setSidebarTab('ai')}
-                className={`flex-1 text-center py-1.5 text-xs font-bold transition-all uppercase tracking-wider ${
+                className={`flex-1 text-center py-1.5 text-xs font-bold transition-all uppercase tracking-wider relative ${
                   sidebarTab === 'ai' 
-                    ? 'text-blue-600 border-b-2 border-blue-600 font-extrabold' 
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'text-teal-400 font-extrabold drop-shadow-[0_0_5px_rgba(20,184,166,0.5)]' 
+                    : 'text-slate-500 hover:text-slate-300'
                 }`}
               >
                 Phân tích AI
+                {sidebarTab === 'ai' && (
+                  <div className="absolute bottom-[-9px] left-0 w-full h-[2px] bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.8)]"></div>
+                )}
               </button>
             </div>
 
@@ -520,20 +538,20 @@ export default function JudgeScoring() {
             {sidebarTab === 'commits' ? (
               <div className="space-y-3.5 max-h-[550px] overflow-y-auto pr-1">
                 {commits.map((c: any, idx: number) => (
-                  <div key={c._id || idx} className="p-3.5 bg-slate-50 rounded-xl border border-slate-100 text-[10px] space-y-1.5 hover:border-slate-200 transition-colors">
-                    <p className="font-semibold text-slate-800 truncate leading-snug">{c.message}</p>
-                    <div className="flex justify-between items-center text-slate-500 font-mono">
-                      <span>@{c.authorGithubUsername || c.authorName}</span>
+                  <div key={c._id || idx} className="p-3.5 bg-slate-800/30 rounded-xl border border-white/5 text-[10px] space-y-1.5 hover:border-white/10 transition-colors shadow-inner">
+                    <p className="font-semibold text-slate-200 truncate leading-snug drop-shadow-[0_0_2px_rgba(255,255,255,0.1)]">{c.message}</p>
+                    <div className="flex justify-between items-center text-slate-400 font-mono">
+                      <span className="text-cyan-400/80">@{c.authorGithubUsername || c.authorName}</span>
                       <span>{new Date(c.committedAt).toLocaleDateString('vi-VN')}</span>
                     </div>
                     <div className="flex gap-2 text-[9px] font-bold font-mono">
-                      <span className="text-emerald-600">+{c.additions}</span>
-                      <span className="text-rose-600">-{c.deletions}</span>
+                      <span className="text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.3)]">+{c.additions}</span>
+                      <span className="text-rose-400 drop-shadow-[0_0_5px_rgba(251,113,133,0.3)]">-{c.deletions}</span>
                     </div>
                   </div>
                 ))}
                 {commits.length === 0 && (
-                  <p className="text-[10px] text-slate-400 italic text-center py-8 font-mono">
+                  <p className="text-[10px] text-slate-500 italic text-center py-8 font-mono">
                     [CHƯA CÓ HOẠT ĐỘNG COMMIT]
                   </p>
                 )}
@@ -544,58 +562,68 @@ export default function JudgeScoring() {
                 {aiInsight ? (
                   <>
                     {/* RAG Level Badge */}
-                    <div className="bg-blue-50 p-3.5 rounded-xl border border-blue-100">
-                      <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block font-mono">Phân cấp RAG phát hiện</span>
-                      <p className="text-blue-700 font-black mt-1 text-sm">
+                    <div className="bg-cyan-950/20 p-3.5 rounded-xl border border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+                      <span className="text-[9px] text-cyan-300/70 font-bold uppercase tracking-wider block font-mono flex items-center gap-1.5"><Zap size={12} className="text-cyan-400" /> Phân cấp RAG phát hiện</span>
+                      <p className="text-cyan-400 font-black mt-1 text-sm drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]">
                         {aiInsight.smb_scale_advisory?.system_identity_recap?.includes('Agentic') ? 'Agentic RAG' : 'Advanced RAG'}
                       </p>
                     </div>
 
                     {/* Historical Synthesis */}
                     <div className="space-y-1">
-                      <span className="text-[9px] text-slate-550 font-bold uppercase tracking-wider block font-mono">Tổng quan đánh giá</span>
-                      <p className="text-slate-650 bg-slate-50 p-3 rounded-lg border border-slate-150 text-[10px] leading-relaxed font-sans">
+                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block font-mono flex items-center gap-1.5"><Code size={12} /> Tổng quan đánh giá</span>
+                      <p className="text-slate-300 bg-slate-800/40 p-3 rounded-lg border border-white/5 text-[10px] leading-relaxed font-sans shadow-inner">
                         {aiInsight.overall_picture?.historical_synthesis}
                       </p>
                     </div>
 
                     {/* Qualitative criteria review */}
-                    <div className="space-y-2">
-                      <span className="text-[9px] text-slate-550 font-bold uppercase tracking-wider block font-mono">Đánh giá định tính (Stitch R1-R2)</span>
-                      <div className="space-y-1.5 text-[10px]">
-                        {Object.entries(aiInsight.criteria_comments || {}).map(([key, value]: [string, any]) => (
-                          <div key={key} className="flex justify-between items-center bg-slate-50 p-2.5 rounded border border-slate-150">
-                            <span className="font-bold text-slate-700">{key}</span>
-                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${
-                              value.grade === 'Xuất sắc' ? 'bg-emerald-50 text-emerald-700 border border-emerald-250' :
-                              value.grade === 'Tốt' ? 'bg-blue-50 text-blue-700 border border-blue-250' :
-                              value.grade === 'Khá' ? 'bg-amber-50 text-amber-700 border border-amber-250' : 'bg-slate-100 text-slate-500 border border-slate-200'
-                            }`}>
-                              {value.grade}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                    <div className="space-y-3">
+                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block font-mono flex items-center gap-1.5"><Activity size={12} /> Đánh giá chi tiết tiêu chí (Stitch R1-R2)</span>
+                        {Object.entries(aiInsight.criteria_comments || {}).map(([key, value]: [string, any]) => {
+                          const matchedCrit = criteria.find(c => c.code === key);
+                          const displayName = matchedCrit ? matchedCrit.name : key;
+                          return (
+                            <div key={key} className="bg-slate-800/40 p-3 rounded-xl border border-white/5 shadow-inner space-y-1.5 hover:border-white/10 transition-colors">
+                              <div className="flex justify-between items-center">
+                                <span className="font-bold text-slate-300">{displayName}</span>
+                                <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase shadow-[0_0_8px_rgba(0,0,0,0.5)] ${
+                                  value.grade === 'Xuất sắc' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]' :
+                                  value.grade === 'Tốt' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]' :
+                                  value.grade === 'Khá' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 drop-shadow-[0_0_5px_rgba(245,158,11,0.5)]' :
+                                  value.grade === 'Trung bình' ? 'bg-slate-800/60 text-slate-300 border border-slate-700' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                }`}>
+                                  {value.grade}
+                                </span>
+                              </div>
+                              {value.comment && (
+                                <p className="text-slate-400 leading-relaxed font-sans text-[10px] pl-2 border-l border-slate-700 mt-1">
+                                  {value.comment}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
                     </div>
 
                     {/* Judge Q&A Questions */}
-                    <div className="space-y-3 bg-blue-50/40 p-4 rounded-xl border border-blue-100 border-l-4 border-l-blue-600 shadow-sm">
-                      <span className="text-xs font-bold text-blue-700 uppercase tracking-wider block flex items-center gap-1.5 border-b border-blue-100 pb-2">
-                        <HelpCircle size={14} className="text-blue-600" />
-                        <span>Câu hỏi phản biện gợi ý</span>
+                    <div className="space-y-3 bg-teal-950/10 p-4 rounded-xl border border-teal-500/20 border-l-4 border-l-teal-500 shadow-[0_0_15px_rgba(20,184,166,0.1)]">
+                      <span className="text-xs font-bold text-teal-400 uppercase tracking-wider flex items-center gap-1.5 border-b border-teal-500/20 pb-2">
+                        <ShieldAlert size={14} className="text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.8)]" />
+                        <span className="drop-shadow-[0_0_5px_rgba(20,184,166,0.3)]">Câu hỏi phản biện gợi ý</span>
                       </span>
-                      <ul className="list-disc pl-5 space-y-2 mt-2 text-slate-700 text-xs font-medium leading-relaxed">
+                      <ul className="list-disc pl-5 space-y-2 mt-2 text-slate-300 text-[11px] font-medium leading-relaxed">
                         {aiQuestions.map((q: string, idx: number) => (
-                          <li key={idx} className="hover:text-blue-900 transition-colors">{q}</li>
+                          <li key={idx} className="hover:text-teal-300 transition-colors marker:text-teal-500">{q}</li>
                         ))}
                         {aiQuestions.length === 0 && (
-                          <li className="list-none text-slate-400 italic font-mono">[KHÔNG CÓ GỢI Ý]</li>
+                          <li className="list-none text-slate-500 italic font-mono">[KHÔNG CÓ GỢI Ý]</li>
                         )}
                       </ul>
                     </div>
                   </>
                 ) : (
-                  <p className="text-[10px] text-slate-400 italic text-center py-8 font-mono">
+                  <p className="text-[10px] text-slate-500 italic text-center py-8 font-mono">
                     [CHƯA CÓ PHÂN TÍCH TỔNG HỢP AI]
                   </p>
                 )}

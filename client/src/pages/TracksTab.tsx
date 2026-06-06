@@ -36,6 +36,7 @@ interface TracksTabProps {
 }
 
 export default function TracksTab({
+  selectedEvent,
   tracks,
   trackName,
   setTrackName,
@@ -62,6 +63,10 @@ export default function TracksTab({
   handleRemoveRole,
 }: TracksTabProps) {
   const [judgeEmail, setJudgeEmail] = useState("");
+
+  const maxEventTeams = selectedEvent?.maxTeams || 0;
+  const totalAllocatedTeams = tracks.reduce((sum, t) => sum + (t.maxTeams || 0), 0);
+  const remainingTeams = maxEventTeams - totalAllocatedTeams;
 
   const trackJudges = eventRoles.filter(
     (role: any) =>
@@ -123,39 +128,59 @@ export default function TracksTab({
 
         <form
           onSubmit={handleCreateTrack}
-          className="space-y-3 pt-3 border-t border-slate-800/80"
+          className="space-y-3.5 pt-3 border-t border-slate-800/80"
         >
           <p className="text-[10px] font-bold text-slate-300 uppercase font-mono">
             Tạo thêm bảng đấu:
           </p>
-          <select
-            required
-            value={trackRoundId}
-            onChange={(e) => setTrackRoundId(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-900 border border-slate-850 text-slate-200 focus:outline-none focus:border-cyan-500"
-          >
-            <option value="">-- Chọn Vòng thi --</option>
-            {rounds.map((r: any) => (
-              <option key={r._id} value={r._id} disabled={r.status === 'completed'}>
-                {r.name} (Vòng {r.order}){r.status === 'completed' ? ' - Đã kết thúc' : ''}
-              </option>
-            ))}
-          </select>
-          <input
-            type="text"
-            required
-            placeholder="Tên bảng đấu (e.g. AI & IoT)"
-            value={trackName}
-            onChange={(e) => setTrackName(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
-          />
-          <input
-            type="number"
-            placeholder="Số lượng đội tối đa (e.g. 5)"
-            value={trackMax}
-            onChange={(e) => setTrackMax(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
-          />
+
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
+              Chọn Vòng thi
+            </label>
+            <select
+              required
+              value={trackRoundId}
+              onChange={(e) => setTrackRoundId(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-900 border border-slate-850 text-slate-200 focus:outline-none focus:border-cyan-500"
+            >
+              <option value="">-- Chọn Vòng thi --</option>
+              {rounds.map((r: any) => (
+                <option key={r._id} value={r._id} disabled={r.status === 'completed'}>
+                  {r.name} (Vòng {r.order}){r.status === 'completed' ? ' - Đã kết thúc' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
+              Tên bảng đấu
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="Tên bảng đấu (e.g. AI & IoT)"
+              value={trackName}
+              onChange={(e) => setTrackName(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
+              Số lượng đội tối đa {maxEventTeams > 0 ? `(Còn lại: ${remainingTeams} / ${maxEventTeams} đội)` : ""}
+            </label>
+            <input
+              type="number"
+              required
+              placeholder="Số lượng đội tối đa (e.g. 5)"
+              value={trackMax}
+              onChange={(e) => setTrackMax(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
+            />
+          </div>
+
           <button
             type="submit"
             className="w-full bg-cyan-500 hover:bg-cyan-500 text-white text-xs font-semibold py-2 rounded-lg cursor-pointer font-mono"

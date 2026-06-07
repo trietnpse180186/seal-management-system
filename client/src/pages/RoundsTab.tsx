@@ -206,6 +206,29 @@ export default function RoundsTab({
     }
   };
 
+  // Export criteria of the current rubric to Excel
+  const handleExportCriteria = async () => {
+    if (!rubric) return;
+    try {
+      const res = await axios.get(`http://localhost:5000/api/rubrics/${rubric._id}/export-criteria`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      const safeName = rubric.name.replace(/\s+/g, "_");
+      link.setAttribute("download", `Criteria_${safeName}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Export criteria error:", err);
+      alert("Lỗi khi xuất danh sách tiêu chí ra file Excel. Vui lòng thử lại.");
+    }
+  };
+
   // Parse Excel file for preview
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -257,7 +280,8 @@ export default function RoundsTab({
         setImportGradingDefs(gradingDefs);
 
         // Parse data rows
-        const existingCodes = new Set(criteria.map((c: any) => c.code.toUpperCase()));
+        const existingCodesMap = new Map(criteria.map((c: any) => [c.code.toUpperCase(), c]));
+        const fileCodes = new Set<string>();
         const previewed: any[] = [];
 
         for (let rowIdx = 2; rowIdx < rawData.length; rowIdx++) {
@@ -272,7 +296,9 @@ export default function RoundsTab({
           if (!code) issues.push("Thiếu mã tiêu chí");
           if (!name) issues.push("Thiếu tên tiêu chí");
           if (isNaN(weight) || weight <= 0) issues.push("Trọng số không hợp lệ");
-          if (existingCodes.has(code)) issues.push("Mã đã tồn tại (sẽ bỏ qua)");
+
+          const action = existingCodesMap.has(code) ? "update" : "create";
+          fileCodes.add(code);
 
           const levels = gradingDefs.map((def: any) => ({
             label: def.label,
@@ -288,9 +314,24 @@ export default function RoundsTab({
             weight: isNaN(weight) ? row[2] : weight,
             gradingLevels: levels,
             issues,
-            isDuplicate: existingCodes.has(code),
+            action, // "create" or "update"
           });
         }
+
+        // Identify deleted criteria (present in DB, but NOT in file)
+        criteria.forEach((c: any) => {
+          if (!fileCodes.has(c.code.toUpperCase())) {
+            previewed.push({
+              rowNum: "—",
+              code: c.code.toUpperCase(),
+              name: c.name,
+              weight: c.weight,
+              gradingLevels: c.gradingLevels || [],
+              issues: [],
+              action: "delete",
+            });
+          }
+        });
 
         setImportPreview(previewed);
         setImportError("");
@@ -349,6 +390,8 @@ export default function RoundsTab({
         errors: errData?.errors || [],
         skippedDetails: errData?.skippedDetails || [],
         imported: 0,
+        updated: 0,
+        deleted: 0,
       });
     } finally {
       setImportLoading(false);
@@ -881,6 +924,14 @@ export default function RoundsTab({
                     </button>
                     <button
                       type="button"
+                      onClick={handleExportCriteria}
+                      className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-[10px] font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-all"
+                    >
+                      <Download size={12} />
+                      Xuất Excel hiện tại
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className="flex items-center gap-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-all"
                     >
@@ -949,38 +1000,54 @@ export default function RoundsTab({
                           </tr>
                         </thead>
                         <tbody>
-                          {importPreview.map((item: any, idx: number) => (
-                            <tr
-                              key={idx}
-                              className={`border-b border-slate-900 ${
-                                item.issues.length > 0
-                                  ? item.isDuplicate
-                                    ? "opacity-50"
-                                    : "bg-rose-500/5"
-                                  : ""
-                              }`}
-                            >
-                              <td className="py-1.5 pr-2 text-slate-500">{item.rowNum}</td>
-                              <td className="py-1.5 pr-2 text-slate-200 font-bold font-mono">{item.code || "—"}</td>
-                              <td className="py-1.5 pr-2 text-slate-300">{item.name || "—"}</td>
-                              <td className="py-1.5 pr-2 text-cyan-400 font-mono">{item.weight}%</td>
-                              <td className="py-1.5">
-                                {item.issues.length > 0 ? (
-                                  <span className={`text-[9px] px-1.5 py-0.5 rounded ${
-                                    item.isDuplicate
-                                      ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                                      : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
-                                  }`}>
-                                    {item.issues.join(", ")}
-                                  </span>
-                                ) : (
-                                  <span className="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded">
-                                    OK
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
+                          {importPreview.map((item: any, idx: number) => {
+                            const isDelete = item.action === "delete";
+                            const isCreate = item.action === "create";
+                            return (
+                              <tr
+                                key={idx}
+                                className={`border-b border-slate-900/60 ${
+                                  item.issues.length > 0
+                                    ? "bg-rose-500/5"
+                                    : isDelete
+                                    ? "bg-rose-500/10 opacity-75"
+                                    : isCreate
+                                    ? "bg-emerald-500/5"
+                                    : "bg-amber-500/5"
+                                }`}
+                              >
+                                <td className="py-1.5 pr-2 text-slate-500">{item.rowNum}</td>
+                                <td className={`py-1.5 pr-2 font-bold font-mono ${
+                                  isDelete ? "text-rose-450 line-through" : "text-slate-200"
+                                }`}>{item.code || "—"}</td>
+                                <td className={`py-1.5 pr-2 ${
+                                  isDelete ? "text-rose-450 line-through" : "text-slate-300"
+                                }`}>{item.name || "—"}</td>
+                                <td className={`py-1.5 pr-2 font-mono ${
+                                  isDelete ? "text-rose-450 line-through" : "text-cyan-400"
+                                }`}>{item.weight}%</td>
+                                <td className="py-1.5">
+                                  {item.issues.length > 0 ? (
+                                    <span className="text-[9px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-1.5 py-0.5 rounded">
+                                      {item.issues.join(", ")}
+                                    </span>
+                                  ) : isDelete ? (
+                                    <span className="text-[9px] bg-rose-500/20 text-rose-400 border border-rose-500/30 px-1.5 py-0.5 rounded font-bold">
+                                      XÓA
+                                    </span>
+                                  ) : isCreate ? (
+                                    <span className="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded font-bold">
+                                      THÊM MỚI
+                                    </span>
+                                  ) : (
+                                    <span className="text-[9px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded font-bold">
+                                      CẬP NHẬT
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -989,9 +1056,9 @@ export default function RoundsTab({
                     {(() => {
                       const currentSum = criteria.reduce((s: number, c: any) => s + (c.weight || 0), 0);
                       const newSum = importPreview
-                        .filter((item: any) => item.issues.length === 0)
+                        .filter((item: any) => item.action !== "delete" && item.issues.length === 0)
                         .reduce((s: number, item: any) => s + (Number(item.weight) || 0), 0);
-                      const totalAfter = currentSum + newSum;
+                      const totalAfter = newSum;
                       const exceeds = totalAfter > (rubric?.totalWeight || 100);
                       return (
                         <div className={`text-[10px] font-mono p-2 rounded-lg border ${
@@ -999,7 +1066,7 @@ export default function RoundsTab({
                             ? "bg-rose-500/10 border-rose-500/20 text-rose-400"
                             : "bg-slate-900/60 border-slate-800 text-slate-400"
                         }`}>
-                          Trọng số hiện tại: {currentSum}% + Mới: {newSum}% = <strong className={exceeds ? "text-rose-300" : "text-emerald-400"}>{totalAfter}%</strong> / {rubric?.totalWeight || 100}%
+                          Trọng số hiện tại: {currentSum}% | Trọng số sau đồng bộ: <strong className={exceeds ? "text-rose-300" : "text-emerald-400"}>{totalAfter}%</strong> / {rubric?.totalWeight || 100}%
                           {exceeds && " ⚠️ Vượt quá giới hạn!"}
                         </div>
                       );
@@ -1030,13 +1097,13 @@ export default function RoundsTab({
                 {/* Import Result */}
                 {importResult && (
                   <div className={`rounded-xl p-3 space-y-2 border ${
-                    importResult.imported > 0
+                    (importResult.imported > 0 || importResult.updated > 0 || importResult.deleted > 0)
                       ? "bg-emerald-500/10 border-emerald-500/20"
                       : "bg-rose-500/10 border-rose-500/20"
                   }`}>
                     <div className="flex items-center justify-between">
                       <p className={`text-[11px] font-bold ${
-                        importResult.imported > 0 ? "text-emerald-400" : "text-rose-400"
+                        (importResult.imported > 0 || importResult.updated > 0 || importResult.deleted > 0) ? "text-emerald-400" : "text-rose-400"
                       }`}>
                         {importResult.message}
                       </p>
@@ -1047,10 +1114,12 @@ export default function RoundsTab({
                         <X size={12} />
                       </button>
                     </div>
-                    {importResult.imported > 0 && (
+                    {(importResult.imported > 0 || importResult.updated > 0 || importResult.deleted > 0) && (
                       <p className="text-[10px] text-emerald-300">
-                        ✅ Đã import: {importResult.imported} tiêu chí
-                        {importResult.skipped > 0 && ` | ⏭️ Bỏ qua: ${importResult.skipped}`}
+                        ✅ Đồng bộ thành công:
+                        {importResult.imported > 0 && ` +Thêm: ${importResult.imported}`}
+                        {importResult.updated > 0 && ` ~Sửa: ${importResult.updated}`}
+                        {importResult.deleted > 0 && ` -Xóa: ${importResult.deleted}`}
                         {importResult.errorCount > 0 && ` | ❌ Lỗi: ${importResult.errorCount}`}
                       </p>
                     )}

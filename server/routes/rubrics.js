@@ -618,8 +618,8 @@ router.get('/template/download', authenticateToken, async (req, res) => {
 
 /**
  * POST /api/rubrics/:rubricId/import-criteria
- * Import criteria từ file Excel upload
- * Grading levels được parse động từ header row 2 (format: "Label (min - max)")
+ * Import và đồng bộ hóa criteria từ file Excel upload
+ * Hỗ trợ Thêm mới, Cập nhật tiêu chí trùng mã, và Xóa tiêu chí bị thiếu trong file Excel
  */
 router.post('/:rubricId/import-criteria', authenticateToken, upload.single('file'), async (req, res) => {
   try {
@@ -630,7 +630,7 @@ router.post('/:rubricId/import-criteria', authenticateToken, upload.single('file
     }
 
     if (rubric.isLocked) {
-      return res.status(400).json({ message: 'Rubric đã bị khóa. Không thể import thêm tiêu chí.' });
+      return res.status(400).json({ message: 'Rubric đã bị khóa. Không thể thay đổi tiêu chí.' });
     }
 
     // Check permissions
@@ -667,7 +667,7 @@ router.post('/:rubricId/import-criteria', authenticateToken, upload.single('file
       });
     }
 
-    // 4. Parse grading levels from row 2 (index 1) — dynamic columns from D onward
+    // 4. Parse grading levels from row 2 (index 1)
     const headerRow2 = rawData[1];
     const gradingLevelDefs = [];
     const gradingLevelRegex = /^(.+?)\s*\(\s*([\d.]+)\s*-\s*([\d.]+)\s*\)$/;
@@ -693,17 +693,11 @@ router.post('/:rubricId/import-criteria', authenticateToken, upload.single('file
 
     // 5. Parse data rows (from row 3 onward, index 2+)
     const existingCriteria = await Criterion.find({ rubricId: rubric._id });
-    const existingCodes = new Set(existingCriteria.map((c) => c.code.toUpperCase()));
-    const currentWeightSum = existingCriteria.reduce((sum, c) => sum + (c.weight || 0), 0);
 
     const toImport = [];
     const errors = [];
-    const skipped = [];
     let newWeightSum = 0;
-
-    // Find current max order
-    const maxOrderCrit = await Criterion.findOne({ rubricId: rubric._id }).sort({ order: -1 });
-    let nextOrder = maxOrderCrit && typeof maxOrderCrit.order === 'number' ? maxOrderCrit.order + 1 : 1;
+    let nextOrder = 1;
 
     for (let rowIdx = 2; rowIdx < rawData.length; rowIdx++) {
       const row = rawData[rowIdx];
@@ -734,12 +728,6 @@ router.post('/:rubricId/import-criteria', authenticateToken, upload.single('file
         continue;
       }
 
-      // Check duplicate code
-      if (existingCodes.has(code)) {
-        skipped.push(`Dòng ${rowNum}: Mã "${code}" đã tồn tại trong rubric, bỏ qua.`);
-        continue;
-      }
-
       // Check duplicate within import file
       if (toImport.some((item) => item.code === code)) {
         errors.push(`Dòng ${rowNum}: Mã "${code}" bị trùng trong file import.`);
@@ -767,44 +755,200 @@ router.post('/:rubricId/import-criteria', authenticateToken, upload.single('file
       });
     }
 
-    // 6. Validate total weight
-    if (currentWeightSum + newWeightSum > rubric.totalWeight) {
+    if (errors.length > 0) {
       return res.status(400).json({
-        message: `Không thể import. Tổng trọng số hiện tại (${currentWeightSum}) + trọng số mới (${newWeightSum}) = ${currentWeightSum + newWeightSum} vượt quá giới hạn rubric (${rubric.totalWeight}).`,
+        message: 'Có lỗi dữ liệu trong file Excel.',
         errors,
-        skipped,
+        imported: 0,
       });
     }
 
     if (toImport.length === 0) {
       return res.status(400).json({
-        message: 'Không có tiêu chí hợp lệ nào để import.',
+        message: 'Không có tiêu chí hợp lệ nào trong file Excel.',
         errors,
-        skipped,
+        imported: 0,
       });
     }
 
-    // 7. Bulk insert
-    const insertedCriteria = await Criterion.insertMany(toImport);
+    // 6. Validate total weight
+    if (newWeightSum > rubric.totalWeight) {
+      return res.status(400).json({
+        message: `Không thể import. Tổng trọng số của file Excel (${newWeightSum}%) vượt quá giới hạn của Rubric (${rubric.totalWeight}%).`,
+        errors,
+        imported: 0,
+      });
+    }
+
+    // 7. Sync logic: Determine adds, updates, deletes
+    const importCodes = new Set(toImport.map((item) => item.code));
+    const toDeleteIds = existingCriteria
+      .filter((c) => !importCodes.has(c.code.toUpperCase()))
+      .map((c) => c._id);
+
+    // Delete missing criteria
+    if (toDeleteIds.length > 0) {
+      await Criterion.deleteMany({ _id: { $in: toDeleteIds } });
+    }
+
+    // Insert new / Update existing
+    let insertedCount = 0;
+    let updatedCount = 0;
+    const toInsert = [];
+
+    for (const item of toImport) {
+      const existing = existingCriteria.find((c) => c.code.toUpperCase() === item.code);
+      if (existing) {
+        existing.name = item.name;
+        existing.weight = item.weight;
+        existing.gradingLevels = item.gradingLevels;
+        existing.maxScore = item.maxScore;
+        existing.order = item.order;
+        await existing.save();
+        updatedCount++;
+      } else {
+        toInsert.push(item);
+      }
+    }
+
+    if (toInsert.length > 0) {
+      const inserted = await Criterion.insertMany(toInsert);
+      insertedCount = inserted.length;
+    }
+
+    // Return the final list of criteria
+    const finalCriteria = await Criterion.find({ rubricId: rubric._id }).sort({ order: 1 });
 
     res.status(201).json({
-      message: `Import hoàn tất! Đã thêm ${insertedCriteria.length} tiêu chí.`,
-      imported: insertedCriteria.length,
-      skipped: skipped.length,
+      message: `Đồng bộ tiêu chí thành công!`,
+      imported: insertedCount,
+      updated: updatedCount,
+      deleted: toDeleteIds.length,
       errorCount: errors.length,
       errors,
-      skippedDetails: skipped,
-      criteria: insertedCriteria,
+      criteria: finalCriteria,
     });
   } catch (error) {
     console.error('Import Criteria Error:', error.message);
-
-    // Handle multer errors
     if (error.message === 'Chỉ chấp nhận file Excel (.xlsx, .xls)') {
       return res.status(400).json({ message: error.message });
     }
-
     res.status(500).json({ message: 'Server error importing criteria.' });
+  }
+});
+
+/**
+ * GET /api/rubrics/:rubricId/export-criteria
+ * Xuất danh sách criteria hiện tại ra file Excel để chỉnh sửa / xóa
+ */
+router.get('/:rubricId/export-criteria', authenticateToken, async (req, res) => {
+  try {
+    // 1. Load rubric
+    const rubric = await Rubric.findById(req.params.rubricId);
+    if (!rubric) {
+      return res.status(404).json({ message: 'Rubric not found.' });
+    }
+
+    // Check permissions
+    if (!req.user.isSystemAdmin) {
+      const role = await EventRole.findOne({
+        userId: req.user._id,
+        eventId: rubric.eventId,
+        role: 'coordinator',
+        status: 'active',
+      });
+      if (!role) {
+        return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
+      }
+    }
+
+    // 2. Load criteria
+    const criteria = await Criterion.find({ rubricId: rubric._id }).sort({ order: 1 });
+
+    // 3. Extract grading level definitions
+    let gradingLevelDefs = [];
+    const firstWithLevels = criteria.find(c => c.gradingLevels && c.gradingLevels.length > 0);
+    if (firstWithLevels) {
+      gradingLevelDefs = firstWithLevels.gradingLevels.map(lvl => ({
+        label: lvl.label,
+        minScore: lvl.minScore,
+        maxScore: lvl.maxScore
+      }));
+    } else {
+      // Default fallback grading levels definitions
+      gradingLevelDefs = [
+        { label: 'Xuất sắc', minScore: 9.0, maxScore: 10.0 },
+        { label: 'Tốt', minScore: 7.0, maxScore: 8.9 },
+        { label: 'Khá', minScore: 5.0, maxScore: 6.9 },
+        { label: 'Trung bình', minScore: 3.0, maxScore: 4.9 },
+        { label: 'Yếu', minScore: 0.0, maxScore: 2.9 }
+      ];
+    }
+
+    // 4. Create Workbook & Worksheet
+    const wb = XLSX.utils.book_new();
+
+    // Headers Construction
+    const row1 = ['Mã tiêu chí', 'Tiêu chí', 'Trọng số (%)', 'Các mức độ chấm điểm'];
+    for (let i = 1; i < gradingLevelDefs.length; i++) {
+      row1.push(''); // spacing for merges
+    }
+
+    const row2 = ['', '', ''];
+    for (const def of gradingLevelDefs) {
+      row2.push(`${def.label} (${def.minScore.toFixed(1)} - ${def.maxScore.toFixed(1)})`);
+    }
+
+    const headers = [row1, row2];
+
+    // Data rows
+    const dataRows = [];
+    for (const c of criteria) {
+      const row = [c.code, c.name, c.weight];
+      for (const def of gradingLevelDefs) {
+        const match = c.gradingLevels && c.gradingLevels.find(
+          lvl => lvl.label === def.label &&
+                 Math.abs(lvl.minScore - def.minScore) < 0.01 &&
+                 Math.abs(lvl.maxScore - def.maxScore) < 0.01
+        );
+        row.push(match ? match.description : '');
+      }
+      dataRows.push(row);
+    }
+
+    const wsData = [...headers, ...dataRows];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // Dynamic Merging rules
+    ws['!merges'] = [
+      { s: { r: 0, c: 3 }, e: { r: 0, c: 3 + gradingLevelDefs.length - 1 } }, // merging "Các mức độ chấm điểm" header
+      { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } }, // "Mã tiêu chí" header merge
+      { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } }, // "Tiêu chí" header merge
+      { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } }, // "Trọng số (%)" header merge
+    ];
+
+    // Columns width
+    ws['!cols'] = [
+      { wch: 15 }, // A
+      { wch: 30 }, // B
+      { wch: 14 }, // C
+    ];
+    for (let i = 0; i < gradingLevelDefs.length; i++) {
+      ws['!cols'].push({ wch: 25 });
+    }
+
+    const sanitizedSheetName = rubric.name.substring(0, 30).replace(/[*?:\\/\[\]]/g, '') || 'Criteria';
+    XLSX.utils.book_append_sheet(wb, ws, sanitizedSheetName);
+
+    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+    const safeFilename = `Criteria_${rubric.name.replace(/\s+/g, '_')}.xlsx`;
+    res.setHeader('Content-Disposition', `attachment; filename=${encodeURIComponent(safeFilename)}`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(Buffer.from(buffer));
+  } catch (error) {
+    console.error('Export Criteria Error:', error.message);
+    res.status(500).json({ message: 'Server error exporting criteria.' });
   }
 });
 

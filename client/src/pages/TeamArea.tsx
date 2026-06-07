@@ -47,13 +47,11 @@ export default function TeamArea() {
   const [syncing, setSyncing] = useState(false);
   const [submittingTopic, setSubmittingTopic] = useState(false);
   const [error, _setError] = useState('');
-  const [success, _setSuccess] = useState('');
   const setError = (msg: string) => {
     _setError(msg);
     if (msg) toast.error(msg);
   };
   const setSuccess = (msg: string) => {
-    _setSuccess(msg);
     if (msg) toast.success(msg);
   };
 
@@ -204,17 +202,7 @@ export default function TeamArea() {
         )}
       </div>
 
-      {success && (
-        <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm px-4 py-3 rounded-xl">
-          {success}
-        </div>
-      )}
 
-      {error && (
-        <div className="bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm px-4 py-3 rounded-xl">
-          {error}
-        </div>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         

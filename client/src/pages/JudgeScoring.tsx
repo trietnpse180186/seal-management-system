@@ -4,9 +4,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { 
   Sparkles, 
-  AlertCircle, 
   Save, 
-  CheckCircle, 
   Lock, 
   ArrowLeft,
   ExternalLink,
@@ -46,9 +44,7 @@ export default function JudgeScoring() {
   // Status indicators
   const [aiLoading, setAiLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [message, _setMessage] = useState({ type: '', text: '' });
   const setMessage = (msg: { type: string; text: string }) => {
-    _setMessage(msg);
     if (msg.text) {
       if (msg.type === 'success') {
         toast.success(msg.text);
@@ -362,16 +358,7 @@ export default function JudgeScoring() {
               </div>
             )}
 
-            {message.text && (
-              <div className={`p-4 rounded-xl text-xs border flex items-center gap-2 shadow-[0_0_15px_rgba(0,0,0,0.2)] ${
-                message.type === 'success' 
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
-                  : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
-              }`}>
-                {message.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
-                <span>{message.text}</span>
-              </div>
-            )}
+
 
             {/* AI Grading Assist trigger */}
             {!isRoundLocked && rubric && (

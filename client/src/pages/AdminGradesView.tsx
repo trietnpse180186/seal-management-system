@@ -217,7 +217,7 @@ export default function AdminGradesView() {
       <div className="flex items-center gap-3">
         <div>
           <h1 className="text-3xl font-extrabold text-white">
-            Chi tiết Điểm số (Ban tổ chức)
+            <span className="text-cyan-400 text-cyan-glow font-mono-tech">XEM CHI TIẾT ĐIỂM</span>
           </h1>
           <p className="text-slate-400 text-xs mt-1">
             Theo dõi chi tiết điểm số của từng giám khảo chấm cho từng đội thi

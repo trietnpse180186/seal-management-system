@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import LandingPage from './pages/LandingPage';
 import RegisterTeam from './pages/RegisterTeam';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminEvents from './pages/AdminEvents';
 import TeamArea from './pages/TeamArea';
 import Leaderboard from './pages/Leaderboard';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -71,8 +72,8 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
               <AdminLayout user={user} onLogout={handleLogout} />
             </ProtectedRoute>
           }>
-            <Route index element={<AdminDashboard defaultTab="admin" />} />
-            <Route path="events" element={<AdminDashboard defaultTab="events" />} />
+            <Route index element={<AdminDashboard />} />
+            <Route path="events" element={<AdminEvents />} />
             <Route path="grades" element={<AdminGradesView />} />
             <Route path="leaderboard" element={<Leaderboard user={user} roles={roles} />} />
           </Route>

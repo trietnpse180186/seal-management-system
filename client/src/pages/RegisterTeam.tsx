@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Users, UserPlus, Trash2, Calendar, FolderGit2, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Users, UserPlus, Trash2, Calendar, FolderGit2, CheckCircle } from 'lucide-react';
 
 interface MemberInput {
   email: string;
@@ -32,10 +32,8 @@ export default function RegisterTeam() {
   const [infoMessage, setInfoMessage] = useState('');
 
   const [loading, setLoading] = useState(false);
-  const [error, _setError] = useState('');
   const [success, _setSuccess] = useState('');
   const setError = (msg: string) => {
-    _setError(msg);
     if (msg) toast.error(msg);
   };
   const setSuccess = (msg: string) => {
@@ -207,12 +205,7 @@ export default function RegisterTeam() {
               <span className="text-cyan-400">1. THÔNG TIN CHUNG</span>
             </h2>
 
-            {error && (
-              <div className="bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm px-4 py-3 rounded-xl flex items-center gap-2">
-                <AlertTriangle size={18} className="text-rose-400 shrink-0" />
-                <span>[LỖI] {error}</span>
-              </div>
-            )}
+
 
             <div className="grid grid-cols-1 gap-6">
               <div>

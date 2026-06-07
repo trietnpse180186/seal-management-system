@@ -52,7 +52,7 @@ export default function CustomSelect({
   };
 
   return (
-    <div ref={containerRef} className={`relative inline-block ${className}`}>
+    <div ref={containerRef} className={`relative inline-block ${isOpen ? "z-[9999]" : ""} ${className}`}>
       {/* Trigger Button */}
       <button
         type="button"
@@ -73,7 +73,7 @@ export default function CustomSelect({
 
       {/* Dropdown Options List */}
       {isOpen && (
-        <div className="absolute left-0 mt-1.5 w-full min-w-[200px] max-h-60 overflow-y-auto bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-lg shadow-[0_4px_25px_rgba(0,0,0,0.5)] z-40 p-1 space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-150 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+        <div className="absolute left-0 mt-1.5 w-full min-w-[200px] max-h-60 overflow-y-auto bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-lg shadow-[0_4px_25px_rgba(0,0,0,0.5)] z-[10000] p-1 space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-150 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
           {options.length === 0 ? (
             <div className="p-2 text-center text-xs text-slate-500 italic font-mono">
               Không có tùy chọn

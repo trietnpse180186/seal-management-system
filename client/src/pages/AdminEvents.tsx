@@ -1396,7 +1396,7 @@ export default function AdminEvents({
 
       {/* EVENT HEADER PANEL (if selected) */}
       {selectedEvent && (
-        <div className="glass p-6 rounded-2xl relative overflow-hidden bg-gradient-to-r from-cyan-950/20 to-slate-900/20">
+        <div className="glass p-6 rounded-2xl relative bg-gradient-to-r from-cyan-950/20 to-slate-900/20">
           <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-2xl"></div>
           <div className="flex justify-between items-start flex-col md:flex-row gap-4">
             <div>
@@ -1511,7 +1511,7 @@ export default function AdminEvents({
       {activeTab === "events" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main settings form */}
-          <div className="lg:col-span-2 glass p-6 rounded-2xl relative overflow-hidden">
+          <div className="lg:col-span-2 glass p-6 rounded-2xl relative">
             <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/5 rounded-full blur-3xl"></div>
 
             {selectedEvent ? (

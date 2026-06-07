@@ -315,7 +315,7 @@ async function runTests() {
       `http://localhost:5000/api/teams/confirm-invite?token=${token}`,
     );
     const htmlResponse = await res.text();
-    if (htmlResponse.includes("Participation Confirmed!")) {
+    if (htmlResponse.includes("ĐÃ XÁC NHẬN THAM GIA")) {
       console.log(`Successfully confirmed member (Status 200 OK).`);
     } else {
       throw new Error(`Failed to confirm member with token ${token}`);

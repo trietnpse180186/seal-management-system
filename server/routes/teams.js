@@ -24,7 +24,7 @@ router.post('/register', authenticateToken, async (req, res) => {
   const { eventId, trackId, teamName, membersList, leaderInfo } = req.body;
 
   if (!eventId || !teamName || !membersList || !Array.isArray(membersList)) {
-    return res.status(400).json({ message: 'Missing required registration parameters.' });
+    return res.status(400).json({ message: 'Đã xảy ra lỗi trong quá trình đăng ký.' });
   }
 
   try {
@@ -42,9 +42,9 @@ router.post('/register', authenticateToken, async (req, res) => {
     }
     // 1. Verify Event is active & open for registration
     const event = await Event.findById(eventId);
-    if (!event) return res.status(404).json({ message: 'Event not found.' });
+    if (!event) return res.status(404).json({ message: 'Không tìm thấy thông tin cuộc thi.' });
     if (event.status !== 'registration') {
-      return res.status(400).json({ message: 'Registration for this event is closed or not yet open.' });
+      return res.status(400).json({ message: 'Cuộc thi hiện không mở đăng ký.' });
     }
 
     // Check overall event capacity (both confirmed and pending_confirm)
@@ -56,8 +56,8 @@ router.post('/register', authenticateToken, async (req, res) => {
     // Check track capacity if trackId is provided
     if (trackId) {
       const track = await Track.findById(trackId);
-      if (!track) return res.status(404).json({ message: 'Track not found.' });
-      
+      if (!track) return res.status(404).json({ message: 'Bảng đấu không tồn tại.' });
+
       const trackActiveCount = await Team.countDocuments({ trackId, status: { $in: ['confirmed', 'pending_confirm'] } });
       if (track.maxTeams && trackActiveCount >= track.maxTeams) {
         return res.status(400).json({ message: 'Bảng đấu này đã đạt giới hạn số lượng đội đăng ký.' });
@@ -69,7 +69,7 @@ router.post('/register', authenticateToken, async (req, res) => {
     if (trackId) nameFilter.trackId = trackId;
     const existingTeam = await Team.findOne(nameFilter);
     if (existingTeam) {
-      return res.status(400).json({ message: 'A team with this name already exists.' });
+      return res.status(400).json({ message: 'Tên đội đã tồn tại trong cuộc thi.' });
     }
 
     // 3. Create the Team record
@@ -168,7 +168,7 @@ router.post('/register', authenticateToken, async (req, res) => {
       const inviteLink = `${req.protocol}://${req.get('host')}/api/teams/confirm-invite?token=${token}`;
       emailService.sendTeamInvitation(memberUser.email, teamName, inviteLink)
         .catch(err => console.error(`Failed to send invitation email to ${memberUser.email}:`, err.message));
-      
+
       // Send In-App Notification
       const Notification = mongoose.model('Notification');
       await new Notification({
@@ -193,7 +193,7 @@ router.post('/register', authenticateToken, async (req, res) => {
       const orgName = event ? event.githubOrgName : undefined;
       const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
       const gitResult = await githubService.createTeamRepository(slugRepoName, 'private', orgName);
-      
+
       const actualOrgName = gitResult.owner || orgName;
 
       const newRepo = new GithubRepository({
@@ -229,14 +229,14 @@ router.post('/register', authenticateToken, async (req, res) => {
     }
 
     res.status(201).json({
-      message: 'Team registered! Invitation emails have been sent. The team is pending confirmation from all members.',
+      message: 'Đăng ký đội thành công! Đã gửi email xác nhận tham gia cho các thành viên.',
       teamId: team._id,
       status: team.status
     });
 
   } catch (error) {
     console.error('Team Registration Error:', error.message);
-    res.status(500).json({ message: 'Server error during team registration.' });
+    res.status(500).json({ message: 'Đăng ký đội thất bại.' });
   }
 });
 
@@ -248,8 +248,44 @@ router.post('/register', authenticateToken, async (req, res) => {
 router.get('/confirm-invite', async (req, res) => {
   const { token } = req.query;
 
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+
   if (!token) {
-    return res.status(400).send('<h1>Error</h1><p>Confirmation token is missing.</p>');
+    return res.status(400).send(`
+      <!DOCTYPE html>
+      <html class="dark" lang="vi">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>SEAL HACKATHON // LỖI XÁC THỰC</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+        <style>
+          body {
+            background-color: #0a141d;
+            background-image: 
+              linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+          }
+        </style>
+      </head>
+      <body class="min-h-screen text-slate-300 font-sans flex items-center justify-center p-4">
+        <div class="w-full max-w-md bg-[#0a141d]/90 border border-red-500/30 backdrop-blur-md p-8 rounded-xl text-center shadow-2xl relative overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-red-500 to-transparent opacity-80 animate-pulse"></div>
+          <div class="inline-flex border border-red-500 px-3 py-1 text-xs font-mono text-red-500 mb-6 bg-red-500/5 uppercase tracking-widest rounded">[INVITATION_ERROR]</div>
+          <div class="w-20 h-20 mx-auto mb-6 rounded-full border border-red-500 flex items-center justify-center bg-red-500/10 shadow-[0_0_20px_rgba(239,68,68,0.2)]">
+            <svg class="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </div>
+          <h1 class="text-2xl font-extrabold text-white mb-3 uppercase tracking-tight font-mono">THIẾU MÃ XÁC NHẬN</h1>
+          <p class="text-sm text-slate-400 mb-8 font-sans leading-relaxed">Không tìm thấy mã xác nhận lời mời trong yêu cầu của bạn.</p>
+          <a href="${clientUrl}" class="inline-block w-full py-3 border border-red-500 text-red-500 hover:bg-red-500 hover:text-white font-mono text-sm font-bold uppercase tracking-wider transition-all duration-300 shadow-[inset_0_0_10px_rgba(239,68,68,0.1)] hover:shadow-[0_0_20px_rgba(239,68,68,0.4)] rounded">ĐI TỚI BẢNG ĐIỀU KHIỂN</a>
+        </div>
+      </body>
+      </html>
+    `);
   }
 
   try {
@@ -259,7 +295,41 @@ router.get('/confirm-invite', async (req, res) => {
     });
 
     if (!member) {
-      return res.status(400).send('<h1>Link Expired or Invalid</h1><p>Your team confirmation token is invalid or has expired.</p>');
+      return res.status(400).send(`
+        <!DOCTYPE html>
+        <html class="dark" lang="vi">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>SEAL HACKATHON // LỖI LỜI MỜI</title>
+          <script src="https://cdn.tailwindcss.com"></script>
+          <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+          <style>
+            body {
+              background-color: #0a141d;
+              background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+              background-size: 40px 40px;
+            }
+          </style>
+        </head>
+        <body class="min-h-screen text-slate-300 font-sans flex items-center justify-center p-4">
+          <div class="w-full max-w-md bg-[#0a141d]/90 border border-red-500/30 backdrop-blur-md p-8 rounded-xl text-center shadow-2xl relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-red-500 to-transparent opacity-80 animate-pulse"></div>
+            <div class="inline-flex border border-red-500 px-3 py-1 text-xs font-mono text-red-500 mb-6 bg-red-500/5 uppercase tracking-widest rounded">[LINK_EXPIRED_OR_INVALID]</div>
+            <div class="w-20 h-20 mx-auto mb-6 rounded-full border border-red-500 flex items-center justify-center bg-red-500/10 shadow-[0_0_20px_rgba(239,68,68,0.2)]">
+              <svg class="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+              </svg>
+            </div>
+            <h1 class="text-2xl font-extrabold text-white mb-3 uppercase tracking-tight font-mono">LIÊN KẾT HẾT HẠN</h1>
+            <p class="text-sm text-slate-400 mb-8 font-sans leading-relaxed">Mã xác thực của bạn không hợp lệ hoặc đường link này đã hết hạn hiệu lực (48 giờ).</p>
+            <a href="${clientUrl}" class="inline-block w-full py-3 border border-red-500 text-red-500 hover:bg-red-500 hover:text-white font-mono text-sm font-bold uppercase tracking-wider transition-all duration-300 shadow-[inset_0_0_10px_rgba(239,68,68,0.1)] hover:shadow-[0_0_20px_rgba(239,68,68,0.4)] rounded">ĐI TỚI BẢNG ĐIỀU KHIỂN</a>
+          </div>
+        </body>
+        </html>
+      `);
     }
 
     // Confirm member
@@ -327,7 +397,7 @@ router.get('/confirm-invite', async (req, res) => {
 
       try {
         const gitResult = await githubService.createTeamRepository(slugRepoName, 'private', orgName);
-        
+
         const actualOrgName = gitResult.owner || orgName;
 
         const newRepo = new GithubRepository({
@@ -354,7 +424,7 @@ router.get('/confirm-invite', async (req, res) => {
 
       // 3. Auto capacity checking and close form logic
       const confirmedTeams = await Team.countDocuments({ eventId: team.eventId, status: 'confirmed' });
-      
+
       if (event && event.maxTeams && confirmedTeams >= event.maxTeams) {
         event.status = 'ongoing'; // Auto-close registration, lock event
         await event.save();
@@ -375,16 +445,79 @@ router.get('/confirm-invite', async (req, res) => {
 
     // Send successful response page (HTML mockup or redirect)
     res.send(`
-      <div style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
-        <h1 style="color: #10b981;">Participation Confirmed!</h1>
-        <p>You have successfully joined the team. You may close this tab and return to the dashboard.</p>
-        <a href="http://localhost:5173" style="color: #4f46e5; text-decoration: none; font-weight: bold;">Go to Dashboard</a>
-      </div>
+      <!DOCTYPE html>
+      <html class="dark" lang="vi">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>SEAL HACKATHON // XÁC NHẬN THÀNH CÔNG</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+        <style>
+          body {
+            background-color: #0a141d;
+            background-image: 
+              linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+          }
+        </style>
+      </head>
+      <body class="min-h-screen text-slate-300 font-sans flex items-center justify-center p-4">
+        <div class="w-full max-w-md bg-[#0a141d]/90 border border-[#00f0ff]/30 backdrop-blur-md p-8 rounded-xl text-center shadow-2xl relative overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#00f0ff] to-transparent opacity-80 animate-pulse"></div>
+          <div class="inline-flex border border-[#00f0ff] px-3 py-1 text-xs font-mono text-[#00f0ff] mb-6 bg-[#00f0ff]/5 uppercase tracking-widest rounded">[INVITATION_CONFIRMED]</div>
+          <div class="w-20 h-20 mx-auto mb-6 rounded-full border border-[#00f0ff] flex items-center justify-center bg-[#00f0ff]/10 shadow-[0_0_20px_rgba(0,240,255,0.2)]">
+            <svg class="w-10 h-10 text-[#00f0ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+            </svg>
+          </div>
+          <h1 class="text-2xl font-extrabold text-white mb-3 uppercase tracking-tight font-mono">ĐÃ XÁC NHẬN THAM GIA</h1>
+          <p class="text-sm text-slate-400 mb-8 font-sans leading-relaxed">Tuyệt vời! Bạn đã xác nhận tham gia đội thi <strong>${team.name}</strong> thành công. Bạn có thể đóng tab này hoặc nhấn nút bên dưới để quay lại hệ thống.</p>
+          <a href="${clientUrl}/team-area" class="inline-block w-full py-3 border border-[#00f0ff] text-[#00f0ff] hover:bg-[#00f0ff] hover:text-[#0a141d] font-mono text-sm font-bold uppercase tracking-wider transition-all duration-300 shadow-[inset_0_0_10px_rgba(0,240,255,0.1)] hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] rounded">QUAY LẠI TRANG ĐỘI THI</a>
+        </div>
+      </body>
+      </html>
     `);
 
   } catch (error) {
     console.error('Invite Confirmation Error:', error.message);
-    res.status(500).send('<h1>Server Error</h1><p>An error occurred verifying your invitation.</p>');
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    res.status(500).send(`
+      <!DOCTYPE html>
+      <html class="dark" lang="vi">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>SEAL HACKATHON // LỖI HỆ THỐNG</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+        <style>
+          body {
+            background-color: #0a141d;
+            background-image: 
+              linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+          }
+        </style>
+      </head>
+      <body class="min-h-screen text-slate-300 font-sans flex items-center justify-center p-4">
+        <div class="w-full max-w-md bg-[#0a141d]/90 border border-red-500/30 backdrop-blur-md p-8 rounded-xl text-center shadow-2xl relative overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-red-500 to-transparent opacity-80 animate-pulse"></div>
+          <div class="inline-flex border border-red-500 px-3 py-1 text-xs font-mono text-red-500 mb-6 bg-red-500/5 uppercase tracking-widest rounded">[SERVER_ERROR]</div>
+          <div class="w-20 h-20 mx-auto mb-6 rounded-full border border-red-500 flex items-center justify-center bg-red-500/10 shadow-[0_0_20px_rgba(239,68,68,0.2)]">
+            <svg class="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+          </div>
+          <h1 class="text-2xl font-extrabold text-white mb-3 uppercase tracking-tight font-mono">LỖI HỆ THỐNG</h1>
+          <p class="text-sm text-slate-400 mb-8 font-sans leading-relaxed">Đã xảy ra lỗi trong quá trình xử lý xác nhận lời mời của bạn. Vui lòng thử lại sau.</p>
+          <a href="${clientUrl}" class="inline-block w-full py-3 border border-red-500 text-red-500 hover:bg-red-500 hover:text-white font-mono text-sm font-bold uppercase tracking-wider transition-all duration-300 shadow-[inset_0_0_10px_rgba(239,68,68,0.1)] hover:shadow-[0_0_20px_rgba(239,68,68,0.4)] rounded">ĐI TỚI BẢNG ĐIỀU KHIỂN</a>
+        </div>
+      </body>
+      </html>
+    `);
   }
 });
 
@@ -438,7 +571,7 @@ router.get('/history', authenticateToken, async (req, res) => {
     res.json(teamsWithMembers);
   } catch (error) {
     console.error('Fetch Team History Error:', error.message);
-    res.status(500).json({ message: 'Server error retrieving team history.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi tải lịch sử nhóm.' });
   }
 });
 
@@ -452,7 +585,7 @@ router.get('/my-team', authenticateToken, async (req, res) => {
   try {
     const memberRecords = await TeamMember.find({ userId: req.user._id, confirmStatus: 'confirmed' });
     if (!memberRecords || memberRecords.length === 0) {
-      return res.status(404).json({ message: 'You are not currently in any confirmed team.' });
+      return res.status(404).json({ message: 'Bạn hiện không ở trong bất kỳ nhóm nào đã được xác nhận.' });
     }
 
     let team = null;
@@ -471,7 +604,7 @@ router.get('/my-team', authenticateToken, async (req, res) => {
     }
 
     if (!team) {
-      return res.status(404).json({ message: 'You are not currently in any active confirmed team.' });
+      return res.status(404).json({ message: 'Bạn hiện không ở trong bất kỳ nhóm nào đã được xác nhận và đang hoạt động.' });
     }
 
     const members = await TeamMember.find({ teamId: team._id })
@@ -487,7 +620,7 @@ router.get('/my-team', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('Fetch My Team Error:', error.message);
-    res.status(500).json({ message: 'Server error retrieving team.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi tải thông tin nhóm.' });
   }
 });
 
@@ -500,16 +633,16 @@ router.post('/submit-topic', authenticateToken, async (req, res) => {
   const { teamId, title, description, documentationLink } = req.body;
 
   if (!teamId || !title) {
-    return res.status(400).json({ message: 'Team ID and topic title are required.' });
+    return res.status(400).json({ message: 'ID nhóm và tên đề tài là bắt buộc.' });
   }
 
   try {
     const team = await Team.findById(teamId);
-    if (!team) return res.status(404).json({ message: 'Team not found.' });
+    if (!team) return res.status(404).json({ message: 'Không tìm thấy nhóm.' });
 
     // Validate that user is the leader
     if (team.leaderId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Only the team leader can submit topic files.' });
+      return res.status(403).json({ message: 'Chỉ trưởng nhóm mới có quyền nộp thông tin đề tài.' });
     }
 
     team.topicSubmission = {
@@ -522,13 +655,13 @@ router.post('/submit-topic', authenticateToken, async (req, res) => {
 
     await team.save();
     res.json({
-      message: 'Topic details and link saved successfully!',
+      message: 'Đã lưu chi tiết đề tài và đường dẫn thành công!',
       submission: team.topicSubmission
     });
 
   } catch (error) {
     console.error('Submit Topic Error:', error.message);
-    res.status(500).json({ message: 'Server error saving submission.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi lưu bài nộp.' });
   }
 });
 
@@ -587,7 +720,7 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
     res.json(detailedTeams);
   } catch (error) {
     console.error('Get All Teams Error:', error.message);
-    res.status(500).json({ message: 'Server error retrieving teams.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi tải danh sách nhóm.' });
   }
 });
 
@@ -624,7 +757,7 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
 
     const members = await TeamMember.find({ teamId: team._id })
       .populate('userId', 'fullName email studentId university githubUsername confirmStatus');
-    
+
     const repo = await GithubRepository.findOne({ teamId: team._id });
 
     res.json({
@@ -634,7 +767,7 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Get Team By ID Error:', error.message);
-    res.status(500).json({ message: 'Server error retrieving team.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi tải thông tin nhóm.' });
   }
 });
 
@@ -659,7 +792,7 @@ router.put('/:teamId/assign-track', authenticateToken, async (req, res) => {
         role: 'coordinator',
         status: 'active'
       });
-      if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator or Admin role required.' });
+      if (!coordinatorRole) return res.status(403).json({ message: 'Không có quyền truy cập. Yêu cầu vai trò Điều phối viên hoặc Quản trị viên.' });
     }
 
     let targetTrackId = trackId;
@@ -684,14 +817,14 @@ router.put('/:teamId/assign-track', authenticateToken, async (req, res) => {
 
     // Trigger GitHub Repo creation in the background
     const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
-    
+
     // Check if repo already exists for this team
     const existingRepo = await GithubRepository.findOne({ teamId: team._id });
     if (!existingRepo) {
       githubService.createTeamRepository(slugRepoName, 'private', orgName)
         .then(async (gitResult) => {
           const actualOrgName = gitResult.owner || orgName;
-          
+
           const newRepo = new GithubRepository({
             eventId: team.eventId,
             trackId: track._id,
@@ -738,7 +871,7 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
     const team = await Team.findById(req.params.teamId)
       .populate('eventId', 'name semester year status')
       .populate('trackId', 'name description');
-      
+
     if (!team) {
       return res.status(404).json({ message: 'Không tìm thấy thông tin đội thi.' });
     }
@@ -755,7 +888,7 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Fetch Single Team Error:', error.message);
-    res.status(500).json({ message: 'Server error retrieving team details.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi tải thông tin chi tiết nhóm.' });
   }
 });
 

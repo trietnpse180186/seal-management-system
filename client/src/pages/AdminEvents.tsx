@@ -664,7 +664,7 @@ export default function AdminEvents({
 
   const handleDeleteTrack = async (trackId: string) => {
     if (!selectedEvent) return;
-    
+
     // Check if the round status of this track is completed
     const trackToDelete = tracks.find(t => t._id === trackId);
     if (trackToDelete) {
@@ -696,7 +696,7 @@ export default function AdminEvents({
       // Update local tracks state
       const updatedTracks = tracks.filter((t) => t._id !== trackId);
       setTracks(updatedTracks);
-      
+
       if (selectedTrack?._id === trackId) {
         setSelectedTrack(updatedTracks.length > 0 ? updatedTracks[0] : null);
       }
@@ -1396,7 +1396,7 @@ export default function AdminEvents({
 
       {/* EVENT HEADER PANEL (if selected) */}
       {selectedEvent && (
-        <div className="glass p-6 rounded-2xl relative bg-gradient-to-r from-cyan-950/20 to-slate-900/20">
+        <div className="glass p-6 rounded-2xl relative bg-gradient-to-r from-cyan-950/20 to-slate-900/20 z-[9999]">
           <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-2xl"></div>
           <div className="flex justify-between items-start flex-col md:flex-row gap-4">
             <div>
@@ -1456,8 +1456,8 @@ export default function AdminEvents({
           <button
             onClick={() => setActiveTab("events")}
             className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "events"
-                ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+              ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+              : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
               }`}
           >
             Thông tin sự kiện
@@ -1465,8 +1465,8 @@ export default function AdminEvents({
           <button
             onClick={() => setActiveTab("teams")}
             className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "teams"
-                ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+              ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+              : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
               }`}
           >
             Đội thi tham gia
@@ -1474,8 +1474,8 @@ export default function AdminEvents({
           <button
             onClick={() => setActiveTab("rounds")}
             className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "rounds"
-                ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+              ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+              : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
               }`}
           >
             Vòng thi & Tiêu chí
@@ -1483,8 +1483,8 @@ export default function AdminEvents({
           <button
             onClick={() => setActiveTab("tracks")}
             className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "tracks"
-                ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+              ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+              : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
               }`}
           >
             Bảng đấu
@@ -1492,8 +1492,8 @@ export default function AdminEvents({
           <button
             onClick={() => setActiveTab("github")}
             className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${activeTab === "github"
-                ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+              ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+              : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
               }`}
           >
             <Github size={14} />
@@ -1739,7 +1739,7 @@ export default function AdminEvents({
           </div>
 
           {/* Quick instructions */}
-          <div className="lg:col-span-1 space-y-6">
+          <div className="lg:col-span-1 space-y-6 z-[-1]">
             <div className="glass p-6 rounded-2xl">
               <h3 className="text-md font-bold text-white mb-3 flex items-center gap-1.5 font-mono">
                 <Info size={16} className="text-cyan-400" />

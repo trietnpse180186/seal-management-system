@@ -209,6 +209,10 @@ export default function RoundsTab({
   // Export criteria of the current rubric to Excel
   const handleExportCriteria = async () => {
     if (!rubric) return;
+    if (!criteria || criteria.length === 0) {
+      alert("Hiện tại Rubric này chưa có tiêu chí nào để xuất. Vui lòng tự thêm tiêu chí trước hoặc tải file 'Template Excel mẫu' để chỉnh sửa.");
+      return;
+    }
     try {
       const res = await axios.get(`http://localhost:5000/api/rubrics/${rubric._id}/export-criteria`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -223,9 +227,23 @@ export default function RoundsTab({
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Export criteria error:", err);
-      alert("Lỗi khi xuất danh sách tiêu chí ra file Excel. Vui lòng thử lại.");
+      // Đọc thông báo lỗi từ Blob nếu có phản hồi dạng JSON từ server
+      if (err.response && err.response.data instanceof Blob) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const errorObj = JSON.parse(reader.result as string);
+            alert(errorObj.message || "Lỗi khi xuất danh sách tiêu chí ra file Excel.");
+          } catch {
+            alert("Lỗi khi xuất danh sách tiêu chí ra file Excel. Vui lòng thử lại.");
+          }
+        };
+        reader.readAsText(err.response.data);
+      } else {
+        alert("Lỗi khi xuất danh sách tiêu chí ra file Excel. Vui lòng thử lại.");
+      }
     }
   };
 

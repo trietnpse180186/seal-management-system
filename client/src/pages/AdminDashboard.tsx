@@ -10,6 +10,7 @@ import TeamsTab from "./TeamsTab";
 import TracksTab from "./TracksTab";
 import RoundsTab from "./RoundsTab";
 import GithubTab from "./GithubTab";
+import { toast } from "sonner";
 
 const Github = ({
   size = 20,
@@ -91,7 +92,17 @@ export default function AdminDashboard({
   const [teamsList, setTeamsList] = useState<any[]>([]);
 
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ type: "", text: "" });
+  const [message, _setMessage] = useState({ type: "", text: "" });
+  const setMessage = (msg: { type: string; text: string }) => {
+    _setMessage(msg);
+    if (msg.text) {
+      if (msg.type === "success") {
+        toast.success(msg.text);
+      } else if (msg.type === "error") {
+        toast.error(msg.text);
+      }
+    }
+  };
 
   // Tab management state
   const [activeTab, setActiveTab] = useState<

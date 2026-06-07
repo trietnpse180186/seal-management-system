@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
+import { toast } from 'sonner';
 import { 
   Sparkles, 
   AlertCircle, 
@@ -45,7 +46,17 @@ export default function JudgeScoring() {
   // Status indicators
   const [aiLoading, setAiLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
+  const [message, _setMessage] = useState({ type: '', text: '' });
+  const setMessage = (msg: { type: string; text: string }) => {
+    _setMessage(msg);
+    if (msg.text) {
+      if (msg.type === 'success') {
+        toast.success(msg.text);
+      } else if (msg.type === 'error') {
+        toast.error(msg.text);
+      }
+    }
+  };
 
   const currentRound = rounds.find((r: any) => r._id === selectedRoundId);
   const isRoundLocked = currentRound?.status === 'completed';

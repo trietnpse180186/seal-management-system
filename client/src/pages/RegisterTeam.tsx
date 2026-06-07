@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { toast } from 'sonner';
 import { Users, UserPlus, Trash2, Calendar, FolderGit2, AlertTriangle, CheckCircle } from 'lucide-react';
 
 interface MemberInput {
@@ -31,8 +32,16 @@ export default function RegisterTeam() {
   const [infoMessage, setInfoMessage] = useState('');
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, _setError] = useState('');
+  const [success, _setSuccess] = useState('');
+  const setError = (msg: string) => {
+    _setError(msg);
+    if (msg) toast.error(msg);
+  };
+  const setSuccess = (msg: string) => {
+    _setSuccess(msg);
+    if (msg) toast.success(msg);
+  };
 
   const navigate = useNavigate();
   const token = localStorage.getItem('token');

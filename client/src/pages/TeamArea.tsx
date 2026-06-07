@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { toast } from 'sonner';
 import { Link2, Save, RefreshCw, CheckCircle, Clock, FileDiff, BookOpen, Users } from 'lucide-react';
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
@@ -45,8 +46,16 @@ export default function TeamArea() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [submittingTopic, setSubmittingTopic] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, _setError] = useState('');
+  const [success, _setSuccess] = useState('');
+  const setError = (msg: string) => {
+    _setError(msg);
+    if (msg) toast.error(msg);
+  };
+  const setSuccess = (msg: string) => {
+    _setSuccess(msg);
+    if (msg) toast.success(msg);
+  };
 
   const fetchTeamData = async () => {
     try {

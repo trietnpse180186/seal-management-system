@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { toast } from 'sonner';
 import { ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import logo from "../assets/logo.svg";
 
@@ -38,7 +39,13 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const [university, setUniversity] = useState('');
   const [githubUsername, setGithubUsername] = useState('');
   
-  const [error, setError] = useState('');
+  const [error, _setError] = useState('');
+  const setError = (msg: string) => {
+    _setError(msg);
+    if (msg) {
+      toast.error(msg);
+    }
+  };
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -170,6 +177,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           }
         } else {
           setRegistrationSuccess(true);
+          toast.success("Đăng ký tài khoản thành công! Vui lòng kiểm tra email để xác thực.");
         }
       } else {
         const response = await axios.post(`${baseUrl}/auth/login`, {

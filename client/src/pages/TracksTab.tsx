@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FolderKanban, ChevronRight, BookOpen, Users } from "lucide-react";
+import { FolderKanban, ChevronRight, BookOpen, Users, Edit, Trash2 } from "lucide-react";
 
 interface TracksTabProps {
   selectedEvent: any;
@@ -15,6 +15,10 @@ interface TracksTabProps {
   handleCreateTrack: (e: React.FormEvent) => Promise<void>;
   selectedTrack: any;
   setSelectedTrack: (track: any) => void;
+  editingTrack: any;
+  setEditingTrack: (track: any) => void;
+  handleUpdateTrack: (e: React.FormEvent) => Promise<void>;
+  handleDeleteTrack: (trackId: string) => Promise<void>;
   rounds: any[];
   setSelectedRubricRoundId: (id: string) => void;
   setRubric: (rubric: any) => void;
@@ -40,6 +44,7 @@ export default function TracksTab({
   tracks,
   trackName,
   setTrackName,
+  setTrackDesc,
   trackMax,
   setTrackMax,
   trackRoundId,
@@ -47,6 +52,10 @@ export default function TracksTab({
   handleCreateTrack,
   selectedTrack,
   setSelectedTrack,
+  editingTrack,
+  setEditingTrack,
+  handleUpdateTrack,
+  handleDeleteTrack,
   rounds,
   setSelectedRubricRoundId,
   setRubric,
@@ -85,38 +94,71 @@ export default function TracksTab({
           </h3>
           <div className="space-y-2 mb-6 max-h-[300px] overflow-y-auto pr-1">
             {tracks.map((t: any) => (
-              <button
+              <div
                 key={t._id}
-                onClick={() => {
-                  setSelectedTrack(t);
-                  // Auto select the round of this track
-                  const roundOfTrack = rounds.find(
-                    (r) => r._id === t.roundId,
-                  );
-                  if (roundOfTrack) {
-                    setSelectedRubricRoundId(roundOfTrack._id);
-                  } else {
-                    setSelectedRubricRoundId("");
-                    setRubric(null);
-                    setCriteria([]);
-                  }
-                }}
-                className={`w-full text-left p-3 rounded-xl border text-xs flex justify-between items-center transition-all ${
+                className={`w-full p-3 rounded-xl border text-xs flex justify-between items-center transition-all ${
                   selectedTrack?._id === t._id
                     ? "bg-cyan-500/10 border-cyan-500/50 text-white"
                     : "border-slate-800/80 bg-slate-900/10 hover:border-slate-700 text-slate-400"
                 }`}
               >
-                <div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedTrack(t);
+                    // Auto select the round of this track
+                    const roundOfTrack = rounds.find(
+                      (r) => r._id === t.roundId,
+                    );
+                    if (roundOfTrack) {
+                      setSelectedRubricRoundId(roundOfTrack._id);
+                    } else {
+                      setSelectedRubricRoundId("");
+                      setRubric(null);
+                      setCriteria([]);
+                    }
+                  }}
+                  className="text-left flex-1"
+                >
                   <span className="font-semibold block">
                     {t.name} (Tối đa {t.maxTeams} đội)
                   </span>
                   <span className="text-[10px] text-slate-500 font-mono">
                     Vòng: {rounds.find((r) => r._id === t.roundId)?.name || "Chưa gán"}
                   </span>
+                </button>
+                <div className="flex items-center gap-2.5 ml-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingTrack(t);
+                      setTrackRoundId(t.roundId);
+                      setTrackName(t.name);
+                      setTrackMax(t.maxTeams.toString());
+                      setTrackDesc(t.description || "");
+                    }}
+                    className="text-slate-400 hover:text-cyan-400 transition-colors p-1 cursor-pointer"
+                    title="Chỉnh sửa bảng đấu"
+                  >
+                    <Edit size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm(`Bạn có chắc chắn muốn xóa bảng đấu "${t.name}"?`)) {
+                        handleDeleteTrack(t._id);
+                      }
+                    }}
+                    className="text-slate-400 hover:text-rose-500 transition-colors p-1 cursor-pointer"
+                    title="Xóa bảng đấu"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                  <ChevronRight size={14} className={selectedTrack?._id === t._id ? "text-cyan-400" : "text-slate-600"} />
                 </div>
-                <ChevronRight size={14} />
-              </button>
+              </div>
             ))}
             {tracks.length === 0 && (
               <p className="text-xs text-slate-500 italic">
@@ -127,11 +169,11 @@ export default function TracksTab({
         </div>
 
         <form
-          onSubmit={handleCreateTrack}
+          onSubmit={editingTrack ? handleUpdateTrack : handleCreateTrack}
           className="space-y-3.5 pt-3 border-t border-slate-800/80"
         >
           <p className="text-[10px] font-bold text-slate-300 uppercase font-mono">
-            Tạo thêm bảng đấu:
+            {editingTrack ? "Cập nhật bảng đấu:" : "Tạo thêm bảng đấu:"}
           </p>
 
           <div>
@@ -169,7 +211,7 @@ export default function TracksTab({
 
           <div>
             <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
-              Số lượng đội tối đa {maxEventTeams > 0 ? `(Còn lại: ${remainingTeams} / ${maxEventTeams} đội)` : ""}
+              Số lượng đội tối đa {maxEventTeams > 0 ? (editingTrack ? `(Còn lại: ${remainingTeams + (editingTrack.maxTeams || 0)} / ${maxEventTeams} đội)` : `(Còn lại: ${remainingTeams} / ${maxEventTeams} đội)`) : ""}
             </label>
             <input
               type="number"
@@ -181,12 +223,29 @@ export default function TracksTab({
             />
           </div>
 
-          <button
-            type="submit"
-            className="w-full bg-cyan-500 hover:bg-cyan-500 text-white text-xs font-semibold py-2 rounded-lg cursor-pointer font-mono"
-          >
-            + Thêm Bảng đấu
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-semibold py-2 rounded-lg cursor-pointer font-mono transition-colors"
+            >
+              {editingTrack ? "Lưu thay đổi" : "+ Thêm Bảng đấu"}
+            </button>
+            {editingTrack && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingTrack(null);
+                  setTrackRoundId("");
+                  setTrackName("");
+                  setTrackMax("");
+                  setTrackDesc("");
+                }}
+                className="px-4 py-2 border border-slate-700 hover:border-slate-600 hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs font-semibold rounded-lg cursor-pointer font-mono transition-all"
+              >
+                Hủy
+              </button>
+            )}
+          </div>
         </form>
       </div>
 

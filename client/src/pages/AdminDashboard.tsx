@@ -61,6 +61,7 @@ export default function AdminDashboard({
   const [trackMax, setTrackMax] = useState("5");
   const [trackRoundId, setTrackRoundId] = useState("");
   const [selectedTrack, setSelectedTrack] = useState<any>(null);
+  const [editingTrack, setEditingTrack] = useState<any>(null);
 
   const [rounds, setRounds] = useState<any[]>([]);
   const [roundName, setRoundName] = useState("");
@@ -529,6 +530,18 @@ export default function AdminDashboard({
       return;
     }
 
+    // Client-side validation: total maxTeams check
+    const totalAllocatedTeams = tracks.reduce((sum, t) => sum + (t.maxTeams || 0), 0);
+    const maxEventTeams = selectedEvent.maxTeams || 0;
+    const newMaxTeamsNum = parseInt(trackMax) || 0;
+    if (totalAllocatedTeams + newMaxTeamsNum > maxEventTeams) {
+      setMessage({
+        type: "error",
+        text: `Không thể tạo bảng đấu. Tổng số lượng đội tối đa của các bảng đấu (${totalAllocatedTeams + newMaxTeamsNum}) vượt quá số lượng đội giới hạn của cuộc thi (${maxEventTeams}).`,
+      });
+      return;
+    }
+
     setMessage({ type: "", text: "" });
     setLoading(true);
 
@@ -538,7 +551,7 @@ export default function AdminDashboard({
         {
           name: trackName,
           description: trackDesc,
-          maxTeams: parseInt(trackMax),
+          maxTeams: newMaxTeamsNum,
           roundId: trackRoundId,
         },
         { headers: { Authorization: `Bearer ${token}` } },
@@ -548,6 +561,7 @@ export default function AdminDashboard({
       setTrackName("");
       setTrackDesc("");
       setTrackRoundId("");
+      setTrackMax("");
 
       // Update local tracks state
       const updatedTracks = [...tracks, newTrack];
@@ -562,6 +576,127 @@ export default function AdminDashboard({
       setMessage({
         type: "error",
         text: err.response?.data?.message || "Lỗi khi thêm bảng đấu.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateTrack = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEvent || !editingTrack) return;
+    if (!trackRoundId) {
+      setMessage({
+        type: "error",
+        text: "Vui lòng chọn Vòng thi cho Bảng đấu.",
+      });
+      return;
+    }
+
+    const selectedRound = rounds.find((r) => r._id === trackRoundId);
+    if (selectedRound && selectedRound.status === 'completed') {
+      setMessage({ type: "error", text: "Không thể chỉnh sửa bảng đấu của vòng thi đã kết thúc." });
+      return;
+    }
+
+    // Client-side validation for max teams limit
+    const totalAllocatedTeams = tracks
+      .filter((t) => t._id !== editingTrack._id)
+      .reduce((sum, t) => sum + (t.maxTeams || 0), 0);
+    const maxEventTeams = selectedEvent.maxTeams || 0;
+    const updatedMaxTeamsNum = parseInt(trackMax) || 0;
+    if (totalAllocatedTeams + updatedMaxTeamsNum > maxEventTeams) {
+      setMessage({
+        type: "error",
+        text: `Không thể cập nhật bảng đấu. Tổng số lượng đội tối đa của các bảng đấu (${totalAllocatedTeams + updatedMaxTeamsNum}) vượt quá số lượng đội giới hạn của cuộc thi (${maxEventTeams}).`,
+      });
+      return;
+    }
+
+    setMessage({ type: "", text: "" });
+    setLoading(true);
+
+    try {
+      const res = await axios.put(
+        `http://localhost:5000/api/events/${selectedEvent._id}/tracks/${editingTrack._id}`,
+        {
+          name: trackName,
+          description: trackDesc,
+          maxTeams: updatedMaxTeamsNum,
+          roundId: trackRoundId,
+        },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      const updatedTrack = res.data;
+      setTrackName("");
+      setTrackDesc("");
+      setTrackRoundId("");
+      setTrackMax("");
+      setEditingTrack(null);
+
+      // Update local tracks state
+      setTracks(tracks.map((t) => (t._id === updatedTrack._id ? updatedTrack : t)));
+      setSelectedTrack(updatedTrack);
+
+      // Fetch updated event details to reload tracks with round mapping
+      await fetchEventDetails();
+
+      setMessage({ type: "success", text: "Cập nhật bảng đấu thành công!" });
+    } catch (err: any) {
+      setMessage({
+        type: "error",
+        text: err.response?.data?.message || "Lỗi khi cập nhật bảng đấu.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteTrack = async (trackId: string) => {
+    if (!selectedEvent) return;
+    
+    // Check if the round status of this track is completed
+    const trackToDelete = tracks.find(t => t._id === trackId);
+    if (trackToDelete) {
+      const roundOfTrack = rounds.find(r => r._id === trackToDelete.roundId);
+      if (roundOfTrack && roundOfTrack.status === 'completed') {
+        setMessage({ type: "error", text: "Không thể xóa bảng đấu của vòng thi đã kết thúc." });
+        return;
+      }
+    }
+
+    setMessage({ type: "", text: "" });
+    setLoading(true);
+
+    try {
+      await axios.delete(
+        `http://localhost:5000/api/events/${selectedEvent._id}/tracks/${trackId}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      // If we are currently editing the deleted track, reset edit state
+      if (editingTrack?._id === trackId) {
+        setTrackName("");
+        setTrackDesc("");
+        setTrackRoundId("");
+        setTrackMax("");
+        setEditingTrack(null);
+      }
+
+      // Update local tracks state
+      const updatedTracks = tracks.filter((t) => t._id !== trackId);
+      setTracks(updatedTracks);
+      
+      if (selectedTrack?._id === trackId) {
+        setSelectedTrack(updatedTracks.length > 0 ? updatedTracks[0] : null);
+      }
+
+      setMessage({ type: "success", text: "Xóa bảng đấu thành công!" });
+    } catch (err: any) {
+      setMessage({
+        type: "error",
+        text: err.response?.data?.message || "Lỗi khi xóa bảng đấu.",
       });
     } finally {
       setLoading(false);
@@ -1704,6 +1839,10 @@ export default function AdminDashboard({
             handleCreateTrack={handleCreateTrack}
             selectedTrack={selectedTrack}
             setSelectedTrack={setSelectedTrack}
+            editingTrack={editingTrack}
+            setEditingTrack={setEditingTrack}
+            handleUpdateTrack={handleUpdateTrack}
+            handleDeleteTrack={handleDeleteTrack}
             rounds={rounds}
             setSelectedRubricRoundId={setSelectedRubricRoundId}
             setRubric={setRubric}

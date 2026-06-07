@@ -169,12 +169,22 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
       }
     }
 
+    // Check maxTeams limits
+    const existingTracks = await Track.find({ eventId });
+    const currentTotalMaxTeams = existingTracks.reduce((sum, t) => sum + (t.maxTeams || 0), 0);
+    const newMaxTeamsNum = maxTeams ? parseInt(maxTeams) : 10;
+    if (currentTotalMaxTeams + newMaxTeamsNum > event.maxTeams) {
+      return res.status(400).json({ 
+        message: `Tổng số đội tối đa của các bảng đấu (${currentTotalMaxTeams + newMaxTeamsNum}) vượt quá số lượng đội giới hạn của cuộc thi (${event.maxTeams}).` 
+      });
+    }
+
     const newTrack = new Track({
       eventId,
       roundId,
       name,
       description,
-      maxTeams: maxTeams ? parseInt(maxTeams) : 10,
+      maxTeams: newMaxTeamsNum,
       topicSubmissionOpen: true
     });
 
@@ -184,6 +194,130 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Create Track Error:', error.message);
     res.status(500).json({ message: 'Server error creating track.' });
+  }
+});
+
+/**
+ * @route   PUT /api/events/:eventId/tracks/:trackId
+ * @desc    Update a Track in an event
+ * @access  Private (Coordinator or Admin)
+ */
+router.put('/:eventId/tracks/:trackId', authenticateToken, async (req, res) => {
+  const { eventId, trackId } = req.params;
+  const { name, description, maxTeams, roundId } = req.body;
+
+  try {
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found.' });
+    }
+
+    const track = await Track.findOne({ _id: trackId, eventId });
+    if (!track) {
+      return res.status(404).json({ message: 'Track not found.' });
+    }
+
+    const finalRoundId = roundId || track.roundId;
+    const round = await Round.findById(finalRoundId);
+    if (!round) {
+      return res.status(404).json({ message: 'Round not found.' });
+    }
+
+    if (round.status === 'completed') {
+      return res.status(400).json({ message: 'Không thể chỉnh sửa bảng đấu của vòng thi đã kết thúc.' });
+    }
+
+    // Auth check: System Admin or has coordinator role
+    if (!req.user.isSystemAdmin) {
+      const coordinatorRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId,
+        role: 'coordinator',
+        status: 'active'
+      });
+      if (!coordinatorRole) {
+        return res.status(403).json({ message: 'Only coordinators or system administrators can update tracks.' });
+      }
+    }
+
+    // Check maxTeams limits
+    if (maxTeams !== undefined) {
+      const existingTracks = await Track.find({ eventId });
+      const otherTracksMaxTeams = existingTracks
+        .filter(t => t._id.toString() !== trackId)
+        .reduce((sum, t) => sum + (t.maxTeams || 0), 0);
+      const updatedMaxTeamsNum = parseInt(maxTeams) || 0;
+      if (otherTracksMaxTeams + updatedMaxTeamsNum > event.maxTeams) {
+        return res.status(400).json({ 
+          message: `Tổng số đội tối đa của các bảng đấu (${otherTracksMaxTeams + updatedMaxTeamsNum}) vượt quá số lượng đội giới hạn của cuộc thi (${event.maxTeams}).` 
+        });
+      }
+      track.maxTeams = updatedMaxTeamsNum;
+    }
+
+    if (name) track.name = name;
+    if (description !== undefined) track.description = description;
+    if (roundId) track.roundId = roundId;
+
+    await track.save();
+    res.json(track);
+
+  } catch (error) {
+    console.error('Update Track Error:', error.message);
+    res.status(500).json({ message: 'Server error updating track.' });
+  }
+});
+
+/**
+ * @route   DELETE /api/events/:eventId/tracks/:trackId
+ * @desc    Delete a Track in an event
+ * @access  Private (Coordinator or Admin)
+ */
+router.delete('/:eventId/tracks/:trackId', authenticateToken, async (req, res) => {
+  const { eventId, trackId } = req.params;
+
+  try {
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found.' });
+    }
+
+    const track = await Track.findOne({ _id: trackId, eventId });
+    if (!track) {
+      return res.status(404).json({ message: 'Track not found.' });
+    }
+
+    // Check if there is a round associated and if it's completed
+    const round = await Round.findById(track.roundId);
+    if (round && round.status === 'completed') {
+      return res.status(400).json({ message: 'Không thể xóa bảng đấu của vòng thi đã kết thúc.' });
+    }
+
+    // Auth check: System Admin or has coordinator role
+    if (!req.user.isSystemAdmin) {
+      const coordinatorRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId,
+        role: 'coordinator',
+        status: 'active'
+      });
+      if (!coordinatorRole) {
+        return res.status(403).json({ message: 'Only coordinators or system administrators can delete tracks.' });
+      }
+    }
+
+    // Check if any teams are assigned to this track
+    const teamCount = await Team.countDocuments({ trackId });
+    if (teamCount > 0) {
+      return res.status(400).json({ message: 'Không thể xóa bảng đấu này vì đã có đội thi tham gia.' });
+    }
+
+    await Track.deleteOne({ _id: trackId });
+    res.json({ message: 'Track deleted successfully!' });
+
+  } catch (error) {
+    console.error('Delete Track Error:', error.message);
+    res.status(500).json({ message: 'Server error deleting track.' });
   }
 });
 

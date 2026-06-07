@@ -290,8 +290,7 @@ router.get('/confirm-invite', async (req, res) => {
 
   try {
     const member = await TeamMember.findOne({
-      confirmTokenHash: token,
-      confirmTokenExpiry: { $gt: new Date() }
+      confirmTokenHash: token
     });
 
     if (!member) {
@@ -332,10 +331,87 @@ router.get('/confirm-invite', async (req, res) => {
       `);
     }
 
+    // If already confirmed, render success page immediately
+    if (member.confirmStatus === 'confirmed') {
+      const team = await Team.findById(member.teamId);
+      return res.send(`
+        <!DOCTYPE html>
+        <html class="dark" lang="vi">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>SEAL HACKATHON // XÁC NHẬN THÀNH CÔNG</title>
+          <script src="https://cdn.tailwindcss.com"></script>
+          <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+          <style>
+            body {
+              background-color: #0a141d;
+              background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+              background-size: 40px 40px;
+            }
+          </style>
+        </head>
+        <body class="min-h-screen text-slate-300 font-sans flex items-center justify-center p-4">
+          <div class="w-full max-w-md bg-[#0a141d]/90 border border-[#00f0ff]/30 backdrop-blur-md p-8 rounded-xl text-center shadow-2xl relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#00f0ff] to-transparent opacity-80 animate-pulse"></div>
+            <div class="inline-flex border border-[#00f0ff] px-3 py-1 text-xs font-mono text-[#00f0ff] mb-6 bg-[#00f0ff]/5 uppercase tracking-widest rounded">[INVITATION_CONFIRMED]</div>
+            <div class="w-20 h-20 mx-auto mb-6 rounded-full border border-[#00f0ff] flex items-center justify-center bg-[#00f0ff]/10 shadow-[0_0_20px_rgba(0,240,255,0.2)]">
+              <svg class="w-10 h-10 text-[#00f0ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+              </svg>
+            </div>
+            <h1 class="text-2xl font-extrabold text-white mb-3 uppercase tracking-tight font-mono">ĐÃ XÁC NHẬN THAM GIA</h1>
+            <p class="text-sm text-slate-400 mb-8 font-sans leading-relaxed">Bạn đã xác nhận tham gia đội thi <strong>${team ? team.name : ''}</strong> từ trước. Bạn có thể đóng tab này hoặc nhấn nút bên dưới để quay lại hệ thống.</p>
+            <a href="${clientUrl}/team-area" class="inline-block w-full py-3 border border-[#00f0ff] text-[#00f0ff] hover:bg-[#00f0ff] hover:text-[#0a141d] font-mono text-sm font-bold uppercase tracking-wider transition-all duration-300 shadow-[inset_0_0_10px_rgba(0,240,255,0.1)] hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] rounded">QUAY LẠI TRANG ĐỘI THI</a>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
+    // Check token expiry for pending confirmation
+    if (member.confirmTokenExpiry && member.confirmTokenExpiry < new Date()) {
+      return res.status(400).send(`
+        <!DOCTYPE html>
+        <html class="dark" lang="vi">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>SEAL HACKATHON // LỖI LỜI MỜI</title>
+          <script src="https://cdn.tailwindcss.com"></script>
+          <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+          <style>
+            body {
+              background-color: #0a141d;
+              background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+              background-size: 40px 40px;
+            }
+          </style>
+        </head>
+        <body class="min-h-screen text-slate-300 font-sans flex items-center justify-center p-4">
+          <div class="w-full max-w-md bg-[#0a141d]/90 border border-red-500/30 backdrop-blur-md p-8 rounded-xl text-center shadow-2xl relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-red-500 to-transparent opacity-80 animate-pulse"></div>
+            <div class="inline-flex border border-red-500 px-3 py-1 text-xs font-mono text-red-500 mb-6 bg-red-500/5 uppercase tracking-widest rounded">[LINK_EXPIRED_OR_INVALID]</div>
+            <div class="w-20 h-20 mx-auto mb-6 rounded-full border border-red-500 flex items-center justify-center bg-red-500/10 shadow-[0_0_20px_rgba(239,68,68,0.2)]">
+              <svg class="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+              </svg>
+            </div>
+            <h1 class="text-2xl font-extrabold text-white mb-3 uppercase tracking-tight font-mono">LIÊN KẾT HẾT HẠN</h1>
+            <p class="text-sm text-slate-400 mb-8 font-sans leading-relaxed">Mã xác thực của bạn không hợp lệ hoặc đường link này đã hết hạn hiệu lực (48 giờ).</p>
+            <a href="${clientUrl}" class="inline-block w-full py-3 border border-red-500 text-red-500 hover:bg-red-500 hover:text-white font-mono text-sm font-bold uppercase tracking-wider transition-all duration-300 shadow-[inset_0_0_10px_rgba(239,68,68,0.1)] hover:shadow-[0_0_20px_rgba(239,68,68,0.4)] rounded">ĐI TỚI BẢNG ĐIỀU KHIỂN</a>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
     // Confirm member
     member.confirmStatus = 'confirmed';
-    member.confirmTokenHash = undefined;
-    member.confirmTokenExpiry = undefined;
     member.confirmedAt = new Date();
     await member.save();
 

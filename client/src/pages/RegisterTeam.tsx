@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Users, UserPlus, Trash2, Calendar, FolderGit2, AlertTriangle, CheckCircle } from 'lucide-react';
+import { toast } from 'sonner';
+import { Users, UserPlus, Trash2, Calendar, FolderGit2, CheckCircle } from 'lucide-react';
+import CustomSelect from '../components/CustomSelect';
 
 interface MemberInput {
   email: string;
@@ -31,8 +33,14 @@ export default function RegisterTeam() {
   const [infoMessage, setInfoMessage] = useState('');
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [success, _setSuccess] = useState('');
+  const setError = (msg: string) => {
+    if (msg) toast.error(msg);
+  };
+  const setSuccess = (msg: string) => {
+    _setSuccess(msg);
+    if (msg) toast.success(msg);
+  };
 
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
@@ -198,30 +206,23 @@ export default function RegisterTeam() {
               <span className="text-cyan-400">1. THÔNG TIN CHUNG</span>
             </h2>
 
-            {error && (
-              <div className="bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm px-4 py-3 rounded-xl flex items-center gap-2">
-                <AlertTriangle size={18} className="text-rose-400 shrink-0" />
-                <span>[LỖI] {error}</span>
-              </div>
-            )}
+
 
             <div className="grid grid-cols-1 gap-6">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
                   Lựa chọn Cuộc thi
                 </label>
-                <select
+                <CustomSelect
                   value={selectedEventId}
-                  onChange={e => setSelectedEventId(e.target.value)}
-                  className="w-full bg-slate-900/50 border border-slate-800 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(0,240,255,0.05)] transition-all font-mono"
-                >
-                  {events.map(e => (
-                    <option key={e._id} value={e._id} className="bg-slate-950 text-white">
-                      {e.name} ({e.semester} {e.year})
-                    </option>
-                  ))}
-                  {events.length === 0 && <option className="bg-slate-950 text-white">Không có cuộc thi nào mở đăng ký</option>}
-                </select>
+                  onChange={(val) => setSelectedEventId(val)}
+                  options={events.map((e) => ({
+                    value: e._id,
+                    label: `${e.name} (${e.semester} ${e.year})`,
+                  }))}
+                  placeholder="Chọn cuộc thi..."
+                  className="w-full font-mono"
+                />
               </div>
 
               {pastTeams.length > 0 && (
@@ -230,18 +231,16 @@ export default function RegisterTeam() {
                     Tái sử dụng thông tin đội cũ
                   </label>
                   <div className="flex flex-col sm:flex-row gap-3">
-                    <select
+                    <CustomSelect
                       value={selectedPastTeamId}
-                      onChange={e => setSelectedPastTeamId(e.target.value)}
-                      className="flex-1 bg-slate-950 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500 transition-all font-mono"
-                    >
-                      <option value="">-- Chọn đội cũ --</option>
-                      {pastTeams.map(t => (
-                        <option key={t._id} value={t._id} className="bg-slate-950 text-white">
-                          {t.name} (Sự kiện: {t.event?.name || 'Không rõ'})
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => setSelectedPastTeamId(val)}
+                      options={pastTeams.map((t) => ({
+                        value: t._id,
+                        label: `${t.name} (Sự kiện: ${t.event?.name || "Không rõ"})`,
+                      }))}
+                      placeholder="Chọn đội cũ..."
+                      className="flex-1 font-mono"
+                    />
                     <button
                       type="button"
                       onClick={handleApplyPastTeam}

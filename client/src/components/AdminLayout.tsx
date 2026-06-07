@@ -93,7 +93,7 @@ export default function AdminLayout({ user, onLogout }: AdminLayoutProps) {
   const navItems = [
     {
       path: '/admin',
-      label: 'Bảng điều khiển',
+      label: 'Quản lý sự kiện',
       icon: LayoutDashboard
     },
     {

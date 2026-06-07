@@ -22,6 +22,23 @@ export default function GuestPortal({ user }: GuestPortalProps) {
   const [hasTeam, setHasTeam] = useState<boolean | null>(null);
   const [teamName, setTeamName] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
+  const [events, setEvents] = useState<any[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState<boolean>(true);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const res = await axios.get("http://localhost:5000/api/events");
+        // Show all events that are not in 'draft' status
+        setEvents(res.data.filter((e: any) => e.status !== "draft"));
+      } catch (err) {
+        console.error("Lỗi lấy danh sách cuộc thi:", err);
+      } finally {
+        setLoadingEvents(false);
+      }
+    };
+    fetchEvents();
+  }, []);
 
   useEffect(() => {
     const checkTeamStatus = async () => {
@@ -126,6 +143,137 @@ export default function GuestPortal({ user }: GuestPortalProps) {
           />
           <div className="absolute inset-0 border border-cyan-500/20 pointer-events-none rounded-xl"></div>
         </div>
+      </section>
+
+      {/* Active Competitions Widget */}
+      <section className="space-y-6">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2.5">
+            <Terminal size={18} className="text-cyan-400 shrink-0" />
+            <h2 className="text-lg font-bold text-white uppercase tracking-wider">
+              Cuộc thi hiện có
+            </h2>
+          </div>
+          <span className="text-[10px] text-slate-400 border border-slate-800 px-2 py-1 rounded bg-slate-900/50">
+            [SỰ_KIỆN_HỆ_THỐNG]
+          </span>
+        </div>
+
+        {loadingEvents ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="glass h-48 rounded-2xl border border-slate-800/80 animate-pulse flex flex-col justify-between p-6 bg-slate-900/10">
+                <div className="h-4 bg-slate-850 rounded w-1/3"></div>
+                <div className="h-8 bg-slate-850 rounded w-3/4"></div>
+                <div className="h-4 bg-slate-850 rounded w-full"></div>
+              </div>
+            ))}
+          </div>
+        ) : events.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {events.map((e: any) => {
+              const maxTeamsVal = e.maxTeams || 10;
+              const teamCountVal = e.teamCount || 0;
+              const percent = Math.min(100, (teamCountVal / maxTeamsVal) * 100);
+
+              let statusLabel = "";
+              let statusColor = "";
+              switch (e.status) {
+                case "registration":
+                  statusLabel = "[MỞ ĐĂNG KÝ]";
+                  statusColor = "text-cyan-400";
+                  break;
+                case "ongoing":
+                  statusLabel = "[ĐANG DIỄN RA]";
+                  statusColor = "text-amber-400";
+                  break;
+                case "completed":
+                  statusLabel = "[ĐÃ KẾT THÚC]";
+                  statusColor = "text-emerald-400";
+                  break;
+                case "cancelled":
+                  statusLabel = "[ĐÃ HỦY]";
+                  statusColor = "text-rose-500";
+                  break;
+                default:
+                  statusLabel = `[${e.status.toUpperCase()}]`;
+                  statusColor = "text-slate-500";
+              }
+
+              return (
+                <div
+                  key={e._id}
+                  className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/50 hover:shadow-[0_0_25px_rgba(0,240,255,0.08)] transition-all flex flex-col justify-between gap-6 relative overflow-hidden group bg-slate-900/10"
+                >
+                  <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-500/0 to-transparent group-hover:via-cyan-500/60 transition-all duration-500"></div>
+
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center text-[10px]">
+                      <span className={`font-bold uppercase tracking-wider ${statusColor}`}>
+                        {statusLabel}
+                      </span>
+                      <span className="text-slate-500 font-semibold font-mono">
+                        {e.semester} {e.year}
+                      </span>
+                    </div>
+
+                    <h3 className="text-lg font-bold text-white font-mono group-hover:text-cyan-400 transition-colors uppercase tracking-tight">
+                      {e.name}
+                    </h3>
+
+                    <p className="text-xs text-slate-400 font-sans leading-relaxed line-clamp-3">
+                      {e.description || "Chưa có mô tả chi tiết cho cuộc thi này."}
+                    </p>
+                  </div>
+
+                  <div className="space-y-3 pt-2">
+                    <div className="flex justify-between items-center text-[10px] font-mono">
+                      <span className="text-slate-500">Số đội đã đăng ký:</span>
+                      <span className="text-slate-300 font-bold">
+                        {teamCountVal} / {maxTeamsVal}
+                      </span>
+                    </div>
+
+                    <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-900">
+                      <div
+                        className="h-full bg-cyan-500 transition-all duration-500"
+                        style={{ width: `${percent}%` }}
+                      ></div>
+                    </div>
+
+                    {e.status === "registration" && (
+                      <button
+                        onClick={() => {
+                          if (hasTeam) {
+                            navigate("/team-area");
+                          } else {
+                            navigate(`/register-team?eventId=${e._id}`);
+                          }
+                        }}
+                        className="w-full mt-2 py-2 border border-cyan-500/30 rounded-xl bg-cyan-500/10 text-cyan-400 text-xs font-bold hover:bg-cyan-500/20 transition-all uppercase tracking-wider text-center cursor-pointer font-mono"
+                      >
+                        {hasTeam ? "Vào khu vực đội" : "Đăng ký tham gia"}
+                      </button>
+                    )}
+                    
+                    {e.status === "ongoing" && (
+                      <button
+                        onClick={() => navigate("/leaderboard")}
+                        className="w-full mt-2 py-2 border border-slate-800 rounded-xl bg-slate-900/40 text-slate-300 text-xs font-bold hover:bg-slate-800/60 hover:text-white transition-all uppercase tracking-wider text-center cursor-pointer font-mono"
+                      >
+                        Bảng xếp hạng live
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="glass p-8 rounded-2xl border border-slate-800 text-center text-slate-500 italic text-xs font-mono">
+            [HIỆN_TẠI_CHƯA_CÓ_CUỘC_THI_NÀO_ĐƯỢC_CÔNG_BỐ]
+          </div>
+        )}
       </section>
 
       {/* Intelligence & Roadmap Grid */}

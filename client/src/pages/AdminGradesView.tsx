@@ -11,6 +11,7 @@ import {
   ExternalLink,
   MessageSquare
 } from 'lucide-react';
+import CustomSelect from '../components/CustomSelect';
 
 export default function AdminGradesView() {
   const token = localStorage.getItem('token');
@@ -212,12 +213,12 @@ export default function AdminGradesView() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-10 space-y-8 animate-fadeIn">
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-6 animate-fadeIn">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div>
           <h1 className="text-3xl font-extrabold text-white">
-            Chi tiết Điểm số (Ban tổ chức)
+            <span className="text-cyan-400 text-cyan-glow font-mono-tech">XEM CHI TIẾT ĐIỂM</span>
           </h1>
           <p className="text-slate-400 text-xs mt-1">
             Theo dõi chi tiết điểm số của từng giám khảo chấm cho từng đội thi
@@ -226,58 +227,52 @@ export default function AdminGradesView() {
       </div>
 
       {/* Selectors Event & Round */}
-      <div className="glass p-6 rounded-2xl flex flex-wrap gap-4 items-center">
+      <div className="glass p-6 rounded-2xl flex flex-wrap gap-4 items-center animate-fadeIn z-[999]">
         <div>
           <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
             Cuộc thi
           </label>
-          <select
+          <CustomSelect
             value={selectedEventId}
-            onChange={(e) => setSelectedEventId(e.target.value)}
-            className="bg-slate-950 border border-slate-800 rounded-lg text-slate-200 text-xs px-3 py-2 focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 focus:outline-none w-56 font-bold"
-          >
-            {events.map((e: any) => (
-              <option key={e._id} value={e._id}>
-                {e.name}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => setSelectedEventId(val)}
+            options={events.map((e: any) => ({
+              value: e._id,
+              label: e.name,
+            }))}
+            className="w-56"
+          />
         </div>
 
         <div>
           <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
             Vòng thi (Round)
           </label>
-          <select
+          <CustomSelect
             value={selectedRoundName}
-            onChange={(e) => setSelectedRoundName(e.target.value)}
-            className="bg-slate-950 border border-slate-800 rounded-lg text-slate-200 text-xs px-3 py-2 focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 focus:outline-none w-56 font-bold"
-          >
-            {Array.from(new Set(rounds.map((r: any) => r.name))).map((name: any) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-            {rounds.length === 0 && <option>Không có vòng thi</option>}
-          </select>
+            onChange={(val) => setSelectedRoundName(val)}
+            options={Array.from(new Set(rounds.map((r: any) => r.name))).map((name: any) => ({
+              value: name,
+              label: name,
+            }))}
+            placeholder="Không có vòng thi"
+            className="w-56"
+          />
         </div>
 
         <div>
           <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
             Bảng đấu (Track)
           </label>
-          <select
+          <CustomSelect
             value={selectedTrackId}
-            onChange={(e) => setSelectedTrackId(e.target.value)}
-            className="bg-slate-950 border border-slate-800 rounded-lg text-slate-200 text-xs px-3 py-2 focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 focus:outline-none w-64 font-bold"
-          >
-            {filteredTracksForDropdown.map((t: any) => (
-              <option key={t._id} value={t._id}>
-                {t.name}
-              </option>
-            ))}
-            {filteredTracksForDropdown.length === 0 && <option>Không có bảng đấu</option>}
-          </select>
+            onChange={(val) => setSelectedTrackId(val)}
+            options={filteredTracksForDropdown.map((t: any) => ({
+              value: t._id,
+              label: t.name,
+            }))}
+            placeholder="Không có bảng đấu"
+            className="w-64"
+          />
         </div>
       </div>
 
@@ -285,7 +280,7 @@ export default function AdminGradesView() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
         {/* Left Column: Teams Sidebar */}
-        <div className="lg:col-span-4 space-y-4">
+        <div className="lg:col-span-4 space-y-4 z-[-1]">
           <div className="glass p-5 rounded-2xl space-y-4">
             <h2 className="text-sm font-bold text-slate-200 flex items-center gap-1.5 border-b border-slate-800 pb-3">
               <Users size={16} className="text-cyan-400" />
@@ -314,8 +309,8 @@ export default function AdminGradesView() {
                     key={t._id}
                     onClick={() => setSelectedTeamId(t._id)}
                     className={`w-full text-left p-3.5 rounded-xl border transition-all text-xs flex items-center gap-3 ${selectedTeamId === t._id
-                        ? 'bg-cyan-500/20 border-cyan-500/60 shadow-md text-white'
-                        : 'bg-slate-900/30 border-slate-800/80 text-slate-400 hover:bg-slate-900/50 hover:text-slate-200'
+                      ? 'bg-cyan-500/20 border-cyan-500/60 shadow-md text-white'
+                      : 'bg-slate-900/30 border-slate-800/80 text-slate-400 hover:bg-slate-900/50 hover:text-slate-200'
                       }`}
                   >
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold font-mono ${selectedTeamId === t._id ? 'bg-cyan-500 text-white' : 'bg-slate-850 text-slate-400'
@@ -340,9 +335,9 @@ export default function AdminGradesView() {
         </div>
 
         {/* Right Column: Grading Details View */}
-        <div className="lg:col-span-8 space-y-6">
+        <div className="lg:col-span-8 space-y-6 z-[-1]">
           {loadingGrades ? (
-            <div className="glass p-12 text-center text-slate-400 flex flex-col items-center justify-center min-h-[400px]">
+            <div className="glass rounded-2xl p-12 text-center text-slate-400 flex flex-col items-center justify-center min-h-[400px]">
               <RefreshCw size={32} className="animate-spin text-cyan-500 mb-3" />
               <p className="text-xs">Đang tải chi tiết bảng điểm...</p>
             </div>
@@ -414,8 +409,8 @@ export default function AdminGradesView() {
                           key={g.score?._id || idx}
                           onClick={() => setActiveJudgeIndex(idx)}
                           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-2 ${activeJudgeIndex === idx
-                              ? 'bg-cyan-500/20 border-cyan-500/60 text-white shadow-md'
-                              : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-900/70'
+                            ? 'bg-cyan-500/20 border-cyan-500/60 text-white shadow-md'
+                            : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-900/70'
                             }`}
                         >
                           <div className={`w-2 h-2 rounded-full ${activeJudgeIndex === idx ? 'bg-cyan-400 animate-pulse' : 'bg-slate-600'}`} />
@@ -428,7 +423,7 @@ export default function AdminGradesView() {
                     {gradingsData.gradings[activeJudgeIndex] && (() => {
                       const g = gradingsData.gradings[activeJudgeIndex];
                       return (
-                        <div key={g.score?._id || activeJudgeIndex} className="glass p-6 rounded-3xl space-y-4 border-l-4 border-l-cyan-500 animate-fadeIn">
+                        <div key={g.score?._id || activeJudgeIndex} className="glass p-6 rounded-3xl space-y-4 border-l-4 border-l-cyan-500 animate-fadeIn z-[-1]">
 
                           {/* Judge Header */}
                           <div className="flex justify-between items-start gap-4 border-b border-slate-800 pb-3 flex-wrap">
@@ -506,7 +501,7 @@ export default function AdminGradesView() {
 
             </div>
           ) : (
-            <div className="glass p-12 text-center text-slate-400 flex flex-col items-center justify-center min-h-[400px]">
+            <div className="glass rounded-2xl p-12 text-center text-slate-400 flex flex-col items-center justify-center min-h-[400px]">
               <BookOpen size={48} className="text-slate-700 mb-3" />
               <p className="font-bold text-md text-slate-300">Vui lòng chọn đội thi</p>
               <p className="text-xs text-slate-500 max-w-sm mt-1">

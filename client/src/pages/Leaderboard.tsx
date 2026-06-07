@@ -7,6 +7,7 @@ import {
   RefreshCw,
   Radio,
 } from "lucide-react";
+import CustomSelect from "../components/CustomSelect";
 
 export default function Leaderboard({
   user,
@@ -128,7 +129,7 @@ export default function Leaderboard({
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-12 space-y-8 font-mono">
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-6 font-mono">
       {/* Page header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
@@ -168,40 +169,36 @@ export default function Leaderboard({
       </div>
 
       {/* Selectors */}
-      <div className="glass p-6 rounded-2xl flex flex-wrap gap-4 items-center border border-slate-800 hover:border-cyan-500/20 transition-all">
-        <div>
+      <div className="glass p-6 rounded-2xl flex flex-wrap gap-4 items-center border border-slate-800 hover:border-cyan-500/20 transition-all relative z-20">
+        <div className="relative z-20">
           <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
             Cuộc thi
           </label>
-          <select
+          <CustomSelect
             value={selectedEventId}
-            onChange={(e) => setSelectedEventId(e.target.value)}
-            className="px-3 py-2 rounded-lg text-xs w-48 bg-slate-900/50 border border-slate-800 text-white focus:outline-none focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(0,240,255,0.05)] transition-all font-mono"
-          >
-            {events.map((e: any) => (
-              <option key={e._id} value={e._id} className="bg-slate-950 text-white">
-                {e.name}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => setSelectedEventId(val)}
+            options={events.map((e: any) => ({
+              value: e._id,
+              label: e.name,
+            }))}
+            className="w-48"
+          />
         </div>
 
-        <div>
+        <div className="relative z-20">
           <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
             Vòng đấu (Round)
           </label>
-          <select
+          <CustomSelect
             value={selectedRoundId}
-            onChange={(e) => handleRoundChange(e.target.value)}
-            className="px-3 py-2 rounded-lg text-xs w-48 bg-slate-900/50 border border-slate-800 text-white focus:outline-none focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(0,240,255,0.05)] transition-all font-mono"
-          >
-            {rounds.map((r: any) => (
-              <option key={r._id} value={r._id} className="bg-slate-950 text-white">
-                {r.name}
-              </option>
-            ))}
-            {rounds.length === 0 && <option className="bg-slate-950 text-white">Không có vòng đấu</option>}
-          </select>
+            onChange={(val) => handleRoundChange(val)}
+            options={rounds.map((r: any) => ({
+              value: r._id,
+              label: r.name,
+            }))}
+            placeholder="Không có vòng đấu"
+            className="w-48"
+          />
         </div>
 
         {/* Round status pill */}
@@ -219,7 +216,7 @@ export default function Leaderboard({
       </div>
 
       {/* Standings Grid Table */}
-      <div className="glass p-6 rounded-3xl relative overflow-hidden border border-slate-800 hover:border-cyan-500/30 transition-all">
+      <div className="glass p-6 rounded-3xl relative overflow-hidden border border-slate-800 hover:border-cyan-500/30 transition-all z-5">
         {/* Coordinator live header */}
         {isCoordinator && isLive && standings.length > 0 && (
           <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-800">
@@ -243,7 +240,7 @@ export default function Leaderboard({
           </p>
         ) : isLocked ? (
           /* Locked state for non-coordinator */
-          <div className="text-center text-slate-500 py-16">
+          <div className="text-center text-slate-500 py-16 z-5">
             <Lock size={36} className="mx-auto text-slate-700 mb-3" />
             <p className="text-sm font-semibold text-slate-400">
               Bảng xếp hạng chưa được công bố
@@ -331,7 +328,7 @@ export default function Leaderboard({
             </table>
           </div>
         ) : (
-          <div className="text-center text-slate-500 py-16">
+          <div className="text-center text-slate-500 py-16 z-5">
             <BarChart3 size={32} className="mx-auto text-slate-700 mb-2" />
             <p className="text-xs">Bảng xếp hạng chưa được công bố.</p>
             <p className="text-[10px] text-slate-600 max-w-sm mx-auto mt-1">

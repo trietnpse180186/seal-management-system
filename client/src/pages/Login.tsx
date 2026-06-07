@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { toast } from 'sonner';
+import { Eye, EyeOff } from 'lucide-react';
 import logo from "../assets/logo.svg";
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
@@ -38,7 +39,11 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const [university, setUniversity] = useState('');
   const [githubUsername, setGithubUsername] = useState('');
   
-  const [error, setError] = useState('');
+  const setError = (msg: string) => {
+    if (msg) {
+      toast.error(msg);
+    }
+  };
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -170,6 +175,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           }
         } else {
           setRegistrationSuccess(true);
+          toast.success("Đăng ký tài khoản thành công! Vui lòng kiểm tra email để xác thực.");
         }
       } else {
         const response = await axios.post(`${baseUrl}/auth/login`, {
@@ -278,12 +284,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           </p>
         </div>
 
-        {error && (
-          <div className="bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs px-4 py-3 rounded-md mb-4 flex items-center gap-2 font-mono">
-            <ShieldCheck size={16} className="text-rose-400 shrink-0" />
-            <span>[LỖI] {error}</span>
-          </div>
-        )}
+
 
         <form onSubmit={handleSubmit} className="space-y-4">
           

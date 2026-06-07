@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import LandingPage from './pages/LandingPage';
 import RegisterTeam from './pages/RegisterTeam';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminEvents from './pages/AdminEvents';
 import TeamArea from './pages/TeamArea';
 import Leaderboard from './pages/Leaderboard';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -19,6 +20,8 @@ import JudgeTeamActivity from './pages/JudgeTeamActivity';
 import JudgeLeaderboard from './pages/JudgeLeaderboard';
 import AdminGradesView from './pages/AdminGradesView';
 import AdminLayout from './components/AdminLayout';
+import { Toaster } from 'sonner';
+import { ConfirmProvider } from './components/ConfirmDialog';
 
 function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
   const location = useLocation();
@@ -70,8 +73,8 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
               <AdminLayout user={user} onLogout={handleLogout} />
             </ProtectedRoute>
           }>
-            <Route index element={<AdminDashboard defaultTab="admin" />} />
-            <Route path="events" element={<AdminDashboard defaultTab="events" />} />
+            <Route index element={<AdminDashboard />} />
+            <Route path="events" element={<AdminEvents />} />
             <Route path="grades" element={<AdminGradesView />} />
             <Route path="leaderboard" element={<Leaderboard user={user} roles={roles} />} />
           </Route>
@@ -325,12 +328,15 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <AppContent 
-        user={user} 
-        roles={roles} 
-        handleLoginSuccess={handleLoginSuccess} 
-        handleLogout={handleLogout} 
-      />
+      <ConfirmProvider>
+        <AppContent 
+          user={user} 
+          roles={roles} 
+          handleLoginSuccess={handleLoginSuccess} 
+          handleLogout={handleLogout} 
+        />
+        <Toaster position="top-right" theme="dark" closeButton richColors />
+      </ConfirmProvider>
     </BrowserRouter>
   );
 }

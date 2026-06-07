@@ -21,14 +21,14 @@ router.post('/register', async (req, res) => {
   const { email, password, fullName, studentId, university, githubUsername } = req.body;
 
   if (!email || !password || !fullName) {
-    return res.status(400).json({ message: 'Email, password, and full name are required.' });
+    return res.status(400).json({ message: 'Email, mật khẩu và họ tên là bắt buộc.' });
   }
 
   try {
     // Check if user already exists
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
-      return res.status(400).json({ message: 'A user with this email already exists.' });
+      return res.status(400).json({ message: 'Tài khoản với email này đã tồn tại.' });
     }
 
     // Hash password
@@ -79,7 +79,7 @@ router.post('/register', async (req, res) => {
     const token = jwt.sign({ id: user._id, sessionId: activeSessionId }, JWT_SECRET, { expiresIn: '24h' });
 
     res.status(201).json({
-      message: 'Registration successful!',
+      message: 'Đăng ký thành công!',
       token,
       user: {
         id: user._id,
@@ -105,13 +105,13 @@ router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return res.status(400).json({ message: 'Please provide both email and password.' });
+    return res.status(400).json({ message: 'Vui lòng nhập cả email và mật khẩu.' });
   }
 
   try {
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
-      return res.status(400).json({ message: 'Invalid credentials.' });
+      return res.status(400).json({ message: 'Thông tin đăng nhập không chính xác.' });
     }
 
     // Check if user is approved (email verified)
@@ -125,7 +125,7 @@ router.post('/login', async (req, res) => {
     // Match password
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid credentials.' });
+      return res.status(400).json({ message: 'Thông tin đăng nhập không chính xác.' });
     }
 
     // Check session concurrency: if user has active session and heartbeat is fresh (< 20 seconds)
@@ -552,6 +552,7 @@ router.post('/github', async (req, res) => {
  */
 router.get('/verify-email', async (req, res) => {
   const { token } = req.query;
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
 
   if (!token) {
     return res.status(400).send(`
@@ -584,7 +585,7 @@ router.get('/verify-email', async (req, res) => {
           </div>
           <h1 class="text-2xl font-extrabold text-white mb-3 uppercase tracking-tight font-mono">MÃ XÁC THỰC RỖNG</h1>
           <p class="text-sm text-slate-400 mb-8 font-sans leading-relaxed">Không tìm thấy mã xác thực (token) trong yêu cầu kích hoạt tài khoản của bạn.</p>
-          <a href="http://localhost:5173/login" class="inline-block w-full py-3 border border-red-500 text-red-500 hover:bg-red-500 hover:text-white font-mono text-sm font-bold uppercase tracking-wider transition-all duration-300 shadow-[inset_0_0_10px_rgba(239,68,68,0.1)] hover:shadow-[0_0_20px_rgba(239,68,68,0.4)]">QUAY LẠI TRANG ĐĂNG NHẬP</a>
+          <a href="${clientUrl}/login" class="inline-block w-full py-3 border border-red-500 text-red-500 hover:bg-red-500 hover:text-white font-mono text-sm font-bold uppercase tracking-wider transition-all duration-300 shadow-[inset_0_0_10px_rgba(239,68,68,0.1)] hover:shadow-[0_0_20px_rgba(239,68,68,0.4)]">QUAY LẠI TRANG ĐĂNG NHẬP</a>
         </div>
       </body>
       </html>
@@ -628,7 +629,7 @@ router.get('/verify-email', async (req, res) => {
             </div>
             <h1 class="text-2xl font-extrabold text-white mb-3 uppercase tracking-tight font-mono">LIÊN KẾT HẾT HẠN</h1>
             <p class="text-sm text-slate-400 mb-8 font-sans leading-relaxed">Mã xác thực không hợp lệ hoặc đường link kích hoạt của bạn đã hết hạn (24 giờ). Vui lòng thử đăng ký lại.</p>
-            <a href="http://localhost:5173/login" class="inline-block w-full py-3 border border-red-500 text-red-500 hover:bg-red-500 hover:text-white font-mono text-sm font-bold uppercase tracking-wider transition-all duration-300 shadow-[inset_0_0_10px_rgba(239,68,68,0.1)] hover:shadow-[0_0_20px_rgba(239,68,68,0.4)]">QUAY LẠI TRANG ĐĂNG NHẬP</a>
+            <a href="${clientUrl}/login" class="inline-block w-full py-3 border border-red-500 text-red-500 hover:bg-red-500 hover:text-white font-mono text-sm font-bold uppercase tracking-wider transition-all duration-300 shadow-[inset_0_0_10px_rgba(239,68,68,0.1)] hover:shadow-[0_0_20px_rgba(239,68,68,0.4)]">QUAY LẠI TRANG ĐĂNG NHẬP</a>
           </div>
         </body>
         </html>
@@ -671,7 +672,7 @@ router.get('/verify-email', async (req, res) => {
           </div>
           <h1 class="text-2xl font-extrabold text-white mb-3 uppercase tracking-tight font-mono">NODE_ACTIVATED</h1>
           <p class="text-sm text-slate-400 mb-8 font-sans leading-relaxed">Xin chúc mừng! Tài khoản của bạn đã được kích hoạt thành công trên hệ thống SEAL Hackathon. Khóa bảo mật đã được đồng bộ.</p>
-          <a href="http://localhost:5173/login" class="inline-block w-full py-3 border border-[#00f0ff] text-[#00f0ff] hover:bg-[#00f0ff] hover:text-[#0a141d] font-mono text-sm font-bold uppercase tracking-wider transition-all duration-300 shadow-[inset_0_0_10px_rgba(0,240,255,0.1)] hover:shadow-[0_0_20px_rgba(0,240,255,0.4)]">ĐĂNG NHẬP NGAY</a>
+          <a href="${clientUrl}/login" class="inline-block w-full py-3 border border-[#00f0ff] text-[#00f0ff] hover:bg-[#00f0ff] hover:text-[#0a141d] font-mono text-sm font-bold uppercase tracking-wider transition-all duration-300 shadow-[inset_0_0_10px_rgba(0,240,255,0.1)] hover:shadow-[0_0_20px_rgba(0,240,255,0.4)]">ĐĂNG NHẬP NGAY</a>
         </div>
       </body>
       </html>

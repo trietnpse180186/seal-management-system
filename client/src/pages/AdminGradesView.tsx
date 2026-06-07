@@ -11,6 +11,7 @@ import {
   ExternalLink,
   MessageSquare
 } from 'lucide-react';
+import CustomSelect from '../components/CustomSelect';
 
 export default function AdminGradesView() {
   const token = localStorage.getItem('token');
@@ -212,7 +213,7 @@ export default function AdminGradesView() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-10 space-y-8 animate-fadeIn">
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-6 animate-fadeIn">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div>
@@ -226,58 +227,52 @@ export default function AdminGradesView() {
       </div>
 
       {/* Selectors Event & Round */}
-      <div className="glass p-6 rounded-2xl flex flex-wrap gap-4 items-center">
+      <div className="glass p-6 rounded-2xl flex flex-wrap gap-4 items-center animate-fadeIn">
         <div>
           <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
             Cuộc thi
           </label>
-          <select
+          <CustomSelect
             value={selectedEventId}
-            onChange={(e) => setSelectedEventId(e.target.value)}
-            className="bg-slate-950 border border-slate-800 rounded-lg text-slate-200 text-xs px-3 py-2 focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 focus:outline-none w-56 font-bold"
-          >
-            {events.map((e: any) => (
-              <option key={e._id} value={e._id}>
-                {e.name}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => setSelectedEventId(val)}
+            options={events.map((e: any) => ({
+              value: e._id,
+              label: e.name,
+            }))}
+            className="w-56"
+          />
         </div>
 
         <div>
           <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
             Vòng thi (Round)
           </label>
-          <select
+          <CustomSelect
             value={selectedRoundName}
-            onChange={(e) => setSelectedRoundName(e.target.value)}
-            className="bg-slate-950 border border-slate-800 rounded-lg text-slate-200 text-xs px-3 py-2 focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 focus:outline-none w-56 font-bold"
-          >
-            {Array.from(new Set(rounds.map((r: any) => r.name))).map((name: any) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-            {rounds.length === 0 && <option>Không có vòng thi</option>}
-          </select>
+            onChange={(val) => setSelectedRoundName(val)}
+            options={Array.from(new Set(rounds.map((r: any) => r.name))).map((name: any) => ({
+              value: name,
+              label: name,
+            }))}
+            placeholder="Không có vòng thi"
+            className="w-56"
+          />
         </div>
 
         <div>
           <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
             Bảng đấu (Track)
           </label>
-          <select
+          <CustomSelect
             value={selectedTrackId}
-            onChange={(e) => setSelectedTrackId(e.target.value)}
-            className="bg-slate-950 border border-slate-800 rounded-lg text-slate-200 text-xs px-3 py-2 focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 focus:outline-none w-64 font-bold"
-          >
-            {filteredTracksForDropdown.map((t: any) => (
-              <option key={t._id} value={t._id}>
-                {t.name}
-              </option>
-            ))}
-            {filteredTracksForDropdown.length === 0 && <option>Không có bảng đấu</option>}
-          </select>
+            onChange={(val) => setSelectedTrackId(val)}
+            options={filteredTracksForDropdown.map((t: any) => ({
+              value: t._id,
+              label: t.name,
+            }))}
+            placeholder="Không có bảng đấu"
+            className="w-64"
+          />
         </div>
       </div>
 

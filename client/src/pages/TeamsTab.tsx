@@ -1,4 +1,5 @@
 import { Users } from "lucide-react";
+import CustomSelect from "../components/CustomSelect";
 
 interface TeamsTabProps {
   selectedEvent: any;
@@ -183,28 +184,21 @@ export default function TeamsTab({
                         </button>
 
                         {tracks.length > 0 && (
-                          <select
-                            onChange={(e) => {
-                              if (e.target.value) {
-                                handleAssignTrack(
-                                  team._id,
-                                  e.target.value,
-                                );
+                          <CustomSelect
+                            value={team.trackId || ""}
+                            onChange={(val) => {
+                              if (val) {
+                                handleAssignTrack(team._id, val);
                               }
                             }}
                             disabled={loading}
-                            className="flex-1 bg-slate-900 border border-slate-700 text-slate-300 text-[10px] font-bold py-1 px-2 rounded-lg font-mono focus:outline-none focus:border-cyan-500"
-                            defaultValue=""
-                          >
-                            <option value="" disabled>
-                              -- Chọn Bảng đấu --
-                            </option>
-                            {tracks.map((track: any) => (
-                              <option key={track._id} value={track._id}>
-                                {track.name}
-                              </option>
-                            ))}
-                          </select>
+                            options={tracks.map((track: any) => ({
+                              value: track._id,
+                              label: track.name,
+                            }))}
+                            placeholder="-- Chọn Bảng đấu --"
+                            className="flex-1"
+                          />
                         )}
                       </div>
                       {tracks.length === 0 && (

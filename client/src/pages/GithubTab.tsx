@@ -1,4 +1,5 @@
 import React from "react";
+import CustomSelect from "../components/CustomSelect";
 
 const GithubIcon = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
   <svg
@@ -176,21 +177,18 @@ export default function GithubTab({
               Liên kết repo thủ công
             </h4>
             <form onSubmit={handleLinkRepo} className="space-y-2">
-              <select
+              <CustomSelect
                 value={linkingTeamId}
-                onChange={(e) => setLinkingTeamId(e.target.value)}
-                required
-                className="w-full px-3 py-2 rounded-lg text-xs bg-slate-900 border border-slate-800 text-slate-200 focus:outline-none"
-              >
-                <option value="">Chọn đội...</option>
-                {allTeams
+                onChange={(val) => setLinkingTeamId(val)}
+                options={allTeams
                   .filter((t: any) => !repos.some((r: any) => r.teamId?._id === t._id))
-                  .map((t: any) => (
-                    <option key={t._id} value={t._id}>
-                      {t.name}
-                    </option>
-                  ))}
-              </select>
+                  .map((t: any) => ({
+                    value: t._id,
+                    label: t.name,
+                  }))}
+                placeholder="Chọn đội..."
+                className="w-full"
+              />
               <input
                 type="text"
                 placeholder="Tên Repo (e.g. team-alpha-repo)"

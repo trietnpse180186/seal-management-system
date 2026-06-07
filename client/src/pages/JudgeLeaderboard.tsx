@@ -8,6 +8,7 @@ import {
   Search,
   CheckSquare
 } from "lucide-react";
+import CustomSelect from "../components/CustomSelect";
 
 export default function JudgeLeaderboard() {
   const token = localStorage.getItem("token");
@@ -143,35 +144,31 @@ export default function JudgeLeaderboard() {
             <label className="block text-[9px] font-bold uppercase text-slate-400 mb-1 tracking-wider font-mono">
               Cuộc thi
             </label>
-            <select
+            <CustomSelect
               value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
-              className="bg-slate-950/80 border border-slate-800 rounded-xl text-slate-200 text-xs px-3 py-2 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition-all w-56 font-bold font-mono"
-            >
-              {events.map((e: any) => (
-                <option key={e._id} value={e._id} className="bg-slate-900 text-slate-200">
-                  {e.name}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setSelectedEventId(val)}
+              options={events.map((e: any) => ({
+                value: e._id,
+                label: e.name,
+              }))}
+              className="w-56"
+            />
           </div>
 
           <div>
             <label className="block text-[9px] font-bold uppercase text-slate-400 mb-1 tracking-wider font-mono">
               Vòng đấu
             </label>
-            <select
+            <CustomSelect
               value={selectedRoundId}
-              onChange={(e) => handleRoundChange(e.target.value)}
-              className="bg-slate-950/80 border border-slate-800 rounded-xl text-slate-200 text-xs px-3 py-2 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition-all w-56 font-bold font-mono"
-            >
-              {rounds.map((r: any) => (
-                <option key={r._id} value={r._id} className="bg-slate-900 text-slate-200">
-                  {r.name}
-                </option>
-              ))}
-              {rounds.length === 0 && <option className="bg-slate-900 text-slate-200">Không có vòng đấu</option>}
-            </select>
+              onChange={(val) => handleRoundChange(val)}
+              options={rounds.map((r: any) => ({
+                value: r._id,
+                label: r.name,
+              }))}
+              placeholder="Không có vòng đấu"
+              className="w-56"
+            />
           </div>
 
           {selectedRound?.status === "completed" && (

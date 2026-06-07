@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "axios";
 import { Search, Check, ChevronRight, AlertCircle } from "lucide-react";
+import CustomSelect from "../components/CustomSelect";
 
 export default function JudgeProjects() {
   const token = localStorage.getItem("token");
@@ -135,41 +136,37 @@ export default function JudgeProjects() {
       </div>
 
       {/* Selectors & Filter Row */}
-      <div className="bg-slate-900/40 backdrop-blur-md p-6 rounded-xl border border-white/10 shadow-lg flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
+      <div className="bg-slate-900/40 backdrop-blur-md p-6 rounded-xl border border-white/10 shadow-lg flex flex-col md:flex-row gap-6 justify-between items-start md:items-center animate-fadeIn">
         <div className="flex flex-wrap gap-4 items-center w-full md:w-auto">
           <div>
             <label className="block text-[9px] font-bold uppercase text-slate-400 mb-1">
               Cuộc thi
             </label>
-            <select
+            <CustomSelect
               value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
-              className="bg-slate-800/80 border border-white/10 rounded-lg text-white text-xs px-3 py-1.5 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 focus:outline-none w-56 font-bold shadow-inner"
-            >
-              {events.map((e: any) => (
-                <option key={e._id} value={e._id} className="bg-slate-800 text-white">
-                  {e.name}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setSelectedEventId(val)}
+              options={events.map((e: any) => ({
+                value: e._id,
+                label: e.name,
+              }))}
+              className="w-56"
+            />
           </div>
 
           <div>
             <label className="block text-[9px] font-bold uppercase text-slate-400 mb-1">
               Vòng thi
             </label>
-            <select
+            <CustomSelect
               value={selectedRoundId}
-              onChange={(e) => setSelectedRoundId(e.target.value)}
-              className="bg-slate-800/80 border border-white/10 rounded-lg text-white text-xs px-3 py-1.5 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 focus:outline-none w-56 font-bold shadow-inner"
-            >
-              {rounds.map((r: any) => (
-                <option key={r._id} value={r._id} className="bg-slate-800 text-white">
-                  {r.name} (Lấy Top {r.advanceTopN})
-                </option>
-              ))}
-              {rounds.length === 0 && <option className="bg-slate-800 text-white">Không có vòng thi</option>}
-            </select>
+              onChange={(val) => setSelectedRoundId(val)}
+              options={rounds.map((r: any) => ({
+                value: r._id,
+                label: `${r.name} (Lấy Top ${r.advanceTopN})`,
+              }))}
+              placeholder="Không có vòng thi"
+              className="w-56"
+            />
           </div>
         </div>
 

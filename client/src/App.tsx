@@ -21,6 +21,7 @@ import JudgeLeaderboard from './pages/JudgeLeaderboard';
 import AdminGradesView from './pages/AdminGradesView';
 import AdminLayout from './components/AdminLayout';
 import { Toaster } from 'sonner';
+import { ConfirmProvider } from './components/ConfirmDialog';
 
 function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
   const location = useLocation();
@@ -327,13 +328,15 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <AppContent 
-        user={user} 
-        roles={roles} 
-        handleLoginSuccess={handleLoginSuccess} 
-        handleLogout={handleLogout} 
-      />
-      <Toaster position="top-right" theme="dark" closeButton richColors />
+      <ConfirmProvider>
+        <AppContent 
+          user={user} 
+          roles={roles} 
+          handleLoginSuccess={handleLoginSuccess} 
+          handleLogout={handleLogout} 
+        />
+        <Toaster position="top-right" theme="dark" closeButton richColors />
+      </ConfirmProvider>
     </BrowserRouter>
   );
 }

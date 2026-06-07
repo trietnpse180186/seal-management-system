@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { FolderKanban, ChevronRight, BookOpen, Users, Edit, Trash2 } from "lucide-react";
+import { useConfirm } from "../components/ConfirmDialog";
+import CustomSelect from "../components/CustomSelect";
 
 interface TracksTabProps {
   selectedEvent: any;
@@ -72,6 +74,7 @@ export default function TracksTab({
   handleRemoveRole,
 }: TracksTabProps) {
   const [judgeEmail, setJudgeEmail] = useState("");
+  const confirm = useConfirm();
 
   const maxEventTeams = selectedEvent?.maxTeams || 0;
   const totalAllocatedTeams = tracks.reduce((sum, t) => sum + (t.maxTeams || 0), 0);
@@ -145,9 +148,14 @@ export default function TracksTab({
                   </button>
                   <button
                     type="button"
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.stopPropagation();
-                      if (window.confirm(`Bạn có chắc chắn muốn xóa bảng đấu "${t.name}"?`)) {
+                      const confirmed = await confirm({
+                        title: "Xóa bảng đấu",
+                        message: `Bạn có chắc chắn muốn xóa bảng đấu "${t.name}"?`,
+                        variant: "danger",
+                      });
+                      if (confirmed) {
                         handleDeleteTrack(t._id);
                       }
                     }}
@@ -180,19 +188,17 @@ export default function TracksTab({
             <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
               Chọn Vòng thi
             </label>
-            <select
-              required
+            <CustomSelect
               value={trackRoundId}
-              onChange={(e) => setTrackRoundId(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-900 border border-slate-850 text-slate-200 focus:outline-none focus:border-cyan-500"
-            >
-              <option value="">-- Chọn Vòng thi --</option>
-              {rounds.map((r: any) => (
-                <option key={r._id} value={r._id} disabled={r.status === 'completed'}>
-                  {r.name} (Vòng {r.order}){r.status === 'completed' ? ' - Đã kết thúc' : ''}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setTrackRoundId(val)}
+              options={rounds.map((r: any) => ({
+                value: r._id,
+                label: `${r.name} (Vòng ${r.order})${r.status === 'completed' ? ' - Đã kết thúc' : ''}`,
+                disabled: r.status === 'completed'
+              }))}
+              placeholder="-- Chọn Vòng thi --"
+              className="w-full"
+            />
           </div>
 
           <div>

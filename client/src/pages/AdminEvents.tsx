@@ -10,6 +10,8 @@ import TracksTab from "./TracksTab";
 import RoundsTab from "./RoundsTab";
 import GithubTab from "./GithubTab";
 import { toast } from "sonner";
+import { useConfirm } from "../components/ConfirmDialog";
+import CustomSelect from "../components/CustomSelect";
 
 const Github = ({
   size = 20,
@@ -44,6 +46,7 @@ export default function AdminEvents({
 }: AdminEventsProps) {
   const token = localStorage.getItem("token");
   const [searchParams, setSearchParams] = useSearchParams();
+  const confirm = useConfirm();
 
   const eventIdParam = searchParams.get("eventId");
   const [eventName, setEventName] = useState("");
@@ -304,11 +307,11 @@ export default function AdminEvents({
       return;
     }
 
-    if (
-      !window.confirm(
-        `Bạn có chắc chắn muốn phân chia ngẫu nhiên ${unassignedTeams.length} đội thi vào ${tracks.length} bảng đấu? Hệ thống sẽ tự động tạo repository GitHub cho các đội.`,
-      )
-    ) {
+    const confirmed = await confirm({
+      title: "Phân chia bảng đấu ngẫu nhiên",
+      message: `Bạn có chắc chắn muốn phân chia ngẫu nhiên ${unassignedTeams.length} đội thi vào ${tracks.length} bảng đấu? Hệ thống sẽ tự động tạo repository GitHub cho các đội.`,
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -348,11 +351,11 @@ export default function AdminEvents({
     }
 
     if (trackId === "random") {
-      if (
-        !window.confirm(
-          "Bạn có chắc muốn phân bảng đấu ngẫu nhiên cho đội thi này?",
-        )
-      ) {
+      const confirmed = await confirm({
+        title: "Phân chia bảng đấu ngẫu nhiên",
+        message: "Bạn có chắc muốn phân bảng đấu ngẫu nhiên cho đội thi này?",
+      });
+      if (!confirmed) {
         return;
       }
     }
@@ -901,8 +904,12 @@ export default function AdminEvents({
 
   const handleDeleteRubric = async () => {
     if (!rubric) return;
-    if (!window.confirm("Bạn có chắc chắn muốn xóa/vô hiệu hóa Rubric này?"))
-      return;
+    const confirmed = await confirm({
+      title: "Xóa Rubric",
+      message: "Bạn có chắc chắn muốn xóa/vô hiệu hóa Rubric này?",
+      variant: "danger",
+    });
+    if (!confirmed) return;
     try {
       await axios.delete(`http://localhost:5000/api/rubrics/${rubric._id}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -990,7 +997,12 @@ export default function AdminEvents({
   };
 
   const handleDeleteCriterion = async (criterionId: string) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa tiêu chí này?")) return;
+    const confirmed = await confirm({
+      title: "Xóa tiêu chí",
+      message: "Bạn có chắc chắn muốn xóa tiêu chí này?",
+      variant: "danger",
+    });
+    if (!confirmed) return;
     try {
       await axios.delete(`http://localhost:5000/api/criteria/${criterionId}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -1095,7 +1107,12 @@ export default function AdminEvents({
   const handleAdvanceRound = async (roundId: string) => {
     if (!selectedEvent || !roundId) return;
 
-    if (!window.confirm("Bạn có chắc chắn muốn CHỐT vòng đấu này và THĂNG HẠNG (Advance) các đội xuất sắc nhất vào vòng tiếp theo?")) {
+    const confirmed = await confirm({
+      title: "Chốt và thăng hạng vòng đấu",
+      message: "Bạn có chắc chắn muốn CHỐT vòng đấu này và THĂNG HẠNG (Advance) các đội xuất sắc nhất vào vòng tiếp theo?",
+      variant: "warning",
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -1131,7 +1148,12 @@ export default function AdminEvents({
   const handleLockRound = async (roundId: string) => {
     if (!selectedEvent || !roundId) return;
 
-    if (!window.confirm("Bạn có chắc chắn muốn KHÓA điểm và CÔNG BỐ kết quả xếp hạng cho vòng đấu này? Sau khi khóa, giám khảo sẽ không thể sửa điểm được nữa.")) {
+    const confirmed = await confirm({
+      title: "Khóa điểm vòng đấu",
+      message: "Bạn có chắc chắn muốn KHÓA điểm và CÔNG BỐ kết quả xếp hạng cho vòng đấu này? Sau khi khóa, giám khảo sẽ không thể sửa điểm được nữa.",
+      variant: "warning",
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -1306,10 +1328,12 @@ export default function AdminEvents({
 
   const handleRemoveRole = async (roleId: string) => {
     if (!selectedEvent) return;
-    if (
-      !window.confirm("Bạn có chắc chắn muốn thu hồi quyền của thành viên này?")
-    )
-      return;
+    const confirmed = await confirm({
+      title: "Thu hồi quyền thành viên",
+      message: "Bạn có chắc chắn muốn thu hồi quyền của thành viên này?",
+      variant: "danger",
+    });
+    if (!confirmed) return;
     setMessage({ type: "", text: "" });
     setLoading(true);
 
@@ -1352,21 +1376,19 @@ export default function AdminEvents({
             <span className="text-xs text-slate-400 font-mono">
               Xem nhanh cuộc thi:
             </span>
-            <select
+            <CustomSelect
               value={selectedEvent?._id || ""}
-              onChange={(e) => {
-                const ev = events.find((event) => event._id === e.target.value);
+              onChange={(val) => {
+                const ev = events.find((event) => event._id === val);
                 if (ev) handleSelectEvent(ev);
               }}
-              className="bg-slate-900 border border-slate-800 text-slate-300 text-xs px-3 py-1.5 rounded-lg focus:border-cyan-500 outline-none"
-            >
-              <option value="">-- Chọn cuộc thi --</option>
-              {events.map((e: any) => (
-                <option key={e._id} value={e._id}>
-                  {e.name} ({e.semester} {e.year})
-                </option>
-              ))}
-            </select>
+              options={events.map((e: any) => ({
+                value: e._id,
+                label: `${e.name} (${e.semester} ${e.year})`,
+              }))}
+              placeholder="-- Chọn cuộc thi --"
+              className="w-56 font-bold"
+            />
           </div>
         )}
       </div>
@@ -1397,27 +1419,18 @@ export default function AdminEvents({
                 <label className="text-[10px] font-bold text-slate-400 uppercase font-mono">
                   Trạng thái:
                 </label>
-                <select
+                <CustomSelect
                   value={selectedEvent.status}
-                  onChange={(e) => handleUpdateEventStatus(e.target.value)}
-                  className="bg-transparent text-slate-200 text-xs font-semibold focus:outline-none cursor-pointer"
-                >
-                  <option className="bg-slate-900" value="draft">
-                    Draft
-                  </option>
-                  <option className="bg-slate-900" value="registration">
-                    Registration
-                  </option>
-                  <option className="bg-slate-900" value="ongoing">
-                    Ongoing
-                  </option>
-                  <option className="bg-slate-900" value="completed">
-                    Completed
-                  </option>
-                  <option className="bg-slate-900" value="cancelled">
-                    Cancelled
-                  </option>
-                </select>
+                  onChange={(val) => handleUpdateEventStatus(val)}
+                  options={[
+                    { value: "draft", label: "Draft" },
+                    { value: "registration", label: "Registration" },
+                    { value: "ongoing", label: "Ongoing" },
+                    { value: "completed", label: "Completed" },
+                    { value: "cancelled", label: "Cancelled" },
+                  ]}
+                  className="w-36 font-semibold"
+                />
               </div>
               <button
                 onClick={() => {
@@ -1545,15 +1558,16 @@ export default function AdminEvents({
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
                         Học kỳ
                       </label>
-                      <select
+                      <CustomSelect
                         value={editEventSemester}
-                        onChange={(e) => setEditEventSemester(e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-white"
-                      >
-                        <option value="Spring">Spring</option>
-                        <option value="Summer">Summer</option>
-                        <option value="Fall">Fall</option>
-                      </select>
+                        onChange={(val) => setEditEventSemester(val)}
+                        options={[
+                          { value: "Spring", label: "Spring" },
+                          { value: "Summer", label: "Summer" },
+                          { value: "Fall", label: "Fall" },
+                        ]}
+                        className="w-full"
+                      />
                     </div>
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
@@ -1657,15 +1671,16 @@ export default function AdminEvents({
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
                         Học kỳ
                       </label>
-                      <select
+                      <CustomSelect
                         value={semester}
-                        onChange={(e) => setSemester(e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-white"
-                      >
-                        <option value="Spring">Spring</option>
-                        <option value="Summer">Summer</option>
-                        <option value="Fall">Fall</option>
-                      </select>
+                        onChange={(val) => setSemester(val)}
+                        options={[
+                          { value: "Spring", label: "Spring" },
+                          { value: "Summer", label: "Summer" },
+                          { value: "Fall", label: "Fall" },
+                        ]}
+                        className="w-full"
+                      />
                     </div>
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">

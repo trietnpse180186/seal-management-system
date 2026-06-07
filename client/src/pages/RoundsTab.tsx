@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { ListOrdered, ChevronRight, Award, Lock, Download, Upload, FileSpreadsheet, X, AlertTriangle, CheckCircle } from "lucide-react";
 import axios from "axios";
 import * as XLSX from "xlsx";
+import CustomSelect from "../components/CustomSelect";
 
 interface RoundsTabProps {
   selectedEvent: any;
@@ -575,18 +576,16 @@ export default function RoundsTab({
                 <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 font-mono">
                   Chọn Rubric cũ để sao chép
                 </label>
-                <select
+                <CustomSelect
                   value={selectedSourceRubricId}
-                  onChange={(e) => setSelectedSourceRubricId(e.target.value)}
-                  className="w-full px-2 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] text-slate-300 font-mono"
-                >
-                  <option value="">-- Chọn Rubric cũ --</option>
-                  {existingRubrics.map((r: any) => (
-                    <option key={r._id} value={r._id}>
-                      {r.name} ({r.eventId?.name || "Sự kiện cũ"})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setSelectedSourceRubricId(val)}
+                  options={existingRubrics.map((r: any) => ({
+                    value: r._id,
+                    label: `${r.name} (${r.eventId?.name || "Sự kiện cũ"})`,
+                  }))}
+                  placeholder="-- Chọn Rubric cũ --"
+                  className="w-full text-[10px]"
+                />
               </div>
             )}
           </div>
@@ -612,18 +611,16 @@ export default function RoundsTab({
           <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
             Chọn Vòng đấu
           </label>
-          <select
+          <CustomSelect
             value={selectedRubricRoundId}
-            onChange={(e) => setSelectedRubricRoundId(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-xl text-xs bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-cyan-500 font-mono"
-          >
-            <option value="">-- Chọn Vòng đấu --</option>
-            {rounds.map((r: any) => (
-              <option key={r._id} value={r._id}>
-                {r.name} (Vòng {r.order})
-              </option>
-            ))}
-          </select>
+            onChange={(val) => setSelectedRubricRoundId(val)}
+            options={rounds.map((r: any) => ({
+              value: r._id,
+              label: `${r.name} (Vòng ${r.order})`,
+            }))}
+            placeholder="-- Chọn Vòng đấu --"
+            className="w-full font-mono"
+          />
         </div>
 
         {selectedRubricRoundId ? (

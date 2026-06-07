@@ -1803,6 +1803,7 @@ export default function AdminDashboard({
             loading={loading}
             setRubric={setRubric}
             setCriteria={setCriteria}
+            fetchRoundsAndRubric={fetchRoundsAndRubric}
           />
         ) : (
           <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">

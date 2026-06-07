@@ -1,5 +1,7 @@
-import React from "react";
-import { ListOrdered, ChevronRight, Award, Lock } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { ListOrdered, ChevronRight, Award, Lock, Download, Upload, FileSpreadsheet, X, AlertTriangle, CheckCircle } from "lucide-react";
+import axios from "axios";
+import * as XLSX from "xlsx";
 
 interface RoundsTabProps {
   selectedEvent: any;
@@ -87,6 +89,7 @@ interface RoundsTabProps {
   loading: boolean;
   setRubric: (rubric: any) => void;
   setCriteria: (criteria: any[]) => void;
+  fetchRoundsAndRubric?: () => Promise<void>;
 }
 
 export default function RoundsTab({
@@ -164,12 +167,262 @@ export default function RoundsTab({
   handleCreateRubric,
   setRubric,
   setCriteria,
+  fetchRoundsAndRubric,
 }: RoundsTabProps) {
   // Read unused props to satisfy the TS compiler (noUnusedLocals: true)
   const selectedRound = rounds.find((r: any) => r._id === selectedRubricRoundId);
   if (false as boolean) {
     console.log(selectedTrack, setSelectedTrack, setRubric, setCriteria);
   }
+
+  // === Import Excel State ===
+  const token = localStorage.getItem("token");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importPreview, setImportPreview] = useState<any[] | null>(null);
+  const [importGradingDefs, setImportGradingDefs] = useState<any[]>([]);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importResult, setImportResult] = useState<any>(null);
+  const [importError, setImportError] = useState<string>("");
+
+  // Download template
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/api/rubrics/template/download", {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "Template_Criteria.xlsx");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download template error:", err);
+      alert("Lỗi khi tải template. Vui lòng thử lại.");
+    }
+  };
+
+  // Export criteria of the current rubric to Excel
+  const handleExportCriteria = async () => {
+    if (!rubric) return;
+    if (!criteria || criteria.length === 0) {
+      alert("Hiện tại Rubric này chưa có tiêu chí nào để xuất. Vui lòng tự thêm tiêu chí trước hoặc tải file 'Template Excel mẫu' để chỉnh sửa.");
+      return;
+    }
+    try {
+      const res = await axios.get(`http://localhost:5000/api/rubrics/${rubric._id}/export-criteria`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      const safeName = rubric.name.replace(/\s+/g, "_");
+      link.setAttribute("download", `Criteria_${safeName}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error("Export criteria error:", err);
+      // Đọc thông báo lỗi từ Blob nếu có phản hồi dạng JSON từ server
+      if (err.response && err.response.data instanceof Blob) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const errorObj = JSON.parse(reader.result as string);
+            alert(errorObj.message || "Lỗi khi xuất danh sách tiêu chí ra file Excel.");
+          } catch {
+            alert("Lỗi khi xuất danh sách tiêu chí ra file Excel. Vui lòng thử lại.");
+          }
+        };
+        reader.readAsText(err.response.data);
+      } else {
+        alert("Lỗi khi xuất danh sách tiêu chí ra file Excel. Vui lòng thử lại.");
+      }
+    }
+  };
+
+  // Parse Excel file for preview
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportFile(file);
+    setImportResult(null);
+    setImportError("");
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = evt.target?.result;
+        const workbook = XLSX.read(data, { type: "binary" });
+        const sheetName = workbook.SheetNames[0];
+        if (!sheetName) {
+          setImportError("File Excel không có sheet nào.");
+          return;
+        }
+        const sheet = workbook.Sheets[sheetName];
+        const rawData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+
+        if (rawData.length < 3) {
+          setImportError("File phải có ít nhất 2 hàng header và 1 hàng dữ liệu.");
+          return;
+        }
+
+        // Parse grading level definitions from row 2 (index 1)
+        const headerRow2 = rawData[1];
+        const gradingLevelRegex = /^(.+?)\s*\(\s*([\d.]+)\s*-\s*([\d.]+)\s*\)$/;
+        const gradingDefs: any[] = [];
+
+        for (let col = 3; col < headerRow2.length; col++) {
+          const headerVal = String(headerRow2[col] || "").trim();
+          if (!headerVal) continue;
+          const match = headerVal.match(gradingLevelRegex);
+          if (!match) {
+            setImportError(`Cột ${String.fromCharCode(65 + col)} header mức chấm không đúng format. Yêu cầu: "Tên mức (min - max)". Giá trị: "${headerVal}"`);
+            setImportPreview(null);
+            return;
+          }
+          gradingDefs.push({
+            colIndex: col,
+            label: match[1].trim(),
+            minScore: parseFloat(match[2]),
+            maxScore: parseFloat(match[3]),
+          });
+        }
+
+        setImportGradingDefs(gradingDefs);
+
+        // Parse data rows
+        const existingCodesMap = new Map(criteria.map((c: any) => [c.code.toUpperCase(), c]));
+        const fileCodes = new Set<string>();
+        const previewed: any[] = [];
+
+        for (let rowIdx = 2; rowIdx < rawData.length; rowIdx++) {
+          const row = rawData[rowIdx];
+          const code = String(row[0] || "").trim().toUpperCase();
+          const name = String(row[1] || "").trim();
+          const weight = Number(row[2]);
+
+          if (!code && !name && !row[2]) continue; // skip empty rows
+
+          const issues: string[] = [];
+          if (!code) issues.push("Thiếu mã tiêu chí");
+          if (!name) issues.push("Thiếu tên tiêu chí");
+          if (isNaN(weight) || weight <= 0) issues.push("Trọng số không hợp lệ");
+
+          const action = existingCodesMap.has(code) ? "update" : "create";
+          fileCodes.add(code);
+
+          const levels = gradingDefs.map((def: any) => ({
+            label: def.label,
+            minScore: def.minScore,
+            maxScore: def.maxScore,
+            description: String(row[def.colIndex] || "").trim(),
+          }));
+
+          previewed.push({
+            rowNum: rowIdx + 1,
+            code,
+            name,
+            weight: isNaN(weight) ? row[2] : weight,
+            gradingLevels: levels,
+            issues,
+            action, // "create" or "update"
+          });
+        }
+
+        // Identify deleted criteria (present in DB, but NOT in file)
+        criteria.forEach((c: any) => {
+          if (!fileCodes.has(c.code.toUpperCase())) {
+            previewed.push({
+              rowNum: "—",
+              code: c.code.toUpperCase(),
+              name: c.name,
+              weight: c.weight,
+              gradingLevels: c.gradingLevels || [],
+              issues: [],
+              action: "delete",
+            });
+          }
+        });
+
+        setImportPreview(previewed);
+        setImportError("");
+      } catch (err) {
+        console.error("Parse error:", err);
+        setImportError("Lỗi khi đọc file Excel. Vui lòng kiểm tra lại file.");
+      }
+    };
+    reader.readAsBinaryString(file);
+
+    // Reset file input
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  // Upload file to server
+  const handleConfirmImport = async () => {
+    if (!importFile || !rubric) return;
+    setImportLoading(true);
+    setImportResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", importFile);
+
+      const res = await axios.post(
+        `http://localhost:5000/api/rubrics/${rubric._id}/import-criteria`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      setImportResult(res.data);
+      setImportPreview(null);
+      setImportFile(null);
+
+      // Refresh criteria list
+      if (fetchRoundsAndRubric) {
+        await fetchRoundsAndRubric();
+      } else {
+        // Fallback: fetch criteria directly
+        const rubricRes = await axios.get(
+          `http://localhost:5000/api/rubrics/${rubric._id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setRubric(rubricRes.data.rubric);
+        setCriteria(rubricRes.data.criteria || []);
+      }
+    } catch (err: any) {
+      const errData = err.response?.data;
+      setImportResult({
+        message: errData?.message || "Lỗi khi import.",
+        errors: errData?.errors || [],
+        skippedDetails: errData?.skippedDetails || [],
+        imported: 0,
+        updated: 0,
+        deleted: 0,
+      });
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const handleCancelImport = () => {
+    setImportPreview(null);
+    setImportFile(null);
+    setImportResult(null);
+    setImportError("");
+    setImportGradingDefs([]);
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -675,6 +928,235 @@ export default function RoundsTab({
                     )}
                   </div>
                 </div>
+
+                {/* Import/Export Buttons */}
+                {!rubric.isLocked && (
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-800">
+                    <button
+                      type="button"
+                      onClick={handleDownloadTemplate}
+                      className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-[10px] font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-all"
+                    >
+                      <Download size={12} />
+                      Tải Template Excel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleExportCriteria}
+                      className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-[10px] font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-all"
+                    >
+                      <Download size={12} />
+                      Xuất Excel hiện tại
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-all"
+                    >
+                      <Upload size={12} />
+                      Import từ Excel
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".xlsx,.xls"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                  </div>
+                )}
+
+                {/* Import Error */}
+                {importError && (
+                  <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-3 flex items-start gap-2">
+                    <AlertTriangle size={14} className="text-rose-400 mt-0.5 shrink-0" />
+                    <p className="text-[10px] text-rose-400">{importError}</p>
+                    <button onClick={handleCancelImport} className="ml-auto text-rose-400 hover:text-rose-300 cursor-pointer">
+                      <X size={12} />
+                    </button>
+                  </div>
+                )}
+
+                {/* Import Preview Modal */}
+                {importPreview && importPreview.length > 0 && (
+                  <div className="bg-slate-950/80 border border-cyan-500/20 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
+                        <FileSpreadsheet size={14} />
+                        Preview Import ({importPreview.length} tiêu chí)
+                      </p>
+                      <button
+                        onClick={handleCancelImport}
+                        className="text-slate-400 hover:text-white cursor-pointer"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+
+                    {/* Grading level defs summary */}
+                    {importGradingDefs.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        <span className="text-[9px] text-slate-500 mr-1">Mức chấm:</span>
+                        {importGradingDefs.map((def: any, i: number) => (
+                          <span key={i} className="bg-slate-900 border border-slate-800 text-[8px] px-1.5 py-0.5 rounded text-cyan-300 font-mono">
+                            {def.label} ({def.minScore}-{def.maxScore})
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Preview table */}
+                    <div className="max-h-[250px] overflow-y-auto">
+                      <table className="w-full text-[10px]">
+                        <thead>
+                          <tr className="text-left text-slate-500 border-b border-slate-800">
+                            <th className="pb-1 pr-2">#</th>
+                            <th className="pb-1 pr-2">Mã</th>
+                            <th className="pb-1 pr-2">Tên tiêu chí</th>
+                            <th className="pb-1 pr-2">Trọng số</th>
+                            <th className="pb-1">Trạng thái</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {importPreview.map((item: any, idx: number) => {
+                            const isDelete = item.action === "delete";
+                            const isCreate = item.action === "create";
+                            return (
+                              <tr
+                                key={idx}
+                                className={`border-b border-slate-900/60 ${
+                                  item.issues.length > 0
+                                    ? "bg-rose-500/5"
+                                    : isDelete
+                                    ? "bg-rose-500/10 opacity-75"
+                                    : isCreate
+                                    ? "bg-emerald-500/5"
+                                    : "bg-amber-500/5"
+                                }`}
+                              >
+                                <td className="py-1.5 pr-2 text-slate-500">{item.rowNum}</td>
+                                <td className={`py-1.5 pr-2 font-bold font-mono ${
+                                  isDelete ? "text-rose-450 line-through" : "text-slate-200"
+                                }`}>{item.code || "—"}</td>
+                                <td className={`py-1.5 pr-2 ${
+                                  isDelete ? "text-rose-450 line-through" : "text-slate-300"
+                                }`}>{item.name || "—"}</td>
+                                <td className={`py-1.5 pr-2 font-mono ${
+                                  isDelete ? "text-rose-450 line-through" : "text-cyan-400"
+                                }`}>{item.weight}%</td>
+                                <td className="py-1.5">
+                                  {item.issues.length > 0 ? (
+                                    <span className="text-[9px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-1.5 py-0.5 rounded">
+                                      {item.issues.join(", ")}
+                                    </span>
+                                  ) : isDelete ? (
+                                    <span className="text-[9px] bg-rose-500/20 text-rose-400 border border-rose-500/30 px-1.5 py-0.5 rounded font-bold">
+                                      XÓA
+                                    </span>
+                                  ) : isCreate ? (
+                                    <span className="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded font-bold">
+                                      THÊM MỚI
+                                    </span>
+                                  ) : (
+                                    <span className="text-[9px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded font-bold">
+                                      CẬP NHẬT
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Weight summary */}
+                    {(() => {
+                      const currentSum = criteria.reduce((s: number, c: any) => s + (c.weight || 0), 0);
+                      const newSum = importPreview
+                        .filter((item: any) => item.action !== "delete" && item.issues.length === 0)
+                        .reduce((s: number, item: any) => s + (Number(item.weight) || 0), 0);
+                      const totalAfter = newSum;
+                      const exceeds = totalAfter > (rubric?.totalWeight || 100);
+                      return (
+                        <div className={`text-[10px] font-mono p-2 rounded-lg border ${
+                          exceeds
+                            ? "bg-rose-500/10 border-rose-500/20 text-rose-400"
+                            : "bg-slate-900/60 border-slate-800 text-slate-400"
+                        }`}>
+                          Trọng số hiện tại: {currentSum}% | Trọng số sau đồng bộ: <strong className={exceeds ? "text-rose-300" : "text-emerald-400"}>{totalAfter}%</strong> / {rubric?.totalWeight || 100}%
+                          {exceeds && " ⚠️ Vượt quá giới hạn!"}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Action buttons */}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleConfirmImport}
+                        disabled={importLoading}
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded-lg cursor-pointer flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
+                      >
+                        <CheckCircle size={12} />
+                        {importLoading ? "Đang import..." : "Xác nhận Import"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancelImport}
+                        className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs py-2 px-4 rounded-lg cursor-pointer transition-all"
+                      >
+                        Hủy
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Import Result */}
+                {importResult && (
+                  <div className={`rounded-xl p-3 space-y-2 border ${
+                    (importResult.imported > 0 || importResult.updated > 0 || importResult.deleted > 0)
+                      ? "bg-emerald-500/10 border-emerald-500/20"
+                      : "bg-rose-500/10 border-rose-500/20"
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <p className={`text-[11px] font-bold ${
+                        (importResult.imported > 0 || importResult.updated > 0 || importResult.deleted > 0) ? "text-emerald-400" : "text-rose-400"
+                      }`}>
+                        {importResult.message}
+                      </p>
+                      <button
+                        onClick={() => setImportResult(null)}
+                        className="text-slate-400 hover:text-white cursor-pointer"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                    {(importResult.imported > 0 || importResult.updated > 0 || importResult.deleted > 0) && (
+                      <p className="text-[10px] text-emerald-300">
+                        ✅ Đồng bộ thành công:
+                        {importResult.imported > 0 && ` +Thêm: ${importResult.imported}`}
+                        {importResult.updated > 0 && ` ~Sửa: ${importResult.updated}`}
+                        {importResult.deleted > 0 && ` -Xóa: ${importResult.deleted}`}
+                        {importResult.errorCount > 0 && ` | ❌ Lỗi: ${importResult.errorCount}`}
+                      </p>
+                    )}
+                    {importResult.errors?.length > 0 && (
+                      <div className="text-[9px] text-rose-400 space-y-0.5">
+                        {importResult.errors.map((err: string, i: number) => (
+                          <p key={i}>• {err}</p>
+                        ))}
+                      </div>
+                    )}
+                    {importResult.skippedDetails?.length > 0 && (
+                      <div className="text-[9px] text-amber-400 space-y-0.5">
+                        {importResult.skippedDetails.map((s: string, i: number) => (
+                          <p key={i}>• {s}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Add/Edit Criterion Form */}
                 {!rubric.isLocked && (

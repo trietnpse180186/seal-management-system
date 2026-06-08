@@ -27,6 +27,7 @@ router.post('/register', authenticateToken, async (req, res) => {
     return res.status(400).json({ message: 'Đã xảy ra lỗi trong quá trình đăng ký.' });
   }
 
+  let createdTeamId = null;
   try {
     // Update leader's profile if provided
     if (leaderInfo) {
@@ -81,6 +82,7 @@ router.post('/register', authenticateToken, async (req, res) => {
       status: 'pending_confirm'
     });
     await team.save();
+    createdTeamId = team._id;
 
     // 4. Register/Handle Leader as TeamMember
     const leaderMember = new TeamMember({
@@ -92,23 +94,18 @@ router.post('/register', authenticateToken, async (req, res) => {
     });
     await leaderMember.save();
 
-    // Update/Create EventRole for the Leader to 'team-leader'
+    // Update/Create EventRole for the Leader to 'participant'
     let leaderRoleRecord = await EventRole.findOne({
       userId: req.user._id,
       eventId,
       status: 'active'
     });
 
-    if (leaderRoleRecord) {
-      if (leaderRoleRecord.role === 'participant') {
-        leaderRoleRecord.role = 'team-leader';
-        await leaderRoleRecord.save();
-      }
-    } else {
+    if (!leaderRoleRecord) {
       const newLeaderRole = new EventRole({
         userId: req.user._id,
         eventId,
-        role: 'team-leader',
+        role: 'participant',
         assignedBy: req.user._id
       });
       await newLeaderRole.save();
@@ -236,6 +233,17 @@ router.post('/register', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('Team Registration Error:', error.message);
+    if (createdTeamId) {
+      try {
+        console.log(`[ROLLBACK] Cleaning up team ${createdTeamId} due to registration error...`);
+        const TeamMember = mongoose.model('TeamMember');
+        const Team = mongoose.model('Team');
+        await Team.deleteOne({ _id: createdTeamId });
+        await TeamMember.deleteMany({ teamId: createdTeamId });
+      } catch (rollbackError) {
+        console.error('[ROLLBACK ERROR] Failed to clean up team registration:', rollbackError.message);
+      }
+    }
     res.status(500).json({ message: 'Đăng ký đội thất bại.' });
   }
 });
@@ -418,7 +426,7 @@ router.get('/confirm-invite', async (req, res) => {
     // Check if ALL team members are now confirmed
     const team = await Team.findById(member.teamId);
 
-    // Update/Create EventRole for the Member to 'team-member'
+    // Update/Create EventRole for the Member to 'participant'
     if (team) {
       let memberRoleRecord = await EventRole.findOne({
         userId: member.userId,
@@ -426,16 +434,11 @@ router.get('/confirm-invite', async (req, res) => {
         status: 'active'
       });
 
-      if (memberRoleRecord) {
-        if (memberRoleRecord.role === 'participant') {
-          memberRoleRecord.role = 'team-member';
-          await memberRoleRecord.save();
-        }
-      } else {
+      if (!memberRoleRecord) {
         const newMemberRole = new EventRole({
           userId: member.userId,
           eventId: team.eventId,
-          role: 'team-member',
+          role: 'participant',
           assignedBy: team.leaderId
         });
         await newMemberRole.save();

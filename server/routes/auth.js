@@ -205,6 +205,55 @@ router.get('/me', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @route   PUT /api/auth/profile
+ * @desc    Update current user profile details
+ * @access  Private
+ */
+router.put('/profile', authenticateToken, async (req, res) => {
+  const { fullName, studentId, university, githubUsername } = req.body;
+
+  if (!fullName || !fullName.trim()) {
+    return res.status(400).json({ message: 'Họ tên là bắt buộc.' });
+  }
+
+  try {
+    const user = req.user;
+    user.fullName = fullName.trim();
+    user.studentId = studentId ? studentId.trim() : undefined;
+    user.university = university ? university.trim() : undefined;
+    user.githubUsername = githubUsername ? githubUsername.trim() : undefined;
+
+    await user.save();
+
+    const roles = await EventRole.find({ userId: user._id, status: 'active' }).populate('eventId', 'name semester year');
+
+    res.json({
+      message: 'Cập nhật thông tin cá nhân thành công!',
+      user: {
+        id: user._id,
+        email: user.email,
+        fullName: user.fullName,
+        studentId: user.studentId,
+        university: user.university,
+        githubUsername: user.githubUsername,
+        isSystemAdmin: user.isSystemAdmin,
+        avatarUrl: user.avatarUrl
+      },
+      roles: roles.map(r => ({
+        id: r._id,
+        eventId: r.eventId ? r.eventId._id : null,
+        eventName: r.eventId ? `${r.eventId.name} (${r.eventId.semester} ${r.eventId.year})` : 'System',
+        role: r.role,
+        trackId: r.trackId
+      }))
+    });
+  } catch (error) {
+    console.error('Update Profile Error:', error.message);
+    res.status(500).json({ message: 'Server error updating profile.' });
+  }
+});
+
+/**
  * @route   POST /api/auth/assign-role
  * @desc    Assign event role to a user (System Admin only)
  * @access  Private (System Admin)

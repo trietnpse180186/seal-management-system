@@ -25,6 +25,19 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
   const isLoginPage = location.pathname === "/login";
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 20) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -127,8 +140,16 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
     }
   `;
 
+  const isLandingPage = location.pathname === "/";
+
+  const navClass = isLandingPage
+    ? isScrolled
+      ? "fixed top-0 left-0 w-full z-50 px-6 py-3 glass-nav transition-all duration-300"
+      : "absolute top-0 left-0 w-full z-50 px-6 py-4 bg-transparent border-b-transparent shadow-none transition-all duration-300"
+    : "glass-nav sticky top-0 z-50 w-full px-6 py-4";
+
   return (
-    <nav className="glass-nav sticky top-0 z-50 w-full px-6 py-4">
+    <nav className={navClass}>
       <div className="w-full flex items-center justify-between">
         {/* Brand Logo */}
         <div className="flex-1 flex justify-start">

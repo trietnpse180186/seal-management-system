@@ -11,8 +11,6 @@ const EventRoleSchema = new Schema(
       type: String,
       enum: [
         "participant",
-        "team-leader",
-        "team-member",
         "mentor",
         "judge",
         "coordinator",

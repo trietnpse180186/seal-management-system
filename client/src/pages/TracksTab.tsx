@@ -37,7 +37,7 @@ interface TracksTabProps {
   
   // Event roles and judge assignment props
   eventRoles?: any[];
-  handleAssignRoleForTrack?: (email: string, trackId: string) => Promise<void>;
+  handleAssignRoleForTrack?: (email: string, trackId: string, role?: "judge" | "mentor") => Promise<void>;
   handleRemoveRole?: (roleId: string) => Promise<void>;
 }
 
@@ -74,15 +74,16 @@ export default function TracksTab({
   handleRemoveRole,
 }: TracksTabProps) {
   const [judgeEmail, setJudgeEmail] = useState("");
+  const [memberRole, setMemberRole] = useState<"judge" | "mentor">("judge");
   const confirm = useConfirm();
 
   const maxEventTeams = selectedEvent?.maxTeams || 0;
   const totalAllocatedTeams = tracks.reduce((sum, t) => sum + (t.maxTeams || 0), 0);
   const remainingTeams = maxEventTeams - totalAllocatedTeams;
 
-  const trackJudges = eventRoles.filter(
+  const trackMembers = eventRoles.filter(
     (role: any) =>
-      role.role === "judge" &&
+      (role.role === "judge" || role.role === "mentor") &&
       ((role.trackId?._id || role.trackId) === selectedTrack?._id)
   );
 
@@ -312,23 +313,28 @@ export default function TracksTab({
           <div className="glass p-6 rounded-2xl space-y-4">
             <h3 className="text-md font-bold text-white flex items-center gap-1.5 font-mono border-b border-slate-800/80 pb-3">
               <Users size={16} className="text-cyan-400" />
-              <span>Giám khảo Bảng đấu ({selectedTrack.name})</span>
+              <span>Ban chuyên môn ({selectedTrack.name})</span>
             </h3>
 
-            {/* List of judges */}
+            {/* List of judges and mentors */}
             <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-              {trackJudges.map((role: any) => (
+              {trackMembers.map((role: any) => (
                 <div
                   key={role._id}
                   className="p-2.5 bg-slate-900/40 rounded-xl border border-slate-800/60 text-xs flex justify-between items-center font-sans"
                 >
-                  <div>
-                    <p className="font-bold text-slate-200">
-                      {role.userId?.fullName || "Chưa rõ tên"}
-                    </p>
-                    <p className="text-[10px] text-slate-500 font-mono">
-                      {role.userId?.email}
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <div>
+                      <p className="font-bold text-slate-200">
+                        {role.userId?.fullName || "Chưa rõ tên"}
+                      </p>
+                      <p className="text-[10px] text-slate-500 font-mono">
+                        {role.userId?.email}
+                      </p>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${role.role === 'judge' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/30' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'}`}>
+                      {role.role === 'judge' ? 'Giám khảo' : 'Mentor'}
+                    </span>
                   </div>
                   {handleRemoveRole && (
                     <button
@@ -340,32 +346,42 @@ export default function TracksTab({
                   )}
                 </div>
               ))}
-              {trackJudges.length === 0 && (
+              {trackMembers.length === 0 && (
                 <p className="text-xs text-slate-500 italic py-2 text-center font-sans">
-                  Chưa có giám khảo nào được phân cho bảng này.
+                  Chưa có giám khảo hay mentor nào được phân cho bảng này.
                 </p>
               )}
             </div>
 
-            {/* Form to add judge */}
+            {/* Form to add member */}
             {handleAssignRoleForTrack && (
               <form
                 onSubmit={async (e) => {
                   e.preventDefault();
                   if (!judgeEmail) return;
-                  await handleAssignRoleForTrack(judgeEmail, selectedTrack._id);
+                  await handleAssignRoleForTrack(judgeEmail, selectedTrack._id, memberRole);
                   setJudgeEmail("");
                 }}
-                className="space-y-2 pt-2 border-t border-slate-800/80"
+                className="space-y-3 pt-3 border-t border-slate-800/80"
               >
-                <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-400 font-mono">
-                  Thêm Giám khảo bằng Email:
-                </label>
+                <div className="flex gap-4 items-center">
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+                    Phân quyền:
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-xs text-slate-300">
+                    <input type="radio" name="memberRole" value="judge" checked={memberRole === "judge"} onChange={() => setMemberRole("judge")} className="accent-cyan-500" />
+                    Giám khảo
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-xs text-slate-300">
+                    <input type="radio" name="memberRole" value="mentor" checked={memberRole === "mentor"} onChange={() => setMemberRole("mentor")} className="accent-cyan-500" />
+                    Mentor
+                  </label>
+                </div>
                 <div className="flex gap-2">
                   <input
                     type="email"
                     required
-                    placeholder="giamkhao@domain.com"
+                    placeholder="email@domain.com"
                     value={judgeEmail}
                     onChange={(e) => setJudgeEmail(e.target.value)}
                     className="flex-1 px-3 py-2.5 rounded-xl text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200 focus:outline-none focus:border-cyan-500"
@@ -383,7 +399,7 @@ export default function TracksTab({
         ) : (
           <div className="glass p-6 rounded-2xl text-center py-10 text-slate-500 font-mono border-dashed border-slate-800">
             <Users size={32} className="mx-auto mb-2 text-slate-600" />
-            <p className="text-xs">Chọn một bảng đấu ở cột bên trái để quản lý Giám khảo.</p>
+            <p className="text-xs">Chọn một bảng đấu ở cột bên trái để quản lý Ban chuyên môn.</p>
           </div>
         )}
       </div>

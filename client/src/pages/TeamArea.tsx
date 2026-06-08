@@ -42,6 +42,9 @@ export default function TeamArea() {
   const [commits, setCommits] = useState<any[]>([]);
   const [selectedCommit, setSelectedCommit] = useState<any>(null);
 
+  // Tasks
+  const [tasks, setTasks] = useState<any[]>([]);
+
   // Status indicators
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -74,6 +77,11 @@ export default function TeamArea() {
       if (res.data.repository) {
         fetchCommits(res.data.team._id);
       }
+      
+      // Fetch Tasks
+      if (res.data.team) {
+        fetchTasks(res.data.team._id);
+      }
     } catch (err: any) {
       console.error(err);
       setError(err.response?.data?.message || 'Lỗi tải thông tin đội thi. Vui lòng đảm bảo nhóm đã được xác nhận.');
@@ -98,6 +106,29 @@ export default function TeamArea() {
 
   const handleSelectCommit = (commitObj: any) => {
     setSelectedCommit(commitObj);
+  };
+
+  const fetchTasks = async (teamId: string) => {
+    try {
+      const res = await axios.get(`http://localhost:5000/api/tasks/team/${teamId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setTasks(res.data);
+    } catch (err: any) {
+      console.error('Error fetching tasks:', err);
+    }
+  };
+
+  const updateTaskStatus = async (taskId: string, newStatus: string) => {
+    try {
+      const res = await axios.put(`http://localhost:5000/api/tasks/${taskId}`, { status: newStatus }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setTasks(tasks.map((t: any) => t._id === taskId ? res.data : t));
+      toast.success("Đã cập nhật tiến độ nhiệm vụ.");
+    } catch (err: any) {
+      toast.error("Lỗi cập nhật tiến độ.");
+    }
   };
 
   useEffect(() => {
@@ -202,7 +233,57 @@ export default function TeamArea() {
         )}
       </div>
 
-
+      {/* Task Management Section */}
+      {team && (
+        <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all">
+          <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2 font-mono-tech">
+            <CheckCircle size={18} className="text-cyan-400" />
+            <span className="text-cyan-400">[NHIỆM_VỤ_ĐƯỢC_GIAO]</span>
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {['TODO', 'IN_PROGRESS', 'DONE'].map(status => {
+              const colTasks = tasks.filter((t: any) => t.status === status);
+              return (
+                <div key={status} className="bg-slate-900/40 rounded-xl p-4 border border-slate-800">
+                  <h3 className="text-xs font-bold text-slate-400 mb-4 tracking-widest uppercase flex items-center gap-2">
+                    {status === 'TODO' ? 'CẦN LÀM' : status === 'IN_PROGRESS' ? 'ĐANG TIẾN HÀNH' : 'HOÀN THÀNH'} 
+                    <span className="bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full text-[10px]">{colTasks.length}</span>
+                  </h3>
+                  <div className="space-y-3">
+                    {colTasks.map((t: any) => (
+                      <div key={t._id} className="bg-slate-800/50 p-3 rounded-lg border border-slate-700 hover:border-cyan-500/50 transition-all">
+                        <p className="text-sm font-bold text-white mb-1">{t.title}</p>
+                        {t.description && <p className="text-xs text-slate-400 mb-3">{t.description}</p>}
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-3 gap-2">
+                          <span className="text-[10px] bg-cyan-900/30 text-cyan-400 px-2 py-1 rounded font-mono inline-block text-center sm:text-left">
+                            {t.assigneeId ? t.assigneeId.fullName : 'Chưa phân công'}
+                          </span>
+                          
+                          <select 
+                            value={t.status}
+                            onChange={(e) => updateTaskStatus(t._id, e.target.value)}
+                            className="bg-slate-900 border border-slate-700 text-xs text-slate-300 rounded px-2 py-1 outline-none cursor-pointer hover:border-cyan-500/50 transition-colors"
+                          >
+                            <option value="TODO">Cần làm</option>
+                            <option value="IN_PROGRESS">Đang làm</option>
+                            <option value="DONE">Hoàn thành</option>
+                          </select>
+                        </div>
+                      </div>
+                    ))}
+                    {colTasks.length === 0 && (
+                      <div className="text-center py-6 text-slate-600 text-xs italic font-sans">
+                        Trống
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         

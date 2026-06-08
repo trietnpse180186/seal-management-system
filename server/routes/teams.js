@@ -775,7 +775,7 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
         });
       }
 
-      if (userRole && userRole.role === 'judge' && userRole.trackId) {
+      if (userRole && (userRole.role === 'judge' || userRole.role === 'mentor' || userRole.role === 'coordinator') && userRole.trackId) {
         query.trackId = userRole.trackId;
       } else if (!userRole) {
         return res.json([]); // No active role in this event/round, return empty
@@ -811,7 +811,7 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
 router.get('/:teamId', authenticateToken, async (req, res) => {
   try {
     const team = await Team.findById(req.params.teamId)
-      .populate('trackId', 'name')
+      .populate('trackId', 'name attachments')
       .populate('leaderId', 'fullName email')
       .populate('eventId', 'name status');
 
@@ -824,7 +824,7 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
       const userRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: team.eventId,
-        role: 'judge',
+        role: { $in: ['judge', 'mentor', 'coordinator'] },
         status: 'active',
         $or: [{ trackId: team.trackId }, { trackId: null }, { trackId: { $exists: false } }]
       });

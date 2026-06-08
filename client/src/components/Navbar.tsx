@@ -101,12 +101,12 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
   };
 
   const isSystemAdmin = user?.isSystemAdmin;
-  const isCoordinator =
-    roles?.some((r) => r.role === "coordinator") || isSystemAdmin;
+  const isCoordinator = roles?.some((r) => r.role === "coordinator") || isSystemAdmin;
   const isJudge = roles?.some((r) => r.role === "judge") || isSystemAdmin;
+  const isMentor = roles?.some((r) => r.role === "mentor");
   const isParticipant =
     roles?.some((r) => r.role === "participant") ||
-    (!isSystemAdmin && !isCoordinator && !isJudge);
+    (!isSystemAdmin && !isCoordinator && !isJudge && !isMentor);
 
   const [hasTeam, setHasTeam] = useState(false);
 
@@ -224,6 +224,14 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
               </Link>
             )}
 
+            {/* Mentor Links */}
+            {isMentor && !isCoordinator && !isJudge && (
+              <Link to="/mentor/dashboard" className={linkClass("/mentor/dashboard")}>
+                <Users size={16} />
+                <span>Mentor Dashboard</span>
+              </Link>
+            )}
+
             {/* General Links */}
             <Link to="/leaderboard" className={linkClass("/leaderboard")}>
               <BarChart2 size={16} />
@@ -313,7 +321,9 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                           ? "Ban tổ chức"
                           : roles[0].role === "judge"
                             ? "Giám khảo"
-                            : "Thí sinh"
+                            : roles[0].role === "mentor"
+                              ? "Mentor"
+                              : "Thí sinh"
                         : "Thí sinh"}
                   </p>
                 </div>

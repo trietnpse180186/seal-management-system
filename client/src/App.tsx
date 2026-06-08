@@ -20,6 +20,8 @@ import JudgeTeamActivity from './pages/JudgeTeamActivity';
 import JudgeLeaderboard from './pages/JudgeLeaderboard';
 import AdminGradesView from './pages/AdminGradesView';
 import AdminLayout from './components/AdminLayout';
+import MentorDashboard from './pages/MentorDashboard';
+import MentorTeamDetail from './pages/MentorTeamDetail';
 import { Toaster } from 'sonner';
 import { ConfirmProvider } from './components/ConfirmDialog';
 
@@ -40,6 +42,8 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
                 <Navigate to="/admin" />
               ) : roles.some((r: any) => r.role === 'judge') ? (
                 <Navigate to="/judge/dashboard" />
+              ) : roles.some((r: any) => r.role === 'mentor') ? (
+                <Navigate to="/mentor/dashboard" />
               ) : (
                 <Navigate to="/guest-portal" />
               )
@@ -92,6 +96,19 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
             <Route path="activity/:teamId" element={<JudgeTeamActivity />} />
             <Route path="leaderboard" element={<JudgeLeaderboard />} />
           </Route>
+          
+          {/* Mentor Routes */}
+          <Route path="/mentor/dashboard" element={
+            <ProtectedRoute user={user} roles={roles} allowedRoles={['mentor']}>
+              <MentorDashboard user={user} roles={roles} />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/mentor/team/:teamId" element={
+            <ProtectedRoute user={user} roles={roles} allowedRoles={['mentor']}>
+              <MentorTeamDetail />
+            </ProtectedRoute>
+          } />
           
           <Route path="/leaderboard" element={<Leaderboard user={user} roles={roles} />} />
         </Routes>

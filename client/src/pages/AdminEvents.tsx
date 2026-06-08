@@ -1295,7 +1295,7 @@ export default function AdminEvents({
     }
   };
 
-  const handleAssignRoleForTrack = async (email: string, trackId: string) => {
+  const handleAssignRoleForTrack = async (email: string, trackId: string, role: "judge" | "mentor" = "judge") => {
     if (!selectedEvent) return;
     setMessage({ type: "", text: "" });
     setLoading(true);
@@ -1307,19 +1307,19 @@ export default function AdminEvents({
           userEmail: email,
           eventId: selectedEvent._id,
           trackId: trackId,
-          role: "judge",
+          role: role,
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
       setMessage({
         type: "success",
-        text: `Phân quyền Giám khảo thành công!`,
+        text: `Phân quyền ${role === 'judge' ? 'Giám khảo' : 'Mentor'} thành công!`,
       });
       fetchEventRoles();
     } catch (err: any) {
       setMessage({
         type: "error",
-        text: err.response?.data?.message || "Lỗi phân quyền Giám khảo.",
+        text: err.response?.data?.message || `Lỗi phân quyền ${role === 'judge' ? 'Giám khảo' : 'Mentor'}.`,
       });
     } finally {
       setLoading(false);

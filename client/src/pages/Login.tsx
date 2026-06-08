@@ -47,6 +47,49 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  const [platform, setPlatform] = useState<string | null>(null);
+  const [mobileRedirect, setMobileRedirect] = useState<string | null>(null);
+  const [mobileApiUrl, setMobileApiUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const plat = params.get('platform');
+    const redir = params.get('mobile_redirect');
+    const apiU = params.get('api_url');
+    if (plat) {
+      setPlatform(plat);
+      sessionStorage.setItem('mobile_platform', plat);
+    }
+    if (redir) {
+      setMobileRedirect(redir);
+      sessionStorage.setItem('mobile_redirect', redir);
+    }
+    if (apiU) {
+      setMobileApiUrl(apiU);
+      sessionStorage.setItem('mobile_api_url', apiU);
+    }
+  }, []);
+
+  const getBaseUrl = () => {
+    return mobileApiUrl || sessionStorage.getItem('mobile_api_url') || 'http://localhost:5000/api';
+  };
+
+  const handleMobileRedirect = (token: string, user: any, roles: any[]) => {
+    const plat = platform || sessionStorage.getItem('mobile_platform');
+    const redir = mobileRedirect || sessionStorage.getItem('mobile_redirect');
+    
+    if (plat === 'mobile' && redir) {
+      sessionStorage.removeItem('mobile_platform');
+      sessionStorage.removeItem('mobile_redirect');
+      sessionStorage.setItem('mobile_api_url', ''); // clean up API URL
+      
+      const targetUrl = `${redir}?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}&roles=${encodeURIComponent(JSON.stringify(roles))}`;
+      window.location.href = targetUrl;
+      return true;
+    }
+    return false;
+  };
+
   useEffect(() => {
     // Check if redirect contains GitHub OAuth authorization code
     const params = new URLSearchParams(window.location.search);
@@ -67,13 +110,16 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         setLoading(true);
         setError('');
         try {
-          const baseUrl = 'http://localhost:5000/api';
+          const baseUrl = getBaseUrl();
           const response = await axios.post(`${baseUrl}/auth/github`, {
             code,
             redirectUri: window.location.origin + '/login',
             isMock: false
           });
           const { token, user, roles } = response.data;
+          if (handleMobileRedirect(token, user, roles || [])) {
+            return;
+          }
           onLoginSuccess(token, user, roles || []);
           if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator'))) {
             navigate('/admin');
@@ -105,12 +151,15 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           setLoading(true);
           setError('');
           try {
-            const baseUrl = 'http://localhost:5000/api';
+            const baseUrl = getBaseUrl();
             const response = await axios.post(`${baseUrl}/auth/google`, {
               idToken,
               isMock: false
             });
             const { token, user, roles } = response.data;
+            if (handleMobileRedirect(token, user, roles || [])) {
+              return;
+            }
             onLoginSuccess(token, user, roles || []);
             if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator'))) {
               navigate('/admin');
@@ -151,7 +200,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     setError('');
     setLoading(true);
 
-    const baseUrl = 'http://localhost:5000/api';
+    const baseUrl = getBaseUrl();
 
     try {
       if (isRegister) {
@@ -167,6 +216,9 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         // Auto-login if first user (API returns token directly)
         if (response.data.token) {
           const { token, user, roles } = response.data;
+          if (handleMobileRedirect(token, user, roles || [])) {
+            return;
+          }
           onLoginSuccess(token, user, roles || []);
           if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator'))) {
             navigate('/admin');
@@ -183,6 +235,9 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           password
         });
         const { token, user, roles } = response.data;
+        if (handleMobileRedirect(token, user, roles)) {
+          return;
+        }
         onLoginSuccess(token, user, roles);
         
         // Redirect based on role

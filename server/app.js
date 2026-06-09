@@ -7,6 +7,13 @@ const logger = require("morgan");
 const cors = require("cors");
 const mongoose = require("mongoose");
 
+// Notification job queue & worker (BullMQ + Redis)
+const { initQueue } = require('./services/notificationQueue');
+const { startNotificationWorker } = require('./services/notificationWorker');
+
+// Initialize Redis queue connection at startup
+initQueue();
+
 // Import all models to register their schemas in Mongoose
 require("./models/User");
 require("./models/Event");
@@ -67,6 +74,9 @@ mongoose
     } catch (err) {
       console.error("Error auto-creating admin account on startup:", err.message);
     }
+
+    // Start notification worker after MongoDB is ready
+    startNotificationWorker();
   })
   .catch((err) => {
     console.error("Failed to connect to MongoDB:", err.message);

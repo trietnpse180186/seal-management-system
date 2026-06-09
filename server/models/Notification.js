@@ -8,7 +8,10 @@ const NotificationSchema = new Schema({
   body: { type: String },
   metadata: { type: Schema.Types.Mixed, default: {} },
   channel: { type: String, enum: ['email', 'in_app'] },
-  status: { type: String, enum: ['pending', 'sent', 'failed'], default: 'pending' },
+  // status tracks delivery pipeline: queued → sent | failed
+  status: { type: String, enum: ['queued', 'sent', 'failed'], default: 'queued' },
+  // isRead tracks whether the user has seen the notification
+  isRead: { type: Boolean, default: false },
   sentAt: { type: Date }
 }, {
   timestamps: { createdAt: true, updatedAt: false }

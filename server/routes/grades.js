@@ -17,6 +17,7 @@ const Track = mongoose.model('Track');
 
 const aiService = require('../services/aiService');
 const { authenticateToken } = require('../middleware/authMiddleware');
+const { addInAppJob, isQueueAvailable } = require('../services/notificationQueue');
 
 /**
  * @route   GET /api/grades/suggestion
@@ -471,20 +472,32 @@ router.post('/lock-round', authenticateToken, async (req, res) => {
     await round.save();
 
     // Gửi thông báo in-app tới toàn bộ thành viên trong bảng đấu
-    const Notification = mongoose.model('Notification');
     const TeamMember = mongoose.model('TeamMember');
 
     for (const team of teams) {
       const members = await TeamMember.find({ teamId: team._id, confirmStatus: 'confirmed' });
       for (const member of members) {
-        await new Notification({
-          userId: member.userId,
-          type: 'round_result',
-          title: `Kết quả vòng "${round.name}" đã công bố`,
-          body: `Vòng "${round.name}" đã hoàn tất chấm điểm và công bố kết quả. Hãy kiểm tra bảng xếp hạng ngay!`,
-          channel: 'in_app',
-          metadata: { roundId: round._id, roundName: round.name, eventId, trackId }
-        }).save();
+        if (isQueueAvailable()) {
+          await addInAppJob({
+            userId: member.userId.toString(),
+            type: 'round_result',
+            title: `Kết quả vòng "${round.name}" đã công bố`,
+            body: `Vòng "${round.name}" đã hoàn tất chấm điểm và công bố kết quả. Hãy kiểm tra bảng xếp hạng ngay!`,
+            metadata: { roundId: round._id, roundName: round.name, eventId, trackId },
+          });
+        } else {
+          // Fallback: synchronous
+          const Notification = mongoose.model('Notification');
+          await new Notification({
+            userId: member.userId,
+            type: 'round_result',
+            title: `Kết quả vòng "${round.name}" đã công bố`,
+            body: `Vòng "${round.name}" đã hoàn tất chấm điểm và công bố kết quả. Hãy kiểm tra bảng xếp hạng ngay!`,
+            channel: 'in_app',
+            status: 'sent',
+            metadata: { roundId: round._id, roundName: round.name, eventId, trackId },
+          }).save();
+        }
       }
     }
 

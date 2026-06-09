@@ -14,6 +14,7 @@ const GithubRepository = mongoose.model('GithubRepository');
 const emailService = require('../services/emailService');
 const githubService = require('../services/githubService');
 const { authenticateToken, requireSystemAdmin, requireEventRole } = require('../middleware/authMiddleware');
+const { addEmailJob, isQueueAvailable } = require('../services/notificationQueue');
 
 /**
  * @route   GET /api/events
@@ -643,18 +644,30 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     await event.save();
 
-    // Send email notifications to all members (non-admins) in the background when status shifts to 'registration'
+    // Enqueue email notifications to all members when status shifts to 'registration'
     if (status === 'registration' && oldStatus !== 'registration') {
-      console.log(`[EVENT] Event "${event.name}" status updated to registration. Sending email notifications to all members...`);
+      console.log(`[EVENT] Event "${event.name}" status updated to registration. Enqueueing email notifications...`);
       User.find({ isSystemAdmin: false }).then(users => {
         users.forEach(user => {
-          emailService.sendEventCreationNotification(
-            user.email,
-            user.fullName,
-            event.name,
-            event.semester,
-            event.year
-          ).catch(err => console.error(`Failed to send event notification to ${user.email}:`, err.message));
+          if (isQueueAvailable()) {
+            addEmailJob({
+              type: 'event_open',
+              email: user.email,
+              fullName: user.fullName,
+              eventName: event.name,
+              semester: event.semester,
+              year: event.year,
+            }).catch(err => console.error(`[QUEUE] Failed to enqueue event notification for ${user.email}:`, err.message));
+          } else {
+            // Fallback: synchronous
+            emailService.sendEventCreationNotification(
+              user.email,
+              user.fullName,
+              event.name,
+              event.semester,
+              event.year
+            ).catch(err => console.error(`[FALLBACK] Failed to send event notification to ${user.email}:`, err.message));
+          }
         });
       }).catch(err => console.error('Error fetching users for event registration notification:', err.message));
     }

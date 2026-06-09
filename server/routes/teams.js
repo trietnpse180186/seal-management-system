@@ -14,6 +14,7 @@ const EventRole = mongoose.model('EventRole');
 const emailService = require('../services/emailService');
 const githubService = require('../services/githubService');
 const { authenticateToken } = require('../middleware/authMiddleware');
+const { addEmailJob, addInAppJob, isQueueAvailable } = require('../services/notificationQueue');
 
 /**
  * @route   POST /api/teams/register
@@ -160,21 +161,36 @@ router.post('/register', authenticateToken, async (req, res) => {
       });
       await teamMember.save();
 
-      // Send email invitation (Asynchronous, non-blocking to prevent UI lag)
-      // In production, point to real client domain.
+      // Send email invitation via job queue (non-blocking, with retry)
       const inviteLink = `${req.protocol}://${req.get('host')}/api/teams/confirm-invite?token=${token}`;
-      emailService.sendTeamInvitation(memberUser.email, teamName, inviteLink)
-        .catch(err => console.error(`Failed to send invitation email to ${memberUser.email}:`, err.message));
-
-      // Send In-App Notification
-      const Notification = mongoose.model('Notification');
-      await new Notification({
-        userId: memberUser._id,
-        type: 'team_invite',
-        title: 'Lời mời vào đội',
-        body: `Bạn đã được mời vào đội "${teamName}". Hãy kiểm tra email để xác nhận!`,
-        channel: 'in_app'
-      }).save();
+      if (isQueueAvailable()) {
+        await addEmailJob({
+          type: 'team_invite',
+          email: memberUser.email,
+          teamName,
+          inviteLink,
+        });
+        // Send In-App Notification via queue
+        await addInAppJob({
+          userId: memberUser._id.toString(),
+          type: 'team_invite',
+          title: 'Lời mời vào đội',
+          body: `Bạn đã được mời vào đội "${teamName}". Hãy kiểm tra email để xác nhận!`,
+        });
+      } else {
+        // Fallback: synchronous (Redis not available)
+        emailService.sendTeamInvitation(memberUser.email, teamName, inviteLink)
+          .catch(err => console.error(`[FALLBACK] Failed to send invitation email to ${memberUser.email}:`, err.message));
+        const Notification = mongoose.model('Notification');
+        await new Notification({
+          userId: memberUser._id,
+          type: 'team_invite',
+          title: 'Lời mời vào đội',
+          body: `Bạn đã được mời vào đội "${teamName}". Hãy kiểm tra email để xác nhận!`,
+          channel: 'in_app',
+          status: 'sent',
+        }).save();
+      }
     }
 
     // Check if team has any pending members. If none (e.g. registered with no additional members),
@@ -449,16 +465,27 @@ router.get('/confirm-invite', async (req, res) => {
     const pendingCount = totalMembers.filter(m => m.confirmStatus !== 'confirmed').length;
 
     // Notify Leader that a member confirmed
-    const Notification = mongoose.model('Notification');
     const user = await User.findById(member.userId);
     if (member.userId.toString() !== team.leaderId.toString()) {
-      await new Notification({
-        userId: team.leaderId,
-        type: 'member_confirm',
-        title: 'Thành viên đã xác nhận',
-        body: `Thành viên ${user ? user.fullName : 'mới'} đã xác nhận tham gia đội "${team.name}".`,
-        channel: 'in_app'
-      }).save();
+      if (isQueueAvailable()) {
+        await addInAppJob({
+          userId: team.leaderId.toString(),
+          type: 'member_confirm',
+          title: 'Thành viên đã xác nhận',
+          body: `Thành viên ${user ? user.fullName : 'mới'} đã xác nhận tham gia đội "${team.name}".`,
+        });
+      } else {
+        // Fallback: synchronous
+        const Notification = mongoose.model('Notification');
+        await new Notification({
+          userId: team.leaderId,
+          type: 'member_confirm',
+          title: 'Thành viên đã xác nhận',
+          body: `Thành viên ${user ? user.fullName : 'mới'} đã xác nhận tham gia đội "${team.name}".`,
+          channel: 'in_app',
+          status: 'sent',
+        }).save();
+      }
     }
 
     if (pendingCount === 0) {
@@ -512,13 +539,25 @@ router.get('/confirm-invite', async (req, res) => {
 
       // Notify all team members that team is confirmed
       for (const tm of populatedMembers) {
-        await new Notification({
-          userId: tm.userId._id || tm.userId,
-          type: 'team_ready',
-          title: 'Đội đã sẵn sàng thi đấu',
-          body: `Tuyệt vời! Tất cả thành viên đội "${team.name}" đã xác nhận. Repository GitHub của bạn là ${slugRepoName}.`,
-          channel: 'in_app'
-        }).save();
+        if (isQueueAvailable()) {
+          await addInAppJob({
+            userId: (tm.userId._id || tm.userId).toString(),
+            type: 'team_ready',
+            title: 'Đội đã sẵn sàng thi đấu',
+            body: `Tuyệt vời! Tất cả thành viên đội "${team.name}" đã xác nhận. Repository GitHub của bạn là ${slugRepoName}.`,
+          });
+        } else {
+          // Fallback: synchronous
+          const Notification = mongoose.model('Notification');
+          await new Notification({
+            userId: tm.userId._id || tm.userId,
+            type: 'team_ready',
+            title: 'Đội đã sẵn sàng thi đấu',
+            body: `Tuyệt vời! Tất cả thành viên đội "${team.name}" đã xác nhận. Repository GitHub của bạn là ${slugRepoName}.`,
+            channel: 'in_app',
+            status: 'sent',
+          }).save();
+        }
       }
     }
 

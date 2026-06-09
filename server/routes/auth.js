@@ -9,6 +9,7 @@ const User = mongoose.model('User');
 const EventRole = mongoose.model('EventRole');
 const { authenticateToken, requireSystemAdmin } = require('../middleware/authMiddleware');
 const emailService = require('../services/emailService');
+const { addEmailJob, isQueueAvailable } = require('../services/notificationQueue');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'seal_hackathon_secret_key_2026';
 
@@ -58,11 +59,21 @@ router.post('/register', async (req, res) => {
     await user.save();
 
     if (!isFirstUser) {
-      // Send verification email (Asynchronous, non-blocking to prevent UI lag)
+      // Send verification email via queue (non-blocking, with retry)
       const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
       const verifyLink = `${backendUrl}/api/auth/verify-email?token=${emailVerificationToken}`;
-      emailService.sendEmailVerification(user.email, user.fullName, verifyLink)
-        .catch(err => console.error(`Failed to send email verification to ${user.email}:`, err.message));
+      if (isQueueAvailable()) {
+        addEmailJob({
+          type: 'email_verify',
+          email: user.email,
+          fullName: user.fullName,
+          verifyLink,
+        }).catch(err => console.error(`[QUEUE] Failed to enqueue email verification for ${user.email}:`, err.message));
+      } else {
+        // Fallback: synchronous
+        emailService.sendEmailVerification(user.email, user.fullName, verifyLink)
+          .catch(err => console.error(`[FALLBACK] Failed to send email verification to ${user.email}:`, err.message));
+      }
 
       return res.status(201).json({
         message: 'Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.',

@@ -4,6 +4,8 @@ import axios from "axios";
 import {
   CalendarPlus,
   Info,
+  Calendar,
+  Clock,
 } from "lucide-react";
 import TeamsTab from "./TeamsTab";
 import TracksTab from "./TracksTab";
@@ -1583,6 +1585,15 @@ export default function AdminEvents({
             Thông tin sự kiện
           </button>
           <button
+            onClick={() => setActiveTab("schedule")}
+            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "schedule"
+              ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+              : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+              }`}
+          >
+            Thiết lập thời gian
+          </button>
+          <button
             onClick={() => setActiveTab("teams")}
             className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "teams"
               ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
@@ -1618,15 +1629,6 @@ export default function AdminEvents({
           >
             <Github size={14} />
             GitHub & AI Đánh giá
-          </button>
-          <button
-            onClick={() => setActiveTab("schedule")}
-            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "schedule"
-              ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-              : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-              }`}
-          >
-            Thiết lập thời gian
           </button>
         </div>
       )}
@@ -2068,7 +2070,8 @@ export default function AdminEvents({
               <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-3xl"></div>
               <div>
                 <h3 className="text-md font-bold text-white mb-4 flex items-center gap-1.5 font-mono">
-                  <span>📅 Lịch trình cuộc thi: {selectedEvent.name}</span>
+                  <Calendar size={16} className="text-cyan-400" />
+                  <span>Lịch trình cuộc thi: {selectedEvent.name}</span>
                 </h3>
                 <p className="text-slate-400 text-xs mb-6">
                   Cấu hình các mốc thời gian để hệ thống tự động cập nhật trạng thái cuộc thi (Registration, Ongoing, Completed).
@@ -2139,7 +2142,8 @@ export default function AdminEvents({
               <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-2xl"></div>
               <div>
                 <h3 className="text-md font-bold text-white mb-4 flex items-center gap-1.5 font-mono">
-                  <span>⏱️ Lịch trình bảng đấu (Tracks)</span>
+                  <Clock size={16} className="text-cyan-400" />
+                  <span>Lịch trình bảng đấu (Tracks)</span>
                 </h3>
                 <p className="text-slate-400 text-xs mb-6">
                   Thiết lập thời gian làm bài (nộp bài) và thời gian chấm bài cho từng bảng đấu. Bộ đếm thời gian của Giám khảo sẽ dựa trên thông số này.

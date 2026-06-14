@@ -74,8 +74,8 @@ router.post('/', authenticateToken, requireSystemAdmin, async (req, res) => {
       maxTeams: maxTeams ? parseInt(maxTeams) : 20,
       githubOrgName: githubOrgName || 'seal-hackathon-2026',
       status: 'draft',
-      registrationOpen: new Date(),
-      registrationClose: new Date(Date.now() + 3600000 * 24 * 14) // 2 weeks default
+      registrationOpen: null,
+      registrationClose: null
     });
 
     // Auto-provision or link Github organization

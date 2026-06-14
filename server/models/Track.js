@@ -8,6 +8,9 @@ const TrackSchema = new Schema({
   description: { type: String },
   maxTeams: { type: Number },
   topicSubmissionOpen: { type: Boolean, default: false },
+  startTime: { type: Date },
+  endTime: { type: Date },
+  gradingEndTime: { type: Date },
   attachments: { type: Schema.Types.Mixed, default: [] }
 }, {
   timestamps: true

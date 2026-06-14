@@ -104,6 +104,56 @@ router.post('/', authenticateToken, requireSystemAdmin, async (req, res) => {
 });
 
 /**
+ * @route   GET /api/events/judge/active-contest
+ * @desc    Get the current ongoing event and its active round (for judge screens)
+ * @access  Private (Authenticated users)
+ */
+router.get('/judge/active-contest', authenticateToken, async (req, res) => {
+  try {
+    // 1. Find the ongoing event
+    const event = await Event.findOne({ status: 'ongoing' }).lean();
+    if (!event) {
+      return res.json({ event: null, currentRound: null, rounds: [], tracks: [], assignedTrack: null });
+    }
+
+    // 2. Find all rounds for this event, sorted by order ascending
+    const rounds = await Round.find({ eventId: event._id }).sort({ order: 1 }).lean();
+    
+    // 3. Find the current active round (first round that is not 'completed')
+    const currentRound = rounds.find(r => r.status !== 'completed') || rounds[rounds.length - 1] || null;
+
+    // 4. Find all tracks for this round
+    let tracks = [];
+    if (currentRound) {
+      tracks = await Track.find({ roundId: currentRound._id }).lean();
+    }
+
+    // 5. Find the judge's assigned track (if any)
+    let assignedTrack = null;
+    const userRole = await EventRole.findOne({
+      userId: req.user._id,
+      eventId: event._id,
+      status: 'active'
+    });
+    
+    if (userRole && userRole.trackId) {
+      assignedTrack = await Track.findById(userRole.trackId).lean();
+    }
+
+    res.json({
+      event,
+      currentRound,
+      rounds,
+      tracks,
+      assignedTrack
+    });
+  } catch (error) {
+    console.error('Fetch Active Contest for Judge Error:', error.message);
+    res.status(500).json({ message: 'Server error retrieving active contest details.' });
+  }
+});
+
+/**
  * @route   GET /api/events/:id
  * @desc    Get detailed event info including tracks & rounds
  * @access  Public
@@ -136,7 +186,7 @@ router.get('/:id', async (req, res) => {
  */
 router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
   const { eventId } = req.params;
-  const { name, description, maxTeams, roundId } = req.body;
+  const { name, description, maxTeams, roundId, startTime, endTime, gradingEndTime } = req.body;
 
   if (!name || !roundId) {
     return res.status(400).json({ message: 'Track name and roundId are required.' });
@@ -186,7 +236,10 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
       name,
       description,
       maxTeams: newMaxTeamsNum,
-      topicSubmissionOpen: true
+      topicSubmissionOpen: true,
+      startTime: startTime ? new Date(startTime) : undefined,
+      endTime: endTime ? new Date(endTime) : undefined,
+      gradingEndTime: gradingEndTime ? new Date(gradingEndTime) : undefined
     });
 
     await newTrack.save();
@@ -205,7 +258,7 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
  */
 router.put('/:eventId/tracks/:trackId', authenticateToken, async (req, res) => {
   const { eventId, trackId } = req.params;
-  const { name, description, maxTeams, roundId } = req.body;
+  const { name, description, maxTeams, roundId, startTime, endTime, gradingEndTime } = req.body;
 
   try {
     const event = await Event.findById(eventId);
@@ -259,6 +312,10 @@ router.put('/:eventId/tracks/:trackId', authenticateToken, async (req, res) => {
     if (name) track.name = name;
     if (description !== undefined) track.description = description;
     if (roundId) track.roundId = roundId;
+    
+    if (startTime !== undefined) track.startTime = startTime ? new Date(startTime) : undefined;
+    if (endTime !== undefined) track.endTime = endTime ? new Date(endTime) : undefined;
+    if (gradingEndTime !== undefined) track.gradingEndTime = gradingEndTime ? new Date(gradingEndTime) : undefined;
 
     await track.save();
     res.json(track);
@@ -607,7 +664,7 @@ router.post('/:eventId/distribute-teams', authenticateToken, async (req, res) =>
  * @access  Private
  */
 router.put('/:id', authenticateToken, async (req, res) => {
-  const { name, semester, year, description, bannerUrl, maxTeams, githubOrgName, status } = req.body;
+  const { name, semester, year, description, bannerUrl, maxTeams, githubOrgName, status, registrationOpen, registrationClose, contestStart, contestEnd } = req.body;
   try {
     const event = await Event.findById(req.params.id);
     if (!event) return res.status(404).json({ message: 'Event not found.' });
@@ -627,12 +684,30 @@ router.put('/:id', authenticateToken, async (req, res) => {
       }
     }
 
+    // Validation for event status change
+    if (status && status !== 'draft' && event.status === 'draft') {
+      const activeEvent = await Event.findOne({
+        _id: { $ne: event._id },
+        status: { $in: ['registration', 'ongoing'] }
+      });
+      if (activeEvent) {
+        return res.status(400).json({
+          message: `Không thể kích hoạt sự kiện này vì đang có sự kiện khác đang diễn ra: "${activeEvent.name}" (Trạng thái: ${activeEvent.status}).`
+        });
+      }
+    }
+
     if (name) event.name = name;
     if (semester) event.semester = semester;
     if (year) event.year = parseInt(year);
-    if (description) event.description = description;
-    if (bannerUrl) event.bannerUrl = bannerUrl;
+    if (description !== undefined) event.description = description;
+    if (bannerUrl !== undefined) event.bannerUrl = bannerUrl;
     if (maxTeams) event.maxTeams = parseInt(maxTeams);
+    
+    if (registrationOpen !== undefined) event.registrationOpen = registrationOpen ? new Date(registrationOpen) : null;
+    if (registrationClose !== undefined) event.registrationClose = registrationClose ? new Date(registrationClose) : null;
+    if (contestStart !== undefined) event.contestStart = contestStart ? new Date(contestStart) : null;
+    if (contestEnd !== undefined) event.contestEnd = contestEnd ? new Date(contestEnd) : null;
     
     if (githubOrgName && githubOrgName !== event.githubOrgName) {
       event.githubOrgName = githubOrgName;

@@ -9,6 +9,8 @@ const EventSchema = new Schema({
   bannerUrl: { type: String },
   registrationOpen: { type: Date },
   registrationClose: { type: Date },
+  contestStart: { type: Date },
+  contestEnd: { type: Date },
   maxTeams: { type: Number },
   status: { type: String, enum: ['draft', 'registration', 'ongoing', 'completed', 'cancelled'], default: 'draft' },
   githubOrgName: { type: String },

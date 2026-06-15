@@ -9,6 +9,48 @@ const Commit = mongoose.model('Commit');
 const CommitFile = mongoose.model('CommitFile');
 const AiAnalysis = mongoose.model('AiAnalysis');
 const Team = mongoose.model('Team');
+const Event = mongoose.model('Event');
+
+/**
+ * Automatically transitions event status based on scheduled times.
+ * Runs every minute.
+ */
+async function autoTransitionEvents() {
+  const now = new Date();
+  
+  // 1. Transition 'draft' to 'registration'
+  const draftEvents = await Event.find({ status: 'draft', registrationOpen: { $ne: null, $lte: now } });
+  for (const event of draftEvents) {
+    const activeEvent = await Event.findOne({
+      _id: { $ne: event._id },
+      status: { $in: ['registration', 'ongoing'] }
+    });
+    
+    if (!activeEvent) {
+      event.status = 'registration';
+      await event.save();
+      console.log(`[CRON] Event "${event.name}" automatically transitioned from draft to registration.`);
+    } else {
+      console.log(`[CRON] Event "${event.name}" registrationOpen reached, but active event "${activeEvent.name}" prevents transition.`);
+    }
+  }
+
+  // 2. Transition 'registration' to 'ongoing'
+  const registrationEvents = await Event.find({ status: 'registration', contestStart: { $ne: null, $lte: now } });
+  for (const event of registrationEvents) {
+    event.status = 'ongoing';
+    await event.save();
+    console.log(`[CRON] Event "${event.name}" automatically transitioned from registration to ongoing.`);
+  }
+
+  // 3. Transition 'ongoing' to 'completed'
+  const ongoingEvents = await Event.find({ status: 'ongoing', contestEnd: { $ne: null, $lte: now } });
+  for (const event of ongoingEvents) {
+    event.status = 'completed';
+    await event.save();
+    console.log(`[CRON] Event "${event.name}" automatically transitioned from ongoing to completed.`);
+  }
+}
 
 /**
  * Initializes cron jobs for the system
@@ -17,7 +59,6 @@ function startCronJobs() {
   console.log('[CRON] Initializing background task schedulers...');
   
   // Schedule to run every 30 minutes: '*/30 * * * *'
-  // For development testing, we can run it every 10 minutes or check standard:
   cron.schedule('*/30 * * * *', async () => {
     console.log('[CRON] Running scheduled 30-minute GitHub commit sync...');
     try {
@@ -27,7 +68,16 @@ function startCronJobs() {
     }
   });
 
-  console.log('[CRON] Background task scheduler started. Repo sync scheduled for every 30 minutes.');
+  // Schedule to run every 1 minute: '* * * * *'
+  cron.schedule('* * * * *', async () => {
+    try {
+      await autoTransitionEvents();
+    } catch (error) {
+      console.error('[CRON ERROR] Failed to auto transition event status:', error.message);
+    }
+  });
+
+  console.log('[CRON] Background task scheduler started. Repo sync scheduled for every 30 minutes, event auto-transition every minute.');
 }
 
 /**

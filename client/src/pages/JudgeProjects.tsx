@@ -2,16 +2,16 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "axios";
 import { Search, Check, ChevronRight, AlertCircle } from "lucide-react";
-import CustomSelect from "../components/CustomSelect";
 
 export default function JudgeProjects() {
   const token = localStorage.getItem("token");
   const navigate = useNavigate();
 
-  const [events, setEvents] = useState<any[]>([]);
   const [selectedEventId, setSelectedEventId] = useState("");
-  const [rounds, setRounds] = useState<any[]>([]);
   const [selectedRoundId, setSelectedRoundId] = useState("");
+  const [activeEvent, setActiveEvent] = useState<any>(null);
+  const [activeRound, setActiveRound] = useState<any>(null);
+  const [assignedTrack, setAssignedTrack] = useState<any>(null);
 
   const [teams, setTeams] = useState<any[]>([]);
   const [gradedTeams, setGradedTeams] = useState<{ [teamId: string]: boolean }>(
@@ -24,34 +24,31 @@ export default function JudgeProjects() {
   >("all");
   const [loading, setLoading] = useState(false);
 
-  // Fetch events
+  // Fetch active contest details
   useEffect(() => {
     axiosInstance
-      .get("http://localhost:5000/api/events")
-      .then((res: any) => {
-        setEvents(res.data);
-        if (res.data.length > 0) {
-          setSelectedEventId(res.data[0]._id);
-        }
+      .get("http://localhost:5000/api/events/judge/active-contest", {
+        headers: { Authorization: `Bearer ${token}` },
       })
-      .catch((err: any) => console.error(err));
-  }, []);
+      .then((res: any) => {
+        if (res.data.event) {
+          setActiveEvent(res.data.event);
+          setSelectedEventId(res.data.event._id);
 
-  // Fetch event details (rounds)
-  useEffect(() => {
-    if (!selectedEventId) return;
-    axiosInstance
-      .get(`http://localhost:5000/api/events/${selectedEventId}`)
-      .then((res: any) => {
-        setRounds(res.data.rounds || []);
-        if (res.data.rounds && res.data.rounds.length > 0) {
-          setSelectedRoundId(res.data.rounds[0]._id);
-        } else {
-          setSelectedRoundId("");
+          if (res.data.currentRound) {
+            setActiveRound(res.data.currentRound);
+            setSelectedRoundId(res.data.currentRound._id);
+          }
+
+          if (res.data.assignedTrack) {
+            setAssignedTrack(res.data.assignedTrack);
+          } else if (res.data.tracks && res.data.tracks.length > 0) {
+            setAssignedTrack(res.data.tracks[0]);
+          }
         }
       })
-      .catch((err: any) => console.error(err));
-  }, [selectedEventId]);
+      .catch((err: any) => console.error("Error fetching active contest:", err));
+  }, [token]);
 
   // Fetch teams & scores
   useEffect(() => {
@@ -137,37 +134,39 @@ export default function JudgeProjects() {
 
       {/* Selectors & Filter Row */}
       <div className="bg-slate-900/40 backdrop-blur-md p-6 rounded-xl border border-white/10 shadow-lg flex flex-col md:flex-row gap-6 justify-between items-start md:items-center animate-fadeIn">
-        <div className="flex flex-wrap gap-4 items-center w-full md:w-auto">
-          <div>
-            <label className="block text-[9px] font-bold uppercase text-slate-400 mb-1">
-              Cuộc thi
-            </label>
-            <CustomSelect
-              value={selectedEventId}
-              onChange={(val) => setSelectedEventId(val)}
-              options={events.map((e: any) => ({
-                value: e._id,
-                label: e.name,
-              }))}
-              className="w-56"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[9px] font-bold uppercase text-slate-400 mb-1">
-              Vòng thi
-            </label>
-            <CustomSelect
-              value={selectedRoundId}
-              onChange={(val) => setSelectedRoundId(val)}
-              options={rounds.map((r: any) => ({
-                value: r._id,
-                label: `${r.name} (Lấy Top ${r.advanceTopN})`,
-              }))}
-              placeholder="Không có vòng thi"
-              className="w-56"
-            />
-          </div>
+        <div className="flex flex-wrap gap-8 items-center w-full md:w-auto">
+          {activeEvent ? (
+            <>
+              <div>
+                <p className="text-[9px] font-bold uppercase text-slate-500 tracking-wider">Cuộc thi đang diễn ra</p>
+                <p className="text-sm font-extrabold text-white mt-1 font-mono uppercase drop-shadow-[0_0_5px_rgba(255,255,255,0.1)]">
+                  {activeEvent.name}
+                </p>
+              </div>
+              <div className="w-px h-8 bg-white/10 hidden sm:block"></div>
+              <div>
+                <p className="text-[9px] font-bold uppercase text-slate-500 tracking-wider">Vòng thi hiện tại</p>
+                <p className="text-sm font-extrabold text-cyan-400 mt-1 font-mono uppercase drop-shadow-[0_0_5px_rgba(34,211,238,0.2)]">
+                  {activeRound ? `${activeRound.name} (Lấy Top ${activeRound.advanceTopN})` : "Không có vòng thi active"}
+                </p>
+              </div>
+              {assignedTrack && (
+                <>
+                  <div className="w-px h-8 bg-white/10 hidden sm:block"></div>
+                  <div>
+                    <p className="text-[9px] font-bold uppercase text-slate-500 tracking-wider">Bảng đấu của bạn</p>
+                    <p className="text-sm font-extrabold text-teal-400 mt-1 font-mono uppercase drop-shadow-[0_0_5px_rgba(20,184,166,0.2)]">
+                      {assignedTrack.name}
+                    </p>
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            <div className="text-xs text-rose-400 font-semibold font-mono uppercase">
+              Hiện tại không có cuộc thi nào đang diễn ra (Ongoing).
+            </div>
+          )}
         </div>
 
         {/* Filter Tab buttons & Search */}
@@ -188,31 +187,28 @@ export default function JudgeProjects() {
           <div className="flex bg-slate-900/60 p-0.5 rounded-lg border border-white/5 shrink-0 shadow-inner">
             <button
               onClick={() => setStatusFilter("all")}
-              className={`px-3 py-1 text-[10px] font-bold rounded uppercase transition-all ${
-                statusFilter === "all"
+              className={`px-3 py-1 text-[10px] font-bold rounded uppercase transition-all ${statusFilter === "all"
                   ? "bg-cyan-500 text-white shadow-[0_0_10px_rgba(6,182,212,0.4)]"
                   : "text-slate-500 hover:text-slate-300"
-              }`}
+                }`}
             >
               Tất cả
             </button>
             <button
               onClick={() => setStatusFilter("pending")}
-              className={`px-3 py-1 text-[10px] font-bold rounded uppercase transition-all ${
-                statusFilter === "pending"
+              className={`px-3 py-1 text-[10px] font-bold rounded uppercase transition-all ${statusFilter === "pending"
                   ? "bg-amber-500 text-slate-900 shadow-[0_0_10px_rgba(245,158,11,0.4)]"
                   : "text-slate-500 hover:text-slate-300"
-              }`}
+                }`}
             >
               Chưa chấm
             </button>
             <button
               onClick={() => setStatusFilter("graded")}
-              className={`px-3 py-1 text-[10px] font-bold rounded uppercase transition-all ${
-                statusFilter === "graded"
+              className={`px-3 py-1 text-[10px] font-bold rounded uppercase transition-all ${statusFilter === "graded"
                   ? "bg-emerald-500 text-slate-900 shadow-[0_0_10px_rgba(16,185,129,0.4)]"
                   : "text-slate-500 hover:text-slate-300"
-              }`}
+                }`}
             >
               Đã chấm
             </button>
@@ -294,11 +290,10 @@ export default function JudgeProjects() {
                       <td className="px-6 py-5 whitespace-nowrap text-right">
                         <button
                           onClick={() => navigate(`/judge/score/${team._id}?roundId=${selectedRoundId}`)}
-                          className={`inline-flex items-center gap-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(6,182,212,0.2)] ${
-                            isGraded
+                          className={`inline-flex items-center gap-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(6,182,212,0.2)] ${isGraded
                               ? "bg-slate-800 border border-white/10 text-slate-300 hover:bg-slate-700 hover:text-white"
                               : "bg-cyan-500 hover:bg-cyan-500 text-white hover:shadow-[0_0_15px_rgba(6,182,212,0.5)]"
-                          }`}
+                            }`}
                         >
                           <span>{isGraded ? "Xem & Sửa" : "Bắt đầu chấm"}</span>
                           <ChevronRight size={12} />

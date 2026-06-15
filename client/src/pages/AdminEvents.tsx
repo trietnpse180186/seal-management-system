@@ -4,6 +4,8 @@ import axios from "axios";
 import {
   CalendarPlus,
   Info,
+  Calendar,
+  Clock,
 } from "lucide-react";
 import TeamsTab from "./TeamsTab";
 import TracksTab from "./TracksTab";
@@ -106,7 +108,7 @@ export default function AdminEvents({
 
   // Tab management state
   const [activeTab, setActiveTab] = useState<
-    "admin" | "events" | "teams" | "rounds" | "tracks" | "github"
+    "admin" | "events" | "teams" | "rounds" | "tracks" | "github" | "schedule"
   >(defaultTab);
   // Sidebar collapse state (for premium slide effect)
   // const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -118,6 +120,16 @@ export default function AdminEvents({
   const [editEventDesc, setEditEventDesc] = useState("");
   const [editEventMaxTeams, setEditEventMaxTeams] = useState("10");
   const [editEventGithubOrgName, setEditEventGithubOrgName] = useState("");
+  const [editEventRegOpen, setEditEventRegOpen] = useState("");
+  const [editEventRegClose, setEditEventRegClose] = useState("");
+  const [editEventContestStart, setEditEventContestStart] = useState("");
+  const [editEventContestEnd, setEditEventContestEnd] = useState("");
+
+  // Track Schedule States
+  const [selectedTrackForSchedule, setSelectedTrackForSchedule] = useState<any>(null);
+  const [trackStartTime, setTrackStartTime] = useState("");
+  const [trackEndTime, setTrackEndTime] = useState("");
+  const [trackGradingEndTime, setTrackGradingEndTime] = useState("");
 
   // Rubric Edit Form States
   const [selectedRubricRoundId, setSelectedRubricRoundId] = useState("");
@@ -149,6 +161,99 @@ export default function AdminEvents({
   const [manualRepoUrl, setManualRepoUrl] = useState("");
   const [syncingRepoId, setSyncingRepoId] = useState("");
 
+  const formatForDateTimeLocal = (dateString: string | null | undefined) => {
+    if (!dateString) return "";
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return "";
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const populateEventSchedule = (eventObj: any) => {
+    setEditEventRegOpen(formatForDateTimeLocal(eventObj.registrationOpen));
+    setEditEventRegClose(formatForDateTimeLocal(eventObj.registrationClose));
+    setEditEventContestStart(formatForDateTimeLocal(eventObj.contestStart));
+    setEditEventContestEnd(formatForDateTimeLocal(eventObj.contestEnd));
+  };
+
+  const handleSelectTrackForSchedule = (trackObj: any) => {
+    setSelectedTrackForSchedule(trackObj);
+    if (trackObj) {
+      setTrackStartTime(formatForDateTimeLocal(trackObj.startTime));
+      setTrackEndTime(formatForDateTimeLocal(trackObj.endTime));
+      setTrackGradingEndTime(formatForDateTimeLocal(trackObj.gradingEndTime));
+    } else {
+      setTrackStartTime("");
+      setTrackEndTime("");
+      setTrackGradingEndTime("");
+    }
+  };
+
+  const handleSaveEventSchedule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEvent) return;
+    setLoading(true);
+    setMessage({ type: "", text: "" });
+
+    try {
+      const res = await axios.put(
+        `http://localhost:5000/api/events/${selectedEvent._id}`,
+        {
+          registrationOpen: editEventRegOpen || null,
+          registrationClose: editEventRegClose || null,
+          contestStart: editEventContestStart || null,
+          contestEnd: editEventContestEnd || null,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setSelectedEvent(res.data.event);
+      toast.success("Đã cập nhật lịch trình sự kiện thành công!");
+      setMessage({ type: "success", text: "Đã cập nhật lịch trình sự kiện thành công!" });
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Lỗi khi cập nhật lịch trình sự kiện.");
+      setMessage({ type: "error", text: err.response?.data?.message || "Lỗi khi cập nhật lịch trình sự kiện." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveTrackSchedule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEvent || !selectedTrackForSchedule) return;
+    setLoading(true);
+    setMessage({ type: "", text: "" });
+
+    try {
+      const res = await axios.put(
+        `http://localhost:5000/api/events/${selectedEvent._id}/tracks/${selectedTrackForSchedule._id}`,
+        {
+          startTime: trackStartTime || null,
+          endTime: trackEndTime || null,
+          gradingEndTime: trackGradingEndTime || null,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      // Update track in tracks list
+      setTracks(prev => prev.map(t => t._id === res.data._id ? res.data : t));
+      setSelectedTrackForSchedule(res.data);
+      toast.success("Đã cập nhật lịch trình bảng đấu thành công!");
+      setMessage({ type: "success", text: "Đã cập nhật lịch trình bảng đấu thành công!" });
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Lỗi khi cập nhật lịch trình bảng đấu.");
+      setMessage({ type: "error", text: err.response?.data?.message || "Lỗi khi cập nhật lịch trình bảng đấu." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchEvents();
     fetchExistingRubrics();
@@ -175,6 +280,7 @@ export default function AdminEvents({
         setEditEventDesc(foundEvent.description || "");
         setEditEventMaxTeams(String(foundEvent.maxTeams || 10));
         setEditEventGithubOrgName(foundEvent.githubOrgName || "");
+        populateEventSchedule(foundEvent);
       } else if (events.length > 0) {
         setSelectedEvent(null);
       }
@@ -245,6 +351,21 @@ export default function AdminEvents({
       }
       if (res.data.tracks && res.data.tracks.length > 0 && !selectedTrack) {
         setSelectedTrack(res.data.tracks[0]);
+      }
+
+      if (res.data.event) {
+        populateEventSchedule(res.data.event);
+      }
+
+      if (res.data.tracks && res.data.tracks.length > 0) {
+        if (selectedTrackForSchedule) {
+          const updatedTrack = res.data.tracks.find((t: any) => t._id === selectedTrackForSchedule._id);
+          if (updatedTrack) {
+            setSelectedTrackForSchedule(updatedTrack);
+          }
+        } else {
+          handleSelectTrackForSchedule(res.data.tracks[0]);
+        }
       }
 
       fetchEventRoles();
@@ -399,6 +520,7 @@ export default function AdminEvents({
     setEditEventDesc(eventObj.description || "");
     setEditEventMaxTeams(String(eventObj.maxTeams || 10));
     setEditEventGithubOrgName(eventObj.githubOrgName || "");
+    populateEventSchedule(eventObj);
 
     // If we are currently on the 'events' tab/route, sync URL
     if (defaultTab === "events") {
@@ -1463,6 +1585,15 @@ export default function AdminEvents({
             Thông tin sự kiện
           </button>
           <button
+            onClick={() => setActiveTab("schedule")}
+            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "schedule"
+              ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+              : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+              }`}
+          >
+            Thiết lập thời gian
+          </button>
+          <button
             onClick={() => setActiveTab("teams")}
             className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "teams"
               ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
@@ -1927,6 +2058,178 @@ export default function AdminEvents({
           <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">
             Vui lòng chọn cuộc thi từ thanh tiêu đề hoặc trang Quản trị viên để
             quản lý GitHub.
+          </div>
+        ))}
+
+      {/* 7. SCHEDULE TAB */}
+      {activeTab === "schedule" &&
+        (selectedEvent ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fadeIn">
+            {/* Event Schedule Card */}
+            <div className="glass p-6 rounded-2xl relative flex flex-col justify-between">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-3xl"></div>
+              <div>
+                <h3 className="text-md font-bold text-white mb-4 flex items-center gap-1.5 font-mono">
+                  <Calendar size={16} className="text-cyan-400" />
+                  <span>Lịch trình cuộc thi: {selectedEvent.name}</span>
+                </h3>
+                <p className="text-slate-400 text-xs mb-6">
+                  Cấu hình các mốc thời gian để hệ thống tự động cập nhật trạng thái cuộc thi (Registration, Ongoing, Completed).
+                </p>
+
+                <form onSubmit={handleSaveEventSchedule} className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
+                      Thời gian mở đăng ký (Registration)
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={editEventRegOpen}
+                      onChange={(e) => setEditEventRegOpen(e.target.value)}
+                      className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
+                      Bắt đầu thi đấu (Chuyển sang Ongoing)
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={editEventContestStart}
+                      onChange={(e) => setEditEventContestStart(e.target.value)}
+                      className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
+                      Kết thúc cuộc thi (Completed)
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={editEventContestEnd}
+                      onChange={(e) => setEditEventContestEnd(e.target.value)}
+                      className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+
+                  <div className="pt-4">
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full bg-cyan-500 hover:bg-cyan-600 disabled:bg-slate-800 text-white font-bold text-xs py-3 rounded-xl transition-all uppercase tracking-wider cursor-pointer shadow-lg shadow-cyan-500/20"
+                    >
+                      {loading ? "Đang lưu..." : "Lưu lịch trình cuộc thi"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Status information panel */}
+              <div className="mt-6 p-4 bg-slate-950/50 border border-slate-800/80 rounded-xl text-[11px] text-slate-400 leading-relaxed font-mono">
+                <span className="text-cyan-400 font-bold">ℹ️ Hướng dẫn chuyển trạng thái tự động:</span>
+                <ul className="list-disc list-inside mt-2 space-y-1">
+                  <li><strong>Draft &rarr; Registration:</strong> Khi tới thời điểm mở đăng ký.</li>
+                  <li><strong>Registration &rarr; Ongoing:</strong> Khi tới thời điểm bắt đầu thi.</li>
+                  <li><strong>Ongoing &rarr; Completed:</strong> Khi tới thời điểm kết thúc cuộc thi.</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Track Schedule Card */}
+            <div className="glass p-6 rounded-2xl relative flex flex-col justify-between">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-2xl"></div>
+              <div>
+                <h3 className="text-md font-bold text-white mb-4 flex items-center gap-1.5 font-mono">
+                  <Clock size={16} className="text-cyan-400" />
+                  <span>Lịch trình bảng đấu (Tracks)</span>
+                </h3>
+                <p className="text-slate-400 text-xs mb-6">
+                  Thiết lập thời gian làm bài (nộp bài) và thời gian chấm bài cho từng bảng đấu. Bộ đếm thời gian của Giám khảo sẽ dựa trên thông số này.
+                </p>
+
+                {tracks.length === 0 ? (
+                  <div className="text-center py-12 text-slate-500 text-xs font-mono">
+                    Chưa có bảng đấu nào trong cuộc thi này.
+                  </div>
+                ) : (
+                  <form onSubmit={handleSaveTrackSchedule} className="space-y-4">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
+                        Chọn bảng đấu (Track)
+                      </label>
+                      <CustomSelect
+                        value={selectedTrackForSchedule?._id || ""}
+                        onChange={(val) => {
+                          const t = tracks.find((track) => track._id === val);
+                          handleSelectTrackForSchedule(t);
+                        }}
+                        options={tracks.map((t) => ({
+                          value: t._id,
+                          label: `${t.name} (Vòng: ${rounds.find((r) => r._id === t.roundId)?.name || "Chưa gán"})`,
+                        }))}
+                        className="w-full"
+                      />
+                    </div>
+
+                    {selectedTrackForSchedule && (
+                      <>
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
+                            Thời gian bắt đầu làm bài
+                          </label>
+                          <input
+                            type="datetime-local"
+                            value={trackStartTime}
+                            onChange={(e) => setTrackStartTime(e.target.value)}
+                            className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
+                            Hạn nộp bài (Thời gian làm bài kết thúc)
+                          </label>
+                          <input
+                            type="datetime-local"
+                            value={trackEndTime}
+                            onChange={(e) => setTrackEndTime(e.target.value)}
+                            className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
+                            Thời gian chấm bài kết thúc
+                          </label>
+                          <input
+                            type="datetime-local"
+                            value={trackGradingEndTime}
+                            onChange={(e) => setTrackGradingEndTime(e.target.value)}
+                            className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                          />
+                        </div>
+
+                        <div className="pt-4">
+                          <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full bg-cyan-500 hover:bg-cyan-600 disabled:bg-slate-800 text-white font-bold text-xs py-3 rounded-xl transition-all uppercase tracking-wider cursor-pointer shadow-lg shadow-cyan-500/20"
+                          >
+                            {loading ? "Đang lưu..." : "Lưu lịch trình bảng đấu"}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </form>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">
+            Vui lòng chọn cuộc thi từ thanh tiêu đề hoặc trang Quản trị viên để thiết lập thời gian.
           </div>
         ))}
     </div>

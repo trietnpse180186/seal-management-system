@@ -2,16 +2,16 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Timer, Activity, Play, ArrowRight } from "lucide-react";
-import CustomSelect from "../components/CustomSelect";
 
 export default function JudgeDashboard() {
   const token = localStorage.getItem("token");
   const navigate = useNavigate();
 
-  const [events, setEvents] = useState<any[]>([]);
   const [selectedEventId, setSelectedEventId] = useState("");
-  const [rounds, setRounds] = useState<any[]>([]);
   const [selectedRoundId, setSelectedRoundId] = useState("");
+  const [activeEvent, setActiveEvent] = useState<any>(null);
+  const [activeRound, setActiveRound] = useState<any>(null);
+  const [assignedTrack, setAssignedTrack] = useState<any>(null);
 
   const [teams, setTeams] = useState<any[]>([]);
   const [lastGradedTeamId, setLastGradedTeamId] = useState<string | null>(null);
@@ -27,35 +27,33 @@ export default function JudgeDashboard() {
   const [allCommits, setAllCommits] = useState<any[]>([]);
   const [commitsLoading, setCommitsLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState("00:00:00");
+  const [timerLabel, setTimerLabel] = useState("Thời gian chấm còn lại");
 
-  const currentRound = rounds.find((r: any) => r._id === selectedRoundId);
-
-  // Fetch events
+  // Fetch active contest details
   useEffect(() => {
     axios
-      .get("http://localhost:5000/api/events")
-      .then((res: any) => {
-        setEvents(res.data);
-        if (res.data.length > 0) {
-          setSelectedEventId(res.data[0]._id);
-        }
+      .get("http://localhost:5000/api/events/judge/active-contest", {
+        headers: { Authorization: `Bearer ${token}` },
       })
-      .catch((err: any) => console.error(err));
-  }, []);
+      .then((res: any) => {
+        if (res.data.event) {
+          setActiveEvent(res.data.event);
+          setSelectedEventId(res.data.event._id);
 
-  // Fetch event details (rounds)
-  useEffect(() => {
-    if (!selectedEventId) return;
-    axios
-      .get(`http://localhost:5000/api/events/${selectedEventId}`)
-      .then((res: any) => {
-        setRounds(res.data.rounds || []);
-        if (res.data.rounds && res.data.rounds.length > 0) {
-          setSelectedRoundId(res.data.rounds[0]._id);
+          if (res.data.currentRound) {
+            setActiveRound(res.data.currentRound);
+            setSelectedRoundId(res.data.currentRound._id);
+          }
+
+          if (res.data.assignedTrack) {
+            setAssignedTrack(res.data.assignedTrack);
+          } else if (res.data.tracks && res.data.tracks.length > 0) {
+            setAssignedTrack(res.data.tracks[0]);
+          }
         }
       })
-      .catch((err: any) => console.error(err));
-  }, [selectedEventId]);
+      .catch((err: any) => console.error("Error fetching active contest:", err));
+  }, [token]);
 
   // Fetch AI stats
   useEffect(() => {
@@ -152,30 +150,50 @@ export default function JudgeDashboard() {
     fetchAllCommits();
   }, [teams, token]);
 
-  // Countdown timer
+  // Countdown timer based on track schedules
   useEffect(() => {
-    if (!currentRound?.submissionDeadline) {
-      setTimeLeft("CHƯA CÓ HẠN");
+    if (!assignedTrack) {
+      setTimeLeft("CHƯA CÓ LỊCH");
+      setTimerLabel("Thời gian thi đấu");
       return;
     }
+
     const interval = setInterval(() => {
-      const diff =
-        new Date(currentRound.submissionDeadline).getTime() -
-        new Date().getTime();
-      if (diff <= 0) {
-        setTimeLeft("ĐÃ HẾT HẠN");
-        clearInterval(interval);
-      } else {
+      const now = new Date().getTime();
+      const startTime = assignedTrack.startTime ? new Date(assignedTrack.startTime).getTime() : 0;
+      const endTime = assignedTrack.endTime ? new Date(assignedTrack.endTime).getTime() : 0;
+      const gradingEndTime = assignedTrack.gradingEndTime ? new Date(assignedTrack.gradingEndTime).getTime() : 0;
+
+      if (startTime && now < startTime) {
+        setTimerLabel("Trạng thái bảng đấu");
+        setTimeLeft("CHƯA BẮT ĐẦU THI");
+      } else if (endTime && now < endTime) {
+        setTimerLabel("Thời gian làm bài còn lại");
+        const diff = endTime - now;
         const hours = Math.floor(diff / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((diff % (1000 * 60)) / 1000);
         setTimeLeft(
-          `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`,
+          `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
         );
+      } else if (gradingEndTime && now < gradingEndTime) {
+        setTimerLabel("Thời gian chấm còn lại");
+        const diff = gradingEndTime - now;
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        setTimeLeft(
+          `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+        );
+      } else {
+        setTimerLabel("Trạng thái bảng đấu");
+        setTimeLeft("ĐÃ HẾT HẠN CHẤM");
+        clearInterval(interval);
       }
     }, 1000);
+
     return () => clearInterval(interval);
-  }, [currentRound]);
+  }, [assignedTrack]);
 
   const getSyncTimeElapsed = (dateStr: string) => {
     if (!dateStr) return "Chưa có hoạt động";
@@ -209,7 +227,7 @@ export default function JudgeDashboard() {
           </div>
           <div>
             <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
-              Thời gian chấm còn lại
+              {timerLabel}
             </p>
             <p className="text-xl font-bold text-rose-400 font-mono tracking-wider drop-shadow-[0_0_8px_rgba(244,63,94,0.5)]">
               {timeLeft}
@@ -218,38 +236,40 @@ export default function JudgeDashboard() {
         </div>
       </div>
 
-      {/* Selectors Row */}
-      <div className="bg-slate-900/40 backdrop-blur-md p-4 rounded-xl border border-white/10 shadow-lg flex flex-wrap gap-4 items-center animate-fadeIn">
-        <div>
-          <label className="block text-[9px] font-bold uppercase text-slate-400 mb-1">
-            Cuộc thi
-          </label>
-          <CustomSelect
-            value={selectedEventId}
-            onChange={(val) => setSelectedEventId(val)}
-            options={events.map((e: any) => ({
-              value: e._id,
-              label: e.name,
-            }))}
-            className="w-56"
-          />
-        </div>
-
-        <div>
-          <label className="block text-[9px] font-bold uppercase text-slate-400 mb-1">
-            Vòng thi
-          </label>
-          <CustomSelect
-            value={selectedRoundId}
-            onChange={(val) => setSelectedRoundId(val)}
-            options={rounds.map((r: any) => ({
-              value: r._id,
-              label: `${r.name} (Lấy Top ${r.advanceTopN})`,
-            }))}
-            placeholder="Không có vòng thi"
-            className="w-56"
-          />
-        </div>
+      {/* Selectors Row (Read-only Active Contest Info) */}
+      <div className="bg-slate-900/40 backdrop-blur-md p-5 rounded-xl border border-white/10 shadow-lg flex flex-wrap gap-8 items-center animate-fadeIn">
+        {activeEvent ? (
+          <>
+            <div>
+              <p className="text-[9px] font-bold uppercase text-slate-500 tracking-wider">Cuộc thi đang diễn ra</p>
+              <p className="text-sm font-extrabold text-white mt-1 font-mono uppercase drop-shadow-[0_0_5px_rgba(255,255,255,0.1)]">
+                {activeEvent.name}
+              </p>
+            </div>
+            <div className="w-px h-8 bg-white/10 hidden sm:block"></div>
+            <div>
+              <p className="text-[9px] font-bold uppercase text-slate-500 tracking-wider">Vòng thi hiện tại</p>
+              <p className="text-sm font-extrabold text-cyan-400 mt-1 font-mono uppercase drop-shadow-[0_0_5px_rgba(34,211,238,0.2)]">
+                {activeRound ? `${activeRound.name} (Lấy Top ${activeRound.advanceTopN})` : "Không có vòng thi active"}
+              </p>
+            </div>
+            {assignedTrack && (
+              <>
+                <div className="w-px h-8 bg-white/10 hidden sm:block"></div>
+                <div>
+                  <p className="text-[9px] font-bold uppercase text-slate-500 tracking-wider">Bảng đấu của bạn</p>
+                  <p className="text-sm font-extrabold text-teal-400 mt-1 font-mono uppercase drop-shadow-[0_0_5px_rgba(20,184,166,0.2)]">
+                    {assignedTrack.name}
+                  </p>
+                </div>
+              </>
+            )}
+          </>
+        ) : (
+          <div className="text-xs text-rose-400 font-semibold font-mono uppercase">
+            Hiện tại không có cuộc thi nào đang diễn ra (Ongoing).
+          </div>
+        )}
       </div>
 
       {/* Bento Grid Stats */}

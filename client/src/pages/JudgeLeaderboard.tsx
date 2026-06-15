@@ -112,7 +112,7 @@ export default function JudgeLeaderboard() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-white tracking-wide drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]">
-              Bảng Xếp Hạng Giám Khảo
+              Bảng Xếp Hạng
             </h1>
             <p className="text-slate-400 text-xs mt-0.5">
               Xem xếp hạng thời gian thực dựa trên điểm trung bình của Ban giám khảo.
@@ -138,8 +138,8 @@ export default function JudgeLeaderboard() {
       </div>
 
       {/* Selectors and Search */}
-      <div className="bg-slate-900/40 backdrop-blur-md p-6 rounded-2xl border border-white/10 shadow-xl flex flex-wrap gap-4 items-center justify-between">
-        <div className="flex flex-wrap gap-4 items-center">
+      <div className="bg-slate-900/40 backdrop-blur-md p-6 rounded-2xl border border-white/10 shadow-xl flex flex-wrap gap-4 items-center justify-between relative z-10">
+        <div className="flex flex-wrap gap-4 items-center z-10">
           <div>
             <label className="block text-[9px] font-bold uppercase text-slate-400 mb-1 tracking-wider font-mono">
               Cuộc thi
@@ -197,7 +197,7 @@ export default function JudgeLeaderboard() {
       </div>
 
       {/* Standings Table Card */}
-      <div className="bg-slate-900/40 backdrop-blur-md rounded-2xl border border-white/10 shadow-xl overflow-hidden">
+      <div className="bg-slate-900/40 backdrop-blur-md rounded-2xl border border-white/10 shadow-xl overflow-hidden relative z-0">
         {lastUpdated && (
           <div className="bg-slate-950/40 px-6 py-3 border-b border-white/5 flex justify-between items-center text-[9px] font-bold text-slate-400 tracking-wider font-mono uppercase">
             <span>Danh sách xếp hạng tạm thời (Live)</span>

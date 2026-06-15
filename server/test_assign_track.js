@@ -4,16 +4,16 @@ process.env.EMAIL_SERVICE_MOCK = 'true';
 process.env.GITHUB_SERVICE_MOCK = 'true';
 
 // Require models
-require('./models/User');
-require('./models/Event');
-require('./models/Track');
-require('./models/Round');
-require('./models/EventRole');
-require('./models/Team');
-require('./models/TeamMember');
-require('./models/GithubRepository');
+require('./features/auth/User');
+require('./features/events/Event');
+require('./features/events/Track');
+require('./features/events/Round');
+require('./features/auth/EventRole');
+require('./features/teams/Team');
+require('./features/teams/TeamMember');
+require('./features/github-ai/GithubRepository');
 
-const githubService = require('./services/githubService');
+const githubService = require('./features/github-ai/githubService');
 
 async function runTest() {
   console.log('=== STARTING ASSIGN-TRACK ENDPOINT TEST ===');

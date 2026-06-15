@@ -23,7 +23,7 @@ async function autoTransitionEvents() {
   for (const event of draftEvents) {
     const activeEvent = await Event.findOne({
       _id: { $ne: event._id },
-      status: { $in: ['registration', 'ongoing'] }
+      status: { $in: ['registration', 'prepare', 'ongoing'] }
     });
     
     if (!activeEvent) {
@@ -35,15 +35,29 @@ async function autoTransitionEvents() {
     }
   }
 
-  // 2. Transition 'registration' to 'ongoing'
-  const registrationEvents = await Event.find({ status: 'registration', contestStart: { $ne: null, $lte: now } });
-  for (const event of registrationEvents) {
-    event.status = 'ongoing';
+  // 2. Transition 'registration' to 'prepare' (when registrationClose is reached)
+  const registrationEventsToPrepare = await Event.find({
+    status: 'registration',
+    registrationClose: { $ne: null, $lte: now }
+  });
+  for (const event of registrationEventsToPrepare) {
+    event.status = 'prepare';
     await event.save();
-    console.log(`[CRON] Event "${event.name}" automatically transitioned from registration to ongoing.`);
+    console.log(`[CRON] Event "${event.name}" automatically transitioned from registration to prepare.`);
   }
 
-  // 3. Transition 'ongoing' to 'completed'
+  // 3. Transition 'registration' or 'prepare' to 'ongoing' (when contestStart is reached)
+  const ongoingEventsToStart = await Event.find({
+    status: { $in: ['registration', 'prepare'] },
+    contestStart: { $ne: null, $lte: now }
+  });
+  for (const event of ongoingEventsToStart) {
+    event.status = 'ongoing';
+    await event.save();
+    console.log(`[CRON] Event "${event.name}" automatically transitioned to ongoing.`);
+  }
+
+  // 4. Transition 'ongoing' to 'completed'
   const ongoingEvents = await Event.find({ status: 'ongoing', contestEnd: { $ne: null, $lte: now } });
   for (const event of ongoingEvents) {
     event.status = 'completed';

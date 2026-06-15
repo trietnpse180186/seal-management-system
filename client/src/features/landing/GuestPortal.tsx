@@ -80,6 +80,43 @@ export default function GuestPortal({ user }: GuestPortalProps) {
     const contestStart = activeEvent.contestStart ? new Date(activeEvent.contestStart) : null;
     const contestEnd = activeEvent.contestEnd ? new Date(activeEvent.contestEnd) : null;
 
+    if (activeEvent.status === "ongoing") {
+      if (phase === 1) {
+        return { label: "ĐÃ KẾT THÚC", classes: "text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded bg-slate-900/50" };
+      }
+      if (phase === 2) {
+        if (contestEnd && now >= contestEnd) {
+          return { label: "ĐÃ KẾT THÚC", classes: "text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded bg-slate-900/50" };
+        }
+        return { label: "ĐANG DIỄN RA", classes: "text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded bg-cyan-950/20" };
+      }
+      if (phase === 3) {
+        if (contestEnd && now >= contestEnd) {
+          return { label: "ĐANG DIỄN RA", classes: "text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded bg-cyan-950/20" };
+        }
+        return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
+      }
+    }
+
+    if (activeEvent.status === "prepare") {
+      if (phase === 1) {
+        return { label: "ĐÃ KẾT THÚC", classes: "text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded bg-slate-900/50" };
+      }
+      return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
+    }
+
+    if (activeEvent.status === "registration") {
+      if (phase === 1) {
+        const regClose = activeEvent.registrationClose ? new Date(activeEvent.registrationClose) : null;
+        if (regClose && now >= regClose) {
+          return { label: "ĐÃ KẾT THÚC", classes: "text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded bg-slate-900/50" };
+        }
+        return { label: "ĐANG DIỄN RA", classes: "text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded bg-cyan-950/20" };
+      }
+      return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
+    }
+
+    // Default fallbacks based on date checks
     if (phase === 1) {
       if (!regOpen) {
         return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
@@ -87,10 +124,11 @@ export default function GuestPortal({ user }: GuestPortalProps) {
       if (now < regOpen) {
         return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
       }
-      if (contestStart && now >= regOpen && now < contestStart) {
-        return { label: "ĐANG DIỄN RA", classes: "text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded bg-cyan-950/20" };
+      const regClose = activeEvent.registrationClose ? new Date(activeEvent.registrationClose) : null;
+      if (regClose && now >= regClose) {
+        return { label: "ĐÃ KẾT THÚC", classes: "text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded bg-slate-900/50" };
       }
-      if (!contestStart) {
+      if (contestStart && now >= regOpen && now < contestStart) {
         return { label: "ĐANG DIỄN RA", classes: "text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded bg-cyan-950/20" };
       }
       return { label: "ĐÃ KẾT THÚC", classes: "text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded bg-slate-900/50" };
@@ -104,9 +142,6 @@ export default function GuestPortal({ user }: GuestPortalProps) {
         return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
       }
       if (contestEnd && now >= contestStart && now < contestEnd) {
-        return { label: "ĐANG DIỄN RA", classes: "text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded bg-cyan-950/20" };
-      }
-      if (!contestEnd) {
         return { label: "ĐANG DIỄN RA", classes: "text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded bg-cyan-950/20" };
       }
       return { label: "ĐÃ KẾT THÚC", classes: "text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded bg-slate-900/50" };
@@ -333,6 +368,10 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                   statusLabel = "[MỞ ĐĂNG KÝ]";
                   statusColor = "text-cyan-400";
                   break;
+                case "prepare":
+                  statusLabel = "[ĐANG CHUẨN BỊ]";
+                  statusColor = "text-amber-500";
+                  break;
                 case "ongoing":
                   statusLabel = "[ĐANG DIỄN RA]";
                   statusColor = "text-amber-400";
@@ -404,6 +443,21 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                       >
                         {hasTeam ? "Vào khu vực đội" : "Đăng ký tham gia"}
                       </button>
+                    )}
+                    
+                    {e.status === "prepare" && (
+                      hasTeam ? (
+                        <button
+                          onClick={() => navigate("/team-area")}
+                          className="w-full mt-2 py-2 border border-cyan-500/30 rounded-xl bg-cyan-500/10 text-cyan-400 text-xs font-bold hover:bg-cyan-500/20 transition-all uppercase tracking-wider text-center cursor-pointer font-mono"
+                        >
+                          Vào khu vực đội
+                        </button>
+                      ) : (
+                        <div className="w-full mt-2 py-2 border border-slate-800 rounded-xl bg-slate-900/30 text-slate-500 text-xs font-bold text-center uppercase tracking-wider font-mono">
+                          Đã đóng đăng ký (Đang chuẩn bị)
+                        </div>
+                      )
                     )}
                     
                     {e.status === "ongoing" && (

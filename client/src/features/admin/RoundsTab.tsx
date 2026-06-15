@@ -3,6 +3,7 @@ import { ListOrdered, ChevronRight, Award, Lock, Download, Upload, FileSpreadshe
 import axios from "axios";
 import * as XLSX from "xlsx";
 import CustomSelect from "../shared/CustomSelect";
+import CustomDateTimePicker from "../shared/CustomDateTimePicker";
 
 interface RoundsTabProps {
   selectedEvent: any;
@@ -532,12 +533,10 @@ export default function RoundsTab({
             <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
               Thời hạn nộp bài (Deadline)
             </label>
-            <input
-              type="datetime-local"
-              required
+            <CustomDateTimePicker
               value={roundDeadline}
-              onChange={(e) => setRoundDeadline(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
+              onChange={setRoundDeadline}
+              placeholder="Chọn thời hạn nộp bài..."
             />
           </div>
 

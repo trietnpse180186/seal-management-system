@@ -14,6 +14,7 @@ import GithubTab from "../teams/GithubTab";
 import { toast } from "sonner";
 import { useConfirm } from "../shared/ConfirmDialog";
 import CustomSelect from "../shared/CustomSelect";
+import CustomDateTimePicker from "../shared/CustomDateTimePicker";
 
 const Github = ({
   size = 20,
@@ -2082,11 +2083,21 @@ export default function AdminEvents({
                     <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
                       Thời gian mở đăng ký (Registration)
                     </label>
-                    <input
-                      type="datetime-local"
+                    <CustomDateTimePicker
                       value={editEventRegOpen}
-                      onChange={(e) => setEditEventRegOpen(e.target.value)}
-                      className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                      onChange={setEditEventRegOpen}
+                      placeholder="Chọn thời gian mở đăng ký..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
+                      Thời gian đóng đăng ký (Đóng Đăng ký & Prepare)
+                    </label>
+                    <CustomDateTimePicker
+                      value={editEventRegClose}
+                      onChange={setEditEventRegClose}
+                      placeholder="Chọn thời gian đóng đăng ký..."
                     />
                   </div>
 
@@ -2094,11 +2105,10 @@ export default function AdminEvents({
                     <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
                       Bắt đầu thi đấu (Chuyển sang Ongoing)
                     </label>
-                    <input
-                      type="datetime-local"
+                    <CustomDateTimePicker
                       value={editEventContestStart}
-                      onChange={(e) => setEditEventContestStart(e.target.value)}
-                      className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                      onChange={setEditEventContestStart}
+                      placeholder="Chọn thời gian bắt đầu thi..."
                     />
                   </div>
 
@@ -2106,11 +2116,10 @@ export default function AdminEvents({
                     <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
                       Kết thúc cuộc thi (Completed)
                     </label>
-                    <input
-                      type="datetime-local"
+                    <CustomDateTimePicker
                       value={editEventContestEnd}
-                      onChange={(e) => setEditEventContestEnd(e.target.value)}
-                      className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                      onChange={setEditEventContestEnd}
+                      placeholder="Chọn thời gian kết thúc..."
                     />
                   </div>
 
@@ -2179,11 +2188,10 @@ export default function AdminEvents({
                           <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
                             Thời gian bắt đầu làm bài
                           </label>
-                          <input
-                            type="datetime-local"
+                          <CustomDateTimePicker
                             value={trackStartTime}
-                            onChange={(e) => setTrackStartTime(e.target.value)}
-                            className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                            onChange={setTrackStartTime}
+                            placeholder="Chọn thời gian bắt đầu làm bài..."
                           />
                         </div>
 
@@ -2191,11 +2199,10 @@ export default function AdminEvents({
                           <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
                             Hạn nộp bài (Thời gian làm bài kết thúc)
                           </label>
-                          <input
-                            type="datetime-local"
+                          <CustomDateTimePicker
                             value={trackEndTime}
-                            onChange={(e) => setTrackEndTime(e.target.value)}
-                            className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                            onChange={setTrackEndTime}
+                            placeholder="Chọn hạn nộp bài..."
                           />
                         </div>
 
@@ -2203,11 +2210,10 @@ export default function AdminEvents({
                           <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
                             Thời gian chấm bài kết thúc
                           </label>
-                          <input
-                            type="datetime-local"
+                          <CustomDateTimePicker
                             value={trackGradingEndTime}
-                            onChange={(e) => setTrackGradingEndTime(e.target.value)}
-                            className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+                            onChange={setTrackGradingEndTime}
+                            placeholder="Chọn thời gian kết thúc chấm..."
                           />
                         </div>
 

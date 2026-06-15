@@ -146,7 +146,7 @@ export default function Timeline() {
         
         <div className="timeline-header text-center mb-16">
           <h2 className="timeline-title text-2xl sm:text-3xl font-extrabold text-primary-container uppercase tracking-widest font-sans opacity-0">
-            Lịch trình Cuộc thi
+            Lịch trình Cuộc thi {activeEvent ? `- ${activeEvent.name}` : ''}
           </h2>
           <p className="timeline-subtitle font-mono text-xs text-on-surface-variant mt-2 opacity-0">
             CÁC_GIAI_ĐOẠN_THỰC_THI

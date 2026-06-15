@@ -67,9 +67,12 @@ export default function GuestPortal({ user }: GuestPortalProps) {
 
   const getPhaseStatus = (phase: number) => {
     if (!activeEvent) {
-      if (phase === 1) return { label: "TRƯỚC 2 NGÀY", classes: "text-slate-500 border border-slate-800 bg-slate-900/50" };
-      if (phase === 2) return { label: "ĐANG DIỄN RA", classes: "text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded bg-cyan-950/20" };
-      return { label: "CHƯA MỞ", classes: "text-slate-600" };
+      return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
+    }
+
+    // If the event itself is completed or cancelled, all phases are ended
+    if (activeEvent.status === "completed" || activeEvent.status === "cancelled") {
+      return { label: "ĐÃ KẾT THÚC", classes: "text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded bg-slate-900/50" };
     }
 
     const now = new Date();
@@ -78,33 +81,48 @@ export default function GuestPortal({ user }: GuestPortalProps) {
     const contestEnd = activeEvent.contestEnd ? new Date(activeEvent.contestEnd) : null;
 
     if (phase === 1) {
-      if (regOpen && now < regOpen) {
-        return { label: "SẮP MỞ", classes: "text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded bg-amber-950/20" };
+      if (!regOpen) {
+        return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
       }
-      if (regOpen && contestStart && now >= regOpen && now < contestStart) {
+      if (now < regOpen) {
+        return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
+      }
+      if (contestStart && now >= regOpen && now < contestStart) {
+        return { label: "ĐANG DIỄN RA", classes: "text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded bg-cyan-950/20" };
+      }
+      if (!contestStart) {
         return { label: "ĐANG DIỄN RA", classes: "text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded bg-cyan-950/20" };
       }
       return { label: "ĐÃ KẾT THÚC", classes: "text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded bg-slate-900/50" };
     }
 
     if (phase === 2) {
-      if (contestStart && now < contestStart) {
-        return { label: "CHƯA MỞ", classes: "text-slate-600 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
+      if (!contestStart) {
+        return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
       }
-      if (contestStart && contestEnd && now >= contestStart && now < contestEnd) {
+      if (now < contestStart) {
+        return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
+      }
+      if (contestEnd && now >= contestStart && now < contestEnd) {
+        return { label: "ĐANG DIỄN RA", classes: "text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded bg-cyan-950/20" };
+      }
+      if (!contestEnd) {
         return { label: "ĐANG DIỄN RA", classes: "text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded bg-cyan-950/20" };
       }
       return { label: "ĐÃ KẾT THÚC", classes: "text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded bg-slate-900/50" };
     }
 
     if (phase === 3) {
-      if (contestEnd && now < contestEnd) {
-        return { label: "CHƯA MỞ", classes: "text-slate-600 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
+      if (!contestEnd) {
+        return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
+      }
+      if (now < contestEnd) {
+        return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
       }
       return { label: "ĐANG DIỄN RA", classes: "text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded bg-cyan-950/20" };
     }
 
-    return { label: "CHƯA MỞ", classes: "text-slate-600" };
+    return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
   };
 
   useEffect(() => {
@@ -162,6 +180,56 @@ export default function GuestPortal({ user }: GuestPortalProps) {
   }
 
   const displayName = user?.fullName || "GUEST_USER";
+
+  const getPhaseStyles = (phaseNum: number) => {
+    const statusObj = getPhaseStatus(phaseNum);
+    const label = statusObj.label;
+    
+    let headingClass = "";
+    let dateClass = "";
+    let descClass = "";
+    let renderDot = () => <div className="absolute -left-[19px] top-1 w-2.5 h-2.5 rounded-full bg-slate-950 border border-slate-700"></div>;
+
+    if (label === "ĐANG DIỄN RA") {
+      headingClass = "text-xs text-cyan-400 text-cyan-glow font-bold uppercase tracking-wider";
+      dateClass = "text-[9px] text-cyan-400/80 font-mono";
+      descClass = "text-[11px] text-slate-300";
+      renderDot = () => (
+        <span className="absolute -left-[20px] top-1 flex h-2.5 w-2.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-400 shadow-[0_0_8px_#00f0ff]"></span>
+        </span>
+      );
+    } else if (label === "ĐÃ KẾT THÚC") {
+      headingClass = "text-xs text-slate-300 font-bold uppercase tracking-wider";
+      dateClass = "text-[9px] text-slate-400 font-mono";
+      descClass = "text-[11px] text-slate-400";
+      renderDot = () => (
+        <div className="absolute -left-[19px] top-1 w-2.5 h-2.5 rounded-full bg-slate-950 border border-cyan-500"></div>
+      );
+    } else {
+      // CHƯA DIỄN RA
+      headingClass = "text-xs text-slate-500 font-bold uppercase tracking-wider";
+      dateClass = "text-[9px] text-slate-500 font-mono";
+      descClass = "text-[11px] text-slate-500";
+      renderDot = () => (
+        <div className="absolute -left-[19px] top-1 w-2.5 h-2.5 rounded-full bg-slate-950 border border-slate-700"></div>
+      );
+    }
+
+    return {
+      label,
+      classes: statusObj.classes,
+      headingClass,
+      dateClass,
+      descClass,
+      renderDot
+    };
+  };
+
+  const phase1 = getPhaseStyles(1);
+  const phase2 = getPhaseStyles(2);
+  const phase3 = getPhaseStyles(3);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12 font-mono">
@@ -423,7 +491,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
             <div className="border-b border-slate-800 pb-3 mb-6 flex justify-between items-center">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <Compass size={18} className="text-cyan-400" />
-                <span>Lộ trình cuộc thi</span>
+                <span>Lộ trình cuộc thi {activeEvent ? `- ${activeEvent.name}` : ''}</span>
               </h2>
               <span className="text-[10px] text-slate-400 border border-slate-800 px-2 py-1 rounded bg-slate-900/50">
                 [LỘ_TRÌNH]
@@ -433,65 +501,63 @@ export default function GuestPortal({ user }: GuestPortalProps) {
             <div className="relative pl-4 space-y-6 before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[1px] before:bg-slate-800">
               {/* Phase 1 */}
               <div className="relative pl-6">
-                <div className="absolute -left-[19px] top-1 w-2.5 h-2.5 rounded-full bg-slate-950 border border-cyan-500"></div>
+                {phase1.renderDot()}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-1 gap-1">
-                  <h3 className="text-xs text-white font-bold uppercase tracking-wider">
+                  <h3 className={phase1.headingClass}>
                     Giai đoạn 1: Mở đăng ký
                   </h3>
                   <div className="flex items-center gap-2">
-                    <span className="text-[9px] text-slate-400 font-mono">
+                    <span className={phase1.dateClass}>
                       {formatEventDateRange(activeEvent?.registrationOpen, activeEvent?.registrationClose || activeEvent?.contestStart)}
                     </span>
-                    <span className={`text-[9px] ${getPhaseStatus(1).classes}`}>
-                      {getPhaseStatus(1).label}
+                    <span className={`text-[9px] ${phase1.classes}`}>
+                      {phase1.label}
                     </span>
                   </div>
                 </div>
-                <p className="text-[11px] text-slate-400">
+                <p className={phase1.descClass}>
                   Các đội thi thực hiện đăng ký tài khoản, liên kết thành viên nhóm và liên kết repository Github chính thức để chuẩn bị nhận nhiệm vụ.
                 </p>
               </div>
 
-              {/* Phase 2 (Active) */}
+              {/* Phase 2 */}
               <div className="relative pl-6">
-                <span className="absolute -left-[20px] top-1 flex h-2.5 w-2.5">
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-400"></span>
-                </span>
+                {phase2.renderDot()}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-1 gap-1">
-                  <h3 className="text-xs text-cyan-400 font-bold uppercase tracking-wider">
+                  <h3 className={phase2.headingClass}>
                     Giai đoạn 2: Bắt đầu thi đấu
                   </h3>
                   <div className="flex items-center gap-2">
-                    <span className="text-[9px] text-cyan-400/80 font-mono">
+                    <span className={phase2.dateClass}>
                       {formatEventDateRange(activeEvent?.contestStart, activeEvent?.contestEnd)}
                     </span>
-                    <span className={`text-[9px] ${getPhaseStatus(2).classes}`}>
-                      {getPhaseStatus(2).label}
+                    <span className={`text-[9px] ${phase2.classes}`}>
+                      {phase2.label}
                     </span>
                   </div>
                 </div>
-                <p className="text-[11px] text-slate-300">
+                <p className={phase2.descClass}>
                   Giai đoạn lập trình cường độ cao. Các đội thực hiện giải quyết yêu cầu dự án, liên tục push commit để AI tự động phân tích và đánh giá chất lượng mã nguồn.
                 </p>
               </div>
 
               {/* Phase 3 */}
               <div className="relative pl-6">
-                <div className="absolute -left-[19px] top-1 w-2.5 h-2.5 rounded-full bg-slate-950 border border-slate-700"></div>
+                {phase3.renderDot()}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-1 gap-1">
-                  <h3 className="text-xs text-slate-500 font-bold uppercase tracking-wider">
+                  <h3 className={phase3.headingClass}>
                     Giai đoạn 3: Kết thúc và tổng kết
                   </h3>
                   <div className="flex items-center gap-2">
-                    <span className="text-[9px] text-slate-500 font-mono">
+                    <span className={phase3.dateClass}>
                       {formatSingleDate(activeEvent?.contestEnd)}
                     </span>
-                    <span className={`text-[9px] ${getPhaseStatus(3).classes}`}>
-                      {getPhaseStatus(3).label}
+                    <span className={`text-[9px] ${phase3.classes}`}>
+                      {phase3.label}
                     </span>
                   </div>
                 </div>
-                <p className="text-[11px] text-slate-500">
+                <p className={phase3.descClass}>
                   Dừng cổng nộp bài, đóng repository. Các đội thi chuẩn bị báo cáo dự án trước hội đồng giám khảo và nhận kết quả xếp hạng chung cuộc từ hệ thống.
                 </p>
               </div>

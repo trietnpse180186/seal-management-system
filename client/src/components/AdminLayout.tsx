@@ -8,7 +8,6 @@ import {
   Trophy,
   LogOut,
   Bell,
-  ShieldAlert
 } from 'lucide-react';
 
 interface AdminLayoutProps {

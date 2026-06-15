@@ -133,10 +133,9 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
 
   const linkClass = (path: string) => `
     flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 font-mono
-    ${
-      isActive(path)
-        ? "bg-cyan-600/30 text-cyan-400 border border-cyan-500/20 shadow-[0_0_15px_-3px_rgba(6,182,212,0.3)]"
-        : "text-slate-300 hover:text-white hover:bg-white/5 border border-transparent"
+    ${isActive(path)
+      ? "bg-cyan-600/30 text-cyan-400 border border-cyan-500/20 shadow-[0_0_15px_-3px_rgba(6,182,212,0.3)]"
+      : "text-slate-300 hover:text-white hover:bg-white/5 border border-transparent"
     }
   `;
 
@@ -154,16 +153,11 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
         {/* Brand Logo */}
         <div className="flex-1 flex justify-start">
           <Link to="/" className="flex items-center gap-2 group">
-            <img
-              src={logo}
-              alt="SEAL Logo"
-              className="h-10 w-10 group-hover:scale-105 transition-transform duration-300 logo-glow"
-            />
             <div>
               <span className="font-extrabold text-lg tracking-wider text-cyan-400 text-cyan-glow font-mono-tech">
                 SEAL
               </span>
-              <span className="font-semibold text-xs ml-1 bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-slate-700 font-mono-tech">
+              <span className="font-semibold text-xs ml-1 bg-slate-800 text-white px-2 py-0.5 font-mono-tech">
                 HACKATHON
               </span>
             </div>
@@ -239,7 +233,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
             </Link>
           </div>
         )}
-                  {/* User Info & Actions */}
+        {/* User Info & Actions */}
         <div className="flex-1 flex justify-end">
           <div className="flex items-center gap-4">
             {user ? (

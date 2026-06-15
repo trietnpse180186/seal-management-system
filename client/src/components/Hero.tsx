@@ -77,9 +77,10 @@ export default function Hero({ user, roles }: HeroProps) {
             >
               {user ? "Vào Dashboard" : "Tham gia ngay"}
             </Link>
+
             <a
               href="#schedule"
-              className="border border-white/20 text-white font-mono text-xs px-8 py-3.5 rounded-none hover:bg-white/5 transition-all duration-300 text-center uppercase tracking-widest"
+              className="px-8 py-3.5 bg-cyan-300 text-black border border-cyan-300 rounded-sm text-xs font-bold uppercase tracking-widest text-center transition-all duration-300 hover:bg-transparent hover:text-cyan-300 hover:scale-105 active:scale-95 shadow-[inset_0_0_10px_rgba(0,240,255,0.1)] hover:shadow-[0_0_20px_rgba(0,240,255,0.4)]"
             >
               Xem Lịch trình
             </a>

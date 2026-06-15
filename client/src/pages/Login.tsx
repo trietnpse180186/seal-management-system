@@ -38,7 +38,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const [studentId, setStudentId] = useState('');
   const [university, setUniversity] = useState('');
   const [githubUsername, setGithubUsername] = useState('');
-  
+
   const setError = (msg: string) => {
     if (msg) {
       toast.error(msg);
@@ -77,12 +77,12 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const handleMobileRedirect = (token: string, user: any, roles: any[]) => {
     const plat = platform || sessionStorage.getItem('mobile_platform');
     const redir = mobileRedirect || sessionStorage.getItem('mobile_redirect');
-    
+
     if (plat === 'mobile' && redir) {
       sessionStorage.removeItem('mobile_platform');
       sessionStorage.removeItem('mobile_redirect');
       sessionStorage.setItem('mobile_api_url', ''); // clean up API URL
-      
+
       const targetUrl = `${redir}?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}&roles=${encodeURIComponent(JSON.stringify(roles))}`;
       window.location.href = targetUrl;
       return true;
@@ -104,7 +104,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     if (code) {
       // Clear query params so we don't try to log in again on refresh
       window.history.replaceState({}, document.title, window.location.pathname);
-      
+
       // Auto submit OAuth code to Backend
       const exchangeCode = async () => {
         setLoading(true);
@@ -146,7 +146,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       if (idToken) {
         // Clear hash
         window.history.replaceState({}, document.title, window.location.pathname);
-        
+
         const loginWithGoogle = async () => {
           setLoading(true);
           setError('');
@@ -212,7 +212,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           university,
           githubUsername
         });
-        
+
         // Auto-login if first user (API returns token directly)
         if (response.data.token) {
           const { token, user, roles } = response.data;
@@ -239,7 +239,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           return;
         }
         onLoginSuccess(token, user, roles);
-        
+
         // Redirect based on role
         if (user.isSystemAdmin || roles.some((r: any) => r.role === 'coordinator')) {
           navigate('/admin');
@@ -266,11 +266,11 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-12">
         <div className="glass-panel w-full max-w-md p-8 rounded-xl relative overflow-hidden text-center">
           <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary-container to-transparent opacity-80 animate-pulse"></div>
-          
+
           <div className="w-24 h-24 mb-6 mx-auto relative">
-            <img 
-              alt="SEAL Hackathon Logo" 
-              className="w-full h-full object-contain rounded-full logo-glow drop-shadow-[0_0_20px_rgba(0,240,255,0.6)]" 
+            <img
+              alt="SEAL Hackathon Logo"
+              className="w-full h-full object-contain rounded-full logo-glow drop-shadow-[0_0_20px_rgba(0,240,255,0.6)]"
               src={logo}
             />
           </div>
@@ -282,7 +282,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           <h2 className="font-mono text-xl font-bold text-white mb-3 uppercase tracking-tight">
             {isVerificationPending ? 'PENDING_ACTIVATION' : 'NODE_VERIFICATION'}
           </h2>
-          
+
           <p className="text-on-surface-variant text-sm mb-6 leading-relaxed">
             {isVerificationPending ? (
               <>
@@ -312,27 +312,17 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
   return (
     <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-12">
-      
+
       <div className="glass-panel w-full max-w-md p-8 rounded-xl relative overflow-hidden z-10">
-        
+
         {/* Top Rule */}
         <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary-container to-transparent opacity-80"></div>
         <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-primary-container to-transparent opacity-30"></div>
 
         {/* Header Section */}
         <div className="text-center mb-6 flex flex-col items-center">
-          <div className="w-24 h-24 mb-4 relative">
-            <img 
-              alt="SEAL Hackathon Logo" 
-              className="w-full h-full object-contain rounded-full logo-glow drop-shadow-[0_0_20px_rgba(0,240,255,0.6)]" 
-              src={logo}
-            />
-          </div>
-          <div className="chip font-mono text-xs text-primary-container mb-3 bg-[#0a141d]/50">
-            [HỆ_THỐNG_SẴN_SÀNG]
-          </div>
-          <h1 className="font-mono text-xl font-bold text-on-surface mb-1 tracking-tight">
-            {isRegister ? 'Đăng ký Tài khoản' : 'Đăng nhập Hệ thống'}
+          <h1 className="font-mono text-3xl font-bold text-cyan-300 mb-2 tracking-tight uppercase">
+            {isRegister ? 'Đăng ký Tài khoản' : 'Đăng nhập'}
           </h1>
           <p className="text-on-surface-variant text-xs font-sans">
             {isRegister ? 'Khởi tạo thông tin của bạn để tham gia cuộc thi.' : 'Xác thực tài khoản của bạn để bắt đầu phiên làm việc.'}
@@ -342,17 +332,17 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          
+
           {isRegister && (
             <>
               <div>
                 <label className="block font-mono text-xs text-primary-container opacity-80 mb-1" htmlFor="fullName">Họ và Tên</label>
                 <div className="relative cyber-input-wrapper rounded overflow-hidden">
                   <div className="relative terminal-prompt">
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       id="fullName"
-                      required 
+                      required
                       placeholder="Nhập họ và tên đầy đủ của bạn"
                       value={fullName}
                       onChange={e => setFullName(e.target.value)}
@@ -368,8 +358,8 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                   <label className="block font-mono text-xs text-primary-container opacity-80 mb-1" htmlFor="studentId">Mã số Sinh viên</label>
                   <div className="relative cyber-input-wrapper rounded overflow-hidden">
                     <div className="relative terminal-prompt">
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         id="studentId"
                         placeholder="Ví dụ: SE180xxx"
                         value={studentId}
@@ -384,8 +374,8 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 <div>
                   <label className="block font-mono text-xs text-primary-container opacity-80 mb-1" htmlFor="university">Trường Đại học</label>
                   <div className="relative cyber-input-wrapper rounded overflow-hidden">
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       id="university"
                       placeholder="Ví dụ: Đại học FPT"
                       value={university}
@@ -401,8 +391,8 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 <label className="block font-mono text-xs text-primary-container opacity-80 mb-1" htmlFor="githubUsername">Tên tài khoản GitHub</label>
                 <div className="relative cyber-input-wrapper rounded overflow-hidden">
                   <div className="relative terminal-prompt">
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       id="githubUsername"
                       placeholder="Nhập tên tài khoản github"
                       value={githubUsername}
@@ -420,10 +410,10 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             <label className="block font-mono text-xs text-primary-container opacity-80 mb-1" htmlFor="email">Địa chỉ Email</label>
             <div className="relative cyber-input-wrapper rounded overflow-hidden">
               <div className="relative terminal-prompt">
-                <input 
-                  type="email" 
+                <input
+                  type="email"
                   id="email"
-                  required 
+                  required
                   placeholder="Nhập địa chỉ email của bạn"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
@@ -443,10 +433,10 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             </div>
             <div className="relative cyber-input-wrapper rounded overflow-hidden">
               <div className="relative terminal-prompt flex items-center">
-                <input 
-                  type={showPassword ? "text" : "password"} 
+                <input
+                  type={showPassword ? "text" : "password"}
                   id="password"
-                  required 
+                  required
                   placeholder="Nhập mật khẩu bảo mật của bạn"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
@@ -489,10 +479,10 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             className="btn-secondary flex items-center justify-center gap-2 py-2 font-mono text-xs cursor-pointer"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05" />
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
             </svg>
             Google
           </button>
@@ -509,7 +499,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
         <div className="mt-6 pt-4 border-t border-outline-variant/30 text-center">
           <p className="text-xs text-on-surface-variant font-sans">
-            {isRegister ? 'Đã kích hoạt khóa truy cập?' : 'Chưa có tài khoản?' }
+            {isRegister ? 'Đã kích hoạt khóa truy cập?' : 'Chưa có tài khoản?'}
             <button
               onClick={() => {
                 setIsRegister(!isRegister);

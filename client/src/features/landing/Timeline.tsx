@@ -15,11 +15,10 @@ export default function Timeline() {
       try {
         const res = await axios.get("http://localhost:5000/api/events");
         const events = res.data;
-        const current = events.find((e: any) => e.status === "ongoing") ||
-                        events.find((e: any) => e.status === "registration") ||
-                        events.find((e: any) => e.status === "completed") ||
-                        events[0] || null;
-        setActiveEvent(current);
+        const nonDraftEvents = events.filter((e: any) => e.status !== "draft");
+        // Sort by createdAt descending to get the newest one
+        const newest = nonDraftEvents.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] || null;
+        setActiveEvent(newest);
       } catch (err) {
         console.error("Lỗi lấy lịch trình cuộc thi:", err);
       }
@@ -27,29 +26,42 @@ export default function Timeline() {
     fetchEvents();
   }, []);
 
-  const formatEventDateRange = (startDateStr: string | null, endDateStr: string | null, fallback: string) => {
-    if (!startDateStr || !endDateStr) return fallback;
-    const start = new Date(startDateStr);
-    const end = new Date(endDateStr);
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) return fallback;
+  const formatDateString = (dateStr: string | null | undefined) => {
+    if (!dateStr) return "Chưa có thông báo";
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return "Chưa có thông báo";
     
-    const startDay = start.getDate();
-    const startMonth = start.getMonth() + 1;
-    const endDay = end.getDate();
-    const endMonth = end.getMonth() + 1;
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
     
-    if (startMonth === endMonth) {
-      return `Từ ${startDay.toString().padStart(2, '0')} đến ${endDay.toString().padStart(2, '0')} tháng ${startMonth}`;
-    } else {
-      return `Từ ${startDay.toString().padStart(2, '0')} tháng ${startMonth} đến ${endDay.toString().padStart(2, '0')} tháng ${endMonth}`;
-    }
+    return `${hours}:${minutes} - ${day}/${month}/${year}`;
   };
 
-  const formatSingleDate = (dateStr: string | null, fallback: string) => {
-    if (!dateStr) return fallback;
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return fallback;
-    return `${date.getDate().toString().padStart(2, '0')} tháng ${date.getMonth() + 1}`;
+  const formatEventDateRange = (startDateStr: string | null | undefined, endDateStr: string | null | undefined) => {
+    if (!startDateStr) return "Chưa có thông báo";
+    const startStr = formatDateString(startDateStr);
+    if (startStr === "Chưa có thông báo") return "Chưa có thông báo";
+
+    if (!endDateStr) {
+      return `Bắt đầu từ ${startStr}`;
+    }
+    
+    const endStr = formatDateString(endDateStr);
+    if (endStr === "Chưa có thông báo") {
+      return `Bắt đầu từ ${startStr}`;
+    }
+
+    return `Từ ${startStr} đến ${endStr}`;
+  };
+
+  const formatSingleDate = (dateStr: string | null | undefined) => {
+    if (!dateStr) return "Chưa có thông báo";
+    const dateStrFormatted = formatDateString(dateStr);
+    if (dateStrFormatted === "Chưa có thông báo") return "Chưa có thông báo";
+    return `Bắt đầu từ ${dateStrFormatted}`;
   };
 
   useGSAP(() => {
@@ -150,15 +162,15 @@ export default function Timeline() {
             {/* Phase 1 */}
             <div className="flex flex-col md:flex-row items-center gap-6 relative timeline-row py-6">
               <div className="md:w-1/2 md:text-right w-full timeline-left opacity-0">
-                <h3 className="text-lg font-bold text-white font-sans">Hình thành Ý tưởng</h3>
+                <h3 className="text-lg font-bold text-white font-sans">Mở đăng ký</h3>
                 <p className="font-mono text-xs text-primary-container font-semibold mt-1">
-                  {formatEventDateRange(activeEvent?.registrationOpen, activeEvent?.registrationClose || activeEvent?.contestStart, "Từ 01 đến 10 tháng 3")}
+                  {formatEventDateRange(activeEvent?.registrationOpen, activeEvent?.registrationClose || activeEvent?.contestStart)}
                 </p>
               </div>
               <div className="timeline-node z-10 w-6 h-6 rounded-full bg-primary-container glow-cyan ring-4 ring-[#0a141d] border-4 border-surface shadow-[0_0_15px_#00f0ff] shrink-0 hidden md:block opacity-0"></div>
               <div className="md:w-1/2 w-full timeline-right opacity-0">
                 <p className="text-on-surface-variant text-sm font-sans leading-relaxed">
-                  Định hình ý tưởng và xác nhận thành viên đội thi. Nộp đề án dự án thông qua cổng đăng ký bảo mật.
+                  Các đội thi thực hiện đăng ký tài khoản, liên kết thành viên nhóm và liên kết repository Github chính thức để chuẩn bị nhận nhiệm vụ.
                 </p>
               </div>
             </div>
@@ -167,14 +179,14 @@ export default function Timeline() {
             <div className="flex flex-col md:flex-row items-center gap-6 relative timeline-row py-6">
               <div className="md:w-1/2 md:text-right w-full order-1 md:order-none timeline-left opacity-0">
                 <p className="text-on-surface-variant text-sm font-sans leading-relaxed">
-                  Giai đoạn lập trình chính thức. Phát triển sản phẩm cường độ cao tại phòng máy FPT Campus.
+                  Giai đoạn lập trình cường độ cao. Các đội thực hiện giải quyết yêu cầu dự án, liên tục push commit để AI tự động phân tích và đánh giá chất lượng mã nguồn.
                 </p>
               </div>
               <div className="timeline-node z-10 w-6 h-6 rounded-full bg-primary-container glow-cyan ring-4 ring-[#0a141d] border-4 border-surface shadow-[0_0_15px_#00f0ff] shrink-0 hidden md:block opacity-0"></div>
               <div className="md:w-1/2 w-full order-none timeline-right opacity-0">
-                <h3 className="text-lg font-bold text-white font-sans">Lập trình & Phát triển</h3>
+                <h3 className="text-lg font-bold text-white font-sans">Bắt đầu thi đấu</h3>
                 <p className="font-mono text-xs text-primary-container font-semibold mt-1">
-                  {formatEventDateRange(activeEvent?.contestStart, activeEvent?.contestEnd, "Từ 15 đến 17 tháng 3")}
+                  {formatEventDateRange(activeEvent?.contestStart, activeEvent?.contestEnd)}
                 </p>
               </div>
             </div>
@@ -182,15 +194,15 @@ export default function Timeline() {
             {/* Phase 3 */}
             <div className="flex flex-col md:flex-row items-center gap-6 relative timeline-row py-6">
               <div className="md:w-1/2 md:text-right w-full timeline-left opacity-0">
-                <h3 className="text-lg font-bold text-white font-sans">Thuyết trình & Đánh giá</h3>
+                <h3 className="text-lg font-bold text-white font-sans">Kết thúc và tổng kết</h3>
                 <p className="font-mono text-xs text-primary-container font-semibold mt-1">
-                  {formatSingleDate(activeEvent?.contestEnd, "20 tháng 3")}
+                  {formatSingleDate(activeEvent?.contestEnd)}
                 </p>
               </div>
               <div className="timeline-node z-10 w-6 h-6 rounded-full bg-primary-container glow-cyan ring-4 ring-[#0a141d] border-4 border-surface shadow-[0_0_15px_#00f0ff] shrink-0 hidden md:block opacity-0"></div>
               <div className="md:w-1/2 w-full timeline-right opacity-0">
                 <p className="text-on-surface-variant text-sm font-sans leading-relaxed">
-                  Thuyết trình demo sản phẩm trước Hội đồng Giám khảo. Công bố kết quả chung cuộc và trao giải thưởng.
+                  Dừng cổng nộp bài, đóng repository. Các đội thi chuẩn bị báo cáo dự án trước hội đồng giám khảo và nhận kết quả xếp hạng chung cuộc từ hệ thống.
                 </p>
               </div>
             </div>

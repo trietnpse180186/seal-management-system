@@ -25,39 +25,49 @@ export default function GuestPortal({ user }: GuestPortalProps) {
   const [events, setEvents] = useState<any[]>([]);
   const [loadingEvents, setLoadingEvents] = useState<boolean>(true);
 
-  const activeEvent = events.find((e: any) => e.status === "ongoing") ||
-                      events.find((e: any) => e.status === "registration") ||
-                      events.find((e: any) => e.status === "completed") ||
-                      events[0] || null;
+  const activeEvent = [...events].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] || null;
 
-  const formatEventDateRange = (startDateStr: string | null, endDateStr: string | null, fallback: string) => {
-    if (!startDateStr || !endDateStr) return fallback;
-    const start = new Date(startDateStr);
-    const end = new Date(endDateStr);
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) return fallback;
+  const formatDateString = (dateStr: string | null | undefined) => {
+    if (!dateStr) return "Chưa có thông báo";
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return "Chưa có thông báo";
     
-    const startDay = start.getDate();
-    const startMonth = start.getMonth() + 1;
-    const endDay = end.getDate();
-    const endMonth = end.getMonth() + 1;
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
     
-    if (startMonth === endMonth) {
-      return `${startDay.toString().padStart(2, '0')} - ${endDay.toString().padStart(2, '0')}/${startMonth.toString().padStart(2, '0')}`;
-    } else {
-      return `${startDay.toString().padStart(2, '0')}/${startMonth.toString().padStart(2, '0')} - ${endDay.toString().padStart(2, '0')}/${endMonth.toString().padStart(2, '0')}`;
-    }
+    return `${hours}:${minutes} - ${day}/${month}/${year}`;
   };
 
-  const formatSingleDate = (dateStr: string | null, fallback: string) => {
-    if (!dateStr) return fallback;
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return fallback;
-    return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+  const formatEventDateRange = (startDateStr: string | null | undefined, endDateStr: string | null | undefined) => {
+    if (!startDateStr) return "Chưa có thông báo";
+    const startStr = formatDateString(startDateStr);
+    if (startStr === "Chưa có thông báo") return "Chưa có thông báo";
+
+    if (!endDateStr) {
+      return `Bắt đầu từ ${startStr}`;
+    }
+    
+    const endStr = formatDateString(endDateStr);
+    if (endStr === "Chưa có thông báo") {
+      return `Bắt đầu từ ${startStr}`;
+    }
+
+    return `Từ ${startStr} đến ${endStr}`;
+  };
+
+  const formatSingleDate = (dateStr: string | null | undefined) => {
+    if (!dateStr) return "Chưa có thông báo";
+    const dateStrFormatted = formatDateString(dateStr);
+    if (dateStrFormatted === "Chưa có thông báo") return "Chưa có thông báo";
+    return `Bắt đầu từ ${dateStrFormatted}`;
   };
 
   const getPhaseStatus = (phase: number) => {
     if (!activeEvent) {
-      if (phase === 1) return { label: "TRƯỚC 2 NGÀY", classes: "text-slate-555 border border-slate-800 bg-slate-900/50" };
+      if (phase === 1) return { label: "TRƯỚC 2 NGÀY", classes: "text-slate-500 border border-slate-800 bg-slate-900/50" };
       if (phase === 2) return { label: "ĐANG DIỄN RA", classes: "text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded bg-cyan-950/20" };
       return { label: "CHƯA MỞ", classes: "text-slate-600" };
     }
@@ -426,11 +436,11 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                 <div className="absolute -left-[19px] top-1 w-2.5 h-2.5 rounded-full bg-slate-950 border border-cyan-500"></div>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-1 gap-1">
                   <h3 className="text-xs text-white font-bold uppercase tracking-wider">
-                    Giai đoạn 1: Thành lập đội & Lên ý tưởng
+                    Giai đoạn 1: Mở đăng ký
                   </h3>
                   <div className="flex items-center gap-2">
                     <span className="text-[9px] text-slate-400 font-mono">
-                      {formatEventDateRange(activeEvent?.registrationOpen, activeEvent?.registrationClose || activeEvent?.contestStart, "01/03 - 10/03")}
+                      {formatEventDateRange(activeEvent?.registrationOpen, activeEvent?.registrationClose || activeEvent?.contestStart)}
                     </span>
                     <span className={`text-[9px] ${getPhaseStatus(1).classes}`}>
                       {getPhaseStatus(1).label}
@@ -438,8 +448,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                   </div>
                 </div>
                 <p className="text-[11px] text-slate-400">
-                  Kết nối với các thí sinh khác, thành lập nhóm và phác thảo các
-                  ý tưởng dự án ban đầu.
+                  Các đội thi thực hiện đăng ký tài khoản, liên kết thành viên nhóm và liên kết repository Github chính thức để chuẩn bị nhận nhiệm vụ.
                 </p>
               </div>
 
@@ -450,11 +459,11 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                 </span>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-1 gap-1">
                   <h3 className="text-xs text-cyan-400 font-bold uppercase tracking-wider">
-                    Giai đoạn 2: Phát triển sản phẩm (Coding)
+                    Giai đoạn 2: Bắt đầu thi đấu
                   </h3>
                   <div className="flex items-center gap-2">
                     <span className="text-[9px] text-cyan-400/80 font-mono">
-                      {formatEventDateRange(activeEvent?.contestStart, activeEvent?.contestEnd, "15/03 - 17/03")}
+                      {formatEventDateRange(activeEvent?.contestStart, activeEvent?.contestEnd)}
                     </span>
                     <span className={`text-[9px] ${getPhaseStatus(2).classes}`}>
                       {getPhaseStatus(2).label}
@@ -462,8 +471,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                   </div>
                 </div>
                 <p className="text-[11px] text-slate-300">
-                  Truy cập vào môi trường lập trình. Viết code, đồng bộ commit
-                  và chuẩn bị phiên bản sản phẩm cuối cùng.
+                  Giai đoạn lập trình cường độ cao. Các đội thực hiện giải quyết yêu cầu dự án, liên tục push commit để AI tự động phân tích và đánh giá chất lượng mã nguồn.
                 </p>
               </div>
 
@@ -472,11 +480,11 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                 <div className="absolute -left-[19px] top-1 w-2.5 h-2.5 rounded-full bg-slate-950 border border-slate-700"></div>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-1 gap-1">
                   <h3 className="text-xs text-slate-500 font-bold uppercase tracking-wider">
-                    Giai đoạn 3: Báo cáo & Thuyết trình
+                    Giai đoạn 3: Kết thúc và tổng kết
                   </h3>
                   <div className="flex items-center gap-2">
                     <span className="text-[9px] text-slate-500 font-mono">
-                      {formatSingleDate(activeEvent?.contestEnd, "20/03")}
+                      {formatSingleDate(activeEvent?.contestEnd)}
                     </span>
                     <span className={`text-[9px] ${getPhaseStatus(3).classes}`}>
                       {getPhaseStatus(3).label}
@@ -484,8 +492,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                   </div>
                 </div>
                 <p className="text-[11px] text-slate-500">
-                  Thuyết trình về phương pháp, tính năng sản phẩm và giải pháp
-                  của đội trước ban giám khảo.
+                  Dừng cổng nộp bài, đóng repository. Các đội thi chuẩn bị báo cáo dự án trước hội đồng giám khảo và nhận kết quả xếp hạng chung cuộc từ hệ thống.
                 </p>
               </div>
             </div>

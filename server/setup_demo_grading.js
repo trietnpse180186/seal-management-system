@@ -2,18 +2,18 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 
 // Load models
-require('./models/User');
-require('./models/Event');
-require('./models/Track');
-require('./models/Round');
-require('./models/Team');
-require('./models/TeamMember');
-require('./models/Rubric');
-require('./models/Criterion');
-require('./models/GithubRepository');
-require('./models/Commit');
-require('./models/AiAnalysis');
-require('./models/EventRole');
+require('./features/auth/User');
+require('./features/events/Event');
+require('./features/events/Track');
+require('./features/events/Round');
+require('./features/teams/Team');
+require('./features/teams/TeamMember');
+require('./features/grading/Rubric');
+require('./features/grading/Criterion');
+require('./features/github-ai/GithubRepository');
+require('./features/github-ai/Commit');
+require('./features/github-ai/AiAnalysis');
+require('./features/auth/EventRole');
 
 async function runSetup() {
   console.log('=== KHIÊU KHỞI TẠO EVENT MỚI, 2 ROUNDS, 4 TRACKS, 20 TEAMS, RUBRICS VÀ COMMITS ===');

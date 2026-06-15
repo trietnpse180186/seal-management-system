@@ -2,14 +2,14 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 
 // Require models
-require('./models/User');
-require('./models/Event');
-require('./models/Track');
-require('./models/Round');
-require('./models/EventRole');
-require('./models/Team');
-require('./models/TeamMember');
-require('./models/GithubRepository');
+require('./features/auth/User');
+require('./features/events/Event');
+require('./features/events/Track');
+require('./features/events/Round');
+require('./features/auth/EventRole');
+require('./features/teams/Team');
+require('./features/teams/TeamMember');
+require('./features/github-ai/GithubRepository');
 
 async function createTestData() {
   console.log('=== KHIÊU KHỞI TẠO DỮ LIỆU KIỂM THỬ: ĐỘI CHƯA CÓ TRACK ===');

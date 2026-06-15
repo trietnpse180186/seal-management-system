@@ -7,7 +7,7 @@
 const app = require('../app');
 const debug = require('debug')('server:server');
 const http = require('http');
-const cronService = require('../services/cronService');
+const cronService = require('../features/events/cronService');
 
 /**
  * Get port from environment and store in Express.

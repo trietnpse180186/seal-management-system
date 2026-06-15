@@ -2,11 +2,11 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 
 // Require models
-require('./models/User');
-require('./models/Event');
-require('./models/Track');
-require('./models/Round');
-require('./models/Team');
+require('./features/auth/User');
+require('./features/events/Event');
+require('./features/events/Track');
+require('./features/events/Round');
+require('./features/teams/Team');
 
 async function setupRoundsAndTracks() {
   console.log('=== KHIÊU KHỞI TẠO 2 ROUNDS, MỖI ROUNDS 2 TRACKS, MỖI TRACK 5 TEAMS ===');

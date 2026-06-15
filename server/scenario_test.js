@@ -5,26 +5,26 @@ require("dotenv").config();
 const BASE_URL = "http://localhost:5000/api";
 
 // We require all models so Mongoose registers them
-require("./models/User");
-require("./models/Event");
-require("./models/Track");
-require("./models/Round");
-require("./models/EventRole");
-require("./models/Rubric");
-require("./models/Criterion");
-require("./models/Team");
-require("./models/TeamMember");
-require("./models/GithubRepository");
-require("./models/RepositorySnapshot");
-require("./models/Commit");
-require("./models/CommitFile");
-require("./models/AiAnalysis");
-require("./models/Score");
-require("./models/ScoreDetail");
-require("./models/Ranking");
-require("./models/Prize");
-require("./models/Notification");
-require("./models/AuditLog");
+require("./features/auth/User");
+require("./features/events/Event");
+require("./features/events/Track");
+require("./features/events/Round");
+require("./features/auth/EventRole");
+require("./features/grading/Rubric");
+require("./features/grading/Criterion");
+require("./features/teams/Team");
+require("./features/teams/TeamMember");
+require("./features/github-ai/GithubRepository");
+require("./features/github-ai/RepositorySnapshot");
+require("./features/github-ai/Commit");
+require("./features/github-ai/CommitFile");
+require("./features/github-ai/AiAnalysis");
+require("./features/grading/Score");
+require("./features/grading/ScoreDetail");
+require("./features/grading/Ranking");
+require("./features/events/Prize");
+require("./features/notifications/Notification");
+require("./features/auth/AuditLog");
 
 async function runTests() {
   console.log("=== STARTING SEAL HACKATHON SCENARIO TESTS ===");

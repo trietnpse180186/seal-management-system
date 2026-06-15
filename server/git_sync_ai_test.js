@@ -2,21 +2,21 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 
 // Register models
-require('./models/User');
-require('./models/Event');
-require('./models/Track');
-require('./models/Round');
-require('./models/EventRole');
-require('./models/Rubric');
-require('./models/Criterion');
-require('./models/Team');
-require('./models/TeamMember');
-require('./models/GithubRepository');
-require('./models/Commit');
-require('./models/CommitFile');
-require('./models/AiAnalysis');
+require('./features/auth/User');
+require('./features/events/Event');
+require('./features/events/Track');
+require('./features/events/Round');
+require('./features/auth/EventRole');
+require('./features/grading/Rubric');
+require('./features/grading/Criterion');
+require('./features/teams/Team');
+require('./features/teams/TeamMember');
+require('./features/github-ai/GithubRepository');
+require('./features/github-ai/Commit');
+require('./features/github-ai/CommitFile');
+require('./features/github-ai/AiAnalysis');
 
-const cronService = require('./services/cronService');
+const cronService = require('./features/events/cronService');
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/seal-hackathon';
 

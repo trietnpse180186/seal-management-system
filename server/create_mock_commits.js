@@ -2,13 +2,13 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 
 // Require models
-require('./models/User');
-require('./models/Event');
-require('./models/Track');
-require('./models/Team');
-require('./models/GithubRepository');
-require('./models/Commit');
-require('./models/AiAnalysis');
+require('./features/auth/User');
+require('./features/events/Event');
+require('./features/events/Track');
+require('./features/teams/Team');
+require('./features/github-ai/GithubRepository');
+require('./features/github-ai/Commit');
+require('./features/github-ai/AiAnalysis');
 
 async function createMockCommits() {
   console.log('=== KHIÊU KHỞI TẠO COMMITS GIT VÀ REVIEW AI ĐỂ XEM DEMO ===');

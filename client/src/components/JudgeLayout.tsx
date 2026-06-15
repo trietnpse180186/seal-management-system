@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { 
-  LayoutDashboard, 
-  BookOpen, 
-  Trophy, 
-  LogOut, 
-  Bell,
-  Award
+import {
+  LayoutDashboard,
+  BookOpen,
+  Trophy,
+  LogOut,
+  Bell
 } from 'lucide-react';
 
 interface JudgeLayoutProps {
@@ -19,7 +18,7 @@ interface JudgeLayoutProps {
 export default function JudgeLayout({ user, onLogout }: JudgeLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -112,18 +111,8 @@ export default function JudgeLayout({ user, onLogout }: JudgeLayoutProps) {
     <div className="min-h-screen bg-[#070d1f] text-slate-300 flex font-sans selection:bg-cyan-500/30">
       {/* SideNavBar */}
       <aside className="fixed left-0 top-0 h-full w-[280px] bg-slate-900/40 backdrop-blur-2xl border-r border-white/5 flex flex-col z-20 shadow-2xl">
-        {/* Brand Header */}
-        <div className="p-6 border-b border-white/5 flex flex-col items-center relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-50"></div>
-          <div className="w-16 h-16 bg-cyan-500/10 rounded-full border border-cyan-500/30 flex items-center justify-center text-cyan-400 mb-3 shadow-[0_0_15px_rgba(6,182,212,0.2)]">
-            <Award size={32} />
-          </div>
-          <h2 className="font-extrabold text-white text-lg tracking-wider drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">SEAL Adjudicator</h2>
-          <p className="text-[10px] text-cyan-400 font-semibold uppercase tracking-widest mt-1">Hackathon Edition</p>
-        </div>
-
         {/* User Quick Info */}
-        <div className="px-6 py-4 border-b border-white/5 flex items-center gap-3 bg-slate-900/20">
+        <div className="px-6 py-3 border-b border-white/5 flex items-center gap-3 bg-slate-900/20">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-teal-600 text-white flex items-center justify-center font-bold text-sm shadow-[0_0_10px_rgba(6,182,212,0.4)]">
             {user?.fullName?.charAt(0) || 'J'}
           </div>
@@ -142,11 +131,10 @@ export default function JudgeLayout({ user, onLogout }: JudgeLayoutProps) {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 relative overflow-hidden ${
-                  active
-                    ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 shadow-[inset_0_0_20px_rgba(6,182,212,0.1)]'
-                    : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/30 border border-transparent hover:border-white/5'
-                }`}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 relative overflow-hidden ${active
+                  ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 shadow-[inset_0_0_20px_rgba(6,182,212,0.1)]'
+                  : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/30 border border-transparent hover:border-white/5'
+                  }`}
               >
                 {active && (
                   <div className="absolute left-0 top-0 h-full w-[3px] bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)]"></div>
@@ -178,7 +166,7 @@ export default function JudgeLayout({ user, onLogout }: JudgeLayoutProps) {
         {/* TopAppBar */}
         <header className="h-16 w-full px-8 bg-slate-950/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center z-10 sticky top-0 shadow-lg">
           <div className="flex items-center gap-3">
-            <span className="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-teal-400 text-sm tracking-widest uppercase drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]">
+            <span className="font-extrabold text-cyan-300 text-sm tracking-widest uppercase drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]">
               Hệ thống SEAL Hackathon
             </span>
           </div>
@@ -248,12 +236,7 @@ export default function JudgeLayout({ user, onLogout }: JudgeLayoutProps) {
               )}
             </div>
 
-            <div className="flex items-center gap-3 border-l border-white/10 pl-6">
-              <span className="text-xs font-bold text-slate-300">{user?.fullName}</span>
-              <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-cyan-400 font-bold text-xs shadow-sm">
-                {user?.fullName?.charAt(0)}
-              </div>
-            </div>
+
           </div>
         </header>
 

@@ -39,12 +39,12 @@ export default function JudgeDashboard() {
         if (res.data.event) {
           setActiveEvent(res.data.event);
           setSelectedEventId(res.data.event._id);
-          
+
           if (res.data.currentRound) {
             setActiveRound(res.data.currentRound);
             setSelectedRoundId(res.data.currentRound._id);
           }
-          
+
           if (res.data.assignedTrack) {
             setAssignedTrack(res.data.assignedTrack);
           } else if (res.data.tracks && res.data.tracks.length > 0) {
@@ -267,7 +267,7 @@ export default function JudgeDashboard() {
           </>
         ) : (
           <div className="text-xs text-rose-400 font-semibold font-mono uppercase">
-            ⚠️ Hiện tại không có cuộc thi nào đang diễn ra (Ongoing).
+            Hiện tại không có cuộc thi nào đang diễn ra (Ongoing).
           </div>
         )}
       </div>

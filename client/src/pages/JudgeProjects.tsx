@@ -34,12 +34,12 @@ export default function JudgeProjects() {
         if (res.data.event) {
           setActiveEvent(res.data.event);
           setSelectedEventId(res.data.event._id);
-          
+
           if (res.data.currentRound) {
             setActiveRound(res.data.currentRound);
             setSelectedRoundId(res.data.currentRound._id);
           }
-          
+
           if (res.data.assignedTrack) {
             setAssignedTrack(res.data.assignedTrack);
           } else if (res.data.tracks && res.data.tracks.length > 0) {
@@ -164,7 +164,7 @@ export default function JudgeProjects() {
             </>
           ) : (
             <div className="text-xs text-rose-400 font-semibold font-mono uppercase">
-              ⚠️ Hiện tại không có cuộc thi nào đang diễn ra (Ongoing).
+              Hiện tại không có cuộc thi nào đang diễn ra (Ongoing).
             </div>
           )}
         </div>
@@ -187,31 +187,28 @@ export default function JudgeProjects() {
           <div className="flex bg-slate-900/60 p-0.5 rounded-lg border border-white/5 shrink-0 shadow-inner">
             <button
               onClick={() => setStatusFilter("all")}
-              className={`px-3 py-1 text-[10px] font-bold rounded uppercase transition-all ${
-                statusFilter === "all"
+              className={`px-3 py-1 text-[10px] font-bold rounded uppercase transition-all ${statusFilter === "all"
                   ? "bg-cyan-500 text-white shadow-[0_0_10px_rgba(6,182,212,0.4)]"
                   : "text-slate-500 hover:text-slate-300"
-              }`}
+                }`}
             >
               Tất cả
             </button>
             <button
               onClick={() => setStatusFilter("pending")}
-              className={`px-3 py-1 text-[10px] font-bold rounded uppercase transition-all ${
-                statusFilter === "pending"
+              className={`px-3 py-1 text-[10px] font-bold rounded uppercase transition-all ${statusFilter === "pending"
                   ? "bg-amber-500 text-slate-900 shadow-[0_0_10px_rgba(245,158,11,0.4)]"
                   : "text-slate-500 hover:text-slate-300"
-              }`}
+                }`}
             >
               Chưa chấm
             </button>
             <button
               onClick={() => setStatusFilter("graded")}
-              className={`px-3 py-1 text-[10px] font-bold rounded uppercase transition-all ${
-                statusFilter === "graded"
+              className={`px-3 py-1 text-[10px] font-bold rounded uppercase transition-all ${statusFilter === "graded"
                   ? "bg-emerald-500 text-slate-900 shadow-[0_0_10px_rgba(16,185,129,0.4)]"
                   : "text-slate-500 hover:text-slate-300"
-              }`}
+                }`}
             >
               Đã chấm
             </button>
@@ -293,11 +290,10 @@ export default function JudgeProjects() {
                       <td className="px-6 py-5 whitespace-nowrap text-right">
                         <button
                           onClick={() => navigate(`/judge/score/${team._id}?roundId=${selectedRoundId}`)}
-                          className={`inline-flex items-center gap-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(6,182,212,0.2)] ${
-                            isGraded
+                          className={`inline-flex items-center gap-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(6,182,212,0.2)] ${isGraded
                               ? "bg-slate-800 border border-white/10 text-slate-300 hover:bg-slate-700 hover:text-white"
                               : "bg-cyan-500 hover:bg-cyan-500 text-white hover:shadow-[0_0_15px_rgba(6,182,212,0.5)]"
-                          }`}
+                            }`}
                         >
                           <span>{isGraded ? "Xem & Sửa" : "Bắt đầu chấm"}</span>
                           <ChevronRight size={12} />

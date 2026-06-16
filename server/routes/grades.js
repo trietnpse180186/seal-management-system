@@ -488,6 +488,16 @@ router.post('/lock-round', authenticateToken, async (req, res) => {
       }
     }
 
+    // Create EventLog
+    const EventLog = mongoose.model('EventLog');
+    const newLog = new EventLog({
+      eventId,
+      actorId: req.user._id,
+      action: 'publish_results',
+      details: `Khóa điểm và công bố xếp hạng vòng thi: ${round.name}`
+    });
+    await newLog.save();
+
     res.json({
       message: 'Round scores finalized, locked, and team rankings generated successfully!',
       rankings: rankingsToSave

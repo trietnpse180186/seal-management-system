@@ -212,4 +212,68 @@ router.post('/:id/sync', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * @route   POST /api/github-repositories/:id/kick-all
+ * @desc    Kick all team members and mentors from a repository (remove collaborators)
+ * @access  Private (Coordinator or Admin)
+ */
+router.post('/:id/kick-all', authenticateToken, async (req, res) => {
+  try {
+    const repo = await GithubRepository.findById(req.params.id);
+    if (!repo) return res.status(404).json({ message: 'Không tìm thấy repository.' });
+
+    // Auth check
+    if (!req.user.isSystemAdmin) {
+      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId: repo.eventId, role: 'coordinator', status: 'active' });
+      if (!isCoord) return res.status(403).json({ message: 'Chỉ điều phối viên hoặc quản trị viên mới được quyền thu hồi quyền truy cập.' });
+    }
+
+    // 1. Get all confirmed team members
+    const members = await TeamMember.find({ teamId: repo.teamId }).populate('userId');
+    
+    // 2. Get all mentors of the event
+    const mentors = await EventRole.find({ eventId: repo.eventId, role: 'mentor', status: 'active' }).populate('userId');
+
+    // 3. Extract unique github usernames
+    const usernames = new Set();
+    members.forEach(m => {
+      if (m.userId && m.userId.githubUsername) {
+        usernames.add(m.userId.githubUsername);
+      }
+    });
+    mentors.forEach(m => {
+      if (m.userId && m.userId.githubUsername) {
+        usernames.add(m.userId.githubUsername);
+      }
+    });
+
+    const kickedList = [];
+    // 4. Remove each as collaborator
+    for (const username of usernames) {
+      const success = await githubService.removeCollaborator(repo.repoName, username, repo.orgName);
+      if (success) {
+        kickedList.push(username);
+      }
+    }
+
+    // 5. Create EventLog
+    const EventLog = mongoose.model('EventLog');
+    const newLog = new EventLog({
+      eventId: repo.eventId,
+      actorId: req.user._id,
+      action: 'kick_collaborators',
+      details: `Thu hồi quyền truy cập repository ${repo.repoName} của các thành viên và mentor: ${kickedList.join(', ')}`
+    });
+    await newLog.save();
+
+    res.json({
+      message: 'Đã thu hồi thành công quyền truy cập repository của tất cả thành viên và mentor.',
+      kickedUsers: kickedList
+    });
+  } catch (error) {
+    console.error('Kick all collaborators error:', error.message);
+    res.status(500).json({ message: 'Server error kicking collaborators.' });
+  }
+});
+
 module.exports = router;

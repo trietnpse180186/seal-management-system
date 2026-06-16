@@ -251,6 +251,17 @@ router.post("/rubric/:rubricId", authenticateToken, async (req, res) => {
     });
 
     await criterion.save();
+
+    // Create EventLog
+    const EventLog = mongoose.model('EventLog');
+    const newLog = new EventLog({
+      eventId: rubric.eventId,
+      actorId: req.user._id,
+      action: 'create_criterion',
+      details: `Tạo tiêu chí mới: ${criterion.name} (${criterion.code}, trọng số: ${criterion.weight}%) trong Rubric: ${rubric.name}`
+    });
+    await newLog.save();
+
     res.status(201).json(criterion);
   } catch (error) {
     console.error("Create Criterion Error:", error.message);
@@ -363,6 +374,17 @@ router.put("/:criterionId", authenticateToken, async (req, res) => {
     }
 
     await criterion.save();
+
+    // Create EventLog
+    const EventLog = mongoose.model('EventLog');
+    const newLog = new EventLog({
+      eventId: rubric.eventId,
+      actorId: req.user._id,
+      action: 'update_criterion',
+      details: `Cập nhật tiêu chí: ${criterion.name} (${criterion.code}, trọng số: ${criterion.weight}%) trong Rubric: ${rubric.name}`
+    });
+    await newLog.save();
+
     res.json(criterion);
   } catch (error) {
     console.error("Update Criterion Error:", error.message);
@@ -395,6 +417,17 @@ router.delete("/:criterionId", authenticateToken, async (req, res) => {
     }
 
     await Criterion.deleteOne({ _id: criterion._id });
+
+    // Create EventLog
+    const EventLog = mongoose.model('EventLog');
+    const newLog = new EventLog({
+      eventId: rubric.eventId,
+      actorId: req.user._id,
+      action: 'delete_criterion',
+      details: `Xóa tiêu chí: ${criterion.name} (${criterion.code}) khỏi Rubric: ${rubric.name}`
+    });
+    await newLog.save();
+
     res.json({ message: "Criterion deleted successfully." });
   } catch (error) {
     console.error("Delete Criterion Error:", error.message);

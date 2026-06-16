@@ -251,6 +251,17 @@ router.post('/assign-role', authenticateToken, requireSystemAdmin, async (req, r
     });
 
     await newRole.save();
+
+    // Create EventLog
+    const EventLog = mongoose.model('EventLog');
+    const newLog = new EventLog({
+      eventId,
+      actorId: req.user._id,
+      action: 'assign_role',
+      details: `Gán vai trò ${role} cho người dùng ${userEmail}`
+    });
+    await newLog.save();
+
     res.status(201).json({ message: `Successfully assigned role ${role} to ${userEmail}.` });
 
   } catch (error) {

@@ -90,6 +90,7 @@ interface RoundsTabProps {
 }
 
 export default function RoundsTab({
+  selectedEvent,
   tracks,
   rounds,
   selectedTrack,
@@ -170,6 +171,82 @@ export default function RoundsTab({
   if (false as boolean) {
     console.log(selectedTrack, setSelectedTrack, setRubric, setCriteria);
   }
+
+  const handleExportRubric = async (rubricId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:5000/api/rubrics/${rubricId}/export`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error("Lỗi khi tải file Rubric.");
+      }
+      const data = await response.json();
+      const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
+        JSON.stringify(data, null, 2)
+      )}`;
+      const downloadAnchor = document.createElement("a");
+      downloadAnchor.setAttribute("href", jsonString);
+      downloadAnchor.setAttribute("download", `rubric-${rubricId}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    } catch (err) {
+      console.error("Export Rubric Error:", err);
+      alert("Không thể xuất Rubric. Vui lòng thử lại sau.");
+    }
+  };
+
+  const handleImportRubric = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const rubricData = JSON.parse(event.target?.result as string);
+        if (!rubricData.name || !Array.isArray(rubricData.criteria)) {
+          alert("File JSON không đúng định dạng Rubric (yêu cầu 'name' và danh sách 'criteria').");
+          return;
+        }
+
+        if (!window.confirm(`Bạn có chắc chắn muốn nhập Rubric "${rubricData.name}" vào vòng thi hiện tại không?`)) {
+          return;
+        }
+
+        const token = localStorage.getItem("token");
+        const res = await fetch("http://localhost:5000/api/rubrics/import", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            eventId: selectedEvent._id,
+            roundId: selectedRubricRoundId,
+            rubricData
+          })
+        });
+
+        const resData = await res.json();
+        if (!res.ok) {
+          throw new Error(resData.message || "Lỗi khi nhập Rubric.");
+        }
+
+        alert("Nhập Rubric thành công!");
+        if (resData.rubric) {
+          setRubric(resData.rubric);
+          setCriteria(resData.criteria || []);
+        }
+      } catch (err: any) {
+        console.error("Import Rubric Error:", err);
+        alert(err.message || "Không thể nhập Rubric. Vui lòng kiểm tra lại định dạng file.");
+      }
+    };
+    reader.readAsText(file);
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -549,6 +626,13 @@ export default function RoundsTab({
                         KHÓA RUBRIC
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => handleExportRubric(rubric._id)}
+                      className="bg-slate-800 hover:bg-slate-750 border border-slate-750 text-[9px] font-bold px-2.5 py-1 rounded text-slate-200 cursor-pointer shadow-md hover:text-white transition-all"
+                    >
+                      XUẤT JSON (EXPORT)
+                    </button>
                   </div>
                 </div>
 
@@ -877,31 +961,53 @@ export default function RoundsTab({
               </div>
             )
           ) : (
-            /* Initial Rubric creation form if no rubric exists */
-            <form onSubmit={handleCreateRubric} className="space-y-3 font-mono">
-              <p className="text-xs text-slate-400">
-                Chưa khởi tạo Rubric cho Vòng Đấu này.
-              </p>
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                  Tên Rubric mới
+            <div className="space-y-6">
+              <form onSubmit={handleCreateRubric} className="space-y-3 font-mono">
+                <p className="text-xs text-slate-400">
+                  Chưa khởi tạo Rubric cho Vòng Đấu này.
+                </p>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                    Tên Rubric mới
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Tên Rubric (e.g. Rubric Đánh giá Vòng 1)"
+                    value={rubricName}
+                    onChange={(e) => setRubricName(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-xs bg-slate-900 border border-slate-800 text-slate-200"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full bg-cyan-500 hover:bg-cyan-500 text-white text-xs font-semibold py-2 rounded-lg cursor-pointer"
+                >
+                  Khởi tạo Rubric
+                </button>
+              </form>
+
+              <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-slate-800"></div>
+                <span className="flex-shrink mx-4 text-[9px] text-slate-550 uppercase tracking-widest font-bold font-mono">HOẶC NHẬP TỪ FILE</span>
+                <div className="flex-grow border-t border-slate-800"></div>
+              </div>
+
+              <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-800 space-y-3 font-mono">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Nhập từ file JSON Rubric
                 </label>
                 <input
-                  type="text"
-                  required
-                  placeholder="Tên Rubric (e.g. Rubric Đánh giá Vòng 1)"
-                  value={rubricName}
-                  onChange={(e) => setRubricName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg text-xs bg-slate-900 border border-slate-800 text-slate-200"
+                  type="file"
+                  accept=".json"
+                  onChange={handleImportRubric}
+                  className="w-full text-xs text-slate-450 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 cursor-pointer"
                 />
+                <p className="text-[9px] text-slate-500">
+                  * Tải lên tệp cấu hình Rubric JSON đã xuất trước đó để sao chép toàn bộ tiêu chí & mức điểm.
+                </p>
               </div>
-              <button
-                type="submit"
-                className="w-full bg-cyan-500 hover:bg-cyan-500 text-white text-xs font-semibold py-2 rounded-lg cursor-pointer"
-              >
-                Khởi tạo Rubric
-              </button>
-            </form>
+            </div>
           )
         ) : (
           <p className="text-xs text-slate-500 italic text-center py-4 font-mono">

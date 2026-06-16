@@ -28,6 +28,7 @@ require("./models/Ranking");
 require("./models/Prize");
 require("./models/Notification");
 require("./models/AuditLog");
+require("./models/EventLog");
 require("./models/GradingLevel");
 const app = express();
 

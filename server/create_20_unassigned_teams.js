@@ -2,11 +2,11 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 
 // Require models
-require('./models/User');
-require('./models/Event');
-require('./models/Track');
-require('./models/Team');
-require('./models/TeamMember');
+require('./features/auth/User');
+require('./features/events/Event');
+require('./features/events/Track');
+require('./features/teams/Team');
+require('./features/teams/TeamMember');
 
 async function create20Teams() {
   console.log('=== KHIÊU KHỞI TẠO 20 ĐỘI THI CHƯA PHÂN PHỐI TRACK ===');

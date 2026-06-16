@@ -7,29 +7,37 @@ const logger = require("morgan");
 const cors = require("cors");
 const mongoose = require("mongoose");
 
+// Notification job queue & worker (BullMQ + Redis)
+const { initQueue } = require('./features/notifications/notificationQueue');
+const { startNotificationWorker } = require('./features/notifications/notificationWorker');
+
+// Initialize Redis queue connection at startup
+initQueue();
+
 // Import all models to register their schemas in Mongoose
-require("./models/User");
-require("./models/Event");
-require("./models/Track");
-require("./models/Round");
-require("./models/EventRole");
-require("./models/Rubric");
-require("./models/Criterion");
-require("./models/Team");
-require("./models/TeamMember");
-require("./models/GithubRepository");
-require("./models/RepositorySnapshot");
-require("./models/Commit");
-require("./models/CommitFile");
-require("./models/AiAnalysis");
-require("./models/Score");
-require("./models/ScoreDetail");
-require("./models/Ranking");
-require("./models/Prize");
-require("./models/Notification");
-require("./models/AuditLog");
-require("./models/EventLog");
-require("./models/GradingLevel");
+require("./features/auth/User");
+require("./features/events/Event");
+require("./features/events/Track");
+require("./features/events/Round");
+require("./features/auth/EventRole");
+require("./features/grading/Rubric");
+require("./features/grading/Criterion");
+require("./features/teams/Team");
+require("./features/teams/TeamMember");
+require("./features/github-ai/GithubRepository");
+require("./features/github-ai/RepositorySnapshot");
+require("./features/github-ai/Commit");
+require("./features/github-ai/CommitFile");
+require("./features/github-ai/AiAnalysis");
+require("./features/grading/Score");
+require("./features/grading/ScoreDetail");
+require("./features/grading/Ranking");
+require("./features/events/Prize");
+require("./features/notifications/Notification");
+require("./features/auth/AuditLog");
+require("./features/grading/GradingLevel");
+require("./features/github-ai/Task");
+require("./features/grading/EventLog");
 const app = express();
 
 // Connect to MongoDB
@@ -67,6 +75,9 @@ mongoose
     } catch (err) {
       console.error("Error auto-creating admin account on startup:", err.message);
     }
+
+    // Start notification worker after MongoDB is ready
+    startNotificationWorker();
   })
   .catch((err) => {
     console.error("Failed to connect to MongoDB:", err.message);
@@ -88,17 +99,18 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
 // Routers
-const indexRouter = require('./routes/index');
-const authRouter = require('./routes/auth');
-const eventsRouter = require('./routes/events');
-const teamsRouter = require('./routes/teams');
-const rubricsRouter = require('./routes/rubrics');
-const criteriaRouter = require('./routes/criteria');
-const gradesRouter = require('./routes/grades');
-const analyticsRouter = require('./routes/analytics');
-const notificationsRouter = require('./routes/notifications');
-const githubRepositoriesRouter = require('./routes/githubRepositories');
-const aiAnalysesRouter = require('./routes/aiAnalyses');
+const indexRouter = require('./features/index');
+const authRouter = require('./features/auth/auth');
+const eventsRouter = require('./features/events/events');
+const teamsRouter = require('./features/teams/teams');
+const rubricsRouter = require('./features/grading/rubrics');
+const criteriaRouter = require('./features/grading/criteria');
+const gradesRouter = require('./features/grading/grades');
+const analyticsRouter = require('./features/grading/analytics');
+const notificationsRouter = require('./features/notifications/notifications');
+const githubRepositoriesRouter = require('./features/github-ai/githubRepositories');
+const aiAnalysesRouter = require('./features/github-ai/aiAnalyses');
+const tasksRouter = require('./features/github-ai/tasks');
 
 app.use('/api', indexRouter);
 app.use('/api/auth', authRouter);
@@ -111,6 +123,7 @@ app.use('/api/analytics', analyticsRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/github-repositories', githubRepositoriesRouter);
 app.use('/api/ai-analyses', aiAnalysesRouter);
+app.use('/api/tasks', tasksRouter);
 
 // Catch 404 and forward to error handler
 app.use(function (req, res, next) {

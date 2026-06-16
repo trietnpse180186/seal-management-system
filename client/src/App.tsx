@@ -1,24 +1,29 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
-import Login from './pages/Login';
-import LandingPage from './pages/LandingPage';
-import RegisterTeam from './pages/RegisterTeam';
-import AdminDashboard from './pages/AdminDashboard';
-import TeamArea from './pages/TeamArea';
-import Leaderboard from './pages/Leaderboard';
-import ProtectedRoute from './components/ProtectedRoute';
-import GuestPortal from './pages/GuestPortal';
-import JudgeLayout from './components/JudgeLayout';
-import JudgeDashboard from './pages/JudgeDashboard';
-import JudgeProjects from './pages/JudgeProjects';
-import JudgeScoring from './pages/JudgeScoring';
-import JudgeTeamActivity from './pages/JudgeTeamActivity';
-import JudgeLeaderboard from './pages/JudgeLeaderboard';
-import AdminGradesView from './pages/AdminGradesView';
-import AdminLayout from './components/AdminLayout';
+import Navbar from './features/landing/Navbar';
+import Footer from './features/landing/Footer';
+import Login from './features/auth/Login';
+import LandingPage from './features/landing/LandingPage';
+import RegisterTeam from './features/teams/RegisterTeam';
+import AdminDashboard from './features/admin/AdminDashboard';
+import AdminEvents from './features/admin/AdminEvents';
+import TeamArea from './features/teams/TeamArea';
+import Leaderboard from './features/leaderboard/Leaderboard';
+import ProtectedRoute from './features/auth/ProtectedRoute';
+import GuestPortal from './features/landing/GuestPortal';
+import JudgeLayout from './features/judge/JudgeLayout';
+import JudgeDashboard from './features/judge/JudgeDashboard';
+import JudgeProjects from './features/judge/JudgeProjects';
+import JudgeScoring from './features/judge/JudgeScoring';
+import JudgeTeamActivity from './features/judge/JudgeTeamActivity';
+import JudgeLeaderboard from './features/judge/JudgeLeaderboard';
+import AdminGradesView from './features/admin/AdminGradesView';
+import AdminLayout from './features/admin/AdminLayout';
+import MentorDashboard from './features/mentor/MentorDashboard';
+import MentorTeamDetail from './features/mentor/MentorTeamDetail';
+import { Toaster } from 'sonner';
+import { ConfirmProvider } from './features/shared/ConfirmDialog';
 
 function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
   const location = useLocation();
@@ -37,6 +42,8 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
                 <Navigate to="/admin" />
               ) : roles.some((r: any) => r.role === 'judge') ? (
                 <Navigate to="/judge/dashboard" />
+              ) : roles.some((r: any) => r.role === 'mentor') ? (
+                <Navigate to="/mentor/dashboard" />
               ) : (
                 <Navigate to="/guest-portal" />
               )
@@ -70,8 +77,8 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
               <AdminLayout user={user} onLogout={handleLogout} />
             </ProtectedRoute>
           }>
-            <Route index element={<AdminDashboard defaultTab="admin" />} />
-            <Route path="events" element={<AdminDashboard defaultTab="events" />} />
+            <Route index element={<AdminDashboard />} />
+            <Route path="events" element={<AdminEvents />} />
             <Route path="grades" element={<AdminGradesView />} />
             <Route path="leaderboard" element={<Leaderboard user={user} roles={roles} />} />
           </Route>
@@ -89,6 +96,19 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
             <Route path="activity/:teamId" element={<JudgeTeamActivity />} />
             <Route path="leaderboard" element={<JudgeLeaderboard />} />
           </Route>
+          
+          {/* Mentor Routes */}
+          <Route path="/mentor/dashboard" element={
+            <ProtectedRoute user={user} roles={roles} allowedRoles={['mentor']}>
+              <MentorDashboard user={user} roles={roles} />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/mentor/team/:teamId" element={
+            <ProtectedRoute user={user} roles={roles} allowedRoles={['mentor']}>
+              <MentorTeamDetail />
+            </ProtectedRoute>
+          } />
           
           <Route path="/leaderboard" element={<Leaderboard user={user} roles={roles} />} />
         </Routes>
@@ -325,12 +345,15 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <AppContent 
-        user={user} 
-        roles={roles} 
-        handleLoginSuccess={handleLoginSuccess} 
-        handleLogout={handleLogout} 
-      />
+      <ConfirmProvider>
+        <AppContent 
+          user={user} 
+          roles={roles} 
+          handleLoginSuccess={handleLoginSuccess} 
+          handleLogout={handleLogout} 
+        />
+        <Toaster position="top-right" theme="dark" closeButton richColors />
+      </ConfirmProvider>
     </BrowserRouter>
   );
 }

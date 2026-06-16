@@ -164,6 +164,37 @@ router.get('/judge/active-contest', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @route   GET /api/events/all/logs
+ * @desc    Get all activity logs across all events
+ * @access  Private (Coordinator or Admin)
+ */
+router.get('/all/logs', authenticateToken, async (req, res) => {
+  try {
+    if (!req.user.isSystemAdmin) {
+      const coordinatorRole = await EventRole.findOne({
+        userId: req.user._id,
+        role: 'coordinator',
+        status: 'active'
+      });
+      if (!coordinatorRole) {
+        return res.status(403).json({ message: 'Unauthorized. Only coordinators or system administrators can view event logs.' });
+      }
+    }
+
+    const logs = await EventLog.find({})
+      .populate('actorId', 'fullName email')
+      .populate('eventId', 'name semester year')
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    res.json(logs);
+  } catch (error) {
+    console.error('Fetch All Event Logs Error:', error.message);
+    res.status(500).json({ message: 'Server error retrieving event logs.' });
+  }
+});
+
+/**
  * @route   GET /api/events/:id
  * @desc    Get detailed event info including tracks & rounds
  * @access  Public

@@ -302,8 +302,8 @@ async function syncRepo(repoId) {
           teamId: repo.teamId,
           commitId: latestCommit._id,
           analysisType: 'commit_review',
-          provider: 'Google Gemini',
-          model: 'gemini-3.1-flash-lite',
+          provider: aiResult._provider || 'Google Gemini',
+          model: aiResult._model || 'gemini-3.1-flash-lite',
           result: aiResult,
           status: 'completed',
           completedAt: new Date()
@@ -348,8 +348,8 @@ async function syncRepo(repoId) {
           repositoryId: repo._id,
           teamId: repo.teamId,
           analysisType: 'repository_review', // Maps to team_aggregate
-          provider: 'Google Gemini',
-          model: 'gemini-3.1-flash-lite',
+          provider: aggResult._provider || 'Google Gemini',
+          model: aggResult._model || 'gemini-3.1-flash-lite',
           result: aggResult,
           status: 'completed',
           completedAt: new Date()

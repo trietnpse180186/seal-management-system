@@ -13,6 +13,7 @@ const EventRole = mongoose.model('EventRole');
 
 const emailService = require('../notifications/emailService');
 const githubService = require('../github-ai/githubService');
+const { ensureChatRoomForTeam } = require('../chat/chatRoomService');
 const { authenticateToken } = require('../auth/authMiddleware');
 const { addEmailJob, addInAppJob, isQueueAvailable } = require('../notifications/notificationQueue');
 
@@ -972,6 +973,9 @@ router.put('/:teamId/assign-track', authenticateToken, async (req, res) => {
           console.error(`[ASSIGN TRACK] Error provisioning GitHub repo for team ${team.name}:`, gitErr.message);
         });
     }
+
+    // Also ensure chat room is created if mentor exists
+    await ensureChatRoomForTeam(team);
 
     res.json({
       message: `Đã phân đội ${team.name} vào bảng đấu ${track.name} thành công.`,

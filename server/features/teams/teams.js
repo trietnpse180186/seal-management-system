@@ -272,7 +272,7 @@ router.post('/register', authenticateToken, async (req, res) => {
 router.get('/confirm-invite', async (req, res) => {
   const { token } = req.query;
 
-  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const clientUrl = process.env.CLIENT_URL || 'https://www.seal-hackathon.io.vn';
 
   if (!token) {
     return res.status(400).send(`
@@ -600,7 +600,7 @@ router.get('/confirm-invite', async (req, res) => {
 
   } catch (error) {
     console.error('Invite Confirmation Error:', error.message);
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const clientUrl = process.env.CLIENT_URL || 'https://www.seal-hackathon.io.vn';
     res.status(500).send(`
       <!DOCTYPE html>
       <html class="dark" lang="vi">

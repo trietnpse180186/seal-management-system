@@ -612,7 +612,7 @@ router.post('/github', async (req, res) => {
  */
 router.get('/verify-email', async (req, res) => {
   const { token } = req.query;
-  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const clientUrl = process.env.CLIENT_URL || 'https://www.seal-hackathon.io.vn';
 
   if (!token) {
     return res.status(400).send(`

@@ -318,7 +318,7 @@ export default function JudgeScoring() {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
         
         {/* Left Column: Project Info & Grading Rubric */}
-        <div className="xl:col-span-8 space-y-6">
+        <div className="xl:col-span-6 space-y-6">
           <div className="bg-slate-900/40 backdrop-blur-md p-6 rounded-xl border border-white/10 shadow-lg space-y-6">
             
             {/* Project Details */}
@@ -375,15 +375,15 @@ export default function JudgeScoring() {
               </div>
             )}
 
-            {/* Rubric Criteria Form */}
+            {/* Rubric Criteria List */}
             {rubric ? (
               <form onSubmit={handleSubmitScores} className="space-y-6">
                 <div className="space-y-6">
                   {criteria.map((c: any) => (
                     <div key={c._id} className="bg-slate-800/20 border border-white/5 p-5 rounded-xl space-y-4 hover:border-white/10 transition-colors shadow-inner">
                       
-                      {/* Criterion Header & Score Input */}
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                      {/* Criterion Header */}
+                      <div className="flex flex-col justify-between items-start gap-2">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-bold text-cyan-400 font-mono drop-shadow-[0_0_5px_rgba(6,182,212,0.3)]">[{c.code}]</span>
@@ -391,8 +391,14 @@ export default function JudgeScoring() {
                           </div>
                           <p className="text-[11px] text-slate-400 leading-relaxed font-sans">{c.description || 'Không có mô tả.'}</p>
                         </div>
-                        
-                        <div className="flex items-center gap-2 shrink-0">
+                      </div>
+
+                      {/* Centered Prominent Score Input Box */}
+                      <div className="flex flex-col items-center justify-center p-4 bg-slate-950/40 rounded-xl border border-cyan-500/20 my-3">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-mono">
+                          Điểm Số Đánh Giá
+                        </label>
+                        <div className="flex items-center gap-3">
                           <input
                             type="number"
                             step="0.1"
@@ -403,9 +409,9 @@ export default function JudgeScoring() {
                             value={scores[c._id]?.scoreValue || ''}
                             onChange={e => handleScoreChange(c._id, 'scoreValue', e.target.value)}
                             disabled={isRoundLocked}
-                            className="bg-slate-900 border border-slate-600 rounded-lg text-white text-center text-xs px-2 py-2 w-24 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 focus:outline-none disabled:opacity-50 font-bold shadow-inner placeholder-slate-600"
+                            className="bg-slate-900 border-2 border-cyan-500/50 rounded-xl text-white text-center text-xl px-4 py-2.5 w-32 focus:ring-4 focus:ring-cyan-500/30 focus:border-cyan-400 focus:outline-none disabled:opacity-50 font-black shadow-[0_0_15px_rgba(6,182,212,0.1)] placeholder-slate-700"
                           />
-                          <span className="text-[10px] text-slate-500 font-mono">/ {c.maxScore}đ</span>
+                          <span className="text-sm text-cyan-400 font-bold font-mono">/ {c.maxScore}đ</span>
                         </div>
                       </div>
 
@@ -413,7 +419,7 @@ export default function JudgeScoring() {
                       {c.gradingLevels && c.gradingLevels.length > 0 && (
                         <div className="pt-3 border-t border-white/5 space-y-2">
                           <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest font-mono">Mức điểm hướng dẫn:</p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
                             {c.gradingLevels.map((lvl: any, idx: number) => {
                               const scoreVal = parseFloat(scores[c._id]?.scoreValue);
                               const isMatched = !isNaN(scoreVal) && scoreVal >= lvl.minScore && scoreVal <= lvl.maxScore;
@@ -421,15 +427,15 @@ export default function JudgeScoring() {
                               return (
                                 <div
                                   key={idx}
-                                  className={`p-3 rounded-lg border transition-all duration-300 ${
+                                  className={`p-2.5 rounded-lg border transition-all duration-300 flex flex-col justify-between ${
                                     isMatched
                                       ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
                                       : 'bg-slate-800/30 border-white/5 hover:border-white/10 text-slate-400'
                                   }`}
                                 >
-                                  <div className="flex justify-between items-center text-[10px] font-bold">
-                                    <span className={isMatched ? 'text-cyan-200 drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]' : 'text-slate-300'}>{lvl.label}</span>
-                                    <span className={isMatched ? 'text-cyan-300 font-mono' : 'text-slate-500 font-mono'}>{lvl.minScore} - {lvl.maxScore}đ</span>
+                                  <div className="flex flex-col gap-0.5 text-[9px] font-bold">
+                                    <span className={isMatched ? 'text-cyan-200 drop-shadow-[0_0_5px_rgba(6,182,212,0.5)] text-[10px]' : 'text-slate-300 text-[10px]'}>{lvl.label}</span>
+                                    <span className={isMatched ? 'text-cyan-400 font-mono font-black' : 'text-slate-500 font-mono font-black'}>{lvl.minScore} - {lvl.maxScore}đ</span>
                                   </div>
                                   {lvl.description && (
                                     <p className={`text-[9px] mt-1 leading-relaxed font-sans ${isMatched ? 'text-cyan-200/70' : 'text-slate-500'}`}>{lvl.description}</p>
@@ -496,8 +502,8 @@ export default function JudgeScoring() {
           </div>
         </div>
 
-        {/* Right Column: Commits & AI Analysis Sidebar (xl:col-span-4) */}
-        <div className="xl:col-span-4 space-y-6">
+        {/* Right Column: Commits & AI Analysis Sidebar (xl:col-span-6) */}
+        <div className="xl:col-span-6 space-y-6">
           <div className="bg-slate-900/40 backdrop-blur-md p-5 rounded-xl border border-white/10 shadow-lg flex flex-col h-fit space-y-4">
             
             {/* Sidebar Tabs */}

@@ -1,6 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
+import { io, Socket } from "socket.io-client";
+import { toast } from "sonner";
 import {
   LogOut,
   Award,
@@ -11,6 +13,7 @@ import {
   Bell,
   Compass,
   Settings2,
+  MessageSquare,
 } from "lucide-react";
 
 interface NavbarProps {
@@ -25,6 +28,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -38,8 +42,52 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const playNotificationSound = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const playTone = (freq: number, start: number, duration: number) => {
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, start);
+        gainNode.gain.setValueAtTime(0.08, start);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        osc.start(start);
+        osc.stop(start + duration);
+      };
+      const now = audioCtx.currentTime;
+      playTone(783.99, now, 0.12);
+      playTone(1046.50, now + 0.08, 0.20);
+    } catch (error) {
+      console.warn("AudioContext failed to play sound:", error);
+    }
+  };
+
+  const showDesktopNotification = (notif: any) => {
+    if (
+      "Notification" in window &&
+      Notification.permission === "granted" &&
+      document.hidden
+    ) {
+      try {
+        new Notification(notif.title, {
+          body: notif.body,
+          icon: "/favicon.ico",
+        });
+      } catch (err) {
+        console.warn("Failed to create desktop notification:", err);
+      }
+    }
+  };
+
   useEffect(() => {
     if (user) {
+      if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+
       const fetchNotifications = async () => {
         try {
           const token = localStorage.getItem("token");
@@ -55,15 +103,48 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
         }
       };
       fetchNotifications();
-      // Optional: Polling every 30s
-      const interval = setInterval(fetchNotifications, 30000);
-      return () => clearInterval(interval);
+      // Polling every 15s as fallback
+      const interval = setInterval(fetchNotifications, 15000);
+
+      // Real-time: connect socket to receive instant push notifications
+      const token = localStorage.getItem("token");
+      if (token) {
+        const sock = io("http://localhost:5000", { query: { token } });
+        socketRef.current = sock;
+        sock.on("new_notification", (notif: any) => {
+          setNotifications((prev) => [notif, ...prev]);
+
+          // Suppress alert/toast/sound if the user is already actively viewing this chat room
+          const activeRoomId = (window as any).activeChatRoomId;
+          const notifRoomId = notif.metadata?.roomId;
+          if (
+            activeRoomId &&
+            notifRoomId &&
+            activeRoomId.toString() === notifRoomId.toString()
+          ) {
+            return;
+          }
+
+          playNotificationSound();
+          toast(notif.title, {
+            description: notif.body,
+            duration: 5000,
+          });
+          showDesktopNotification(notif);
+        });
+      }
+
+      return () => {
+        clearInterval(interval);
+        if (socketRef.current) {
+          socketRef.current.disconnect();
+          socketRef.current = null;
+        }
+      };
     }
   }, [user]);
 
-  const unreadCount = notifications.filter(
-    (n) => n.status === "pending",
-  ).length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const markAsRead = async (id: string) => {
     try {
@@ -75,8 +156,8 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
           headers: { Authorization: `Bearer ${token}` },
         },
       );
-      setNotifications(
-        notifications.map((n) => (n._id === id ? { ...n, status: "sent" } : n)),
+      setNotifications(prev =>
+        prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
       );
     } catch (err) {
       console.error("Failed to mark notification as read", err);
@@ -93,7 +174,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
           headers: { Authorization: `Bearer ${token}` },
         },
       );
-      setNotifications(notifications.map((n) => ({ ...n, status: "sent" })));
+      setNotifications(prev => prev.map((n) => ({ ...n, isRead: true })));
     } catch (err) {
       console.error("Failed to mark all as read", err);
     }
@@ -270,7 +351,8 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                       </div>
                       <div className="flex flex-col">
                         {notifications.length === 0 ? (
-                          <div className="p-4 text-center text-xs text-slate-500">
+                          <div className="p-6 text-center text-xs text-slate-500 flex flex-col items-center gap-2">
+                            <Bell size={24} className="text-slate-700" />
                             Chưa có thông báo nào.
                           </div>
                         ) : (
@@ -278,22 +360,39 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                             <div
                               key={notif._id}
                               onClick={() => {
-                                if (notif.status === "pending")
-                                  markAsRead(notif._id);
+                                if (!notif.isRead) markAsRead(notif._id);
                               }}
-                              className={`p-3 border-b border-slate-800/50 cursor-pointer transition-colors ${notif.status === "pending" ? "bg-cyan-950/20 hover:bg-cyan-950/30" : "hover:bg-slate-800/50"}`}
+                              className={`p-3 border-b border-slate-800/50 cursor-pointer transition-colors flex gap-3 items-start ${
+                                !notif.isRead
+                                  ? "bg-cyan-950/20 hover:bg-cyan-950/30"
+                                  : "hover:bg-slate-800/50"
+                              }`}
                             >
-                              <p
-                                className={`text-xs font-semibold ${notif.status === "pending" ? "text-cyan-300" : "text-slate-300"}`}
-                              >
-                                {notif.title}
-                              </p>
-                              <p className="text-xs text-slate-400 mt-1">
-                                {notif.body}
-                              </p>
-                              <p className="text-[10px] text-slate-500 mt-2">
-                                {new Date(notif.createdAt).toLocaleString()}
-                              </p>
+                              <div className={`mt-0.5 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm ${
+                                notif.type === 'chat_message'
+                                  ? 'bg-blue-500/20 text-blue-400'
+                                  : 'bg-cyan-500/20 text-cyan-400'
+                              }`}>
+                                {notif.type === 'chat_message'
+                                  ? <MessageSquare size={14} />
+                                  : <Bell size={14} />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-xs font-semibold truncate ${
+                                  !notif.isRead ? "text-cyan-300" : "text-slate-300"
+                                }`}>
+                                  {notif.title}
+                                </p>
+                                <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">
+                                  {notif.body}
+                                </p>
+                                <p className="text-[10px] text-slate-500 mt-1.5">
+                                  {new Date(notif.createdAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                                </p>
+                              </div>
+                              {!notif.isRead && (
+                                <div className="flex-shrink-0 mt-1.5 w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
+                              )}
                             </div>
                           ))
                         )}

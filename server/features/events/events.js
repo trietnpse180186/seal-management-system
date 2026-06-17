@@ -13,6 +13,7 @@ const GithubRepository = mongoose.model('GithubRepository');
 
 const emailService = require('../notifications/emailService');
 const githubService = require('../github-ai/githubService');
+const { ensureChatRoomForTeam, ensureChatRoomsForMentorTrack } = require('../chat/chatRoomService');
 const { authenticateToken, requireSystemAdmin, requireEventRole } = require('../auth/authMiddleware');
 const { addEmailJob, isQueueAvailable } = require('../notifications/notificationQueue');
 
@@ -638,6 +639,9 @@ router.post('/:eventId/distribute-teams', authenticateToken, async (req, res) =>
         .catch(gitErr => {
           console.error(`[DISTRIBUTION] Error provisioning GitHub repo for team ${team.name}:`, gitErr.message);
         });
+
+      // Also ensure chat room is created if mentor exists
+      await ensureChatRoomForTeam(team);
 
       distributionResult.push({
         teamId: team._id,

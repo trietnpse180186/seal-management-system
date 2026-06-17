@@ -14,6 +14,57 @@ if (!isMock && apiKey) {
 }
 
 /**
+ * Call n8n webhook workflow asynchronously or synchronously.
+ */
+async function callN8nWebhook(payload) {
+  const n8nUrl = process.env.N8N_WEBHOOK_URL;
+  if (!n8nUrl) return null;
+  
+  console.log(`[N8N] Calling n8n webhook: ${n8nUrl} for ${payload.analysisType}...`);
+  try {
+    const response = await fetch(n8nUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`n8n returned status ${response.status}: ${response.statusText}`);
+    }
+    
+    const text = await response.text();
+    let resultJson;
+    try {
+      resultJson = JSON.parse(text);
+    } catch (parseErr) {
+      throw new Error(`Failed to parse n8n response as JSON: ${text.substring(0, 200)}`);
+    }
+    
+    // Normalize response if wrapped in array
+    if (Array.isArray(resultJson)) {
+      resultJson = resultJson[0];
+    }
+    
+    // Extract nested data if n8n returns standard wrappers
+    if (resultJson && resultJson.output) {
+      resultJson = resultJson.output;
+    } else if (resultJson && resultJson.result && typeof resultJson.result === 'object') {
+      resultJson = resultJson.result;
+    } else if (resultJson && resultJson.data && typeof resultJson.data === 'object') {
+      resultJson = resultJson.data;
+    }
+    
+    console.log(`[N8N] Received successful response from n8n.`);
+    return resultJson;
+  } catch (error) {
+    console.error(`[N8N] Webhook call failed:`, error.message);
+    return null;
+  }
+}
+
+/**
  * Analyzes a batch of commits (per-push) using Gemini AI.
  * @param {Object} commit - The representing Commit model object
  * @param {Array<Object>} files - Array of CommitFile objects
@@ -80,6 +131,31 @@ async function analyzeCommit(commit, files) {
 
     IMPORTANT: You MUST write all descriptive fields (especially suggested_questions_for_team, overall_picture.push_summary, overall_picture.current_focus, overall_picture.project_about, assessment.advantages, assessment.disadvantages, assessment.improvement_areas, and suggested_test_cases) entirely in fluent, professional Vietnamese.
   `;
+
+  // Try n8n webhook first if configured
+  const n8nResult = await callN8nWebhook({
+    analysisType: 'commit_review',
+    commit: {
+      _id: commit._id,
+      commitSha: commit.commitSha,
+      message: commit.message,
+      authorName: commit.authorName,
+      authorGithubUsername: commit.authorGithubUsername,
+      committedAt: commit.committedAt
+    },
+    files: files.map(f => ({
+      filename: f.filename,
+      status: f.status,
+      additions: f.additions,
+      deletions: f.deletions,
+      patch: f.patch
+    })),
+    prompt
+  });
+  
+  if (n8nResult) {
+    return n8nResult;
+  }
 
   if (isMock || !ai) {
     console.log(`[GEMINI MOCK] Analyzing commit per-push: ${commit.commitSha.substring(0, 7)}`);
@@ -287,6 +363,26 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
       }
     }
   `;
+
+  // Try n8n webhook first if configured
+  const n8nResult = await callN8nWebhook({
+    analysisType: 'repository_review',
+    teamId,
+    commits: commits.map(c => ({
+      commitSha: c.commitSha,
+      message: c.message,
+      committedAt: c.committedAt
+    })),
+    priorReviews: priorReviews.map(r => ({
+      analysisType: r.analysisType,
+      result: r.result
+    })),
+    prompt
+  });
+  
+  if (n8nResult) {
+    return n8nResult;
+  }
 
   if (isMock || !ai) {
     console.log(`[GEMINI MOCK] Analyzing team aggregate for: ${teamId}`);

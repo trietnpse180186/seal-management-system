@@ -8,6 +8,7 @@ const GithubRepository = mongoose.model('GithubRepository');
 const Team = mongoose.model('Team');
 
 const aiService = require('./aiService');
+const { parseAiResult } = require('./aiService');
 const { authenticateToken } = require('../auth/authMiddleware');
 
 /**
@@ -23,7 +24,12 @@ router.get('/team/:teamId', authenticateToken, async (req, res) => {
       .populate('repositoryId', 'repoName repoUrl')
       .sort({ createdAt: -1 });
       
-    res.json(analyses);
+    const cleanedAnalyses = analyses.map(a => {
+      const obj = a.toObject();
+      obj.result = parseAiResult(obj.result);
+      return obj;
+    });
+    res.json(cleanedAnalyses);
   } catch (error) {
     console.error('Fetch AI analyses error:', error.message);
     res.status(500).json({ message: 'Server error fetching AI analyses.' });
@@ -78,7 +84,9 @@ router.get('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy phân tích AI.' });
     }
     
-    res.json(analysis);
+    const obj = analysis.toObject();
+    obj.result = parseAiResult(obj.result);
+    res.json(obj);
   } catch (error) {
     console.error('Get AI analysis detail error:', error.message);
     res.status(500).json({ message: 'Server error fetching AI analysis details.' });
@@ -156,6 +164,7 @@ router.post('/n8n-callback', async (req, res) => {
   }
 
   try {
+    const parsedResult = parseAiResult(result);
     let aiAnalysis;
     if (analysisId) {
       aiAnalysis = await AiAnalysis.findById(analysisId);
@@ -166,7 +175,7 @@ router.post('/n8n-callback', async (req, res) => {
     }
 
     if (aiAnalysis) {
-      aiAnalysis.result = result;
+      aiAnalysis.result = parsedResult;
       aiAnalysis.status = status || 'completed';
       if (provider) aiAnalysis.provider = provider;
       if (model) aiAnalysis.model = model;
@@ -181,7 +190,7 @@ router.post('/n8n-callback', async (req, res) => {
         analysisType,
         provider: provider || 'n8n-gemini',
         model: model || 'n8n-workflow',
-        result,
+        result: parsedResult,
         status: status || 'completed',
         completedAt: new Date()
       });
@@ -194,7 +203,7 @@ router.post('/n8n-callback', async (req, res) => {
       const Commit = mongoose.model('Commit');
       const commit = await Commit.findById(commitId);
       if (commit) {
-        commit.diffSummary = result.overall_picture?.push_summary || result.summary || '';
+        commit.diffSummary = parsedResult.overall_picture?.push_summary || parsedResult.summary || '';
         await commit.save();
       }
     }

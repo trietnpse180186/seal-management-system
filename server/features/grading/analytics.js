@@ -9,6 +9,7 @@ const AiAnalysis = mongoose.model('AiAnalysis');
 const TeamMember = mongoose.model('TeamMember');
 
 const cronService = require('../events/cronService');
+const { parseAiResult } = require('../github-ai/aiService');
 const { authenticateToken } = require('../auth/authMiddleware');
 
 /**
@@ -37,7 +38,9 @@ router.get('/commit/:commitId/ai-analysis', authenticateToken, async (req, res) 
     if (!analysis) {
       return res.status(404).json({ message: 'AI Analysis not found for this commit yet.' });
     }
-    res.json(analysis);
+    const obj = analysis.toObject();
+    obj.result = parseAiResult(obj.result);
+    res.json(obj);
   } catch (error) {
     console.error('Fetch Commit AI Analysis Error:', error.message);
     res.status(500).json({ message: 'Server error fetching AI analysis.' });

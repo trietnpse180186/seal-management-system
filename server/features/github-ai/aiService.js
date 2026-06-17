@@ -14,6 +14,48 @@ if (!isMock && apiKey) {
 }
 
 /**
+ * Safely parse AI results that might be wrapped in standard raw Gemini or string formats
+ */
+function parseAiResult(result) {
+  if (!result) return result;
+  
+  // 1. If result is a string, try to parse it
+  if (typeof result === 'string') {
+    try {
+      const cleaned = result.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+      return JSON.parse(cleaned);
+    } catch (e) {
+      return result;
+    }
+  }
+
+  // 2. If result has n8n / Gemini raw wrappers
+  let text = null;
+  if (result.content && Array.isArray(result.content.parts) && result.content.parts[0] && result.content.parts[0].text) {
+    text = result.content.parts[0].text;
+  } else if (result.text) {
+    text = result.text;
+  } else if (result.output && typeof result.output === 'string') {
+    text = result.output;
+  }
+
+  if (text) {
+    try {
+      const cleaned = text.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+      const parsed = JSON.parse(cleaned);
+      // Preserve metadata if any
+      if (result._provider) parsed._provider = result._provider;
+      if (result._model) parsed._model = result._model;
+      return parsed;
+    } catch (e) {
+      // If parsing fails, fall through
+    }
+  }
+
+  return result;
+}
+
+/**
  * Call n8n webhook workflow asynchronously or synchronously.
  */
 async function callN8nWebhook(payload) {
@@ -57,7 +99,7 @@ async function callN8nWebhook(payload) {
     }
     
     console.log(`[N8N] Received successful response from n8n.`);
-    return resultJson;
+    return parseAiResult(resultJson);
   } catch (error) {
     console.error(`[N8N] Webhook call failed:`, error.message);
     return null;
@@ -500,7 +542,11 @@ async function generateScoringSuggestion(repositorySnapshot, commits, criteria) 
     "Yếu": 0.30       // 30% of max score
   };
 
-  const hasAgg = latestAggReview && latestAggReview.result && latestAggReview.result.criteria_comments;
+  let cleanResult = null;
+  if (latestAggReview && latestAggReview.result) {
+    cleanResult = parseAiResult(latestAggReview.result);
+  }
+  const hasAgg = cleanResult && cleanResult.criteria_comments;
 
   return criteria.map(c => {
     // Map criteria codes to R1/R2 keys
@@ -524,12 +570,12 @@ async function generateScoringSuggestion(repositorySnapshot, commits, criteria) 
     let comment = "Nhóm thể hiện tiến độ làm việc ổn định, có commit giải quyết tiêu chí này.";
 
     if (hasAgg) {
-      if (latestAggReview.result.criteria_comments[c.code]) {
-        grade = latestAggReview.result.criteria_comments[c.code].grade || "Tốt";
-        comment = latestAggReview.result.criteria_comments[c.code].comment || comment;
-      } else if (latestAggReview.result.criteria_comments[critCode]) {
-        grade = latestAggReview.result.criteria_comments[critCode].grade || "Tốt";
-        comment = latestAggReview.result.criteria_comments[critCode].comment || comment;
+      if (cleanResult.criteria_comments[c.code]) {
+        grade = cleanResult.criteria_comments[c.code].grade || "Tốt";
+        comment = cleanResult.criteria_comments[c.code].comment || comment;
+      } else if (cleanResult.criteria_comments[critCode]) {
+        grade = cleanResult.criteria_comments[critCode].grade || "Tốt";
+        comment = cleanResult.criteria_comments[critCode].comment || comment;
       }
     }
 
@@ -547,6 +593,7 @@ async function generateScoringSuggestion(repositorySnapshot, commits, criteria) 
 module.exports = {
   analyzeCommit,
   analyzeTeamAggregate,
-  generateScoringSuggestion
+  generateScoringSuggestion,
+  parseAiResult
 };
 

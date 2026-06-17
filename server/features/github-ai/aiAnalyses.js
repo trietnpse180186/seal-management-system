@@ -117,8 +117,8 @@ router.post('/team/:teamId/aggregate', authenticateToken, async (req, res) => {
       repositoryId: repo._id,
       teamId: teamId,
       analysisType: 'repository_review', // maps to team_aggregate
-      provider: 'Google Gemini',
-      model: 'gemini-3.1-flash-lite',
+      provider: aggResult._provider || 'Google Gemini',
+      model: aggResult._model || 'gemini-3.1-flash-lite',
       result: aggResult,
       status: 'completed',
       completedAt: new Date()
@@ -149,7 +149,7 @@ router.post('/n8n-callback', async (req, res) => {
     return res.status(401).json({ message: 'Unauthorized callback. Invalid X-API-Key.' });
   }
 
-  const { analysisId, repositoryId, teamId, commitId, analysisType, result, status } = req.body;
+  const { analysisId, repositoryId, teamId, commitId, analysisType, result, status, provider, model } = req.body;
 
   if (!repositoryId || !teamId || !analysisType || !result) {
     return res.status(400).json({ message: 'Missing required fields: repositoryId, teamId, analysisType, result.' });
@@ -168,6 +168,8 @@ router.post('/n8n-callback', async (req, res) => {
     if (aiAnalysis) {
       aiAnalysis.result = result;
       aiAnalysis.status = status || 'completed';
+      if (provider) aiAnalysis.provider = provider;
+      if (model) aiAnalysis.model = model;
       aiAnalysis.completedAt = new Date();
       await aiAnalysis.save();
       console.log(`[N8N CALLBACK] Updated existing AiAnalysis record: ${aiAnalysis._id}`);
@@ -177,8 +179,8 @@ router.post('/n8n-callback', async (req, res) => {
         teamId,
         commitId,
         analysisType,
-        provider: 'n8n-gemini',
-        model: 'n8n-workflow',
+        provider: provider || 'n8n-gemini',
+        model: model || 'n8n-workflow',
         result,
         status: status || 'completed',
         completedAt: new Date()

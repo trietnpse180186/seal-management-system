@@ -154,6 +154,8 @@ async function analyzeCommit(commit, files) {
   });
   
   if (n8nResult) {
+    n8nResult._provider = 'n8n-gemini';
+    n8nResult._model = 'gemini-2.5-flash (via n8n)';
     return n8nResult;
   }
 
@@ -231,7 +233,9 @@ async function analyzeCommit(commit, files) {
         "Tại sao các bạn chọn sử dụng chiến lược chunking cố định thay vì dynamic chunking?",
         "Làm thế nào để hệ thống đảm bảo trích dẫn nguồn (citation) luôn khớp với văn bản gốc?"
       ],
-      suggested_prompt_refinement: "Nên điều chỉnh System Prompt để hạn chế ảo giác của LLM khi trả lời câu hỏi nghiệp vụ hải quan phức tạp."
+      suggested_prompt_refinement: "Nên điều chỉnh System Prompt để hạn chế ảo giác của LLM khi trả lời câu hỏi nghiệp vụ hải quan phức tạp.",
+      _provider: 'Mock Service',
+      _model: 'mock-model'
     };
   }
 
@@ -242,7 +246,10 @@ async function analyzeCommit(commit, files) {
     
     // Parse JSON safely
     const cleanedText = textResponse.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
-    return JSON.parse(cleanedText);
+    const parsed = JSON.parse(cleanedText);
+    parsed._provider = 'Google Gemini';
+    parsed._model = 'gemini-3.1-flash-lite';
+    return parsed;
   } catch (error) {
     console.error('Error generating per-push review with Gemini:', error.message);
     return {
@@ -381,6 +388,8 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
   });
   
   if (n8nResult) {
+    n8nResult._provider = 'n8n-gemini';
+    n8nResult._model = 'gemini-2.5-flash (via n8n)';
     return n8nResult;
   }
 
@@ -439,7 +448,9 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
       overall_picture: {
         historical_synthesis: "Đội thi đã đi từ một khung sườn chatbot đơn giản ban đầu đến một hệ thống RAG hoàn thiện hơn với các file cấu hình và cơ sở dữ liệu vector.",
         evolution_notes: "Tuần 1: Khởi tạo scaffold; Tuần 2: Nạp dữ liệu Vector DB; Tuần 3: Tích hợp agent logic."
-      }
+      },
+      _provider: 'Mock Service',
+      _model: 'mock-model'
     };
   }
 
@@ -448,7 +459,10 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
     const result = await model.generateContent(prompt);
     const textResponse = result.response.text().trim();
     const cleanedText = textResponse.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
-    return JSON.parse(cleanedText);
+    const parsed = JSON.parse(cleanedText);
+    parsed._provider = 'Google Gemini';
+    parsed._model = 'gemini-3.1-flash-lite';
+    return parsed;
   } catch (error) {
     console.error('Error generating aggregate review with Gemini:', error.message);
     const fallbackMap = {};

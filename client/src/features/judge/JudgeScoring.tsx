@@ -64,7 +64,7 @@ export default function JudgeScoring() {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then((res: any) => {
-        const teamData = res.data.team;
+        const teamData = res.data.team || res.data;
         if (teamData) {
           setTeam(teamData);
           const evId = teamData.eventId?._id || teamData.eventId;

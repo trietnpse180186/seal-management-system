@@ -878,10 +878,15 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
 
     const repo = await GithubRepository.findOne({ teamId: team._id });
 
-    res.json({
+    const responseData = {
       ...team.toObject(),
       members,
       repository: repo
+    };
+
+    res.json({
+      ...responseData,
+      team: responseData
     });
   } catch (error) {
     console.error('Get Team By ID Error:', error.message);

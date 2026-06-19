@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Link2, Save, RefreshCw, CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare } from 'lucide-react';
+import { Link2, Save, RefreshCw, CheckCircle, Clock, FileDiff, BookOpen, Users } from 'lucide-react';
 import MentorChat from '../mentor/MentorChat';
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (

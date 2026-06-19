@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import axios from 'axios';
-import { Send, Users, User, Clock, CheckCircle, Trash2, Quote, Forward, MoreHorizontal, X } from 'lucide-react';
+import { Send, Users, User, Quote, Forward, MoreHorizontal, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface MentorChatProps {

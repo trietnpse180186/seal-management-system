@@ -220,10 +220,10 @@ export default function GuestPortal({ user }: GuestPortalProps) {
     const statusObj = getPhaseStatus(phaseNum);
     const label = statusObj.label;
     
-    let headingClass = "";
-    let dateClass = "";
-    let descClass = "";
-    let renderDot = () => <div className="absolute -left-[19px] top-1 w-2.5 h-2.5 rounded-full bg-slate-950 border border-slate-700"></div>;
+    let headingClass: string;
+    let dateClass: string;
+    let descClass: string;
+    let renderDot: () => React.JSX.Element;
 
     if (label === "ĐANG DIỄN RA") {
       headingClass = "text-xs text-cyan-400 text-cyan-glow font-bold uppercase tracking-wider";
@@ -361,8 +361,8 @@ export default function GuestPortal({ user }: GuestPortalProps) {
               const teamCountVal = e.teamCount || 0;
               const percent = Math.min(100, (teamCountVal / maxTeamsVal) * 100);
 
-              let statusLabel = "";
-              let statusColor = "";
+              let statusLabel: string;
+              let statusColor: string;
               switch (e.status) {
                 case "registration":
                   statusLabel = "[MỞ ĐĂNG KÝ]";

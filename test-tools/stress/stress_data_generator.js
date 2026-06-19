@@ -1,7 +1,7 @@
-const mongoose = require('../server/node_modules/mongoose');
+const mongoose = require('../../server/node_modules/mongoose');
 const { Octokit } = require('@octokit/rest');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../server/.env') });
+require('dotenv').config({ path: path.join(__dirname, '../../server/.env') });
 
 const mongoUri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/seal-hackathon';
 const githubToken = process.env.GITHUB_PERSONAL_ACCESS_TOKEN;

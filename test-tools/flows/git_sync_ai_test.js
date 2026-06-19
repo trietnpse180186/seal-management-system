@@ -1,22 +1,22 @@
-require('dotenv').config();
-const mongoose = require('mongoose');
+const path = require('path'); require('dotenv').config({ path: path.join(__dirname, '../../server/.env') });
+const mongoose = require('../../server/node_modules/mongoose');
 
 // Register models
-require('./features/auth/User');
-require('./features/events/Event');
-require('./features/events/Track');
-require('./features/events/Round');
-require('./features/auth/EventRole');
-require('./features/grading/Rubric');
-require('./features/grading/Criterion');
-require('./features/teams/Team');
-require('./features/teams/TeamMember');
-require('./features/github-ai/GithubRepository');
-require('./features/github-ai/Commit');
-require('./features/github-ai/CommitFile');
-require('./features/github-ai/AiAnalysis');
+require('../../server/features/auth/User');
+require('../../server/features/events/Event');
+require('../../server/features/events/Track');
+require('../../server/features/events/Round');
+require('../../server/features/auth/EventRole');
+require('../../server/features/grading/Rubric');
+require('../../server/features/grading/Criterion');
+require('../../server/features/teams/Team');
+require('../../server/features/teams/TeamMember');
+require('../../server/features/github-ai/GithubRepository');
+require('../../server/features/github-ai/Commit');
+require('../../server/features/github-ai/CommitFile');
+require('../../server/features/github-ai/AiAnalysis');
 
-const cronService = require('./features/events/cronService');
+const cronService = require('../../server/features/events/cronService');
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/seal-hackathon';
 

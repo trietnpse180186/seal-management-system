@@ -1,24 +1,24 @@
-const mongoose = require('mongoose');
+const mongoose = require('../../server/node_modules/mongoose');
 const bcrypt = require('bcryptjs');
-require('dotenv').config();
+const path = require('path'); require('dotenv').config({ path: path.join(__dirname, '../../server/.env') });
 
 // Require all models to ensure Mongoose registers them
-require('./features/auth/User');
-require('./features/events/Event');
-require('./features/events/Track');
-require('./features/events/Round');
-require('./features/auth/EventRole');
-require('./features/teams/Team');
-require('./features/teams/TeamMember');
-require('./features/github-ai/GithubRepository');
-require('./features/github-ai/Commit');
-require('./features/github-ai/CommitFile');
-require('./features/github-ai/AiAnalysis');
-require('./features/grading/Rubric');
-require('./features/grading/Criterion');
-require('./features/grading/Score');
-require('./features/grading/ScoreDetail');
-require('./features/grading/Ranking');
+require('../../server/features/auth/User');
+require('../../server/features/events/Event');
+require('../../server/features/events/Track');
+require('../../server/features/events/Round');
+require('../../server/features/auth/EventRole');
+require('../../server/features/teams/Team');
+require('../../server/features/teams/TeamMember');
+require('../../server/features/github-ai/GithubRepository');
+require('../../server/features/github-ai/Commit');
+require('../../server/features/github-ai/CommitFile');
+require('../../server/features/github-ai/AiAnalysis');
+require('../../server/features/grading/Rubric');
+require('../../server/features/grading/Criterion');
+require('../../server/features/grading/Score');
+require('../../server/features/grading/ScoreDetail');
+require('../../server/features/grading/Ranking');
 
 async function setupCompleteMockContest() {
   console.log('=== KHỞI TẠO TOÀN BỘ DỮ LIỆU CUỘC THI MOCK (EVENT -> ROLES -> RUBRICS -> TEAMS -> REPOS -> COMMITS -> SCORES -> RANKINGS) ===');

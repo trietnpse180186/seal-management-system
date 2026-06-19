@@ -1,6 +1,6 @@
-const mongoose = require('../server/node_modules/mongoose');
+const mongoose = require('../../server/node_modules/mongoose');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../server/.env') });
+require('dotenv').config({ path: path.join(__dirname, '../../server/.env') });
 
 // Inject environment variables needed for server imports
 process.env.NODE_ENV = 'development';
@@ -50,30 +50,30 @@ async function main() {
   await mongoose.connect(mongoUri);
   
   console.log('[DEBUG] Mongoose version:', mongoose.version);
-  console.log('[DEBUG] Resolving Event model path:', require.resolve('../server/features/events/Event'));
+  console.log('[DEBUG] Resolving Event model path:', require.resolve('../../server/features/events/Event'));
   
   // Register Mongoose models first (since cronService requires them to be registered)
-  const EventModel = require('../server/features/events/Event');
+  const EventModel = require('../../server/features/events/Event');
   console.log('[DEBUG] Required Event model directly:', !!EventModel);
   console.log('[DEBUG] Is mongoose instance the same as EventModel.base?', mongoose === EventModel.base);
   console.log('[DEBUG] Is mongoose instance the same as EventModel.db.base?', mongoose === EventModel.db?.base);
   console.log('[DEBUG] EventModel modelName:', EventModel.modelName);
   console.log('[DEBUG] Mongoose models after Event require:', mongoose.modelNames());
 
-  require('../server/features/events/Round');
-  require('../server/features/events/Track');
-  require('../server/features/events/Prize');
-  require('../server/features/teams/Team');
-  require('../server/features/teams/TeamMember');
-  require('../server/features/auth/User');
-  require('../server/features/auth/EventRole');
-  require('../server/features/github-ai/GithubRepository');
-  require('../server/features/github-ai/Commit');
-  require('../server/features/github-ai/CommitFile');
-  require('../server/features/github-ai/AiAnalysis');
-  require('../server/features/grading/Rubric');
-  require('../server/features/grading/Criterion');
-  require('../server/features/notifications/Notification');
+  require('../../server/features/events/Round');
+  require('../../server/features/events/Track');
+  require('../../server/features/events/Prize');
+  require('../../server/features/teams/Team');
+  require('../../server/features/teams/TeamMember');
+  require('../../server/features/auth/User');
+  require('../../server/features/auth/EventRole');
+  require('../../server/features/github-ai/GithubRepository');
+  require('../../server/features/github-ai/Commit');
+  require('../../server/features/github-ai/CommitFile');
+  require('../../server/features/github-ai/AiAnalysis');
+  require('../../server/features/grading/Rubric');
+  require('../../server/features/grading/Criterion');
+  require('../../server/features/notifications/Notification');
 
   console.log('[DEBUG] Final registered models:', mongoose.modelNames());
 
@@ -99,7 +99,7 @@ async function main() {
   }
 
   // Import syncRepo function
-  const { syncRepo } = require('../server/features/events/cronService');
+  const { syncRepo } = require('../../server/features/events/cronService');
 
   const startTime = Date.now();
   let successCount = 0;

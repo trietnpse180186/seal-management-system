@@ -1,6 +1,6 @@
 const { Octokit } = require('@octokit/rest');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../server/.env') });
+require('dotenv').config({ path: path.join(__dirname, '../../server/.env') });
 
 const githubToken = process.env.GITHUB_PERSONAL_ACCESS_TOKEN;
 const orgName = 'sealhackathon-2026';

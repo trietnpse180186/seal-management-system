@@ -1,19 +1,19 @@
-const mongoose = require('mongoose');
-require('dotenv').config();
+const mongoose = require('../../server/node_modules/mongoose');
+const path = require('path'); require('dotenv').config({ path: path.join(__dirname, '../../server/.env') });
 
 // Load models
-require('./features/auth/User');
-require('./features/events/Event');
-require('./features/events/Track');
-require('./features/events/Round');
-require('./features/teams/Team');
-require('./features/teams/TeamMember');
-require('./features/grading/Rubric');
-require('./features/grading/Criterion');
-require('./features/github-ai/GithubRepository');
-require('./features/github-ai/Commit');
-require('./features/github-ai/AiAnalysis');
-require('./features/auth/EventRole');
+require('../../server/features/auth/User');
+require('../../server/features/events/Event');
+require('../../server/features/events/Track');
+require('../../server/features/events/Round');
+require('../../server/features/teams/Team');
+require('../../server/features/teams/TeamMember');
+require('../../server/features/grading/Rubric');
+require('../../server/features/grading/Criterion');
+require('../../server/features/github-ai/GithubRepository');
+require('../../server/features/github-ai/Commit');
+require('../../server/features/github-ai/AiAnalysis');
+require('../../server/features/auth/EventRole');
 
 async function runSetup() {
   console.log('=== KHIÊU KHỞI TẠO EVENT MỚI, 2 ROUNDS, 4 TRACKS, 20 TEAMS, RUBRICS VÀ COMMITS ===');

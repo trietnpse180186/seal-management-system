@@ -1,30 +1,30 @@
-const mongoose = require("mongoose");
-require("dotenv").config();
+const mongoose = require('../../server/node_modules/mongoose');
+const path = require('path'); require('dotenv').config({ path: path.join(__dirname, '../../server/.env') });
 
 // MOCK data and config
 const BASE_URL = "http://localhost:5000/api";
 
 // We require all models so Mongoose registers them
-require("./features/auth/User");
-require("./features/events/Event");
-require("./features/events/Track");
-require("./features/events/Round");
-require("./features/auth/EventRole");
-require("./features/grading/Rubric");
-require("./features/grading/Criterion");
-require("./features/teams/Team");
-require("./features/teams/TeamMember");
-require("./features/github-ai/GithubRepository");
-require("./features/github-ai/RepositorySnapshot");
-require("./features/github-ai/Commit");
-require("./features/github-ai/CommitFile");
-require("./features/github-ai/AiAnalysis");
-require("./features/grading/Score");
-require("./features/grading/ScoreDetail");
-require("./features/grading/Ranking");
-require("./features/events/Prize");
-require("./features/notifications/Notification");
-require("./features/auth/AuditLog");
+require('../../server/features/auth/User");
+require('../../server/features/events/Event");
+require('../../server/features/events/Track");
+require('../../server/features/events/Round");
+require('../../server/features/auth/EventRole");
+require('../../server/features/grading/Rubric");
+require('../../server/features/grading/Criterion");
+require('../../server/features/teams/Team");
+require('../../server/features/teams/TeamMember");
+require('../../server/features/github-ai/GithubRepository");
+require('../../server/features/github-ai/RepositorySnapshot");
+require('../../server/features/github-ai/Commit");
+require('../../server/features/github-ai/CommitFile");
+require('../../server/features/github-ai/AiAnalysis");
+require('../../server/features/grading/Score");
+require('../../server/features/grading/ScoreDetail");
+require('../../server/features/grading/Ranking");
+require('../../server/features/events/Prize");
+require('../../server/features/notifications/Notification");
+require('../../server/features/auth/AuditLog");
 
 async function runTests() {
   console.log("=== STARTING SEAL HACKATHON SCENARIO TESTS ===");

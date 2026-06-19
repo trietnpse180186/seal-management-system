@@ -1,19 +1,19 @@
-const mongoose = require('mongoose');
-require('dotenv').config();
+const mongoose = require('../../server/node_modules/mongoose');
+const path = require('path'); require('dotenv').config({ path: path.join(__dirname, '../../server/.env') });
 process.env.EMAIL_SERVICE_MOCK = 'true';
 process.env.GITHUB_SERVICE_MOCK = 'true';
 
 // Require models
-require('./features/auth/User');
-require('./features/events/Event');
-require('./features/events/Track');
-require('./features/events/Round');
-require('./features/auth/EventRole');
-require('./features/teams/Team');
-require('./features/teams/TeamMember');
-require('./features/github-ai/GithubRepository');
+require('../../server/features/auth/User');
+require('../../server/features/events/Event');
+require('../../server/features/events/Track');
+require('../../server/features/events/Round');
+require('../../server/features/auth/EventRole');
+require('../../server/features/teams/Team');
+require('../../server/features/teams/TeamMember');
+require('../../server/features/github-ai/GithubRepository');
 
-const githubService = require('./features/github-ai/githubService');
+const githubService = require('../../server/features/github-ai/githubService');
 
 async function runTest() {
   console.log('=== STARTING ASSIGN-TRACK ENDPOINT TEST ===');

@@ -235,6 +235,37 @@ export default function TeamArea() {
         
         {/* Left Side: Topic Submission & Members info */}
         <div className="lg:col-span-1 space-y-8">
+
+          {/* Exam & Materials from BTC */}
+          <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all">
+            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2 font-mono-tech">
+              <BookOpen size={18} className="text-cyan-400" />
+              <span className="text-cyan-400">[ĐỀ_BÀI_&_TÀI_LIỆU_THI]</span>
+            </h2>
+            {team?.trackId?.attachments && team.trackId.attachments.length > 0 ? (
+              <div className="space-y-3">
+                {team.trackId.attachments.map((file: any, idx: number) => (
+                  <a
+                    key={idx}
+                    href={file.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-3 bg-slate-900/50 p-3 rounded-xl border border-slate-800 hover:border-cyan-500/50 transition-colors"
+                  >
+                    <BookOpen size={16} className="text-cyan-400 shrink-0" />
+                    <div className="truncate">
+                      <p className="text-xs font-bold text-white truncate">{file.fileName || `Tài liệu đính kèm ${idx + 1}`}</p>
+                      <p className="text-[9px] text-slate-500 font-sans">Bấm để mở link Google Drive lấy đề tài</p>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 italic py-2 text-center font-sans">
+                Chưa có đề bài hoặc tài liệu thi nào được đính kèm cho bảng đấu của bạn.
+              </p>
+            )}
+          </div>
           
           {/* Submit Topic and Documents */}
           <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all">

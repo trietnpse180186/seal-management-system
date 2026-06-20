@@ -17,7 +17,7 @@ const Event = mongoose.model('Event');
  */
 async function autoTransitionEvents() {
   const now = new Date();
-  
+
   // 1. Transition 'draft' to 'registration'
   const draftEvents = await Event.find({ status: 'draft', registrationOpen: { $ne: null, $lte: now } });
   for (const event of draftEvents) {
@@ -25,7 +25,7 @@ async function autoTransitionEvents() {
       _id: { $ne: event._id },
       status: { $in: ['registration', 'prepare', 'ongoing'] }
     });
-    
+
     if (!activeEvent) {
       event.status = 'registration';
       await event.save();
@@ -71,7 +71,7 @@ async function autoTransitionEvents() {
  */
 function startCronJobs() {
   console.log('[CRON] Initializing background task schedulers...');
-  
+
   // Schedule to run every 30 minutes: '*/30 * * * *'
   cron.schedule('*/30 * * * *', async () => {
     console.log('[CRON] Running scheduled 30-minute GitHub commit sync...');
@@ -100,14 +100,34 @@ function startCronJobs() {
 async function syncAllRepositories() {
   const activeRepos = await GithubRepository.find({ isArchived: false });
   console.log(`[CRON] Syncing ${activeRepos.length} repository/repositories...`);
-  
+
+  const concurrencyLimit = 3;
+  const executing = [];
+
   for (const repo of activeRepos) {
-    try {
-      await syncRepo(repo._id);
-    } catch (err) {
-      console.error(`[CRON ERROR] Failed syncing repo ID ${repo._id}:`, err.message);
+    const p = (async () => {
+      try {
+        await syncRepo(repo._id);
+      } catch (err) {
+        console.error(`[CRON ERROR] Failed syncing repo ID ${repo._id}:`, err.message);
+      }
+    })();
+
+    executing.push(p);
+
+    const clean = () => {
+      const idx = executing.indexOf(p);
+      if (idx > -1) executing.splice(idx, 1);
+    };
+    p.then(clean, clean);
+
+    if (executing.length >= concurrencyLimit) {
+      await Promise.race(executing);
     }
   }
+
+  await Promise.all(executing);
+  console.log('[CRON] All repositories synced successfully.');
 }
 
 /**
@@ -128,7 +148,7 @@ async function syncRepo(repoId) {
   try {
     // Determine the date to pull commits since
     const sinceDate = repo.lastSyncedAt || null;
-    
+
     // Fetch commits from github
     const newCommits = await githubService.fetchCommits(repo.repoName, sinceDate, repo.orgName);
     console.log(`[SYNC] Found ${newCommits.length} new commits since last sync.`);
@@ -150,7 +170,7 @@ async function syncRepo(repoId) {
     for (const rawCommit of newCommits) {
       // Check if commit already exists
       let commitRecord = await Commit.findOne({ repositoryId: repo._id, commitSha: rawCommit.sha });
-      
+
       if (!commitRecord) {
         // Create Commit record
         commitRecord = new Commit({
@@ -214,23 +234,23 @@ async function syncRepo(repoId) {
           const cleanFbUrl = process.env.FIREBASE_DATABASE_URL.replace(/\/$/, '');
           const fbUrl = `${cleanFbUrl}/commit/${commitRecord.commitSha}.json`;
           console.log(`[FIREBASE] Syncing raw commit to Firebase: ${fbUrl}`);
-          
+
           fetch(fbUrl, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(firebaseData)
           })
-          .then(res => {
-            if (!res.ok) console.error(`[FIREBASE ERROR] Failed to write to Firebase: Status ${res.status}`);
-            else console.log(`[FIREBASE] Successfully synced commit ${commitRecord.commitSha.substring(0, 7)} to Firebase`);
-          })
-          .catch(err => {
-            console.error('[FIREBASE ERROR] Connection failed:', err.message);
-          });
+            .then(res => {
+              if (!res.ok) console.error(`[FIREBASE ERROR] Failed to write to Firebase: Status ${res.status}`);
+              else console.log(`[FIREBASE] Successfully synced commit ${commitRecord.commitSha.substring(0, 7)} to Firebase`);
+            })
+            .catch(err => {
+              console.error('[FIREBASE ERROR] Connection failed:', err.message);
+            });
         } else {
           console.log(`[FIREBASE MOCK] Syncing raw commit thô to Firebase: /commit/${commitRecord.commitSha}.json`);
         }
-        
+
         syncedCommits.push({ commitRecord, savedFiles });
       }
 
@@ -296,7 +316,7 @@ async function syncRepo(repoId) {
       // Call Gemini for Per-Push batch analysis
       try {
         const aiResult = await aiService.analyzeCommit(batchCommit, batchFiles);
-        
+
         const aiAnalysis = new AiAnalysis({
           repositoryId: repo._id,
           teamId: repo.teamId,
@@ -332,7 +352,7 @@ async function syncRepo(repoId) {
       // After per-push review, automatically trigger Team Aggregate review
       try {
         console.log(`[SYNC] Auto-triggering Team Aggregate Review for team: ${repo.teamId}...`);
-        
+
         // Fetch up to 200 commits for the team
         const allTeamCommits = await Commit.find({ teamId: repo.teamId }).sort({ committedAt: 1 }).limit(200);
         // Fetch up to 40 prior reviews

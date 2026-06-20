@@ -72,6 +72,7 @@ const GithubRepositorySchema = new mongoose.Schema({
   syncStatus: { type: String, default: 'not_synced' },
   lastSyncedAt: Date,
   lastCommitSha: String,
+  isArchived: { type: Boolean, default: false }
 });
 
 const RubricSchema = new mongoose.Schema({
@@ -418,7 +419,8 @@ client.on('message', (topic, message) => {
       repoName: repoName,
       repoUrl: repoUrl,
       githubRepoId: githubRepoId,
-      syncStatus: 'not_synced'
+      syncStatus: 'not_synced',
+      isArchived: false
     });
     await repoRecord.save();
     console.log(`[DB] Linked Repository ${repoName} to database.`);

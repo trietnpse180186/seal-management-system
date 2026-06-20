@@ -25,6 +25,35 @@ const MONTHS = [
 
 const WEEKDAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 
+const validate = (date: Date | null, hr12: number, min: number, ampm: "AM" | "PM"): string => {
+  if (!date) return "";
+  const newDate = new Date(date);
+  let hr24 = hr12 % 12;
+  if (ampm === "PM") {
+    hr24 += 12;
+  }
+  newDate.setHours(hr24, min, 0, 0);
+
+  const now = new Date();
+  now.setSeconds(0, 0);
+  now.setMilliseconds(0);
+  if (newDate < now) {
+    return "Không chọn thời gian quá khứ";
+  }
+  return "";
+};
+
+const getCombinedDate = (date: Date | null, hr12: number, min: number, ampm: "AM" | "PM"): Date | null => {
+  if (!date) return null;
+  const newDate = new Date(date);
+  let hr24 = hr12 % 12;
+  if (ampm === "PM") {
+    hr24 += 12;
+  }
+  newDate.setHours(hr24, min, 0, 0);
+  return newDate;
+};
+
 export default function CustomDateTimePicker({
   value,
   onChange,
@@ -39,9 +68,13 @@ export default function CustomDateTimePicker({
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   // Time state (12-hour format)
-  const [selectedHour, setSelectedHour] = useState(12);
-  const [selectedMinute, setSelectedMinute] = useState(0);
-  const [selectedAmpm, setSelectedAmpm] = useState<"AM" | "PM">("AM");
+  const [selectedHour, setSelectedHour] = useState(() => {
+    const hr = new Date().getHours() % 12;
+    return hr === 0 ? 12 : hr;
+  });
+  const [selectedMinute, setSelectedMinute] = useState(() => new Date().getMinutes());
+  const [selectedAmpm, setSelectedAmpm] = useState<"AM" | "PM">(() => new Date().getHours() >= 12 ? "PM" : "AM");
+  const [timeError, setTimeError] = useState("");
 
   // Parse initial value
   useEffect(() => {
@@ -56,13 +89,26 @@ export default function CustomDateTimePicker({
         setSelectedAmpm(ampmVal);
         
         hr = hr % 12;
-        setSelectedHour(hr === 0 ? 12 : hr);
+        const hr12 = hr === 0 ? 12 : hr;
+        setSelectedHour(hr12);
         setSelectedMinute(parsed.getMinutes());
+        
+        const err = validate(parsed, hr12, parsed.getMinutes(), ampmVal);
+        setTimeError(err);
         return;
       }
+    } else {
+      setSelectedDate(null);
+      const now = new Date();
+      let hr = now.getHours();
+      const ampmVal = hr >= 12 ? "PM" : "AM";
+      setSelectedAmpm(ampmVal);
+      hr = hr % 12;
+      setSelectedHour(hr === 0 ? 12 : hr);
+      setSelectedMinute(now.getMinutes());
+      setTimeError("");
     }
-    setSelectedDate(null);
-  }, [value]);
+  }, [value, isOpen]);
 
   // Click outside listener
   useEffect(() => {
@@ -99,53 +145,28 @@ export default function CustomDateTimePicker({
     return `${m}/${d}/${y} ${hrStr}:${minStr} ${ampmStr}`;
   };
 
-  const updateDateTime = (date: Date | null, hr12: number, min: number, ampm: "AM" | "PM") => {
-    if (!date) {
-      onChange("");
-      return;
-    }
-    
-    const newDate = new Date(date);
-    let hr24 = hr12 % 12;
-    if (ampm === "PM") {
-      hr24 += 12;
-    }
-    newDate.setHours(hr24, min, 0, 0);
-    
-    // Format to YYYY-MM-DDTHH:MM local string format
-    const y = newDate.getFullYear();
-    const m = String(newDate.getMonth() + 1).padStart(2, "0");
-    const d = String(newDate.getDate()).padStart(2, "0");
-    const h = String(newDate.getHours()).padStart(2, "0");
-    const mi = String(newDate.getMinutes()).padStart(2, "0");
-    
-    onChange(`${y}-${m}-${d}T${h}:${mi}`);
-  };
-
   const handleSelectDay = (date: Date) => {
     setSelectedDate(date);
-    updateDateTime(date, selectedHour, selectedMinute, selectedAmpm);
+    const err = validate(date, selectedHour, selectedMinute, selectedAmpm);
+    setTimeError(err);
   };
 
   const handleSelectHour = (hr: number) => {
     setSelectedHour(hr);
-    if (selectedDate) {
-      updateDateTime(selectedDate, hr, selectedMinute, selectedAmpm);
-    }
+    const err = validate(selectedDate, hr, selectedMinute, selectedAmpm);
+    setTimeError(err);
   };
 
   const handleSelectMinute = (min: number) => {
     setSelectedMinute(min);
-    if (selectedDate) {
-      updateDateTime(selectedDate, selectedHour, min, selectedAmpm);
-    }
+    const err = validate(selectedDate, selectedHour, min, selectedAmpm);
+    setTimeError(err);
   };
 
   const handleSelectAmpm = (ampm: "AM" | "PM") => {
     setSelectedAmpm(ampm);
-    if (selectedDate) {
-      updateDateTime(selectedDate, selectedHour, selectedMinute, ampm);
-    }
+    const err = validate(selectedDate, selectedHour, selectedMinute, ampm);
+    setTimeError(err);
   };
 
   const handlePrevMonth = (e: React.MouseEvent) => {
@@ -164,6 +185,7 @@ export default function CustomDateTimePicker({
     e.preventDefault();
     e.stopPropagation();
     setSelectedDate(null);
+    setTimeError("");
     onChange("");
     setIsOpen(false);
   };
@@ -184,7 +206,33 @@ export default function CustomDateTimePicker({
     setSelectedHour(hr12);
     setSelectedMinute(today.getMinutes());
     
-    updateDateTime(today, hr12, today.getMinutes(), ampmVal);
+    const err = validate(today, hr12, today.getMinutes(), ampmVal);
+    setTimeError(err);
+  };
+
+  const handleConfirm = () => {
+    if (!selectedDate) return;
+    const err = validate(selectedDate, selectedHour, selectedMinute, selectedAmpm);
+    if (err) {
+      setTimeError(err);
+      return;
+    }
+    
+    const newDate = new Date(selectedDate);
+    let hr24 = selectedHour % 12;
+    if (selectedAmpm === "PM") {
+      hr24 += 12;
+    }
+    newDate.setHours(hr24, selectedMinute, 0, 0);
+    
+    const y = newDate.getFullYear();
+    const m = String(newDate.getMonth() + 1).padStart(2, "0");
+    const d = String(newDate.getDate()).padStart(2, "0");
+    const h = String(newDate.getHours()).padStart(2, "0");
+    const mi = String(newDate.getMinutes()).padStart(2, "0");
+    
+    onChange(`${y}-${m}-${d}T${h}:${mi}`);
+    setIsOpen(false);
   };
 
   // Calendar calculations
@@ -233,6 +281,14 @@ export default function CustomDateTimePicker({
     );
   };
 
+  const isPastDay = (d: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const checkDate = new Date(d);
+    checkDate.setHours(0, 0, 0, 0);
+    return checkDate < today;
+  };
+
   const hoursArray = Array.from({ length: 12 }, (_, i) => i + 1);
   const minutesArray = Array.from({ length: 60 }, (_, i) => i);
 
@@ -246,7 +302,7 @@ export default function CustomDateTimePicker({
         } ${isOpen ? "border-cyan-500/80 shadow-[0_0_10px_rgba(0,240,255,0.1)]" : ""}`}
       >
         <span className={value ? "text-white font-mono" : "text-slate-500"}>
-          {value ? displayFormat(selectedDate) : placeholder}
+          {value ? displayFormat(getCombinedDate(selectedDate, selectedHour, selectedMinute, selectedAmpm)) : placeholder}
         </span>
         <Calendar size={16} className="text-cyan-300 hover:text-cyan-400 shrink-0 cursor-pointer transition-colors" />
       </div>
@@ -293,20 +349,24 @@ export default function CustomDateTimePicker({
               {cells.map((cell, idx) => {
                 const isSelected = selectedDate ? isSameDay(cell.date, selectedDate) : false;
                 const isToday = isSameDay(cell.date, new Date());
+                const isDisabled = isPastDay(cell.date);
                 
                 return (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => handleSelectDay(cell.date)}
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-mono font-semibold transition-all cursor-pointer ${
-                      !cell.isCurrentMonth
-                        ? "text-slate-600 hover:text-slate-400 hover:bg-slate-900"
+                    disabled={isDisabled}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-mono font-semibold transition-all ${
+                      isDisabled
+                        ? "text-slate-800 opacity-20 cursor-not-allowed"
+                        : !cell.isCurrentMonth
+                        ? "text-slate-600 hover:text-slate-400 hover:bg-slate-900 cursor-pointer"
                         : isSelected
-                        ? "bg-cyan-500 text-slate-950 font-bold shadow-[0_0_12px_rgba(0,240,255,0.4)]"
+                        ? "bg-cyan-500 text-slate-950 font-bold shadow-[0_0_12px_rgba(0,240,255,0.4)] cursor-pointer"
                         : isToday
-                        ? "border border-cyan-500/50 text-cyan-400"
-                        : "text-slate-300 hover:bg-slate-900 hover:text-white"
+                        ? "border border-cyan-500/50 text-cyan-400 cursor-pointer"
+                        : "text-slate-300 hover:bg-slate-900 hover:text-white cursor-pointer"
                     }`}
                   >
                     {cell.day}
@@ -408,11 +468,17 @@ export default function CustomDateTimePicker({
             </div>
 
             {/* OK Button */}
-            <div className="pt-2 border-t border-slate-900 flex justify-end">
+            <div className="pt-2 border-t border-slate-900 flex justify-between items-center">
+              {timeError && (
+                <span className="text-[10px] text-rose-450 font-bold font-mono">
+                  {timeError}
+                </span>
+              )}
               <button
                 type="button"
-                onClick={() => setIsOpen(false)}
-                className="px-4 py-1.5 bg-cyan-950/40 border border-cyan-500/30 text-cyan-400 text-[10px] font-bold uppercase tracking-wider rounded-lg hover:bg-cyan-500/20 hover:border-cyan-500 transition-all cursor-pointer"
+                onClick={handleConfirm}
+                disabled={!!timeError || !selectedDate}
+                className="px-4 py-1.5 bg-cyan-950/40 border border-cyan-500/30 text-cyan-400 text-[10px] font-bold uppercase tracking-wider rounded-lg hover:bg-cyan-500/20 hover:border-cyan-500 transition-all cursor-pointer disabled:opacity-55 disabled:cursor-not-allowed ml-auto"
               >
                 Xác nhận
               </button>

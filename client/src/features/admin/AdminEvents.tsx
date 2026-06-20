@@ -1486,7 +1486,7 @@ export default function AdminEvents({
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
       {/* Page Title */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 relative z-30">
         <div>
           <h1 className="text-3xl font-extrabold text-white">
             <span className="text-cyan-400 text-cyan-glow font-mono-tech">THIẾT LẬP SỰ KIỆN</span>
@@ -1522,7 +1522,7 @@ export default function AdminEvents({
 
       {/* EVENT HEADER PANEL (if selected) */}
       {selectedEvent && (
-        <div className="glass p-6 rounded-2xl relative bg-gradient-to-r from-cyan-950/20 to-slate-900/20 z-[9999]">
+        <div className="glass p-6 rounded-2xl relative bg-gradient-to-r from-cyan-950/20 to-slate-900/20 z-10">
           <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-2xl"></div>
           <div className="flex justify-between items-start flex-col md:flex-row gap-4">
             <div>

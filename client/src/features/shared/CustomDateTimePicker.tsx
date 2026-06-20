@@ -69,7 +69,7 @@ export default function CustomDateTimePicker({
 
   // Time state (12-hour format)
   const [selectedHour, setSelectedHour] = useState(() => {
-    let hr = new Date().getHours() % 12;
+    const hr = new Date().getHours() % 12;
     return hr === 0 ? 12 : hr;
   });
   const [selectedMinute, setSelectedMinute] = useState(() => new Date().getMinutes());

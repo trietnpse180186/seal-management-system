@@ -1482,31 +1482,6 @@ export default function AdminEvents({
     }
   };
 
-  const handleAssignMentorToTeam = async (teamId: string, mentorId: string | null) => {
-    if (!selectedEvent) return;
-    setMessage({ type: "", text: "" });
-    setLoading(true);
-
-    try {
-      await axios.put(
-        `http://localhost:5000/api/teams/${teamId}/assign-mentor`,
-        { mentorId },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setMessage({
-        type: "success",
-        text: mentorId ? "Phân công Mentor thành công!" : "Đã hủy phân công Mentor!",
-      });
-      fetchTeamsList();
-    } catch (err: any) {
-      setMessage({
-        type: "error",
-        text: err.response?.data?.message || "Lỗi khi phân công Mentor.",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
@@ -1972,7 +1947,6 @@ export default function AdminEvents({
             handleAssignRoleForTrack={handleAssignRoleForTrack}
             handleRemoveRole={handleRemoveRole}
             teamsList={teamsList}
-            handleAssignMentorToTeam={handleAssignMentorToTeam}
           />
         ) : (
           <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">

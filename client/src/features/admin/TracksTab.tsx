@@ -42,7 +42,6 @@ interface TracksTabProps {
 
   // Team mentor assignment props
   teamsList?: any[];
-  handleAssignMentorToTeam?: (teamId: string, mentorId: string | null) => Promise<void>;
 }
 
 export default function TracksTab({
@@ -77,7 +76,6 @@ export default function TracksTab({
   handleAssignRoleForTrack,
   handleRemoveRole,
   teamsList = [],
-  handleAssignMentorToTeam,
 }: TracksTabProps) {
   const [judgeEmail, setJudgeEmail] = useState("");
   const [memberRole, setMemberRole] = useState<"judge" | "mentor">("judge");

@@ -12,6 +12,23 @@ router.get('/rooms', authenticateToken, async (req, res) => {
   try {
     const userId = req.user._id;
 
+    // Tự động kiểm tra và đảm bảo các phòng chat của mentor đã được tạo (dynamic self-healing)
+    try {
+      const EventRole = mongoose.model('EventRole');
+      const mentorRoles = await EventRole.find({ userId, role: 'mentor', status: 'active' });
+      if (mentorRoles.length > 0) {
+        const { ensureTrackMentorChatRoom, ensureChatRoomsForMentorTrack } = require('./chatRoomService');
+        for (const role of mentorRoles) {
+          if (role.trackId && role.eventId) {
+            await ensureTrackMentorChatRoom(role.trackId, role.eventId);
+            await ensureChatRoomsForMentorTrack(userId, role.trackId, role.eventId);
+          }
+        }
+      }
+    } catch (syncErr) {
+      console.error('[CHAT] Dynamic room sync error:', syncErr.message);
+    }
+
     // Tìm tất cả các phòng mà user là thành viên (members) hoặc mentor (mentorId)
     // Thực tế members array đã có chứa mentorId, nhưng cẩn thận query cả 2
     const rooms = await ChatRoom.find({
@@ -20,6 +37,7 @@ router.get('/rooms', authenticateToken, async (req, res) => {
         { mentorId: userId }
       ]
     }).populate('teamId', 'name')
+      .populate('trackId', 'name')
       .populate('mentorId', 'fullName email')
       .populate('members', 'fullName role avatar')
       .sort({ updatedAt: -1 });

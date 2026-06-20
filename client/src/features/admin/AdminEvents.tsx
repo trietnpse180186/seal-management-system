@@ -1418,7 +1418,7 @@ export default function AdminEvents({
     }
   };
 
-  const handleAssignRoleForTrack = async (email: string, trackId: string, role: "judge" | "mentor" = "judge") => {
+  const handleAssignRoleForTrack = async (email: string, trackId: string, role: "judge" | "mentor" = "judge", teamId?: string) => {
     if (!selectedEvent) return;
     setMessage({ type: "", text: "" });
     setLoading(true);
@@ -1431,6 +1431,7 @@ export default function AdminEvents({
           eventId: selectedEvent._id,
           trackId: trackId,
           role: role,
+          teamId: teamId || undefined,
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -1439,6 +1440,7 @@ export default function AdminEvents({
         text: `Phân quyền ${role === 'judge' ? 'Giám khảo' : 'Mentor'} thành công!`,
       });
       fetchEventRoles();
+      fetchTeamsList();
     } catch (err: any) {
       setMessage({
         type: "error",
@@ -1474,6 +1476,32 @@ export default function AdminEvents({
       setMessage({
         type: "error",
         text: err.response?.data?.message || "Lỗi khi thu hồi quyền.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAssignMentorToTeam = async (teamId: string, mentorId: string | null) => {
+    if (!selectedEvent) return;
+    setMessage({ type: "", text: "" });
+    setLoading(true);
+
+    try {
+      await axios.put(
+        `http://localhost:5000/api/teams/${teamId}/assign-mentor`,
+        { mentorId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setMessage({
+        type: "success",
+        text: mentorId ? "Phân công Mentor thành công!" : "Đã hủy phân công Mentor!",
+      });
+      fetchTeamsList();
+    } catch (err: any) {
+      setMessage({
+        type: "error",
+        text: err.response?.data?.message || "Lỗi khi phân công Mentor.",
       });
     } finally {
       setLoading(false);
@@ -1943,6 +1971,8 @@ export default function AdminEvents({
             eventRoles={eventRoles}
             handleAssignRoleForTrack={handleAssignRoleForTrack}
             handleRemoveRole={handleRemoveRole}
+            teamsList={teamsList}
+            handleAssignMentorToTeam={handleAssignMentorToTeam}
           />
         ) : (
           <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">

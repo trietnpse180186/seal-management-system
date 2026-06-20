@@ -435,7 +435,7 @@ export default function RoundsTab({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       {/* Column 1: Rounds list & create form */}
-      <div className="lg:col-span-1 glass p-6 rounded-2xl flex flex-col justify-between">
+      <div className="lg:col-span-1 glass p-6 rounded-2xl flex flex-col justify-between relative z-20">
         <div>
           <h3 className="text-md font-bold text-white mb-4 flex items-center gap-1.5 font-mono">
             <ListOrdered size={16} className="text-cyan-400" />
@@ -605,7 +605,7 @@ export default function RoundsTab({
       </div>
 
       {/* Column 2: Rubric & Criteria setup */}
-      <div className="lg:col-span-2 glass p-6 rounded-2xl space-y-4">
+      <div className="lg:col-span-2 glass p-6 rounded-2xl space-y-4 relative z-10">
         <h3 className="text-md font-bold text-white mb-4 flex items-center gap-1.5 font-mono">
           <Award size={18} className="text-cyan-400" />
           <span>Cấu hình Rubric & Tiêu chí</span>

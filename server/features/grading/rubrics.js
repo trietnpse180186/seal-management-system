@@ -3,6 +3,8 @@ const router = express.Router();
 const mongoose = require("mongoose");
 const multer = require("multer");
 const XLSX = require("xlsx-js-style");
+const fs = require("fs");
+const path = require("path");
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -66,6 +68,11 @@ async function getCriteriaSum(rubricId) {
 function styleWorksheet(ws) {
   if (!ws['!ref']) return;
   const range = XLSX.utils.decode_range(ws['!ref']);
+  
+  // Expand range to 100 rows (index 99) and 9 columns (index 8) to allow editing
+  range.e.r = Math.max(range.e.r, 99);
+  range.e.c = Math.max(range.e.c, 8);
+  ws['!ref'] = XLSX.utils.encode_range(range);
   
   for (let r = range.s.r; r <= range.e.r; ++r) {
     for (let c = range.s.c; c <= range.e.c; ++c) {
@@ -820,13 +827,26 @@ router.post('/:rubricId/import-criteria', authenticateToken, upload.single('file
         continue;
       }
 
-      // Build grading levels for this row
-      const gradingLevels = gradingLevelDefs.map((def) => ({
-        label: def.label,
-        minScore: def.minScore,
-        maxScore: def.maxScore,
-        description: String(row[def.colIndex] || '').trim(),
-      }));
+      // Build grading levels for this row and validate none are empty
+      let missingLevel = false;
+      const gradingLevels = [];
+      for (const def of gradingLevelDefs) {
+        const desc = String(row[def.colIndex] || '').trim();
+        if (!desc) {
+          errors.push(`Dòng ${rowNum}: Thiếu mô tả cho mức chấm điểm "${def.label}" (Cột ${String.fromCharCode(65 + def.colIndex)}).`);
+          missingLevel = true;
+        }
+        gradingLevels.push({
+          label: def.label,
+          minScore: def.minScore,
+          maxScore: def.maxScore,
+          description: desc,
+        });
+      }
+
+      if (missingLevel) {
+        continue;
+      }
 
       newWeightSum += weight;
 

@@ -320,12 +320,18 @@ export default function RoundsTab({
           const action = existingCodesMap.has(code) ? "update" : "create";
           fileCodes.add(code);
 
-          const levels = gradingDefs.map((def: any) => ({
-            label: def.label,
-            minScore: def.minScore,
-            maxScore: def.maxScore,
-            description: String(row[def.colIndex] || "").trim(),
-          }));
+          const levels = gradingDefs.map((def: any) => {
+            const desc = String(row[def.colIndex] || "").trim();
+            if (!desc) {
+              issues.push(`Thiếu mô tả mức ${def.label}`);
+            }
+            return {
+              label: def.label,
+              minScore: def.minScore,
+              maxScore: def.maxScore,
+              description: desc,
+            };
+          });
 
           previewed.push({
             rowNum: rowIdx + 1,
@@ -973,140 +979,140 @@ export default function RoundsTab({
                   </div>
                 )}
 
-                {/* Import Preview Modal */}
-                {importPreview && importPreview.length > 0 && (
-                  <div className="bg-slate-950/80 border border-cyan-500/20 rounded-xl p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
-                        <FileSpreadsheet size={14} />
-                        Preview Import ({importPreview.length} tiêu chí)
-                      </p>
-                      <button
-                        onClick={handleCancelImport}
-                        className="text-slate-400 hover:text-white cursor-pointer"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
+                {importPreview && importPreview.length > 0 && (() => {
+                  const hasIssues = importPreview.some((item: any) => item.issues && item.issues.length > 0);
+                  const currentSum = criteria.reduce((s: number, c: any) => s + (c.weight || 0), 0);
+                  const newSum = importPreview
+                    .filter((item: any) => item.action !== "delete" && item.issues.length === 0)
+                    .reduce((s: number, item: any) => s + (Number(item.weight) || 0), 0);
+                  const totalAfter = newSum;
+                  const exceeds = totalAfter > (rubric?.totalWeight || 100);
 
-                    {/* Grading level defs summary */}
-                    {importGradingDefs.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        <span className="text-[9px] text-slate-500 mr-1">Mức chấm:</span>
-                        {importGradingDefs.map((def: any, i: number) => (
-                          <span key={i} className="bg-slate-900 border border-slate-800 text-[8px] px-1.5 py-0.5 rounded text-cyan-300 font-mono">
-                            {def.label} ({def.minScore}-{def.maxScore})
-                          </span>
-                        ))}
+                  return (
+                    <div className="bg-slate-950/80 border border-cyan-500/20 rounded-xl p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
+                          <FileSpreadsheet size={14} />
+                          Preview Import ({importPreview.length} tiêu chí)
+                        </p>
+                        <button
+                          onClick={handleCancelImport}
+                          className="text-slate-400 hover:text-white cursor-pointer"
+                        >
+                          <X size={14} />
+                        </button>
                       </div>
-                    )}
 
-                    {/* Preview table */}
-                    <div className="max-h-[250px] overflow-y-auto">
-                      <table className="w-full text-[10px]">
-                        <thead>
-                          <tr className="text-left text-slate-500 border-b border-slate-800">
-                            <th className="pb-1 pr-2">#</th>
-                            <th className="pb-1 pr-2">Mã</th>
-                            <th className="pb-1 pr-2">Tên tiêu chí</th>
-                            <th className="pb-1 pr-2">Trọng số</th>
-                            <th className="pb-1">Trạng thái</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {importPreview.map((item: any, idx: number) => {
-                            const isDelete = item.action === "delete";
-                            const isCreate = item.action === "create";
-                            return (
-                              <tr
-                                key={idx}
-                                className={`border-b border-slate-900/60 ${
-                                  item.issues.length > 0
-                                    ? "bg-rose-500/5"
-                                    : isDelete
-                                    ? "bg-rose-500/10 opacity-75"
-                                    : isCreate
-                                    ? "bg-emerald-500/5"
-                                    : "bg-amber-500/5"
-                                }`}
-                              >
-                                <td className="py-1.5 pr-2 text-slate-500">{item.rowNum}</td>
-                                <td className={`py-1.5 pr-2 font-bold font-mono ${
-                                  isDelete ? "text-rose-450 line-through" : "text-slate-200"
-                                }`}>{item.code || "—"}</td>
-                                <td className={`py-1.5 pr-2 ${
-                                  isDelete ? "text-rose-450 line-through" : "text-slate-300"
-                                }`}>{item.name || "—"}</td>
-                                <td className={`py-1.5 pr-2 font-mono ${
-                                  isDelete ? "text-rose-450 line-through" : "text-cyan-400"
-                                }`}>{item.weight}%</td>
-                                <td className="py-1.5">
-                                  {item.issues.length > 0 ? (
-                                    <span className="text-[9px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-1.5 py-0.5 rounded">
-                                      {item.issues.join(", ")}
-                                    </span>
-                                  ) : isDelete ? (
-                                    <span className="text-[9px] bg-rose-500/20 text-rose-400 border border-rose-500/30 px-1.5 py-0.5 rounded font-bold">
-                                      XÓA
-                                    </span>
-                                  ) : isCreate ? (
-                                    <span className="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded font-bold">
-                                      THÊM MỚI
-                                    </span>
-                                  ) : (
-                                    <span className="text-[9px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded font-bold">
-                                      CẬP NHẬT
-                                    </span>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Weight summary */}
-                    {(() => {
-                      const currentSum = criteria.reduce((s: number, c: any) => s + (c.weight || 0), 0);
-                      const newSum = importPreview
-                        .filter((item: any) => item.action !== "delete" && item.issues.length === 0)
-                        .reduce((s: number, item: any) => s + (Number(item.weight) || 0), 0);
-                      const totalAfter = newSum;
-                      const exceeds = totalAfter > (rubric?.totalWeight || 100);
-                      return (
-                        <div className={`text-[10px] font-mono p-2 rounded-lg border ${
-                          exceeds
-                            ? "bg-rose-500/10 border-rose-500/20 text-rose-400"
-                            : "bg-slate-900/60 border-slate-800 text-slate-400"
-                        }`}>
-                          Trọng số hiện tại: {currentSum}% | Trọng số sau đồng bộ: <strong className={exceeds ? "text-rose-300" : "text-emerald-400"}>{totalAfter}%</strong> / {rubric?.totalWeight || 100}%
-                          {exceeds && " ⚠️ Vượt quá giới hạn!"}
+                      {/* Grading level defs summary */}
+                      {importGradingDefs.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          <span className="text-[9px] text-slate-500 mr-1">Mức chấm:</span>
+                          {importGradingDefs.map((def: any, i: number) => (
+                            <span key={i} className="bg-slate-900 border border-slate-800 text-[8px] px-1.5 py-0.5 rounded text-cyan-300 font-mono">
+                              {def.label} ({def.minScore}-{def.maxScore})
+                            </span>
+                          ))}
                         </div>
-                      );
-                    })()}
+                      )}
 
-                    {/* Action buttons */}
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={handleConfirmImport}
-                        disabled={importLoading}
-                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded-lg cursor-pointer flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
-                      >
-                        <CheckCircle size={12} />
-                        {importLoading ? "Đang import..." : "Xác nhận Import"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleCancelImport}
-                        className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs py-2 px-4 rounded-lg cursor-pointer transition-all"
-                      >
-                        Hủy
-                      </button>
+                      {/* Preview table */}
+                      <div className="max-h-[250px] overflow-y-auto">
+                        <table className="w-full text-[10px]">
+                          <thead>
+                            <tr className="text-left text-slate-500 border-b border-slate-800">
+                              <th className="pb-1 pr-2">#</th>
+                              <th className="pb-1 pr-2">Mã</th>
+                              <th className="pb-1 pr-2">Tên tiêu chí</th>
+                              <th className="pb-1 pr-2">Trọng số</th>
+                              <th className="pb-1">Trạng thái</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {importPreview.map((item: any, idx: number) => {
+                              const isDelete = item.action === "delete";
+                              const isCreate = item.action === "create";
+                              return (
+                                <tr
+                                  key={idx}
+                                  className={`border-b border-slate-900/60 ${
+                                    item.issues.length > 0
+                                      ? "bg-rose-500/5"
+                                      : isDelete
+                                      ? "bg-rose-500/10 opacity-75"
+                                      : isCreate
+                                      ? "bg-emerald-500/5"
+                                      : "bg-amber-500/5"
+                                  }`}
+                                >
+                                  <td className="py-1.5 pr-2 text-slate-500">{item.rowNum}</td>
+                                  <td className={`py-1.5 pr-2 font-bold font-mono ${
+                                    isDelete ? "text-rose-450 line-through" : "text-slate-200"
+                                  }`}>{item.code || "—"}</td>
+                                  <td className={`py-1.5 pr-2 ${
+                                    isDelete ? "text-rose-450 line-through" : "text-slate-300"
+                                  }`}>{item.name || "—"}</td>
+                                  <td className={`py-1.5 pr-2 font-mono ${
+                                    isDelete ? "text-rose-450 line-through" : "text-cyan-400"
+                                  }`}>{item.weight}%</td>
+                                  <td className="py-1.5">
+                                    {item.issues.length > 0 ? (
+                                      <span className="text-[9px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-1.5 py-0.5 rounded">
+                                        {item.issues.join(", ")}
+                                      </span>
+                                    ) : isDelete ? (
+                                      <span className="text-[9px] bg-rose-500/20 text-rose-400 border border-rose-500/30 px-1.5 py-0.5 rounded font-bold">
+                                        XÓA
+                                      </span>
+                                    ) : isCreate ? (
+                                      <span className="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded font-bold">
+                                        THÊM MỚI
+                                      </span>
+                                    ) : (
+                                      <span className="text-[9px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded font-bold">
+                                        CẬP NHẬT
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Weight summary */}
+                      <div className={`text-[10px] font-mono p-2 rounded-lg border ${
+                        exceeds
+                          ? "bg-rose-500/10 border-rose-500/20 text-rose-450"
+                          : "bg-slate-900/60 border-slate-800 text-slate-400"
+                      }`}>
+                        Trọng số hiện tại: {currentSum}% | Trọng số sau đồng bộ: <strong className={exceeds ? "text-rose-300" : "text-emerald-400"}>{totalAfter}%</strong> / {rubric?.totalWeight || 100}%
+                        {exceeds && " ⚠️ Vượt quá giới hạn!"}
+                        {hasIssues && " ⚠️ Có lỗi trong dữ liệu!"}
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleConfirmImport}
+                          disabled={importLoading || exceeds || hasIssues}
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded-lg cursor-pointer flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <CheckCircle size={12} />
+                          {importLoading ? "Đang import..." : "Xác nhận Import"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelImport}
+                          className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs py-2 px-4 rounded-lg cursor-pointer transition-all"
+                        >
+                          Hủy
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Import Result */}
                 {importResult && (

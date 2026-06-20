@@ -150,12 +150,21 @@ async function main() {
   await event.save();
   console.log(`[SEEDER] Created Event ID: ${event._id}`);
 
-  // Create Track
-  const track = new Track({
-    eventId: event._id,
-    name: 'AI & Machine Learning'
-  });
-  await track.save();
+  // Create 3 Tracks
+  const tracks = [];
+  const trackNames = [
+    'Bảng A - AI & Machine Learning',
+    'Bảng B - Web App Development',
+    'Bảng C - IoT & Smart Devices'
+  ];
+  for (const name of trackNames) {
+    const t = new Track({
+      eventId: event._id,
+      name
+    });
+    await t.save();
+    tracks.push(t);
+  }
 
   // Create Round
   const round = new Round({
@@ -176,18 +185,50 @@ async function main() {
 
   // Create Criteria
   const criteria = [
-    { code: 'CODE', name: 'Chất lượng Mã nguồn', maxScore: 50, weight: 0.5, order: 1 },
-    { code: 'AI', name: 'Độ chín RAG & Trí tuệ AI', maxScore: 30, weight: 0.3, order: 2 },
-    { code: 'TEAM', name: 'Phối hợp Đội ngũ', maxScore: 20, weight: 0.2, order: 3 }
+    {
+      code: 'CODE',
+      name: 'Chất lượng Mã nguồn',
+      maxScore: 10,
+      weight: 50,
+      description: 'Chất lượng mã nguồn, cấu trúc thư mục, Clean Code và tối ưu hiệu năng.',
+      order: 1
+    },
+    {
+      code: 'AI',
+      name: 'Độ chín AI / Giải pháp nghiệp vụ',
+      maxScore: 10,
+      weight: 30,
+      description: 'Mức độ chín của giải pháp AI, ứng dụng RAG, Agentic flow hoặc logic xử lý nghiệp vụ.',
+      order: 2
+    },
+    {
+      code: 'TEAM',
+      name: 'Phối hợp Đội ngũ',
+      maxScore: 10,
+      weight: 20,
+      description: 'Tần suất đóng góp Git, phân chia công việc đều giữa các thành viên và tương tác nhóm.',
+      order: 3
+    }
   ];
+
+  const defaultGradingLevels = [
+    { label: 'Xuất sắc', minScore: 9.0, maxScore: 10.0, description: 'Đạt yêu cầu tối đa và vượt mong đợi.' },
+    { label: 'Tốt', minScore: 8.0, maxScore: 8.9, description: 'Hoàn thành tốt toàn bộ các tiêu chí.' },
+    { label: 'Khá', minScore: 6.5, maxScore: 7.9, description: 'Đáp ứng đầy đủ các yêu cầu cơ bản.' },
+    { label: 'Trung bình', minScore: 5.0, maxScore: 6.4, description: 'Chỉ hoàn thành một phần yêu cầu.' },
+    { label: 'Yếu', minScore: 0.0, maxScore: 4.9, description: 'Không đạt yêu cầu tối thiểu.' }
+  ];
+
   for (const c of criteria) {
     const crit = new Criterion({
       rubricId: rubric._id,
       code: c.code,
       name: c.name,
+      description: c.description,
       maxScore: c.maxScore,
       weight: c.weight,
-      order: c.order
+      order: c.order,
+      gradingLevels: defaultGradingLevels
     });
     await crit.save();
   }
@@ -195,62 +236,78 @@ async function main() {
   const numTeams = parseInt(process.argv[2], 10) || parseInt(process.env.NUM_TEAMS, 10) || 30;
   console.log(`[SEEDER] Generating ${numTeams} Teams, Git Repositories and Commits...`);
 
-  // Code templates for commits
   const filesMap = {
-    basic: {
-      'src/index.js': `const express = require('express');
-const app = express();
-app.use(express.json());
-app.post('/query', (req, res) => {
-  res.json({ reply: 'Basic RAG response' });
-});
-app.listen(3000, () => console.log('Server running'));`,
-      'src/rag_pipeline.js': `const { MongoClient } = require('mongodb');
-// Simple keyword matching search
-async function searchDocuments(query) {
-  console.log('Searching MongoDB for query:', query);
-  return [{ content: 'Mock RAG Document content' }];
-}`
-    },
-    advanced: {
-      'src/index.js': `const express = require('express');
-const app = express();
-app.use(express.json());
-app.post('/query', (req, res) => {
-  res.json({ reply: 'Advanced RAG response' });
-});
-app.listen(3000, () => console.log('Server running'));`,
-      'src/rag_pipeline.js': `const { ChromaClient } = require('chromadb');
-const client = new ChromaClient();
-// Advanced semantic search with hybrid rerank
-async function searchVectorDB(query) {
-  const collection = await client.getCollection({ name: "kb" });
-  const results = await collection.query({ queryTexts: [query], nResults: 5 });
-  // Rerank results
-  return results.documents[0].map(doc => ({ content: doc, score: 0.9 }));
-}`
-    },
-    agentic: {
-      'src/index.js': `const express = require('express');
-const app = express();
-app.use(express.json());
-app.post('/chat', (req, res) => {
-  res.json({ reply: 'Agentic RAG decision' });
-});
-app.listen(3000, () => console.log('Server running'));`,
+    ai_ml: {
       'src/agent.js': `const { ChatGoogleGenerativeAI } = require('@langchain/google-genai');
 // Agentic routing logic
 async function runAgent(userInput) {
-  const model = new ChatGoogleGenerativeAI({ modelName: "gemini-1.5-pro" });
+  const model = new ChatGoogleGenerativeAI({ modelName: "gemini-2.5-flash" });
   if (userInput.includes('search')) {
     return await callSearchTool(userInput);
   }
   return await model.invoke(userInput);
+}`,
+      'src/model.py': `import torch
+import torch.nn as nn
+# Simple CNN model for AI & ML track
+class SimpleCNN(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv = nn.Conv2d(3, 16, 3)
+        self.fc = nn.Linear(16*26*26, 2)
+    def forward(self, x):
+        return self.fc(self.conv(x).view(x.size(0), -1))`
+    },
+    web_app: {
+      'src/server.js': `const express = require('express');
+const app = express();
+app.use(express.json());
+// Web App routing and logic
+app.post('/api/query', (req, res) => {
+  res.json({ reply: 'Web App RAG response' });
+});
+app.listen(3000, () => console.log('Web Server running on port 3000'));`,
+      'src/App.jsx': `import React from 'react';
+// Cyberpunk themed frontend
+export default function App() {
+  return (
+    <div className="min-h-screen bg-slate-950 text-cyan-400 font-mono p-8">
+      <h1 className="text-4xl text-cyan-glow">Cyberpunk Hackathon Dashboard</h1>
+    </div>
+  );
 }`
+    },
+    iot_smart: {
+      'src/sensor.ino': `// DHT11 temperature & humidity readings
+#include <DHT.h>
+#include <PubSubClient.h>
+#define DHTPIN 2
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+void setup() {
+  Serial.begin(9600);
+  dht.begin();
+}
+void loop() {
+  float temp = dht.readTemperature();
+  float hum = dht.readHumidity();
+  client.publish("sensors/data", String("Temp: " + String(temp) + " Hum: " + String(hum)).c_str());
+  delay(2000);
+}`,
+      'src/gateway.js': `const mqtt = require('mqtt');
+const client = mqtt.connect('mqtt://broker.hivemq.com');
+// Gateway to subscribe and process sensor data
+client.on('connect', () => {
+  console.log('Connected to MQTT Broker');
+  client.subscribe('sensors/data');
+});
+client.on('message', (topic, message) => {
+  console.log('Received IoT Sensor Data:', message.toString());
+});`
     }
   };
 
-  const keys = Object.keys(filesMap);
+  const trackKeys = ['ai_ml', 'web_app', 'iot_smart'];
 
   for (let i = 1; i <= numTeams; i++) {
     const teamNum = String(i).padStart(2, '0');
@@ -260,6 +317,8 @@ async function runAgent(userInput) {
 
     console.log(`\n--------------------------------------------`);
     console.log(`[PROCESS] Processing ${teamName} (${i}/${numTeams})`);
+
+    const track = tracks[(i - 1) % tracks.length];
 
     // Create User
     let user = await User.findOne({ email });
@@ -320,9 +379,8 @@ async function runAgent(userInput) {
         // Wait 1.5s for GitHub initialization
         await sleep(1500);
       }
-
-      // Determine RAG Level to push
-      const ragType = keys[(i - 1) % keys.length]; // basic, advanced, agentic
+      // Determine project template to push
+      const ragType = trackKeys[(i - 1) % trackKeys.length];
       const templates = filesMap[ragType];
 
       console.log(`[GITHUB] Pushing ${ragType} RAG files to ${repoName} (creating commits)...`);

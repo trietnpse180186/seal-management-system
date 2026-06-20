@@ -28,6 +28,7 @@ async function runTest() {
   // Clear previous test records
   console.log('Cleaning up old test data...');
   await mongoose.model('Event').deleteMany({ name: 'TEST_SYNC_EVENT' });
+  await mongoose.model('Round').deleteMany({ name: 'TEST_ROUND' });
   await mongoose.model('Track').deleteMany({ name: 'TEST_SYNC_TRACK' });
   await mongoose.model('User').deleteMany({ email: 'testleader@example.com' });
   await mongoose.model('Team').deleteMany({ name: 'TEST_SYNC_TEAM' });
@@ -48,9 +49,20 @@ async function runTest() {
     await event.save();
     console.log('Created mock Event:', event._id);
 
+    // 1.5 Create Mock Round
+    const round = new (mongoose.model('Round'))({
+      eventId: event._id,
+      name: 'TEST_ROUND',
+      order: 1,
+      status: 'active'
+    });
+    await round.save();
+    console.log('Created mock Round:', round._id);
+
     // 2. Create Mock Track
     const track = new (mongoose.model('Track'))({
       eventId: event._id,
+      roundId: round._id,
       name: 'TEST_SYNC_TRACK',
       maxTeams: 10
     });

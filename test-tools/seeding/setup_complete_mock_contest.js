@@ -228,6 +228,14 @@ async function setupCompleteMockContest() {
   });
   await rubric.save();
 
+  const defaultGradingLevels = [
+    { label: 'Xuất sắc', minScore: 9.0, maxScore: 10.0, description: 'Đạt yêu cầu tối đa và vượt mong đợi.' },
+    { label: 'Tốt', minScore: 8.0, maxScore: 8.9, description: 'Hoàn thành tốt toàn bộ các tiêu chí.' },
+    { label: 'Khá', minScore: 6.5, maxScore: 7.9, description: 'Đáp ứng đầy đủ các yêu cầu cơ bản.' },
+    { label: 'Trung bình', minScore: 5.0, maxScore: 6.4, description: 'Chỉ hoàn thành một phần yêu cầu.' },
+    { label: 'Yếu', minScore: 0.0, maxScore: 4.9, description: 'Không đạt yêu cầu tối thiểu.' }
+  ];
+
   const criteria = [
     new Criterion({
       rubricId: rubric._id,
@@ -236,7 +244,8 @@ async function setupCompleteMockContest() {
       description: 'Cấu trúc thư mục sạch sẽ, áp dụng Clean Code, tối ưu hóa.',
       weight: 50,
       maxScore: 10,
-      order: 1
+      order: 1,
+      gradingLevels: defaultGradingLevels
     }),
     new Criterion({
       rubricId: rubric._id,
@@ -245,7 +254,8 @@ async function setupCompleteMockContest() {
       description: 'Tích hợp AI/Gemini hiệu quả, sáng tạo, giải quyết bài toán thực tế.',
       weight: 30,
       maxScore: 10,
-      order: 2
+      order: 2,
+      gradingLevels: defaultGradingLevels
     }),
     new Criterion({
       rubricId: rubric._id,
@@ -254,14 +264,15 @@ async function setupCompleteMockContest() {
       description: 'Tần suất commit đều đặn, phân phối việc tốt qua git history.',
       weight: 20,
       maxScore: 10,
-      order: 3
+      order: 3,
+      gradingLevels: defaultGradingLevels
     })
   ];
 
   for (const c of criteria) {
     await c.save();
   }
-  console.log(`- Đã tạo Rubric & Criteria (${criteria.length} tiêu chí).`);
+  console.log(`- Đã tạo Rubric & Criteria (${criteria.length} tiêu chí) kèm định nghĩa mức chấm.`);
 
   // 5. Tạo các Tài khoản Thí sinh & Đội thi (Teams)
   console.log('\n[5/8] Tạo tài khoản Thí sinh & thành lập 3 Đội thi tương ứng với các bảng...');
@@ -372,33 +383,90 @@ async function setupCompleteMockContest() {
     repoTemplates.push(repo);
     console.log(`  + Đội "${team.name}": Đã liên kết Repo "${repo.repoName}"`);
 
-    // Tạo 3 Mock Commits khác nhau
-    const commitTemplates = [
-      {
-        msg: 'feat: setup project environment and router initialization',
-        filename: 'src/main.js',
-        patch: '@@ -0,0 +1,15 @@\n+import React from "react";\n+import ReactDOM from "react-dom";\n+import App from "./App";\n+ReactDOM.render(<App />, document.getElementById("root"));',
-        comments: 'Excellent initial project setup. The file organization follows modern standard conventions. Router is well integrated.',
-        qScore: 8,
-        aScore: 9
-      },
-      {
-        msg: 'feat: build database schemas and connection middleware',
-        filename: 'src/db/connection.js',
-        patch: '@@ -0,0 +1,10 @@\n+const mongoose = require("mongoose");\n+module.exports = () => mongoose.connect(process.env.MONGO_URI);',
-        comments: 'Good database connection architecture. Uses environment variables properly and handles asynchronous states correctly.',
-        qScore: 9,
-        aScore: 8
-      },
-      {
-        msg: 'fix: resolve rendering performance bug and clean up hooks',
-        filename: 'src/components/Dashboard.jsx',
-        patch: '@@ -5,3 +5,9 @@\n-  useEffect(() => { fetchData() }, [data]);\n+  useEffect(() => { fetchData() }, []);',
-        comments: 'Great bug resolution. Fixed the infinite re-rendering issue in useEffect by properly structuring dependency arrays.',
-        qScore: 9,
-        aScore: 10
-      }
-    ];
+    // Tạo 3 Mock Commits khác nhau tùy thuộc vào Bảng đấu (Track) của Đội thi
+    let commitTemplates = [];
+    if (i === 0) { // Bảng A - Phát triển Ứng dụng Web
+      commitTemplates = [
+        {
+          msg: 'feat: setup project environment and router initialization',
+          filename: 'src/main.js',
+          patch: '@@ -0,0 +1,15 @@\n+import React from "react";\n+import ReactDOM from "react-dom";\n+import App from "./App";\n+ReactDOM.render(<App />, document.getElementById("root"));',
+          comments: 'Excellent initial project setup. The file organization follows modern standard conventions. Router is well integrated.',
+          qScore: 8,
+          aScore: 9
+        },
+        {
+          msg: 'feat: build database schemas and connection middleware',
+          filename: 'src/db/connection.js',
+          patch: '@@ -0,0 +1,10 @@\n+const mongoose = require("mongoose");\n+module.exports = () => mongoose.connect(process.env.MONGO_URI);',
+          comments: 'Good database connection architecture. Uses environment variables properly and handles asynchronous states correctly.',
+          qScore: 9,
+          aScore: 8
+        },
+        {
+          msg: 'fix: resolve rendering performance bug and clean up hooks',
+          filename: 'src/components/Dashboard.jsx',
+          patch: '@@ -5,3 +5,9 @@\n-  useEffect(() => { fetchData() }, [data]);\n+  useEffect(() => { fetchData() }, []);',
+          comments: 'Great bug resolution. Fixed the infinite re-rendering issue in useEffect by properly structuring dependency arrays.',
+          qScore: 9,
+          aScore: 10
+        }
+      ];
+    } else if (i === 1) { // Bảng B - Trí tuệ Nhân tạo & Data
+      commitTemplates = [
+        {
+          msg: 'feat: initialize python dependencies and load model configuration',
+          filename: 'requirements.txt',
+          patch: '@@ -0,0 +1,4 @@\n+torch>=2.0.0\n+transformers>=4.28.0\n+numpy>=1.24.0\n+fastapi>=0.95.0',
+          comments: 'Required dependency packages are well listed. Versions are appropriate for modern development.',
+          qScore: 9,
+          aScore: 9
+        },
+        {
+          msg: 'feat: build RAG query analyzer and integrate vector store search',
+          filename: 'src/rag_pipeline.py',
+          patch: '@@ -0,0 +1,10 @@\n+from chromadb import Client\n+client = Client()\n+def query_rag(text):\n+    col = client.get_or_create_collection("docs")\n+    return col.query(query_texts=[text], n_results=3)',
+          comments: 'Clean RAG architecture with ChromaDB integration. Efficient query helper function.',
+          qScore: 8,
+          aScore: 9
+        },
+        {
+          msg: 'feat: implement LangChain agentic agent routing logic',
+          filename: 'src/agent.py',
+          patch: '@@ -0,0 +1,10 @@\n+from langchain_google_genai import ChatGoogleGenerativeAI\n+def run_agent(prompt):\n+    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash")\n+    return llm.invoke(prompt)',
+          comments: 'Solid LangChain implementation. Easily extensible for multi-agent systems.',
+          qScore: 9,
+          aScore: 9
+        }
+      ];
+    } else { // Bảng C - IoT & Smart Devices
+      commitTemplates = [
+        {
+          msg: 'feat: configure ESP32 pin layouts and wifi connection scripts',
+          filename: 'src/config.h',
+          patch: '@@ -0,0 +1,5 @@\n+#define WIFI_SSID "SEAL_HACKATHON"\n+#define WIFI_PASS "seal2026"\n+#define SENSOR_PIN 4\n+#define MQTT_PORT 1883',
+          comments: 'Configuration parameters are isolated properly. Pin numbers are well declared.',
+          qScore: 8,
+          aScore: 8
+        },
+        {
+          msg: 'feat: implement DHT22 sensor reader loop and serial logging',
+          filename: 'src/sensor.ino',
+          patch: '@@ -0,0 +1,10 @@\n+#include <DHT.h>\n+DHT dht(SENSOR_PIN, DHT22);\n+void read_data() {\n+  float t = dht.readTemperature();\n+  Serial.println(t);\n+}',
+          comments: 'Simple, direct sensor reading loop. Proper library initialization.',
+          qScore: 9,
+          aScore: 9
+        },
+        {
+          msg: 'feat: integrate PubSubClient to send sensor data via MQTT broker',
+          filename: 'src/mqtt_publisher.cpp',
+          patch: '@@ -0,0 +1,10 @@\n+#include <PubSubClient.h>\n+void publish_sensor_data(float t, float h) {\n+  char msg[50];\n+  sprintf(msg, "{\\"temp\\":%.2f,\\"hum\\":%.2f}", t, h);\n+  client.publish("device/metrics", msg);\n}',
+          comments: 'Excellent MQTT integration. Efficient JSON format encoding for sensor metrics payload.',
+          qScore: 9,
+          aScore: 10
+        }
+      ];
+    }
 
     for (let c = 0; c < commitTemplates.length; c++) {
       const template = commitTemplates[c];

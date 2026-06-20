@@ -22,6 +22,7 @@ import AdminGradesView from './features/admin/AdminGradesView';
 import AdminLayout from './features/admin/AdminLayout';
 import MentorDashboard from './features/mentor/MentorDashboard';
 import MentorTeamDetail from './features/mentor/MentorTeamDetail';
+import MentorChat from './features/mentor/MentorChat';
 import { Toaster } from 'sonner';
 import { ConfirmProvider } from './features/shared/ConfirmDialog';
 
@@ -115,6 +116,8 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
       </main>
 
       {!isJudgeRoute && !isAdminRoute && <Footer />}
+      
+      {user && !isJudgeRoute && !isAdminRoute && <MentorChat />}
     </div>
   );
 }

@@ -1418,7 +1418,7 @@ export default function AdminEvents({
     }
   };
 
-  const handleAssignRoleForTrack = async (email: string, trackId: string, role: "judge" | "mentor" = "judge") => {
+  const handleAssignRoleForTrack = async (email: string, trackId: string, role: "judge" | "mentor" = "judge", teamId?: string) => {
     if (!selectedEvent) return;
     setMessage({ type: "", text: "" });
     setLoading(true);
@@ -1431,6 +1431,7 @@ export default function AdminEvents({
           eventId: selectedEvent._id,
           trackId: trackId,
           role: role,
+          teamId: teamId || undefined,
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -1439,6 +1440,7 @@ export default function AdminEvents({
         text: `Phân quyền ${role === 'judge' ? 'Giám khảo' : 'Mentor'} thành công!`,
       });
       fetchEventRoles();
+      fetchTeamsList();
     } catch (err: any) {
       setMessage({
         type: "error",
@@ -1479,6 +1481,7 @@ export default function AdminEvents({
       setLoading(false);
     }
   };
+
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
@@ -1943,6 +1946,7 @@ export default function AdminEvents({
             eventRoles={eventRoles}
             handleAssignRoleForTrack={handleAssignRoleForTrack}
             handleRemoveRole={handleRemoveRole}
+            teamsList={teamsList}
           />
         ) : (
           <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">

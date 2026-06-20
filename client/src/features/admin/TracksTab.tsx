@@ -287,12 +287,12 @@ export default function TracksTab({
 
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-                Đường dẫn / URL File
+                Đường dẫn Google Drive (Đề tài / Tài liệu)
               </label>
               <input
                 type="text"
                 required
-                placeholder="E.g. https://domain.com/exam.pdf"
+                placeholder="E.g. https://drive.google.com/drive/folders/..."
                 value={attachmentUrl}
                 onChange={(e) => setAttachmentUrl(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-xl text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
@@ -300,8 +300,7 @@ export default function TracksTab({
             </div>
 
             <div className="p-3 bg-slate-900/40 border border-slate-800/80 rounded-xl text-[10px] text-slate-400 font-sans">
-              Tài liệu sẽ được hiển thị ở Bảng điều khiển của thí sinh thuộc bảng
-              đấu đang chọn.
+              Hãy dán link chia sẻ thư mục hoặc file Google Drive chứa đề tài. Thí sinh của bảng đấu này sẽ truy cập trực tiếp vào link này để tải đề bài và tài liệu.
             </div>
 
             <button

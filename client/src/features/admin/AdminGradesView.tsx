@@ -23,10 +23,9 @@ export default function AdminGradesView() {
   const [selectedRoundName, setSelectedRoundName] = useState('');
   const [selectedTrackId, setSelectedTrackId] = useState('');
 
-  // Compute active round document based on selected track
-  const selectedTrackObj = tracks.find((t: any) => t._id === selectedTrackId);
-  const selectedRoundId = selectedTrackObj ? (selectedTrackObj.roundId?._id || selectedTrackObj.roundId) : '';
-  const selectedRound = selectedRoundId ? rounds.find((r: any) => r._id === selectedRoundId) : null;
+  // Compute active round document based on selectedRoundName
+  const selectedRound = rounds.find((r: any) => r.name === selectedRoundName) || null;
+  const selectedRoundId = selectedRound ? selectedRound._id : '';
 
   const [teams, setTeams] = useState<any[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState('');
@@ -58,7 +57,10 @@ export default function AdminGradesView() {
 
   // Keep selectedTrackId in sync with selectedRoundName
   useEffect(() => {
-    if (!selectedRoundName || rounds.length === 0 || tracks.length === 0) return;
+    if (!selectedRoundName || rounds.length === 0 || tracks.length === 0) {
+      setSelectedTrackId('');
+      return;
+    }
 
     const matchingRoundIds = rounds
       .filter((r: any) => r.name === selectedRoundName)
@@ -74,6 +76,8 @@ export default function AdminGradesView() {
       });
       if (firstMatchingTrack) {
         setSelectedTrackId(firstMatchingTrack._id);
+      } else {
+        setSelectedTrackId('');
       }
     }
   }, [selectedRoundName, rounds, tracks, selectedTrackId]);
@@ -123,9 +127,25 @@ export default function AdminGradesView() {
       .catch((err: any) => console.error('Error fetching event details:', err));
   }, [selectedEventId]);
 
-  // Fetch teams for the selected event and filter by selected track
+  // Fetch teams for the selected event and filter by selected track or round
   useEffect(() => {
-    if (!selectedEventId || !selectedTrackId) {
+    if (!selectedEventId || !selectedRoundId) {
+      setTeams([]);
+      setSelectedTeamId('');
+      setGradingsData(null);
+      return;
+    }
+
+    // Check if the current round has any tracks
+    const matchingRoundIds = rounds
+      .filter((r: any) => r.name === selectedRoundName)
+      .map((r: any) => r._id.toString());
+    const hasTracks = tracks.some((t: any) => {
+      const tRoundId = (t.roundId?._id || t.roundId)?.toString();
+      return matchingRoundIds.includes(tRoundId);
+    });
+
+    if (hasTracks && !selectedTrackId) {
       setTeams([]);
       setSelectedTeamId('');
       setGradingsData(null);
@@ -137,10 +157,17 @@ export default function AdminGradesView() {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then((res: any) => {
-        // Filter confirmed teams matching the selected track (handling populated trackId object)
+        // Filter confirmed teams matching the selected track or round
         const matchedTeams = res.data.filter((t: any) => {
-          const tTrackId = t.trackId && typeof t.trackId === 'object' ? t.trackId._id : t.trackId;
-          return t.status === 'confirmed' && String(tTrackId) === String(selectedTrackId);
+          if (t.status !== 'confirmed') return false;
+
+          if (hasTracks) {
+            const tTrackId = t.trackId && typeof t.trackId === 'object' ? t.trackId._id : t.trackId;
+            return String(tTrackId) === String(selectedTrackId);
+          } else {
+            const tRoundId = t.currentRoundId && typeof t.currentRoundId === 'object' ? t.currentRoundId._id : t.currentRoundId;
+            return String(tRoundId) === String(selectedRoundId);
+          }
         });
         setTeams(matchedTeams);
         if (matchedTeams.length > 0) {
@@ -152,7 +179,7 @@ export default function AdminGradesView() {
       })
       .catch((err: any) => console.error('Error fetching teams:', err))
       .finally(() => setLoadingTeams(false));
-  }, [selectedEventId, selectedTrackId, token]);
+  }, [selectedEventId, selectedRoundId, selectedTrackId, token, rounds, tracks, selectedRoundName]);
 
   // Fetch detailed scores for the selected team
   const fetchDetailedScores = useCallback(async (teamId: string, roundId: string) => {
@@ -227,7 +254,7 @@ export default function AdminGradesView() {
       </div>
 
       {/* Selectors Event & Round */}
-      <div className="glass p-6 rounded-2xl flex flex-wrap gap-4 items-center animate-fadeIn z-[999]">
+      <div className="glass p-6 rounded-2xl flex flex-wrap gap-4 items-center animate-fadeIn relative z-20">
         <div>
           <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
             Cuộc thi
@@ -280,7 +307,7 @@ export default function AdminGradesView() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
         {/* Left Column: Teams Sidebar */}
-        <div className="lg:col-span-4 space-y-4 z-[-1]">
+        <div className="lg:col-span-4 space-y-4">
           <div className="glass p-5 rounded-2xl space-y-4">
             <h2 className="text-sm font-bold text-slate-200 flex items-center gap-1.5 border-b border-slate-800 pb-3">
               <Users size={16} className="text-cyan-400" />
@@ -335,7 +362,7 @@ export default function AdminGradesView() {
         </div>
 
         {/* Right Column: Grading Details View */}
-        <div className="lg:col-span-8 space-y-6 z-[-1]">
+        <div className="lg:col-span-8 space-y-6">
           {loadingGrades ? (
             <div className="glass rounded-2xl p-12 text-center text-slate-400 flex flex-col items-center justify-center min-h-[400px]">
               <RefreshCw size={32} className="animate-spin text-cyan-500 mb-3" />
@@ -423,7 +450,7 @@ export default function AdminGradesView() {
                     {gradingsData.gradings[activeJudgeIndex] && (() => {
                       const g = gradingsData.gradings[activeJudgeIndex];
                       return (
-                        <div key={g.score?._id || activeJudgeIndex} className="glass p-6 rounded-3xl space-y-4 border-l-4 border-l-cyan-500 animate-fadeIn z-[-1]">
+                        <div key={g.score?._id || activeJudgeIndex} className="glass p-6 rounded-3xl space-y-4 border-l-4 border-l-cyan-500 animate-fadeIn">
 
                           {/* Judge Header */}
                           <div className="flex justify-between items-start gap-4 border-b border-slate-800 pb-3 flex-wrap">

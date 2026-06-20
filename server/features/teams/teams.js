@@ -714,7 +714,7 @@ router.get('/my-team', authenticateToken, async (req, res) => {
     for (const record of memberRecords) {
       const foundTeam = await Team.findById(record.teamId)
         .populate('eventId', 'name semester year status')
-        .populate('trackId', 'name description');
+        .populate('trackId', 'name description attachments');
       if (foundTeam) {
         team = foundTeam;
         activeMemberRecord = record;

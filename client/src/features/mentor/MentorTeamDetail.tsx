@@ -127,14 +127,14 @@ export default function MentorTeamDetail() {
                   {team.trackId.attachments.map((file: any, idx: number) => (
                     <a 
                       key={idx} 
-                      href={file.url} 
+                      href={file.fileUrl} 
                       target="_blank"
                       rel="noreferrer"
                       className="flex items-center gap-3 bg-slate-900/80 p-3 rounded-xl border border-slate-700 hover:border-cyan-500/50 transition-colors"
                     >
                       <Download size={18} className="text-cyan-400" />
                       <div>
-                        <p className="text-sm font-bold text-white">{file.name || `Tài liệu đính kèm ${idx + 1}`}</p>
+                        <p className="text-sm font-bold text-white">{file.fileName || `Tài liệu đính kèm ${idx + 1}`}</p>
                         <p className="text-[10px] text-slate-500">Bấm để tải xuống/xem</p>
                       </div>
                     </a>

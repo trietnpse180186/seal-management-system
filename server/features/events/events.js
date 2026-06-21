@@ -859,10 +859,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
         }
       }
 
-      // 2. Define valid transitions mapping
+      // 2. Define valid transitions mapping (supports legacy 'prepare' to 'ongoing' transition)
       const validTransitions = {
         draft: ['registration', 'cancelled'],
         registration: ['ongoing', 'cancelled'],
+        prepare: ['ongoing'],
         ongoing: ['completed'],
         completed: [],
         cancelled: []

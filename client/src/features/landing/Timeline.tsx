@@ -9,15 +9,14 @@ gsap.registerPlugin(ScrollTrigger);
 export default function Timeline() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeEvent, setActiveEvent] = useState<any>(null);
-
   useEffect(() => {
     const fetchEvents = async () => {
       try {
         const res = await axios.get("http://localhost:5000/api/events");
         const events = res.data;
-        const nonDraftEvents = events.filter((e: any) => e.status !== "draft");
+        const ongoingEvents = events.filter((e: any) => e.status === "ongoing");
         // Sort by createdAt descending to get the newest one
-        const newest = nonDraftEvents.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] || null;
+        const newest = ongoingEvents.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] || null;
         setActiveEvent(newest);
       } catch (err) {
         console.error("Lỗi lấy lịch trình cuộc thi:", err);
@@ -25,6 +24,52 @@ export default function Timeline() {
     };
     fetchEvents();
   }, []);
+  const getCurrentPhase = () => {
+    if (!activeEvent) return 1;
+
+    const now = new Date();
+    const regOpen = activeEvent.registrationOpen ? new Date(activeEvent.registrationOpen) : null;
+    const contestStart = activeEvent.contestStart ? new Date(activeEvent.contestStart) : null;
+    const contestEnd = activeEvent.contestEnd ? new Date(activeEvent.contestEnd) : null;
+
+    // 1. If not yet reached registrationOpen (or no regOpen set), default to Phase 1
+    if (regOpen && now < regOpen) {
+      return 1;
+    }
+
+    // 2. If after contestEnd, Phase 3 is active
+    if (contestEnd && now >= contestEnd) {
+      return 3;
+    }
+
+    // 3. If after contestStart but before contestEnd, Phase 2 is active
+    if (contestStart && now >= contestStart) {
+      return 2;
+    }
+
+    // 4. Otherwise (between regOpen and contestStart), Phase 1 is active
+    return 1;
+  };
+
+  const currentPhase = getCurrentPhase();
+
+  const getPhaseClasses = (phaseNum: number) => {
+    const isActive = currentPhase === phaseNum;
+    return {
+      title: isActive 
+        ? "text-lg font-bold text-cyan-400 text-cyan-glow font-sans transition-all duration-300" 
+        : "text-lg font-bold text-slate-500 font-sans transition-all duration-300",
+      date: isActive 
+        ? "font-mono text-xs text-cyan-400/80 font-semibold mt-1 transition-all duration-300" 
+        : "font-mono text-xs text-slate-650 font-semibold mt-1 transition-all duration-300",
+      desc: isActive 
+        ? "text-slate-200 text-sm font-sans leading-relaxed transition-all duration-300" 
+        : "text-slate-500 text-sm font-sans leading-relaxed opacity-60 transition-all duration-300",
+      node: isActive 
+        ? "timeline-node z-10 w-6 h-6 rounded-full bg-cyan-400 glow-cyan ring-4 ring-[#0a141d] border-4 border-surface shadow-[0_0_15px_#00f0ff] shrink-0 hidden md:block opacity-0" 
+        : "timeline-node z-10 w-6 h-6 rounded-full bg-slate-800 ring-4 ring-[#0a141d] border-4 border-surface shrink-0 hidden md:block opacity-0"
+    };
+  };
 
   const formatDateString = (dateStr: string | null | undefined) => {
     if (!dateStr) return "Chưa có thông báo";
@@ -162,14 +207,14 @@ export default function Timeline() {
             {/* Phase 1 */}
             <div className="flex flex-col md:flex-row items-center gap-6 relative timeline-row py-6">
               <div className="md:w-1/2 md:text-right w-full timeline-left opacity-0">
-                <h3 className="text-lg font-bold text-white font-sans">Mở đăng ký</h3>
-                <p className="font-mono text-xs text-primary-container font-semibold mt-1">
+                <h3 className={getPhaseClasses(1).title}>Mở đăng ký</h3>
+                <p className={getPhaseClasses(1).date}>
                   {formatEventDateRange(activeEvent?.registrationOpen, activeEvent?.registrationClose || activeEvent?.contestStart)}
                 </p>
               </div>
-              <div className="timeline-node z-10 w-6 h-6 rounded-full bg-primary-container glow-cyan ring-4 ring-[#0a141d] border-4 border-surface shadow-[0_0_15px_#00f0ff] shrink-0 hidden md:block opacity-0"></div>
+              <div className={getPhaseClasses(1).node}></div>
               <div className="md:w-1/2 w-full timeline-right opacity-0">
-                <p className="text-on-surface-variant text-sm font-sans leading-relaxed">
+                <p className={getPhaseClasses(1).desc}>
                   Các đội thi thực hiện đăng ký tài khoản, liên kết thành viên nhóm và liên kết repository Github chính thức để chuẩn bị nhận nhiệm vụ.
                 </p>
               </div>
@@ -178,14 +223,14 @@ export default function Timeline() {
             {/* Phase 2 */}
             <div className="flex flex-col md:flex-row items-center gap-6 relative timeline-row py-6">
               <div className="md:w-1/2 md:text-right w-full order-1 md:order-none timeline-left opacity-0">
-                <p className="text-on-surface-variant text-sm font-sans leading-relaxed">
+                <p className={getPhaseClasses(2).desc}>
                   Giai đoạn lập trình cường độ cao. Các đội thực hiện giải quyết yêu cầu dự án, liên tục push commit để AI tự động phân tích và đánh giá chất lượng mã nguồn.
                 </p>
               </div>
-              <div className="timeline-node z-10 w-6 h-6 rounded-full bg-primary-container glow-cyan ring-4 ring-[#0a141d] border-4 border-surface shadow-[0_0_15px_#00f0ff] shrink-0 hidden md:block opacity-0"></div>
+              <div className={getPhaseClasses(2).node}></div>
               <div className="md:w-1/2 w-full order-none timeline-right opacity-0">
-                <h3 className="text-lg font-bold text-white font-sans">Bắt đầu thi đấu</h3>
-                <p className="font-mono text-xs text-primary-container font-semibold mt-1">
+                <h3 className={getPhaseClasses(2).title}>Bắt đầu thi đấu</h3>
+                <p className={getPhaseClasses(2).date}>
                   {formatEventDateRange(activeEvent?.contestStart, activeEvent?.contestEnd)}
                 </p>
               </div>
@@ -194,14 +239,14 @@ export default function Timeline() {
             {/* Phase 3 */}
             <div className="flex flex-col md:flex-row items-center gap-6 relative timeline-row py-6">
               <div className="md:w-1/2 md:text-right w-full timeline-left opacity-0">
-                <h3 className="text-lg font-bold text-white font-sans">Kết thúc và tổng kết</h3>
-                <p className="font-mono text-xs text-primary-container font-semibold mt-1">
+                <h3 className={getPhaseClasses(3).title}>Kết thúc và tổng kết</h3>
+                <p className={getPhaseClasses(3).date}>
                   {formatSingleDate(activeEvent?.contestEnd)}
                 </p>
               </div>
-              <div className="timeline-node z-10 w-6 h-6 rounded-full bg-primary-container glow-cyan ring-4 ring-[#0a141d] border-4 border-surface shadow-[0_0_15px_#00f0ff] shrink-0 hidden md:block opacity-0"></div>
+              <div className={getPhaseClasses(3).node}></div>
               <div className="md:w-1/2 w-full timeline-right opacity-0">
-                <p className="text-on-surface-variant text-sm font-sans leading-relaxed">
+                <p className={getPhaseClasses(3).desc}>
                   Dừng cổng nộp bài, đóng repository. Các đội thi chuẩn bị báo cáo dự án trước hội đồng giám khảo và nhận kết quả xếp hạng chung cuộc từ hệ thống.
                 </p>
               </div>

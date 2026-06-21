@@ -149,21 +149,31 @@ export default function MentorTeamDetail() {
 
         {/* Chat Tab */}
         {activeTab === "chat" && (
-          <div className="py-12 text-center flex flex-col items-center justify-center max-w-md mx-auto">
-            <div className="w-16 h-16 rounded-full bg-cyan-950 text-cyan-400 flex items-center justify-center mb-4">
-              <MessageSquare size={28} />
+          team.eventId?.status === 'ongoing' ? (
+            <div className="py-12 text-center flex flex-col items-center justify-center max-w-md mx-auto animate-fadeIn">
+              <div className="w-16 h-16 rounded-full bg-cyan-950 text-cyan-400 flex items-center justify-center mb-4 animate-pulse">
+                <MessageSquare size={28} />
+              </div>
+              <h3 className="text-white font-bold text-lg mb-2">Trò chuyện với Đội thi</h3>
+              <p className="text-slate-400 text-xs mb-6">Mở khung hội thoại nổi để trực tiếp trao đổi và hỗ trợ đội thi {team.name} giải quyết các khó khăn trong quá trình làm bài.</p>
+              <button 
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('open_chat_room', { detail: { teamId: team._id } }));
+                }}
+                className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase rounded-xl transition-all shadow-lg shadow-cyan-600/25 cursor-pointer font-sans"
+              >
+                Mở hộp thoại chat
+              </button>
             </div>
-            <h3 className="text-white font-bold text-lg mb-2">Trò chuyện với Đội thi</h3>
-            <p className="text-slate-400 text-xs mb-6">Mở khung hội thoại nổi để trực tiếp trao đổi và hỗ trợ đội thi {team.name} giải quyết các khó khăn trong quá trình làm bài.</p>
-            <button 
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent('open_chat_room', { detail: { teamId: team._id } }));
-              }}
-              className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase rounded-xl transition-all shadow-lg shadow-cyan-600/25 cursor-pointer font-sans"
-            >
-              Mở hộp thoại chat
-            </button>
-          </div>
+          ) : (
+            <div className="py-16 text-center flex flex-col items-center justify-center max-w-md mx-auto animate-fadeIn">
+              <div className="w-16 h-16 rounded-full bg-slate-800 text-slate-500 flex items-center justify-center mb-4">
+                <MessageSquare size={28} />
+              </div>
+              <h3 className="text-slate-400 font-bold text-lg mb-2">Hộp thoại chat chưa khả dụng</h3>
+              <p className="text-slate-500 text-xs leading-relaxed">Kênh chat sẽ được mở khi cuộc thi chính thức bước vào giai đoạn thi đấu (Ongoing). Hiện trạng thái cuộc thi là: <strong className="text-amber-500 font-mono uppercase">{team.eventId?.status || 'Draft'}</strong>.</p>
+            </div>
+          )
         )}
 
         {/* Commits Tab */}

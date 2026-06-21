@@ -340,6 +340,16 @@ router.post('/assign-role', authenticateToken, requireSystemAdmin, async (req, r
     // If role is mentor and teamId is specified, assign mentor to team and ensure chat room
     if (role === 'mentor' && teamId) {
       const Team = mongoose.model('Team');
+      
+      // Check if this mentor is already assigned to another team in this event
+      const alreadyMentoring = await Team.findOne({
+        eventId,
+        mentorId: targetUser._id
+      });
+      if (alreadyMentoring && alreadyMentoring._id.toString() !== teamId.toString()) {
+        return res.status(400).json({ message: `Mentor này đã được phân công quản lý một đội thi khác (${alreadyMentoring.name}) trong cuộc thi.` });
+      }
+
       const team = await Team.findById(teamId);
       if (team) {
         team.mentorId = targetUser._id;

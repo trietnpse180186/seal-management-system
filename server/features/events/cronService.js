@@ -336,6 +336,46 @@ async function syncRepo(repoId) {
 
         console.log(`[SYNC] Completed per-push AI analysis successfully.`);
 
+        // Auto-create GitHub Issue when significant change is detected
+        if (aiResult.overall_picture?.significant_change === true || aiResult.significant_change === true) {
+          const title = `[Gemini AI] Phát hiện thay đổi quan trọng trong mã nguồn`;
+          const body = `### Phân tích Thay đổi Quan trọng từ Gemini AI
+
+Chúng tôi phát hiện một số thay đổi quan trọng trong mã nguồn thông qua các commit gần đây:
+
+**Tóm tắt thay đổi:**
+${aiResult.overall_picture?.push_summary || aiResult.summary || 'Không có tóm tắt.'}
+
+**Tiêu điểm hiện tại:**
+${aiResult.overall_picture?.current_focus || 'Không có thông tin.'}
+
+**Kiến trúc / Công nghệ:**
+- RAG Maturity: ${aiResult.rag_maturity?.level || 'Chưa rõ'}
+- Động cơ suy luận: ${aiResult.agent_intelligence?.reasoning_pattern || 'Không có'}
+- Mô hình LLM: ${(aiResult.tech_stack?.llm_models || []).join(', ') || 'Không rõ'}
+
+**Đánh giá nhanh:**
+- **Ưu điểm:**
+${aiResult.assessment?.advantages || 'Không có thông tin.'}
+- **Hạn chế & Rủi ro:**
+${aiResult.assessment?.disadvantages || 'Không có thông tin.'}
+- **Các khu vực cần cải thiện:**
+${aiResult.assessment?.improvement_areas || 'Không có thông tin.'}
+
+---
+*Thông báo này được tạo tự động bởi hệ thống Seal Hackathon khi phát hiện thay đổi quan trọng.*`;
+
+          console.log(`[SYNC] Significant change detected. Auto-creating GitHub Issue on repo ${repo.repoName}...`);
+          const issue = await githubService.createIssue(repo.repoName, title, body, repo.orgName);
+          if (issue) {
+            aiResult.github_issue_url = issue.html_url;
+            aiAnalysis.result = aiResult;
+            aiAnalysis.markModified('result');
+            await aiAnalysis.save();
+          }
+        }
+
+
       } catch (aiErr) {
         console.error(`[SYNC] Gemini AI per-push review failed:`, aiErr.message);
         const aiAnalysisFailed = new AiAnalysis({

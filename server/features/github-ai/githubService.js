@@ -109,6 +109,36 @@ async function addCollaborator(repoName, username, permission = 'push', customOr
 }
 
 /**
+ * Removes a collaborator from the team repository.
+ * @param {string} repoName - Repository name
+ * @param {string} username - GitHub username of collaborator
+ * @param {string} customOrgName - Organization name override
+ * @returns {Promise<boolean>}
+ */
+async function removeCollaborator(repoName, username, customOrgName) {
+  const activeOrgName = customOrgName || orgName;
+  if (!username) return false;
+
+  if (isMock || !octokit) {
+    console.log(`[GITHUB MOCK] Removing collaborator: ${username} from ${activeOrgName}/${repoName}`);
+    return true;
+  }
+
+  try {
+    await octokit.repos.removeCollaborator({
+      owner: activeOrgName,
+      repo: repoName,
+      username: username
+    });
+    console.log(`Removed collaborator ${username} from repository ${repoName}`);
+    return true;
+  } catch (error) {
+    console.error(`Error removing collaborator ${username}:`, error.message);
+    return true; // Return true as fallback to prevent app crashing
+  }
+}
+
+/**
  * Fetches commits from the repository since a given date.
  * @param {string} repoName - Repository name
  * @param {Date} sinceDate - Commits fetched since this date
@@ -324,12 +354,50 @@ async function linkOrganization(orgName) {
   return createOrganization(orgName);
 }
 
+/**
+ * Creates an issue in the team repository.
+ * @param {string} repoName - Repository name
+ * @param {string} title - Issue title
+ * @param {string} body - Issue body
+ * @param {string} customOrgName - Organization name override
+ * @returns {Promise<Object>} Created issue details or null
+ */
+async function createIssue(repoName, title, body, customOrgName) {
+  const activeOrgName = customOrgName || orgName;
+  if (isMock || !octokit) {
+    console.log(`[GITHUB MOCK] Creating issue in ${activeOrgName}/${repoName}: "${title}"`);
+    return {
+      id: `mock-issue-${Date.now()}`,
+      number: Math.floor(Math.random() * 100) + 1,
+      html_url: `https://github.com/${activeOrgName}/${repoName}/issues/mock`
+    };
+  }
+
+  try {
+    console.log(`[GITHUB] Attempting to create issue in "${activeOrgName}/${repoName}"...`);
+    const response = await octokit.issues.create({
+      owner: activeOrgName,
+      repo: repoName,
+      title,
+      body
+    });
+    console.log(`[GITHUB] Successfully created issue: ${response.data.html_url}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error creating issue in ${repoName}:`, error.message);
+    return null;
+  }
+}
+
 module.exports = {
   createTeamRepository,
   addCollaborator,
+  removeCollaborator,
   fetchCommits,
   fetchCommitFiles,
   createOrganization,
-  linkOrganization
+  linkOrganization,
+  createIssue
 };
+
 

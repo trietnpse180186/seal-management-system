@@ -28,10 +28,10 @@ interface GithubTabProps {
   setManualRepoName: (name: string) => void;
   manualRepoUrl: string;
   setManualRepoUrl: (url: string) => void;
-  syncingRepoId: string;
   handleCreateRepo: (teamId: string) => Promise<void>;
   handleLinkRepo: (e: React.FormEvent) => Promise<void>;
-  handleSyncRepo: (repoId: string) => Promise<void>;
+  selectedEvent?: any;
+  handleKickAllCollaborators?: (repoId: string) => Promise<void>;
 }
 
 export default function GithubTab({
@@ -43,10 +43,10 @@ export default function GithubTab({
   setManualRepoName,
   manualRepoUrl,
   setManualRepoUrl,
-  syncingRepoId,
   handleCreateRepo,
   handleLinkRepo,
-  handleSyncRepo,
+  selectedEvent,
+  handleKickAllCollaborators,
 }: GithubTabProps) {
   return (
     <div className="glass p-6 rounded-2xl w-full mt-2 space-y-6 font-mono">
@@ -111,13 +111,14 @@ export default function GithubTab({
                   >
                     {r.syncStatus.toUpperCase()}
                   </span>
-                  <button
-                    onClick={() => handleSyncRepo(r._id)}
-                    disabled={syncingRepoId === r._id}
-                    className="bg-cyan-500 hover:bg-cyan-500 disabled:bg-indigo-850 text-white px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all cursor-pointer disabled:cursor-not-allowed"
-                  >
-                    {syncingRepoId === r._id ? "Đang đồng bộ..." : "Đồng bộ AI"}
-                  </button>
+                  {selectedEvent?.status === "completed" && handleKickAllCollaborators && (
+                    <button
+                      onClick={() => handleKickAllCollaborators(r._id)}
+                      className="bg-rose-600/90 hover:bg-rose-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all cursor-pointer border border-rose-500/20 shadow-md shadow-rose-950/20"
+                    >
+                      Thu hồi quyền (Kick)
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

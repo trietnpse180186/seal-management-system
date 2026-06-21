@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Link2, Save, RefreshCw, CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare } from 'lucide-react';
+import { Link2, Save, CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare } from 'lucide-react';
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
   <svg
@@ -46,7 +46,6 @@ export default function TeamArea() {
 
   // Status indicators
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
   const [submittingTopic, setSubmittingTopic] = useState(false);
   const [error, _setError] = useState('');
   const setError = (msg: string) => {
@@ -110,26 +109,7 @@ export default function TeamArea() {
     fetchTeamData();
   }, []);
 
-  const handleSyncRepo = async () => {
-    if (!data?.repository) return;
-    setSyncing(true);
-    setError('');
-    setSuccess('');
 
-    try {
-      await axios.post(
-        `http://localhost:5000/api/analytics/repo/${data.repository._id}/sync`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setSuccess('Đồng bộ mã nguồn từ GitHub thành công!');
-      fetchCommits(data.team._id);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Đồng bộ thất bại. Kiểm tra kết nối.');
-    } finally {
-      setSyncing(false);
-    }
-  };
 
   const handleSaveTopic = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -194,22 +174,11 @@ export default function TeamArea() {
           </p>
         </div>
 
-        {repository && (
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleSyncRepo}
-              disabled={syncing}
-              className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-cyan-800 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-lg shadow-cyan-600/25 transition-all cursor-pointer border border-cyan-500/20"
-            >
-              <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
-              <span>{syncing ? 'Đang đồng bộ...' : 'Đồng bộ Repo'}</span>
-            </button>
-          </div>
-        )}
+
       </div>
 
       {/* Chat Section */}
-      {team && (
+      {team && team.eventId?.status === 'ongoing' && (
         <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-cyan-950 text-cyan-400 rounded-xl">

@@ -976,6 +976,16 @@ router.put('/:teamId/assign-track', authenticateToken, async (req, res) => {
         });
     }
 
+    // Create EventLog
+    const EventLog = mongoose.model('EventLog');
+    const newLog = new EventLog({
+      eventId: team.eventId,
+      actorId: req.user._id,
+      action: 'assign_team_track',
+      details: `Phân đội ${team.name} vào bảng đấu ${track.name}`
+    });
+    await newLog.save();
+
     // Also ensure chat room is created if mentor exists
     await ensureChatRoomForTeam(team);
 
@@ -1063,6 +1073,15 @@ router.put('/:teamId/assign-mentor', authenticateToken, async (req, res) => {
       if (!mentorRole) {
         return res.status(400).json({ message: 'Người dùng được chọn không phải là Mentor của sự kiện này.' });
       }
+
+      // Check if this mentor is already assigned to another team in this event
+      const alreadyMentoring = await Team.findOne({
+        eventId: team.eventId,
+        mentorId: mentorId
+      });
+      if (alreadyMentoring && alreadyMentoring._id.toString() !== teamId.toString()) {
+        return res.status(400).json({ message: `Mentor này đã được phân công quản lý một đội thi khác (${alreadyMentoring.name}) trong cuộc thi.` });
+      }
     }
 
     team.mentorId = mentorId || undefined;
@@ -1073,6 +1092,25 @@ router.put('/:teamId/assign-mentor', authenticateToken, async (req, res) => {
       const { ensureChatRoomForTeam } = require('../chat/chatRoomService');
       await ensureChatRoomForTeam(team);
     }
+
+    // Create EventLog
+    const EventLog = mongoose.model('EventLog');
+    let logDetailsMsg = '';
+    if (mentorId) {
+      const User = mongoose.model('User');
+      const mentorObj = await User.findById(mentorId);
+      const mentorName = mentorObj ? mentorObj.fullName : mentorId;
+      logDetailsMsg = `Gán Mentor "${mentorName}" cho đội thi "${team.name}"`;
+    } else {
+      logDetailsMsg = `Hủy gán Mentor của đội thi "${team.name}"`;
+    }
+    const newLog = new EventLog({
+      eventId: team.eventId,
+      actorId: req.user._id,
+      action: mentorId ? 'assign_team_mentor' : 'unassign_team_mentor',
+      details: logDetailsMsg
+    });
+    await newLog.save();
 
     res.json({
       message: mentorId ? 'Đã gán Mentor cho đội thi thành công.' : 'Đã hủy gán Mentor cho đội thi.',

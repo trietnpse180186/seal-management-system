@@ -80,92 +80,29 @@ export default function GuestPortal({ user }: GuestPortalProps) {
     const contestStart = activeEvent.contestStart ? new Date(activeEvent.contestStart) : null;
     const contestEnd = activeEvent.contestEnd ? new Date(activeEvent.contestEnd) : null;
 
-    if (activeEvent.status === "ongoing") {
-      if (phase === 1) {
-        return { label: "ĐÃ KẾT THÚC", classes: "text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded bg-slate-900/50" };
-      }
-      if (phase === 2) {
-        if (contestEnd && now >= contestEnd) {
-          return { label: "ĐÃ KẾT THÚC", classes: "text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded bg-slate-900/50" };
-        }
-        return { label: "ĐANG DIỄN RA", classes: "text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded bg-cyan-950/20" };
-      }
-      if (phase === 3) {
-        if (contestEnd && now >= contestEnd) {
-          return { label: "ĐANG DIỄN RA", classes: "text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded bg-cyan-950/20" };
-        }
-        return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
-      }
-    }
+    // Determine current active phase (1, 2, or 3)
+    const currentPhase = (() => {
+      if (regOpen && now < regOpen) return 1;
+      if (contestEnd && now >= contestEnd) return 3;
+      if (contestStart && now >= contestStart) return 2;
+      return 1;
+    })();
 
-    if (activeEvent.status === "prepare") {
-      if (phase === 1) {
-        return { label: "ĐÃ KẾT THÚC", classes: "text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded bg-slate-900/50" };
-      }
-      return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
-    }
-
-    if (activeEvent.status === "registration") {
-      if (phase === 1) {
-        const regClose = activeEvent.registrationClose ? new Date(activeEvent.registrationClose) : null;
-        if (regClose && now >= regClose) {
-          return { label: "ĐÃ KẾT THÚC", classes: "text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded bg-slate-900/50" };
-        }
-        return { label: "ĐANG DIỄN RA", classes: "text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded bg-cyan-950/20" };
-      }
-      return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
-    }
-
-    // Default fallbacks based on date checks
-    if (phase === 1) {
-      if (!regOpen) {
-        return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
-      }
-      if (now < regOpen) {
-        return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
-      }
-      const regClose = activeEvent.registrationClose ? new Date(activeEvent.registrationClose) : null;
-      if (regClose && now >= regClose) {
-        return { label: "ĐÃ KẾT THÚC", classes: "text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded bg-slate-900/50" };
-      }
-      if (contestStart && now >= regOpen && now < contestStart) {
-        return { label: "ĐANG DIỄN RA", classes: "text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded bg-cyan-950/20" };
-      }
-      return { label: "ĐÃ KẾT THÚC", classes: "text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded bg-slate-900/50" };
-    }
-
-    if (phase === 2) {
-      if (!contestStart) {
-        return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
-      }
-      if (now < contestStart) {
-        return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
-      }
-      if (contestEnd && now >= contestStart && now < contestEnd) {
-        return { label: "ĐANG DIỄN RA", classes: "text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded bg-cyan-950/20" };
-      }
-      return { label: "ĐÃ KẾT THÚC", classes: "text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded bg-slate-900/50" };
-    }
-
-    if (phase === 3) {
-      if (!contestEnd) {
-        return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
-      }
-      if (now < contestEnd) {
-        return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
-      }
+    if (phase === currentPhase) {
       return { label: "ĐANG DIỄN RA", classes: "text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded bg-cyan-950/20" };
+    } else if (phase < currentPhase) {
+      return { label: "ĐÃ KẾT THÚC", classes: "text-slate-500 border border-slate-800 px-1.5 py-0.5 rounded bg-slate-900/50" };
+    } else {
+      return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
     }
-
-    return { label: "CHƯA DIỄN RA", classes: "text-slate-500 border border-slate-900 px-1.5 py-0.5 rounded bg-slate-950/20" };
   };
 
   useEffect(() => {
     const fetchEvents = async () => {
       try {
         const res = await axios.get("http://localhost:5000/api/events");
-        // Show all events that are not in 'draft' status
-        setEvents(res.data.filter((e: any) => e.status !== "draft"));
+        // Show only events that are in 'ongoing' status
+        setEvents(res.data.filter((e: any) => e.status === "ongoing"));
       } catch (err) {
         console.error("Lỗi lấy danh sách cuộc thi:", err);
       } finally {
@@ -174,7 +111,6 @@ export default function GuestPortal({ user }: GuestPortalProps) {
     };
     fetchEvents();
   }, []);
-
   useEffect(() => {
     const checkTeamStatus = async () => {
       try {
@@ -354,126 +290,252 @@ export default function GuestPortal({ user }: GuestPortalProps) {
               </div>
             ))}
           </div>
+
         ) : events.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {events.map((e: any) => {
-              const maxTeamsVal = e.maxTeams || 10;
-              const teamCountVal = e.teamCount || 0;
-              const percent = Math.min(100, (teamCountVal / maxTeamsVal) * 100);
+          events.length === 1 ? (
+            <div className="w-full">
+              {events.map((e: any) => {
+                const maxTeamsVal = e.maxTeams || 10;
+                const teamCountVal = e.teamCount || 0;
+                const percent = Math.min(100, (teamCountVal / maxTeamsVal) * 100);
 
-              let statusLabel: string;
-              let statusColor: string;
-              switch (e.status) {
-                case "registration":
-                  statusLabel = "[MỞ ĐĂNG KÝ]";
-                  statusColor = "text-cyan-400";
-                  break;
-                case "prepare":
-                  statusLabel = "[ĐANG CHUẨN BỊ]";
-                  statusColor = "text-amber-500";
-                  break;
-                case "ongoing":
-                  statusLabel = "[ĐANG DIỄN RA]";
-                  statusColor = "text-amber-400";
-                  break;
-                case "completed":
-                  statusLabel = "[ĐÃ KẾT THÚC]";
-                  statusColor = "text-emerald-400";
-                  break;
-                case "cancelled":
-                  statusLabel = "[ĐÃ HỦY]";
-                  statusColor = "text-rose-500";
-                  break;
-                default:
-                  statusLabel = `[${e.status.toUpperCase()}]`;
-                  statusColor = "text-slate-500";
-              }
+                let statusLabel: string;
+                let statusColor: string;
+                switch (e.status) {
+                  case "registration":
+                    statusLabel = "[MỞ ĐĂNG KÝ]";
+                    statusColor = "text-cyan-400";
+                    break;
+                  case "prepare":
+                    statusLabel = "[ĐANG CHUẨN BỊ]";
+                    statusColor = "text-amber-500";
+                    break;
+                  case "ongoing":
+                    statusLabel = "[ĐANG DIỄN RA]";
+                    statusColor = "text-amber-450";
+                    break;
+                  case "completed":
+                    statusLabel = "[ĐÃ KẾT THÚC]";
+                    statusColor = "text-emerald-400";
+                    break;
+                  case "cancelled":
+                    statusLabel = "[ĐÃ HỦY]";
+                    statusColor = "text-rose-500";
+                    break;
+                  default:
+                    statusLabel = `[${e.status.toUpperCase()}]`;
+                    statusColor = "text-slate-500";
+                }
 
-              return (
-                <div
-                  key={e._id}
-                  className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/50 hover:shadow-[0_0_25px_rgba(0,240,255,0.08)] transition-all flex flex-col justify-between gap-6 relative overflow-hidden group bg-slate-900/10"
-                >
-                  <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-500/0 to-transparent group-hover:via-cyan-500/60 transition-all duration-500"></div>
+                return (
+                  <div
+                    key={e._id}
+                    className="glass p-6 md:p-8 rounded-2xl border border-slate-800 hover:border-cyan-500/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.1)] transition-all flex flex-col md:flex-row justify-between items-center gap-8 relative overflow-hidden group bg-slate-900/10 w-full"
+                  >
+                    <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-500/0 to-transparent group-hover:via-cyan-500/60 transition-all duration-500"></div>
 
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center text-[10px]">
-                      <span className={`font-bold uppercase tracking-wider ${statusColor}`}>
-                        {statusLabel}
-                      </span>
-                      <span className="text-slate-500 font-semibold font-mono">
-                        {e.semester} {e.year}
-                      </span>
+                    {/* Left block: Title, Semester, Year, Description */}
+                    <div className="flex-1 space-y-4">
+                      <div className="flex items-center gap-3 text-[10px]">
+                        <span className={`font-bold uppercase tracking-wider ${statusColor}`}>
+                          {statusLabel}
+                        </span>
+                        <span className="text-slate-650 font-bold">•</span>
+                        <span className="text-slate-400 font-semibold font-mono">
+                          Học kỳ: {e.semester} {e.year}
+                        </span>
+                      </div>
+
+                      <h3 className="text-xl md:text-2xl font-extrabold text-white font-mono group-hover:text-cyan-400 transition-colors uppercase tracking-tight">
+                        {e.name}
+                      </h3>
+
+                      <p className="text-xs md:text-sm text-slate-450 font-sans leading-relaxed max-w-4xl">
+                        {e.description || "Chưa có mô tả chi tiết cho cuộc thi này."}
+                      </p>
                     </div>
 
-                    <h3 className="text-lg font-bold text-white font-mono group-hover:text-cyan-400 transition-colors uppercase tracking-tight">
-                      {e.name}
-                    </h3>
+                    {/* Right block: Progress & Actions */}
+                    <div className="w-full md:w-80 shrink-0 space-y-4 border-t md:border-t-0 md:border-l border-slate-800/60 pt-6 md:pt-0 md:pl-8">
+                      <div className="flex justify-between items-center text-xs font-mono">
+                        <span className="text-slate-500 font-semibold">Số đội đã đăng ký:</span>
+                        <span className="text-slate-350 font-bold">
+                          {teamCountVal} / {maxTeamsVal}
+                        </span>
+                      </div>
 
-                    <p className="text-xs text-slate-400 font-sans leading-relaxed line-clamp-3">
-                      {e.description || "Chưa có mô tả chi tiết cho cuộc thi này."}
-                    </p>
+                      <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-900">
+                        <div
+                          className="h-full bg-cyan-500 transition-all duration-500 shadow-[0_0_8px_rgba(6,182,212,0.8)]"
+                          style={{ width: `${percent}%` }}
+                        ></div>
+                      </div>
+
+                      <div className="pt-2">
+                        {e.status === "registration" && (
+                          <button
+                            onClick={() => {
+                              if (hasTeam) {
+                                navigate("/team-area");
+                              } else {
+                                navigate(`/register-team?eventId=${e._id}`);
+                              }
+                            }}
+                            className="w-full py-3 border border-cyan-500/30 rounded-xl bg-cyan-500/10 text-cyan-400 text-sm font-bold hover:bg-cyan-500/20 transition-all uppercase tracking-wider text-center cursor-pointer font-mono"
+                          >
+                            {hasTeam ? "Vào khu vực đội" : "Đăng ký tham gia"}
+                          </button>
+                        )}
+                        
+                        {e.status === "prepare" && (
+                          hasTeam ? (
+                            <button
+                              onClick={() => navigate("/team-area")}
+                              className="w-full py-3 border border-cyan-500/30 rounded-xl bg-cyan-500/10 text-cyan-400 text-sm font-bold hover:bg-cyan-500/20 transition-all uppercase tracking-wider text-center cursor-pointer font-mono"
+                            >
+                              Vào khu vực đội
+                            </button>
+                          ) : (
+                            <div className="w-full py-3 border border-slate-800 rounded-xl bg-slate-900/30 text-slate-500 text-sm font-bold text-center uppercase tracking-wider font-mono">
+                              Đã đóng đăng ký (Đang chuẩn bị)
+                            </div>
+                          )
+                        )}
+                        
+                        {e.status === "ongoing" && (
+                          <button
+                            onClick={() => navigate("/leaderboard")}
+                            className="w-full py-3 border border-slate-800 rounded-xl bg-slate-900/40 text-slate-350 text-xs font-bold hover:bg-slate-800/60 hover:text-white transition-all uppercase tracking-wider text-center cursor-pointer font-mono"
+                          >
+                            Bảng xếp hạng live
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {events.map((e: any) => {
+                const maxTeamsVal = e.maxTeams || 10;
+                const teamCountVal = e.teamCount || 0;
+                const percent = Math.min(100, (teamCountVal / maxTeamsVal) * 100);
 
-                  <div className="space-y-3 pt-2">
-                    <div className="flex justify-between items-center text-[10px] font-mono">
-                      <span className="text-slate-500">Số đội đã đăng ký:</span>
-                      <span className="text-slate-300 font-bold">
-                        {teamCountVal} / {maxTeamsVal}
-                      </span>
+                let statusLabel: string;
+                let statusColor: string;
+                switch (e.status) {
+                  case "registration":
+                    statusLabel = "[MỞ ĐĂNG KÝ]";
+                    statusColor = "text-cyan-400";
+                    break;
+                  case "prepare":
+                    statusLabel = "[ĐANG CHUẨN BỊ]";
+                    statusColor = "text-amber-500";
+                    break;
+                  case "ongoing":
+                    statusLabel = "[ĐANG DIỄN RA]";
+                    statusColor = "text-amber-400";
+                    break;
+                  case "completed":
+                    statusLabel = "[ĐÃ KẾT THÚC]";
+                    statusColor = "text-emerald-400";
+                    break;
+                  case "cancelled":
+                    statusLabel = "[ĐÃ HỦY]";
+                    statusColor = "text-rose-500";
+                    break;
+                  default:
+                    statusLabel = `[${e.status.toUpperCase()}]`;
+                    statusColor = "text-slate-500";
+                }
+
+                return (
+                  <div
+                    key={e._id}
+                    className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/50 hover:shadow-[0_0_25px_rgba(0,240,255,0.08)] transition-all flex flex-col justify-between gap-6 relative overflow-hidden group bg-slate-900/10"
+                  >
+                    <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-500/0 to-transparent group-hover:via-cyan-500/60 transition-all duration-500"></div>
+
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center text-[10px]">
+                        <span className={`font-bold uppercase tracking-wider ${statusColor}`}>
+                          {statusLabel}
+                        </span>
+                        <span className="text-slate-500 font-semibold font-mono">
+                          {e.semester} {e.year}
+                        </span>
+                      </div>
+
+                      <h3 className="text-lg font-bold text-white font-mono group-hover:text-cyan-400 transition-colors uppercase tracking-tight">
+                        {e.name}
+                      </h3>
+
+                      <p className="text-xs text-slate-400 font-sans leading-relaxed line-clamp-3">
+                        {e.description || "Chưa có mô tả chi tiết cho cuộc thi này."}
+                      </p>
                     </div>
 
-                    <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-900">
-                      <div
-                        className="h-full bg-cyan-500 transition-all duration-500"
-                        style={{ width: `${percent}%` }}
-                      ></div>
-                    </div>
+                    <div className="space-y-3 pt-2">
+                      <div className="flex justify-between items-center text-[10px] font-mono">
+                        <span className="text-slate-500">Số đội đã đăng ký:</span>
+                        <span className="text-slate-300 font-bold">
+                          {teamCountVal} / {maxTeamsVal}
+                        </span>
+                      </div>
 
-                    {e.status === "registration" && (
-                      <button
-                        onClick={() => {
-                          if (hasTeam) {
-                            navigate("/team-area");
-                          } else {
-                            navigate(`/register-team?eventId=${e._id}`);
-                          }
-                        }}
-                        className="w-full mt-2 py-2 border border-cyan-500/30 rounded-xl bg-cyan-500/10 text-cyan-400 text-xs font-bold hover:bg-cyan-500/20 transition-all uppercase tracking-wider text-center cursor-pointer font-mono"
-                      >
-                        {hasTeam ? "Vào khu vực đội" : "Đăng ký tham gia"}
-                      </button>
-                    )}
-                    
-                    {e.status === "prepare" && (
-                      hasTeam ? (
+                      <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-900">
+                        <div
+                          className="h-full bg-cyan-500 transition-all duration-500"
+                          style={{ width: `${percent}%` }}
+                        ></div>
+                      </div>
+
+                      {e.status === "registration" && (
                         <button
-                          onClick={() => navigate("/team-area")}
+                          onClick={() => {
+                            if (hasTeam) {
+                              navigate("/team-area");
+                            } else {
+                              navigate(`/register-team?eventId=${e._id}`);
+                            }
+                          }}
                           className="w-full mt-2 py-2 border border-cyan-500/30 rounded-xl bg-cyan-500/10 text-cyan-400 text-xs font-bold hover:bg-cyan-500/20 transition-all uppercase tracking-wider text-center cursor-pointer font-mono"
                         >
-                          Vào khu vực đội
+                          {hasTeam ? "Vào khu vực đội" : "Đăng ký tham gia"}
                         </button>
-                      ) : (
-                        <div className="w-full mt-2 py-2 border border-slate-800 rounded-xl bg-slate-900/30 text-slate-500 text-xs font-bold text-center uppercase tracking-wider font-mono">
-                          Đã đóng đăng ký (Đang chuẩn bị)
-                        </div>
-                      )
-                    )}
-                    
-                    {e.status === "ongoing" && (
-                      <button
-                        onClick={() => navigate("/leaderboard")}
-                        className="w-full mt-2 py-2 border border-slate-800 rounded-xl bg-slate-900/40 text-slate-300 text-xs font-bold hover:bg-slate-800/60 hover:text-white transition-all uppercase tracking-wider text-center cursor-pointer font-mono"
-                      >
-                        Bảng xếp hạng live
-                      </button>
-                    )}
+                      )}
+                      
+                      {e.status === "prepare" && (
+                        hasTeam ? (
+                          <button
+                            onClick={() => navigate("/team-area")}
+                            className="w-full mt-2 py-2 border border-cyan-500/30 rounded-xl bg-cyan-500/10 text-cyan-400 text-xs font-bold hover:bg-cyan-500/20 transition-all uppercase tracking-wider text-center cursor-pointer font-mono"
+                          >
+                            Vào khu vực đội
+                          </button>
+                        ) : (
+                          <div className="w-full mt-2 py-2 border border-slate-800 rounded-xl bg-slate-900/30 text-slate-500 text-xs font-bold text-center uppercase tracking-wider font-mono">
+                            Đã đóng đăng ký (Đang chuẩn bị)
+                          </div>
+                        )
+                      )}
+                      
+                      {e.status === "ongoing" && (
+                        <button
+                          onClick={() => navigate("/leaderboard")}
+                          className="w-full mt-2 py-2 border border-slate-800 rounded-xl bg-slate-900/40 text-slate-300 text-xs font-bold hover:bg-slate-800/60 hover:text-white transition-all uppercase tracking-wider text-center cursor-pointer font-mono"
+                        >
+                          Bảng xếp hạng live
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
+                );
+              })}
+            </div>
+          )) : (
           <div className="glass p-8 rounded-2xl border border-slate-800 text-center text-slate-500 italic text-xs font-mono">
             [HIỆN_TẠI_CHƯA_CÓ_CUỘC_THI_NÀO_ĐƯỢC_CÔNG_BỐ]
           </div>

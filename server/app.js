@@ -37,6 +37,7 @@ require("./features/notifications/Notification");
 require("./features/auth/AuditLog");
 require("./features/grading/GradingLevel");
 require("./features/github-ai/Task");
+require("./features/grading/EventLog");
 require("./features/chat/ChatRoom");
 require("./features/chat/ChatMessage");
 const app = express();

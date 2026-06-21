@@ -312,9 +312,44 @@ router.post('/assign-role', authenticateToken, requireSystemAdmin, async (req, r
 
     await newRole.save();
 
+    // Create EventLog
+    const EventLog = mongoose.model('EventLog');
+    let roleDetails = `Gán vai trò "${role}" cho người dùng ${userEmail}`;
+    if (trackId) {
+      const Track = mongoose.model('Track');
+      const track = await Track.findById(trackId);
+      if (track) {
+        roleDetails += ` tại bảng đấu: "${track.name}"`;
+      }
+    }
+    if (teamId) {
+      const Team = mongoose.model('Team');
+      const team = await Team.findById(teamId);
+      if (team) {
+        roleDetails += ` của đội thi: "${team.name}"`;
+      }
+    }
+    const newLog = new EventLog({
+      eventId,
+      actorId: req.user._id,
+      action: 'assign_role',
+      details: roleDetails
+    });
+    await newLog.save();
+
     // If role is mentor and teamId is specified, assign mentor to team and ensure chat room
     if (role === 'mentor' && teamId) {
       const Team = mongoose.model('Team');
+      
+      // Check if this mentor is already assigned to another team in this event
+      const alreadyMentoring = await Team.findOne({
+        eventId,
+        mentorId: targetUser._id
+      });
+      if (alreadyMentoring && alreadyMentoring._id.toString() !== teamId.toString()) {
+        return res.status(400).json({ message: `Mentor này đã được phân công quản lý một đội thi khác (${alreadyMentoring.name}) trong cuộc thi.` });
+      }
+
       const team = await Team.findById(teamId);
       if (team) {
         team.mentorId = targetUser._id;

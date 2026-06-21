@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import axios from "axios";
+import { io, Socket } from "socket.io-client";
 import {
   CalendarPlus,
   Info,
   Calendar,
   Clock,
+  Eye,
+  X,
+  User,
+  Activity,
 } from "lucide-react";
 import TeamsTab from "./TeamsTab";
 import TracksTab from "./TracksTab";
@@ -109,8 +114,11 @@ export default function AdminEvents({
 
   // Tab management state
   const [activeTab, setActiveTab] = useState<
-    "admin" | "events" | "teams" | "rounds" | "tracks" | "github" | "schedule"
+    "admin" | "events" | "teams" | "rounds" | "tracks" | "github" | "logs" | "schedule"
   >(defaultTab);
+  const [eventLogs, setEventLogs] = useState<any[]>([]);
+  const [selectedLog, setSelectedLog] = useState<any | null>(null);
+  const socketRef = React.useRef<Socket | null>(null);
   // Sidebar collapse state (for premium slide effect)
   // const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -160,7 +168,7 @@ export default function AdminEvents({
   const [linkingTeamId, setLinkingTeamId] = useState("");
   const [manualRepoName, setManualRepoName] = useState("");
   const [manualRepoUrl, setManualRepoUrl] = useState("");
-  const [syncingRepoId, setSyncingRepoId] = useState("");
+
 
   const formatForDateTimeLocal = (dateString: string | null | undefined) => {
     if (!dateString) return "";
@@ -271,6 +279,25 @@ export default function AdminEvents({
   }, [defaultTab]);
 
   useEffect(() => {
+    if (activeTab === "logs" && selectedEvent) {
+      fetchEventLogs();
+      if (token) {
+        const sock = io("http://localhost:5000", { query: { token } });
+        socketRef.current = sock;
+        sock.on("new_event_log", (newLog: any) => {
+          if (newLog.eventId === selectedEvent._id) {
+            setEventLogs((prev) => [newLog, ...prev]);
+          }
+        });
+        return () => {
+          sock.disconnect();
+          socketRef.current = null;
+        };
+      }
+    }
+  }, [activeTab, selectedEvent, token]);
+
+  useEffect(() => {
     if (eventIdParam) {
       const foundEvent = events.find((e) => e._id === eventIdParam);
       if (foundEvent) {
@@ -373,8 +400,24 @@ export default function AdminEvents({
       fetchTeamsList();
       fetchRepositories(selectedEvent._id);
       fetchAllTeams(selectedEvent._id);
+      fetchEventLogs();
     } catch (err) {
       console.error("Lỗi fetch chi tiết sự kiện:", err);
+    }
+  };
+
+  const fetchEventLogs = async () => {
+    if (!selectedEvent) return;
+    try {
+      const res = await axios.get(
+        `http://localhost:5000/api/events/${selectedEvent._id}/logs`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setEventLogs(res.data || []);
+    } catch (err) {
+      console.error("Lỗi lấy nhật ký sự kiện:", err);
     }
   };
 
@@ -500,6 +543,44 @@ export default function AdminEvents({
       setMessage({
         type: "error",
         text: err.response?.data?.message || "Lỗi khi phân bảng đấu.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKickAllCollaborators = async (repoId: string) => {
+    if (
+      !window.confirm(
+        "Bạn có chắc chắn muốn thu hồi quyền truy cập (gỡ cộng tác viên) của toàn bộ thành viên nhóm và mentor khỏi repository này không?"
+      )
+    ) {
+      return;
+    }
+    setLoading(true);
+    setMessage({ type: "", text: "" });
+    try {
+      const res = await axios.post(
+        `http://localhost:5000/api/github-repositories/${repoId}/kick-all`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setMessage({
+        type: "success",
+        text: res.data.message || "Thu hồi quyền thành công!",
+      });
+      if (selectedEvent) {
+        fetchRepositories(selectedEvent._id);
+      }
+    } catch (err: any) {
+      console.error("Kick all collaborators error:", err);
+      setMessage({
+        type: "error",
+        text:
+          err.response?.data?.message ||
+          "Lỗi khi thu hồi quyền truy cập repository.",
       });
     } finally {
       setLoading(false);
@@ -1361,32 +1442,7 @@ export default function AdminEvents({
     }
   };
 
-  const handleSyncRepo = async (repoId: string) => {
-    setSyncingRepoId(repoId);
-    setMessage({ type: "", text: "" });
-    try {
-      setMessage({
-        type: "success",
-        text: "Đang bắt đầu đồng bộ và chạy AI Review...",
-      });
-      const res = await axios.post(
-        `http://localhost:5000/api/github-repositories/${repoId}/sync`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      setMessage({ type: "success", text: res.data.message });
-      if (selectedEvent) {
-        fetchRepositories(selectedEvent._id);
-      }
-    } catch (err: any) {
-      setMessage({
-        type: "error",
-        text: err.response?.data?.message || "Lỗi khi đồng bộ.",
-      });
-    } finally {
-      setSyncingRepoId("");
-    }
-  };
+
 
   const handleUploadExam = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1633,6 +1689,15 @@ export default function AdminEvents({
           >
             <Github size={14} />
             GitHub & AI Đánh giá
+          </button>
+          <button
+            onClick={() => setActiveTab("logs")}
+            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "logs"
+                ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+              }`}
+          >
+            Nhật ký hoạt động
           </button>
         </div>
       )}
@@ -2054,10 +2119,10 @@ export default function AdminEvents({
             setManualRepoName={setManualRepoName}
             manualRepoUrl={manualRepoUrl}
             setManualRepoUrl={setManualRepoUrl}
-            syncingRepoId={syncingRepoId}
             handleCreateRepo={handleCreateRepo}
             handleLinkRepo={handleLinkRepo}
-            handleSyncRepo={handleSyncRepo}
+            selectedEvent={selectedEvent}
+            handleKickAllCollaborators={handleKickAllCollaborators}
           />
         ) : (
           <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">
@@ -2066,7 +2131,95 @@ export default function AdminEvents({
           </div>
         ))}
 
-      {/* 7. SCHEDULE TAB */}
+      {/* 7. EVENT LOGS TAB */}
+      {activeTab === "logs" &&
+        (selectedEvent ? (
+          <div className="glass p-6 rounded-2xl border border-slate-800/80 bg-slate-900/20 space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-white font-mono flex items-center gap-2">
+                  <Info size={20} className="text-cyan-400" />
+                  <span>NHẬT KÝ HOẠT ĐỘNG SỰ KIỆN</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Nhật ký lưu lại các thay đổi quan trọng đối với cấu trúc và thiết lập thời gian của sự kiện.
+                </p>
+              </div>
+              <button
+                onClick={fetchEventLogs}
+                className="bg-slate-950 hover:bg-slate-900 text-slate-300 hover:text-white px-3 py-1.5 rounded-xl border border-slate-800 text-xs font-mono transition-all cursor-pointer"
+              >
+                Tải lại nhật ký
+              </button>
+            </div>
+
+            {eventLogs.length > 0 ? (
+              <div className="flow-root">
+                <ul className="-mb-8">
+                  {eventLogs.map((log: any, logIdx: number) => (
+                    <li key={log._id}>
+                      <div className="relative pb-8">
+                        {logIdx !== eventLogs.length - 1 ? (
+                          <span
+                            className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-slate-800"
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                        <div 
+                          onClick={() => setSelectedLog(log)}
+                          className="relative flex space-x-3 cursor-pointer group hover:bg-slate-800/30 p-3 -m-3 rounded-2xl transition-all"
+                        >
+                          <div>
+                            <span className="h-8 w-8 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center ring-8 ring-slate-900/50">
+                              <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0 pt-1.5 flex justify-between space-x-4">
+                            <div>
+                              <p className="text-sm text-slate-200">
+                                {log.details}{" "}
+                                <span className="font-mono text-xs text-slate-500 font-medium">
+                                  ({log.action})
+                                </span>
+                              </p>
+                              <p className="text-xs text-slate-500 mt-1 flex items-center gap-2">
+                                <span>Thực hiện bởi:</span>
+                                <span className="text-cyan-400 font-semibold">
+                                  {log.actorId?.fullName || "Hệ thống"}
+                                </span>
+                                <span>({log.actorId?.email || "N/A"})</span>
+                              </p>
+                            </div>
+                            <div className="text-right text-xs whitespace-nowrap text-slate-500 font-mono flex flex-col items-end justify-between">
+                              <time dateTime={log.createdAt}>
+                                {new Date(log.createdAt).toLocaleString("vi-VN")}
+                              </time>
+                              <span className="text-cyan-400 opacity-0 group-hover:opacity-100 transition-all text-xs font-mono flex items-center gap-1 mt-1">
+                                <span>Chi tiết</span>
+                                <Eye size={12} />
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-slate-500 font-mono text-sm">
+                Chưa có nhật ký hoạt động nào được ghi nhận cho sự kiện này.
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">
+            Vui lòng chọn cuộc thi từ thanh tiêu đề hoặc trang Quản trị viên để
+            xem Nhật ký hoạt động.
+          </div>
+        ))}
+
+      {/* 8. SCHEDULE TAB */}
       {activeTab === "schedule" &&
         (selectedEvent ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fadeIn">
@@ -2242,6 +2395,94 @@ export default function AdminEvents({
             Vui lòng chọn cuộc thi từ thanh tiêu đề hoặc trang Quản trị viên để thiết lập thời gian.
           </div>
         ))}
+
+      {/* DETAIL EVENT LOG MODAL */}
+      {selectedLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm transition-all duration-300">
+          <div className="relative w-full max-w-lg border border-slate-800/80 bg-slate-950 p-6 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] space-y-6 font-sans text-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            {/* Top decorative line */}
+            <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
+            
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+              <div className="flex items-center gap-2">
+                <Activity className="text-cyan-400 shrink-0 animate-pulse" size={20} />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
+                  Chi tiết Nhật ký Hoạt động
+                </h3>
+              </div>
+              <button
+                onClick={() => setSelectedLog(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-all cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Content Body */}
+            <div className="space-y-4">
+              {/* Action Badge */}
+              <div className="flex justify-between items-center bg-slate-900/50 p-3 rounded-xl border border-slate-800/50">
+                <span className="text-xs text-slate-400 font-mono">Loại hành động:</span>
+                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold font-mono tracking-wide ${
+                  selectedLog.action.includes('event') ? 'bg-blue-500/10 border border-blue-500/30 text-blue-400' :
+                  selectedLog.action.includes('role') ? 'bg-purple-500/10 border border-purple-500/30 text-purple-400' :
+                  selectedLog.action.includes('track') || selectedLog.action.includes('team') ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' :
+                  selectedLog.action.includes('rubric') || selectedLog.action.includes('criterion') ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400' :
+                  selectedLog.action.includes('results') ? 'bg-rose-500/10 border border-rose-500/30 text-rose-400' :
+                  'bg-slate-500/10 border border-slate-500/30 text-slate-400'
+                }`}>
+                  {selectedLog.action}
+                </span>
+              </div>
+
+              {/* Action Description */}
+              <div className="space-y-1">
+                <span className="text-xs text-slate-400 font-mono">Mô tả hoạt động:</span>
+                <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800/80 text-sm text-white font-medium leading-relaxed">
+                  {selectedLog.details}
+                </div>
+              </div>
+
+              {/* Actor Info */}
+              <div className="space-y-1">
+                <span className="text-xs text-slate-400 font-mono">Thực hiện bởi:</span>
+                <div className="flex items-center gap-3 bg-slate-900/50 p-3 rounded-xl border border-slate-800/50">
+                  <div className="h-10 w-10 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center text-cyan-400 font-bold font-mono">
+                    <User size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-200">
+                      {selectedLog.actorId?.fullName || "Hệ thống"}
+                    </h4>
+                    <p className="text-xs text-slate-500">
+                      {selectedLog.actorId?.email || "system@internal"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Time */}
+              <div className="flex justify-between items-center bg-slate-900/50 p-3 rounded-xl border border-slate-800/50">
+                <span className="text-xs text-slate-400 font-mono">Thời gian thực hiện:</span>
+                <span className="text-xs text-slate-300 font-mono">
+                  {new Date(selectedLog.createdAt).toLocaleString("vi-VN")}
+                </span>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end pt-2 border-t border-slate-800/50">
+              <button
+                onClick={() => setSelectedLog(null)}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-300 hover:text-white text-xs font-bold transition-all uppercase tracking-wider cursor-pointer"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

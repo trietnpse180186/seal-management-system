@@ -32,7 +32,7 @@ interface ChatRoom {
   teamId?: { _id: string; name: string };
   mentorId?: { _id: string; fullName: string; email: string };
   trackId?: { _id: string; name: string };
-  eventId: string;
+  eventId?: { _id: string; name: string; status: string };
   type: 'team_mentor' | 'track_mentors';
   members: ChatMember[];
 }
@@ -116,11 +116,14 @@ export default function MentorChat() {
       const resRooms = await axios.get(`http://localhost:5000/api/chat/rooms`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setRooms(resRooms.data);
+      
+      // Only show rooms that belong to an ongoing event
+      const ongoingRooms = resRooms.data.filter((r: any) => r.eventId?.status === 'ongoing');
+      setRooms(ongoingRooms);
       
       // Auto-select room if only 1 exists
-      if (resRooms.data.length === 1 && !selectedRoomRef.current) {
-        setSelectedRoom(resRooms.data[0]);
+      if (ongoingRooms.length === 1 && !selectedRoomRef.current) {
+        setSelectedRoom(ongoingRooms[0]);
       }
     } catch (error) {
       console.error("Error fetching chat rooms:", error);

@@ -1073,6 +1073,15 @@ router.put('/:teamId/assign-mentor', authenticateToken, async (req, res) => {
       if (!mentorRole) {
         return res.status(400).json({ message: 'Người dùng được chọn không phải là Mentor của sự kiện này.' });
       }
+
+      // Check if this mentor is already assigned to another team in this event
+      const alreadyMentoring = await Team.findOne({
+        eventId: team.eventId,
+        mentorId: mentorId
+      });
+      if (alreadyMentoring && alreadyMentoring._id.toString() !== teamId.toString()) {
+        return res.status(400).json({ message: `Mentor này đã được phân công quản lý một đội thi khác (${alreadyMentoring.name}) trong cuộc thi.` });
+      }
     }
 
     team.mentorId = mentorId || undefined;

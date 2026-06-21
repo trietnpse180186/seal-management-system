@@ -39,6 +39,7 @@ router.get('/rooms', authenticateToken, async (req, res) => {
     }).populate('teamId', 'name')
       .populate('trackId', 'name')
       .populate('mentorId', 'fullName email')
+      .populate('eventId', 'name status')
       .populate('members', 'fullName role avatar')
       .sort({ updatedAt: -1 });
 

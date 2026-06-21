@@ -178,7 +178,7 @@ export default function TeamArea() {
       </div>
 
       {/* Chat Section */}
-      {team && (
+      {team && team.eventId?.status === 'ongoing' && (
         <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-cyan-950 text-cyan-400 rounded-xl">

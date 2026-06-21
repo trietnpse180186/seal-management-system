@@ -215,11 +215,22 @@ router.post("/", authenticateToken, async (req, res) => {
 
     // Create EventLog
     const EventLog = mongoose.model('EventLog');
+    const Round = mongoose.model('Round');
+    const roundObj = await Round.findById(roundId);
+    const roundName = roundObj ? roundObj.name : roundId;
+    let rubricDetailsMsg = `Tạo Rubric mới: "${rubric.name}" cho vòng thi: "${roundName}" (Trọng số: ${rubric.totalWeight}%, Điểm tối đa tiêu chí: ${rubric.maxCriterionScore})`;
+    if (trackId) {
+      const Track = mongoose.model('Track');
+      const trackObj = await Track.findById(trackId);
+      if (trackObj) {
+        rubricDetailsMsg += ` tại bảng đấu: "${trackObj.name}"`;
+      }
+    }
     const newLog = new EventLog({
       eventId,
       actorId: req.user._id,
       action: 'create_rubric',
-      details: `Tạo Rubric mới: ${rubric.name} cho vòng thi ID: ${roundId}`
+      details: rubricDetailsMsg
     });
     await newLog.save();
 
@@ -301,8 +312,16 @@ router.put("/:rubricId", authenticateToken, async (req, res) => {
     const { name, description, totalWeight, maxCriterionScore, isActive } =
       req.body;
 
-    if (name !== undefined) rubric.name = String(name).trim();
-    if (description !== undefined) rubric.description = description;
+    let rubricDetails = [];
+
+    if (name !== undefined && String(name).trim() !== rubric.name) {
+      rubricDetails.push(`Tên: "${rubric.name}" -> "${String(name).trim()}"`);
+      rubric.name = String(name).trim();
+    }
+    if (description !== undefined && description !== rubric.description) {
+      rubricDetails.push(`Mô tả`);
+      rubric.description = description;
+    }
 
     if (totalWeight !== undefined) {
       const parsedTotalWeight = toNumber(totalWeight, rubric.totalWeight);
@@ -319,21 +338,31 @@ router.put("/:rubricId", authenticateToken, async (req, res) => {
         });
       }
 
-      rubric.totalWeight = parsedTotalWeight;
+      if (parsedTotalWeight !== rubric.totalWeight) {
+        rubricDetails.push(`Trọng số: ${rubric.totalWeight}% -> ${parsedTotalWeight}%`);
+        rubric.totalWeight = parsedTotalWeight;
+      }
     }
 
     if (maxCriterionScore !== undefined) {
-      rubric.maxCriterionScore = toNumber(
-        maxCriterionScore,
-        rubric.maxCriterionScore,
-      );
+      const parsedMaxScore = toNumber(maxCriterionScore, rubric.maxCriterionScore);
+      if (parsedMaxScore !== rubric.maxCriterionScore) {
+        rubricDetails.push(`Điểm tối đa tiêu chí: ${rubric.maxCriterionScore} -> ${parsedMaxScore}`);
+        rubric.maxCriterionScore = parsedMaxScore;
+      }
     }
 
-    if (isActive !== undefined) {
+    if (isActive !== undefined && !!isActive !== rubric.isActive) {
+      rubricDetails.push(`Trạng thái hoạt động: ${rubric.isActive} -> ${!!isActive}`);
       rubric.isActive = !!isActive;
     }
 
     await rubric.save();
+
+    let details = `Cập nhật Rubric: ${rubric.name}`;
+    if (rubricDetails.length > 0) {
+      details = `Cập nhật Rubric "${rubric.name}": ${rubricDetails.join(', ')}`;
+    }
 
     // Create EventLog
     const EventLog = mongoose.model('EventLog');
@@ -341,7 +370,7 @@ router.put("/:rubricId", authenticateToken, async (req, res) => {
       eventId: rubric.eventId,
       actorId: req.user._id,
       action: 'update_rubric',
-      details: `Cập nhật Rubric: ${rubric.name}`
+      details
     });
     await newLog.save();
 
@@ -376,11 +405,14 @@ router.delete("/:rubricId", authenticateToken, async (req, res) => {
 
     // Create EventLog
     const EventLog = mongoose.model('EventLog');
+    const Round = mongoose.model('Round');
+    const roundObj = await Round.findById(rubric.roundId);
+    const roundName = roundObj ? roundObj.name : rubric.roundId;
     const newLog = new EventLog({
       eventId: rubric.eventId,
       actorId: req.user._id,
       action: 'delete_rubric',
-      details: `Hủy kích hoạt Rubric: ${rubric.name}`
+      details: `Hủy kích hoạt Rubric: "${rubric.name}" khỏi vòng thi: "${roundName}"`
     });
     await newLog.save();
 
@@ -423,11 +455,14 @@ router.post("/:rubricId/lock", authenticateToken, async (req, res) => {
 
     // Create EventLog
     const EventLog = mongoose.model('EventLog');
+    const Round = mongoose.model('Round');
+    const roundObj = await Round.findById(rubric.roundId);
+    const roundName = roundObj ? roundObj.name : rubric.roundId;
     const newLog = new EventLog({
       eventId: rubric.eventId,
       actorId: req.user._id,
       action: 'lock_rubric',
-      details: `Khóa Rubric: ${rubric.name}`
+      details: `Khóa Rubric: "${rubric.name}" của vòng thi: "${roundName}"`
     });
     await newLog.save();
 
@@ -692,11 +727,14 @@ router.get('/:rubricId/export', authenticateToken, async (req, res) => {
 
     // Create EventLog
     const EventLog = mongoose.model('EventLog');
+    const Round = mongoose.model('Round');
+    const roundObj = await Round.findById(rubric.roundId);
+    const roundName = roundObj ? roundObj.name : rubric.roundId;
     const newLog = new EventLog({
       eventId: rubric.eventId,
       actorId: req.user._id,
       action: 'export_rubric',
-      details: `Xuất cấu hình Rubric: ${rubric.name} thành file JSON`
+      details: `Xuất cấu hình Rubric: "${rubric.name}" của vòng thi: "${roundName}" thành file JSON`
     });
     await newLog.save();
 
@@ -888,11 +926,14 @@ router.post('/import', authenticateToken, async (req, res) => {
 
     // Create EventLog
     const EventLog = mongoose.model('EventLog');
+    const Round = mongoose.model('Round');
+    const roundObj = await Round.findById(roundId);
+    const roundName = roundObj ? roundObj.name : roundId;
     const newLog = new EventLog({
       eventId,
       actorId: req.user._id,
       action: 'import_rubric',
-      details: `Nhập cấu hình Rubric mới từ file JSON: ${newRubric.name}`
+      details: `Nhập cấu hình Rubric mới từ file JSON: "${newRubric.name}" cho vòng thi: "${roundName}"`
     });
     await newLog.save();
 

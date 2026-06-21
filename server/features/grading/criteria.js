@@ -327,8 +327,20 @@ router.put("/:criterionId", authenticateToken, async (req, res) => {
       criterion.code = normalizedCode;
     }
 
-    if (name !== undefined) criterion.name = String(name).trim();
-    if (description !== undefined) criterion.description = description;
+    let critDetails = [];
+
+    if (code !== undefined && normalizedCode !== criterion.code) {
+      critDetails.push(`Mã: "${criterion.code}" -> "${normalizedCode}"`);
+      criterion.code = normalizedCode;
+    }
+    if (name !== undefined && String(name).trim() !== criterion.name) {
+      critDetails.push(`Tên: "${criterion.name}" -> "${String(name).trim()}"`);
+      criterion.name = String(name).trim();
+    }
+    if (description !== undefined && description !== criterion.description) {
+      critDetails.push(`Mô tả`);
+      criterion.description = description;
+    }
 
     if (weight !== undefined) {
       const parsedWeight = toNumber(weight, NaN);
@@ -345,11 +357,19 @@ router.put("/:criterionId", authenticateToken, async (req, res) => {
         });
       }
 
-      criterion.weight = parsedWeight;
+      if (parsedWeight !== criterion.weight) {
+        critDetails.push(`Trọng số: ${criterion.weight}% -> ${parsedWeight}%`);
+        criterion.weight = parsedWeight;
+      }
     }
 
-    if (maxScore !== undefined)
-      criterion.maxScore = toNumber(maxScore, criterion.maxScore);
+    if (maxScore !== undefined) {
+      const parsedMaxScore = toNumber(maxScore, criterion.maxScore);
+      if (parsedMaxScore !== criterion.maxScore) {
+        critDetails.push(`Điểm tối đa: ${criterion.maxScore} -> ${parsedMaxScore}`);
+        criterion.maxScore = parsedMaxScore;
+      }
+    }
     if (excellentDescription !== undefined)
       criterion.excellentDescription = excellentDescription;
     if (goodDescription !== undefined)
@@ -360,7 +380,8 @@ router.put("/:criterionId", authenticateToken, async (req, res) => {
       criterion.failedDescription = failedDescription;
     if (order !== undefined && order !== null && order !== "") {
       const parsed = parseInt(order, 10);
-      if (!isNaN(parsed)) {
+      if (!isNaN(parsed) && parsed !== criterion.order) {
+        critDetails.push(`Thứ tự: ${criterion.order} -> ${parsed}`);
         criterion.order = parsed;
       }
     }
@@ -375,13 +396,18 @@ router.put("/:criterionId", authenticateToken, async (req, res) => {
 
     await criterion.save();
 
+    let details = `Cập nhật tiêu chí: ${criterion.name} (${criterion.code}, trọng số: ${criterion.weight}%) trong Rubric: ${rubric.name}`;
+    if (critDetails.length > 0) {
+      details = `Cập nhật tiêu chí "${criterion.name}" (${criterion.code}) trong Rubric "${rubric.name}": ${critDetails.join(', ')}`;
+    }
+
     // Create EventLog
     const EventLog = mongoose.model('EventLog');
     const newLog = new EventLog({
       eventId: rubric.eventId,
       actorId: req.user._id,
       action: 'update_criterion',
-      details: `Cập nhật tiêu chí: ${criterion.name} (${criterion.code}, trọng số: ${criterion.weight}%) trong Rubric: ${rubric.name}`
+      details
     });
     await newLog.save();
 

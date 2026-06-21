@@ -1084,6 +1084,25 @@ router.put('/:teamId/assign-mentor', authenticateToken, async (req, res) => {
       await ensureChatRoomForTeam(team);
     }
 
+    // Create EventLog
+    const EventLog = mongoose.model('EventLog');
+    let logDetailsMsg = '';
+    if (mentorId) {
+      const User = mongoose.model('User');
+      const mentorObj = await User.findById(mentorId);
+      const mentorName = mentorObj ? mentorObj.fullName : mentorId;
+      logDetailsMsg = `Gán Mentor "${mentorName}" cho đội thi "${team.name}"`;
+    } else {
+      logDetailsMsg = `Hủy gán Mentor của đội thi "${team.name}"`;
+    }
+    const newLog = new EventLog({
+      eventId: team.eventId,
+      actorId: req.user._id,
+      action: mentorId ? 'assign_team_mentor' : 'unassign_team_mentor',
+      details: logDetailsMsg
+    });
+    await newLog.save();
+
     res.json({
       message: mentorId ? 'Đã gán Mentor cho đội thi thành công.' : 'Đã hủy gán Mentor cho đội thi.',
       team

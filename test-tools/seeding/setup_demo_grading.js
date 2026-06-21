@@ -1,19 +1,19 @@
-const mongoose = require('mongoose');
-require('dotenv').config();
+const mongoose = require('../../server/node_modules/mongoose');
+const path = require('path'); require('dotenv').config({ path: path.join(__dirname, '../../server/.env') });
 
 // Load models
-require('./features/auth/User');
-require('./features/events/Event');
-require('./features/events/Track');
-require('./features/events/Round');
-require('./features/teams/Team');
-require('./features/teams/TeamMember');
-require('./features/grading/Rubric');
-require('./features/grading/Criterion');
-require('./features/github-ai/GithubRepository');
-require('./features/github-ai/Commit');
-require('./features/github-ai/AiAnalysis');
-require('./features/auth/EventRole');
+require('../../server/features/auth/User');
+require('../../server/features/events/Event');
+require('../../server/features/events/Track');
+require('../../server/features/events/Round');
+require('../../server/features/teams/Team');
+require('../../server/features/teams/TeamMember');
+require('../../server/features/grading/Rubric');
+require('../../server/features/grading/Criterion');
+require('../../server/features/github-ai/GithubRepository');
+require('../../server/features/github-ai/Commit');
+require('../../server/features/github-ai/AiAnalysis');
+require('../../server/features/auth/EventRole');
 
 async function runSetup() {
   console.log('=== KHIÊU KHỞI TẠO EVENT MỚI, 2 ROUNDS, 4 TRACKS, 20 TEAMS, RUBRICS VÀ COMMITS ===');
@@ -165,13 +165,22 @@ async function runSetup() {
   await rubric1.save();
   console.log(`- Đã tạo Rubric 1: "${rubric1.name}" (ID: ${rubric1._id})`);
 
+  const defaultGradingLevels = [
+    { label: 'Xuất sắc', minScore: 9.0, maxScore: 10.0, description: 'Đạt yêu cầu tối đa và vượt mong đợi.' },
+    { label: 'Tốt', minScore: 8.0, maxScore: 8.9, description: 'Hoàn thành tốt toàn bộ các tiêu chí.' },
+    { label: 'Khá', minScore: 6.5, maxScore: 7.9, description: 'Đáp ứng đầy đủ các yêu cầu cơ bản.' },
+    { label: 'Trung bình', minScore: 5.0, maxScore: 6.4, description: 'Chỉ hoàn thành một phần yêu cầu.' },
+    { label: 'Yếu', minScore: 0.0, maxScore: 4.9, description: 'Không đạt yêu cầu tối thiểu.' }
+  ];
+
   const crit1_1 = new Criterion({
     rubricId: rubric1._id,
     code: 'CODE',
     name: 'Chất lượng mã nguồn (Code Quality)',
     description: 'Cấu trúc thư mục sạch sẽ, áp dụng Clean Code, tối ưu hóa.',
     weight: 60,
-    maxScore: 10
+    maxScore: 10,
+    gradingLevels: defaultGradingLevels
   });
   await crit1_1.save();
 
@@ -181,10 +190,11 @@ async function runSetup() {
     name: 'Tương tác Git (Git Collaboration)',
     description: 'Phân phối nhánh hợp lý, tần suất commit đều đặn giữa các thành viên.',
     weight: 40,
-    maxScore: 10
+    maxScore: 10,
+    gradingLevels: defaultGradingLevels
   });
   await crit1_2.save();
-  console.log('  + Đã tạo 2 tiêu chí cho Rubric Vòng sơ tuyển (CODE: 60%, TEAM: 40%).');
+  console.log('  + Đã tạo 2 tiêu chí cho Rubric Vòng sơ tuyển (CODE: 60%, TEAM: 40%) kèm định nghĩa mức chấm.');
 
   // Rubric cho Round 2
   const rubric2 = new Rubric({
@@ -207,7 +217,8 @@ async function runSetup() {
     name: 'Chất lượng sản phẩm & Logic',
     description: 'Sản phẩm chạy mượt mà, đầy đủ chức năng cốt lõi và không lỗi.',
     weight: 50,
-    maxScore: 10
+    maxScore: 10,
+    gradingLevels: defaultGradingLevels
   });
   await crit2_1.save();
 
@@ -217,10 +228,11 @@ async function runSetup() {
     name: 'Thuyết trình & Demo',
     description: 'Thuyết trình lưu loát, trả lời tốt câu hỏi phản biện của giám khảo.',
     weight: 50,
-    maxScore: 10
+    maxScore: 10,
+    gradingLevels: defaultGradingLevels
   });
   await crit2_2.save();
-  console.log('  + Đã tạo 2 tiêu chí cho Rubric Chung kết (CODE: 50%, PRESENTATION: 50%).');
+  console.log('  + Đã tạo 2 tiêu chí cho Rubric Chung kết (CODE: 50%, PRESENTATION: 50%) kèm định nghĩa mức chấm.');
 
   // Gán vai trò coordinator và judge cho tất cả người dùng trong hệ thống
   console.log('\nGán vai trò coordinator và judge cho tất cả người dùng trong hệ thống...');

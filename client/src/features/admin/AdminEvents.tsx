@@ -161,7 +161,7 @@ export default function AdminEvents({
   const [linkingTeamId, setLinkingTeamId] = useState("");
   const [manualRepoName, setManualRepoName] = useState("");
   const [manualRepoUrl, setManualRepoUrl] = useState("");
-  const [syncingRepoId, setSyncingRepoId] = useState("");
+
 
   const formatForDateTimeLocal = (dateString: string | null | undefined) => {
     if (!dateString) return "";
@@ -1426,32 +1426,7 @@ export default function AdminEvents({
     }
   };
 
-  const handleSyncRepo = async (repoId: string) => {
-    setSyncingRepoId(repoId);
-    setMessage({ type: "", text: "" });
-    try {
-      setMessage({
-        type: "success",
-        text: "Đang bắt đầu đồng bộ và chạy AI Review...",
-      });
-      const res = await axios.post(
-        `http://localhost:5000/api/github-repositories/${repoId}/sync`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      setMessage({ type: "success", text: res.data.message });
-      if (selectedEvent) {
-        fetchRepositories(selectedEvent._id);
-      }
-    } catch (err: any) {
-      setMessage({
-        type: "error",
-        text: err.response?.data?.message || "Lỗi khi đồng bộ.",
-      });
-    } finally {
-      setSyncingRepoId("");
-    }
-  };
+
 
   const handleUploadExam = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2128,10 +2103,8 @@ export default function AdminEvents({
             setManualRepoName={setManualRepoName}
             manualRepoUrl={manualRepoUrl}
             setManualRepoUrl={setManualRepoUrl}
-            syncingRepoId={syncingRepoId}
             handleCreateRepo={handleCreateRepo}
             handleLinkRepo={handleLinkRepo}
-            handleSyncRepo={handleSyncRepo}
             selectedEvent={selectedEvent}
             handleKickAllCollaborators={handleKickAllCollaborators}
           />

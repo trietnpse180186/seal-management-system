@@ -1,12 +1,12 @@
-const mongoose = require('mongoose');
-require('dotenv').config();
+const mongoose = require('../../server/node_modules/mongoose');
+const path = require('path'); require('dotenv').config({ path: path.join(__dirname, '../../server/.env') });
 
 // Require models
-require('./features/auth/User');
-require('./features/events/Event');
-require('./features/events/Track');
-require('./features/events/Round');
-require('./features/teams/Team');
+require('../../server/features/auth/User');
+require('../../server/features/events/Event');
+require('../../server/features/events/Track');
+require('../../server/features/events/Round');
+require('../../server/features/teams/Team');
 
 async function setupRoundsAndTracks() {
   console.log('=== KHIÊU KHỞI TẠO 2 ROUNDS, MỖI ROUNDS 2 TRACKS, MỖI TRACK 5 TEAMS ===');

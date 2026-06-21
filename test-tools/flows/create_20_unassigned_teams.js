@@ -1,12 +1,12 @@
-const mongoose = require('mongoose');
-require('dotenv').config();
+const mongoose = require('../../server/node_modules/mongoose');
+const path = require('path'); require('dotenv').config({ path: path.join(__dirname, '../../server/.env') });
 
 // Require models
-require('./features/auth/User');
-require('./features/events/Event');
-require('./features/events/Track');
-require('./features/teams/Team');
-require('./features/teams/TeamMember');
+require('../../server/features/auth/User');
+require('../../server/features/events/Event');
+require('../../server/features/events/Track');
+require('../../server/features/teams/Team');
+require('../../server/features/teams/TeamMember');
 
 async function create20Teams() {
   console.log('=== KHIÊU KHỞI TẠO 20 ĐỘI THI CHƯA PHÂN PHỐI TRACK ===');

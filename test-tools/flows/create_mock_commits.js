@@ -1,14 +1,14 @@
-const mongoose = require('mongoose');
-require('dotenv').config();
+const mongoose = require('../../server/node_modules/mongoose');
+const path = require('path'); require('dotenv').config({ path: path.join(__dirname, '../../server/.env') });
 
 // Require models
-require('./features/auth/User');
-require('./features/events/Event');
-require('./features/events/Track');
-require('./features/teams/Team');
-require('./features/github-ai/GithubRepository');
-require('./features/github-ai/Commit');
-require('./features/github-ai/AiAnalysis');
+require('../../server/features/auth/User');
+require('../../server/features/events/Event');
+require('../../server/features/events/Track');
+require('../../server/features/teams/Team');
+require('../../server/features/github-ai/GithubRepository');
+require('../../server/features/github-ai/Commit');
+require('../../server/features/github-ai/AiAnalysis');
 
 async function createMockCommits() {
   console.log('=== KHIÊU KHỞI TẠO COMMITS GIT VÀ REVIEW AI ĐỂ XEM DEMO ===');

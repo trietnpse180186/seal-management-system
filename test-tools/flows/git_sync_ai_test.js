@@ -1,22 +1,22 @@
-require('dotenv').config();
-const mongoose = require('mongoose');
+const path = require('path'); require('dotenv').config({ path: path.join(__dirname, '../../server/.env') });
+const mongoose = require('../../server/node_modules/mongoose');
 
 // Register models
-require('./features/auth/User');
-require('./features/events/Event');
-require('./features/events/Track');
-require('./features/events/Round');
-require('./features/auth/EventRole');
-require('./features/grading/Rubric');
-require('./features/grading/Criterion');
-require('./features/teams/Team');
-require('./features/teams/TeamMember');
-require('./features/github-ai/GithubRepository');
-require('./features/github-ai/Commit');
-require('./features/github-ai/CommitFile');
-require('./features/github-ai/AiAnalysis');
+require('../../server/features/auth/User');
+require('../../server/features/events/Event');
+require('../../server/features/events/Track');
+require('../../server/features/events/Round');
+require('../../server/features/auth/EventRole');
+require('../../server/features/grading/Rubric');
+require('../../server/features/grading/Criterion');
+require('../../server/features/teams/Team');
+require('../../server/features/teams/TeamMember');
+require('../../server/features/github-ai/GithubRepository');
+require('../../server/features/github-ai/Commit');
+require('../../server/features/github-ai/CommitFile');
+require('../../server/features/github-ai/AiAnalysis');
 
-const cronService = require('./features/events/cronService');
+const cronService = require('../../server/features/events/cronService');
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/seal-hackathon';
 
@@ -28,6 +28,7 @@ async function runTest() {
   // Clear previous test records
   console.log('Cleaning up old test data...');
   await mongoose.model('Event').deleteMany({ name: 'TEST_SYNC_EVENT' });
+  await mongoose.model('Round').deleteMany({ name: 'TEST_ROUND' });
   await mongoose.model('Track').deleteMany({ name: 'TEST_SYNC_TRACK' });
   await mongoose.model('User').deleteMany({ email: 'testleader@example.com' });
   await mongoose.model('Team').deleteMany({ name: 'TEST_SYNC_TEAM' });
@@ -48,9 +49,20 @@ async function runTest() {
     await event.save();
     console.log('Created mock Event:', event._id);
 
+    // 1.5 Create Mock Round
+    const round = new (mongoose.model('Round'))({
+      eventId: event._id,
+      name: 'TEST_ROUND',
+      order: 1,
+      status: 'active'
+    });
+    await round.save();
+    console.log('Created mock Round:', round._id);
+
     // 2. Create Mock Track
     const track = new (mongoose.model('Track'))({
       eventId: event._id,
+      roundId: round._id,
       name: 'TEST_SYNC_TRACK',
       maxTeams: 10
     });

@@ -242,7 +242,16 @@ export default function TeamArea() {
               <BookOpen size={18} className="text-cyan-400" />
               <span className="text-cyan-400">[ĐỀ_BÀI_&_TÀI_LIỆU_THI]</span>
             </h2>
-            {team?.trackId?.attachments && team.trackId.attachments.length > 0 ? (
+            {team?.trackId?.startTime && new Date(team.trackId.startTime) > new Date() ? (
+              <div className="text-center py-4 space-y-2">
+                <p className="text-xs text-amber-500 font-sans font-semibold">
+                  Đề bài sẽ được tự động mở vào lúc:
+                </p>
+                <p className="text-sm font-bold text-white font-mono bg-slate-900/60 p-2 rounded-lg border border-slate-850">
+                  {new Date(team.trackId.startTime).toLocaleString('vi-VN')}
+                </p>
+              </div>
+            ) : team?.trackId?.attachments && team.trackId.attachments.length > 0 ? (
               <div className="space-y-3">
                 {team.trackId.attachments.map((file: any, idx: number) => (
                   <a

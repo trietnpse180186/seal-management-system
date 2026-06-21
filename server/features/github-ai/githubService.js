@@ -354,6 +354,41 @@ async function linkOrganization(orgName) {
   return createOrganization(orgName);
 }
 
+/**
+ * Creates an issue in the team repository.
+ * @param {string} repoName - Repository name
+ * @param {string} title - Issue title
+ * @param {string} body - Issue body
+ * @param {string} customOrgName - Organization name override
+ * @returns {Promise<Object>} Created issue details or null
+ */
+async function createIssue(repoName, title, body, customOrgName) {
+  const activeOrgName = customOrgName || orgName;
+  if (isMock || !octokit) {
+    console.log(`[GITHUB MOCK] Creating issue in ${activeOrgName}/${repoName}: "${title}"`);
+    return {
+      id: `mock-issue-${Date.now()}`,
+      number: Math.floor(Math.random() * 100) + 1,
+      html_url: `https://github.com/${activeOrgName}/${repoName}/issues/mock`
+    };
+  }
+
+  try {
+    console.log(`[GITHUB] Attempting to create issue in "${activeOrgName}/${repoName}"...`);
+    const response = await octokit.issues.create({
+      owner: activeOrgName,
+      repo: repoName,
+      title,
+      body
+    });
+    console.log(`[GITHUB] Successfully created issue: ${response.data.html_url}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error creating issue in ${repoName}:`, error.message);
+    return null;
+  }
+}
+
 module.exports = {
   createTeamRepository,
   addCollaborator,
@@ -361,6 +396,8 @@ module.exports = {
   fetchCommits,
   fetchCommitFiles,
   createOrganization,
-  linkOrganization
+  linkOrganization,
+  createIssue
 };
+
 

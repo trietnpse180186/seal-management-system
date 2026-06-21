@@ -300,7 +300,7 @@ async function sendEmailVerification(email, fullName, verifyLink) {
  * @returns {Promise<boolean>}
  */
 async function sendEventCreationNotification(email, fullName, eventName, semester, year) {
-  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const clientUrl = process.env.CLIENT_URL || 'https://www.seal-hackathon.io.vn';
   const mailOptions = {
     from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
     to: email,

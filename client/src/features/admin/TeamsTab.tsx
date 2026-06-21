@@ -117,6 +117,15 @@ export default function TeamsTab({
                       </strong>{" "}
                       ({team.leaderId?.email})
                     </p>
+                    {team.mentorId && (
+                      <p>
+                        Mentor:{" "}
+                        <strong className="text-emerald-400">
+                          {team.mentorId?.fullName || team.mentorId}
+                        </strong>{" "}
+                        {team.mentorId?.email && `(${team.mentorId.email})`}
+                      </p>
+                    )}
                     {team.repository ? (
                       <p>
                         Repository:{" "}

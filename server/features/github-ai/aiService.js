@@ -14,6 +14,99 @@ if (!isMock && apiKey) {
 }
 
 /**
+ * Safely parse AI results that might be wrapped in standard raw Gemini or string formats
+ */
+function parseAiResult(result) {
+  if (!result) return result;
+  
+  // 1. If result is a string, try to parse it
+  if (typeof result === 'string') {
+    try {
+      const cleaned = result.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+      return JSON.parse(cleaned);
+    } catch (e) {
+      return result;
+    }
+  }
+
+  // 2. If result has n8n / Gemini raw wrappers
+  let text = null;
+  if (result.content && Array.isArray(result.content.parts) && result.content.parts[0] && result.content.parts[0].text) {
+    text = result.content.parts[0].text;
+  } else if (result.text) {
+    text = result.text;
+  } else if (result.output && typeof result.output === 'string') {
+    text = result.output;
+  }
+
+  if (text) {
+    try {
+      const cleaned = text.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+      const parsed = JSON.parse(cleaned);
+      // Preserve metadata if any
+      if (result._provider) parsed._provider = result._provider;
+      if (result._model) parsed._model = result._model;
+      return parsed;
+    } catch (e) {
+      // If parsing fails, fall through
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Call n8n webhook workflow asynchronously or synchronously.
+ */
+async function callN8nWebhook(payload) {
+  const n8nUrl = process.env.N8N_WEBHOOK_URL;
+  if (!n8nUrl) return null;
+  
+  console.log(`[N8N] Calling n8n webhook: ${n8nUrl} for ${payload.analysisType}...`);
+  try {
+    const response = await fetch(n8nUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`n8n returned status ${response.status}: ${response.statusText}`);
+    }
+    
+    const text = await response.text();
+    let resultJson;
+    try {
+      resultJson = JSON.parse(text);
+    } catch (parseErr) {
+      throw new Error(`Failed to parse n8n response as JSON: ${text.substring(0, 200)}`);
+    }
+    
+    // Normalize response if wrapped in array
+    if (Array.isArray(resultJson)) {
+      resultJson = resultJson[0];
+    }
+    
+    // Extract nested data if n8n returns standard wrappers
+    if (resultJson && resultJson.output) {
+      resultJson = resultJson.output;
+    } else if (resultJson && resultJson.result && typeof resultJson.result === 'object') {
+      resultJson = resultJson.result;
+    } else if (resultJson && resultJson.data && typeof resultJson.data === 'object') {
+      resultJson = resultJson.data;
+    }
+    
+    console.log(`[N8N] Received successful response from n8n.`);
+    return parseAiResult(resultJson);
+  } catch (error) {
+    console.error(`[N8N] Webhook call failed:`, error.message);
+    return null;
+  }
+}
+
+/**
  * Analyzes a batch of commits (per-push) using Gemini AI.
  * @param {Object} commit - The representing Commit model object
  * @param {Array<Object>} files - Array of CommitFile objects
@@ -80,6 +173,33 @@ async function analyzeCommit(commit, files) {
 
     IMPORTANT: You MUST write all descriptive fields (especially suggested_questions_for_team, overall_picture.push_summary, overall_picture.current_focus, overall_picture.project_about, assessment.advantages, assessment.disadvantages, assessment.improvement_areas, and suggested_test_cases) entirely in fluent, professional Vietnamese.
   `;
+
+  // Try n8n webhook first if configured
+  const n8nResult = await callN8nWebhook({
+    analysisType: 'commit_review',
+    commit: {
+      _id: commit._id,
+      commitSha: commit.commitSha,
+      message: commit.message,
+      authorName: commit.authorName,
+      authorGithubUsername: commit.authorGithubUsername,
+      committedAt: commit.committedAt
+    },
+    files: files.map(f => ({
+      filename: f.filename,
+      status: f.status,
+      additions: f.additions,
+      deletions: f.deletions,
+      patch: f.patch
+    })),
+    prompt
+  });
+  
+  if (n8nResult) {
+    n8nResult._provider = 'n8n-gemini';
+    n8nResult._model = 'gemini-2.5-flash (via n8n)';
+    return n8nResult;
+  }
 
   if (isMock || !ai) {
     console.log(`[GEMINI MOCK] Analyzing commit per-push: ${commit.commitSha.substring(0, 7)}`);
@@ -155,7 +275,9 @@ async function analyzeCommit(commit, files) {
         "Tại sao các bạn chọn sử dụng chiến lược chunking cố định thay vì dynamic chunking?",
         "Làm thế nào để hệ thống đảm bảo trích dẫn nguồn (citation) luôn khớp với văn bản gốc?"
       ],
-      suggested_prompt_refinement: "Nên điều chỉnh System Prompt để hạn chế ảo giác của LLM khi trả lời câu hỏi nghiệp vụ hải quan phức tạp."
+      suggested_prompt_refinement: "Nên điều chỉnh System Prompt để hạn chế ảo giác của LLM khi trả lời câu hỏi nghiệp vụ hải quan phức tạp.",
+      _provider: 'Mock Service',
+      _model: 'mock-model'
     };
   }
 
@@ -166,7 +288,10 @@ async function analyzeCommit(commit, files) {
     
     // Parse JSON safely
     const cleanedText = textResponse.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
-    return JSON.parse(cleanedText);
+    const parsed = JSON.parse(cleanedText);
+    parsed._provider = 'Google Gemini';
+    parsed._model = 'gemini-3.1-flash-lite';
+    return parsed;
   } catch (error) {
     console.error('Error generating per-push review with Gemini:', error.message);
     return {
@@ -288,6 +413,28 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
     }
   `;
 
+  // Try n8n webhook first if configured
+  const n8nResult = await callN8nWebhook({
+    analysisType: 'repository_review',
+    teamId,
+    commits: commits.map(c => ({
+      commitSha: c.commitSha,
+      message: c.message,
+      committedAt: c.committedAt
+    })),
+    priorReviews: priorReviews.map(r => ({
+      analysisType: r.analysisType,
+      result: r.result
+    })),
+    prompt
+  });
+  
+  if (n8nResult) {
+    n8nResult._provider = 'n8n-gemini';
+    n8nResult._model = 'gemini-2.5-flash (via n8n)';
+    return n8nResult;
+  }
+
   if (isMock || !ai) {
     console.log(`[GEMINI MOCK] Analyzing team aggregate for: ${teamId}`);
     await new Promise(resolve => setTimeout(resolve, 800));
@@ -343,7 +490,9 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
       overall_picture: {
         historical_synthesis: "Đội thi đã đi từ một khung sườn chatbot đơn giản ban đầu đến một hệ thống RAG hoàn thiện hơn với các file cấu hình và cơ sở dữ liệu vector.",
         evolution_notes: "Tuần 1: Khởi tạo scaffold; Tuần 2: Nạp dữ liệu Vector DB; Tuần 3: Tích hợp agent logic."
-      }
+      },
+      _provider: 'Mock Service',
+      _model: 'mock-model'
     };
   }
 
@@ -352,7 +501,10 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
     const result = await model.generateContent(prompt);
     const textResponse = result.response.text().trim();
     const cleanedText = textResponse.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
-    return JSON.parse(cleanedText);
+    const parsed = JSON.parse(cleanedText);
+    parsed._provider = 'Google Gemini';
+    parsed._model = 'gemini-3.1-flash-lite';
+    return parsed;
   } catch (error) {
     console.error('Error generating aggregate review with Gemini:', error.message);
     const fallbackMap = {};
@@ -390,7 +542,11 @@ async function generateScoringSuggestion(repositorySnapshot, commits, criteria) 
     "Yếu": 0.30       // 30% of max score
   };
 
-  const hasAgg = latestAggReview && latestAggReview.result && latestAggReview.result.criteria_comments;
+  let cleanResult = null;
+  if (latestAggReview && latestAggReview.result) {
+    cleanResult = parseAiResult(latestAggReview.result);
+  }
+  const hasAgg = cleanResult && cleanResult.criteria_comments;
 
   return criteria.map(c => {
     // Map criteria codes to R1/R2 keys
@@ -414,12 +570,12 @@ async function generateScoringSuggestion(repositorySnapshot, commits, criteria) 
     let comment = "Nhóm thể hiện tiến độ làm việc ổn định, có commit giải quyết tiêu chí này.";
 
     if (hasAgg) {
-      if (latestAggReview.result.criteria_comments[c.code]) {
-        grade = latestAggReview.result.criteria_comments[c.code].grade || "Tốt";
-        comment = latestAggReview.result.criteria_comments[c.code].comment || comment;
-      } else if (latestAggReview.result.criteria_comments[critCode]) {
-        grade = latestAggReview.result.criteria_comments[critCode].grade || "Tốt";
-        comment = latestAggReview.result.criteria_comments[critCode].comment || comment;
+      if (cleanResult.criteria_comments[c.code]) {
+        grade = cleanResult.criteria_comments[c.code].grade || "Tốt";
+        comment = cleanResult.criteria_comments[c.code].comment || comment;
+      } else if (cleanResult.criteria_comments[critCode]) {
+        grade = cleanResult.criteria_comments[critCode].grade || "Tốt";
+        comment = cleanResult.criteria_comments[critCode].comment || comment;
       }
     }
 
@@ -437,6 +593,7 @@ async function generateScoringSuggestion(repositorySnapshot, commits, criteria) 
 module.exports = {
   analyzeCommit,
   analyzeTeamAggregate,
-  generateScoringSuggestion
+  generateScoringSuggestion,
+  parseAiResult
 };
 

@@ -38,6 +38,8 @@ require("./features/auth/AuditLog");
 require("./features/grading/GradingLevel");
 require("./features/github-ai/Task");
 require("./features/grading/EventLog");
+require("./features/chat/ChatRoom");
+require("./features/chat/ChatMessage");
 const app = express();
 
 // Connect to MongoDB
@@ -111,6 +113,7 @@ const notificationsRouter = require('./features/notifications/notifications');
 const githubRepositoriesRouter = require('./features/github-ai/githubRepositories');
 const aiAnalysesRouter = require('./features/github-ai/aiAnalyses');
 const tasksRouter = require('./features/github-ai/tasks');
+const chatRouter = require('./features/chat/chat');
 
 app.use('/api', indexRouter);
 app.use('/api/auth', authRouter);
@@ -124,6 +127,7 @@ app.use('/api/notifications', notificationsRouter);
 app.use('/api/github-repositories', githubRepositoriesRouter);
 app.use('/api/ai-analyses', aiAnalysesRouter);
 app.use('/api/tasks', tasksRouter);
+app.use('/api/chat', chatRouter);
 
 // Catch 404 and forward to error handler
 app.use(function (req, res, next) {

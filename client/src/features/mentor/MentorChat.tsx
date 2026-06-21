@@ -1,0 +1,743 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { io, Socket } from 'socket.io-client';
+import axios from 'axios';
+import { Send, Users, User, Quote, Forward, MoreHorizontal, X, ArrowLeft, MessageSquare, Search } from 'lucide-react';
+import { toast } from 'sonner';
+
+interface Message {
+  _id: string;
+  roomId: string;
+  senderId: string;
+  senderName: string;
+  content: string;
+  createdAt: string;
+  isRecalled?: boolean;
+  replyTo?: {
+    messageId: string;
+    senderName: string;
+    content: string;
+  };
+}
+
+interface ChatMember {
+  id: string;
+  _id?: string;
+  fullName: string;
+  role?: string;
+  avatar?: string;
+}
+
+interface ChatRoom {
+  _id: string;
+  teamId?: { _id: string; name: string };
+  mentorId?: { _id: string; fullName: string; email: string };
+  trackId?: { _id: string; name: string };
+  eventId: string;
+  type: 'team_mentor' | 'track_mentors';
+  members: ChatMember[];
+}
+
+export default function MentorChat() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [rooms, setRooms] = useState<ChatRoom[]>([]);
+  const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [unreadCounts, setUnreadCounts] = useState<{ [roomId: string]: number }>({});
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+
+  // Zalo reply & menu actions
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  const selectedRoomRef = useRef<ChatRoom | null>(null);
+  const currentUserRef = useRef<any>(null);
+  const pendingSelectRoomRef = useRef<{ teamId?: string; trackId?: string } | null>(null);
+
+  useEffect(() => {
+    selectedRoomRef.current = selectedRoom;
+  }, [selectedRoom]);
+
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
+  const playNotificationSound = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const playTone = (freq: number, start: number, duration: number) => {
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, start);
+        gainNode.gain.setValueAtTime(0.08, start);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        osc.start(start);
+        osc.stop(start + duration);
+      };
+      const now = audioCtx.currentTime;
+      playTone(783.99, now, 0.12);
+      playTone(1046.50, now + 0.08, 0.20);
+    } catch (error) {
+      console.warn("AudioContext failed to play sound:", error);
+    }
+  };
+
+  const showDesktopNotification = (msg: Message) => {
+    if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
+      try {
+        new Notification(`Tin nhắn mới từ ${msg.senderName}`, {
+          body: msg.content,
+          icon: "/favicon.ico"
+        });
+      } catch (err) {
+        console.warn("Failed to create desktop notification:", err);
+      }
+    }
+  };
+
+  const fetchRooms = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const resRooms = await axios.get(`http://localhost:5000/api/chat/rooms`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setRooms(resRooms.data);
+      
+      // Auto-select room if only 1 exists
+      if (resRooms.data.length === 1 && !selectedRoomRef.current) {
+        setSelectedRoom(resRooms.data[0]);
+      }
+    } catch (error) {
+      console.error("Error fetching chat rooms:", error);
+    }
+  };
+
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+
+    const handleOutsideClick = () => {
+      setActiveMenuId(null);
+    };
+    window.addEventListener('click', handleOutsideClick);
+
+    // Fetch currentUser profile
+    const fetchUser = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (token) {
+          const res = await axios.get('http://localhost:5000/api/auth/me', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setCurrentUser(res.data.user);
+        }
+      } catch (err) {
+        console.error("Error fetching user profile in chat:", err);
+      }
+    };
+    fetchUser();
+
+    fetchRooms();
+
+    // Setup socket connection
+    const token = localStorage.getItem('token');
+    const newSocket = io('http://localhost:5000', {
+      query: { token }
+    });
+
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.disconnect();
+      window.removeEventListener('click', handleOutsideClick);
+    };
+  }, []);
+
+  // Listen to open_chat_room events from other components
+  useEffect(() => {
+    const handleOpenRoom = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const teamId = customEvent.detail?.teamId;
+      const trackId = customEvent.detail?.trackId;
+      
+      setIsOpen(true);
+      
+      if (rooms.length > 0) {
+        let targetRoom;
+        if (teamId) {
+          targetRoom = rooms.find(r => r.teamId && r.teamId._id === teamId);
+        } else if (trackId) {
+          targetRoom = rooms.find(r => r.type === 'track_mentors' && r.trackId && r.trackId._id === trackId);
+        }
+        if (targetRoom) {
+          setSelectedRoom(targetRoom);
+        }
+      } else {
+        pendingSelectRoomRef.current = { teamId, trackId };
+      }
+    };
+    
+    window.addEventListener('open_chat_room', handleOpenRoom);
+    return () => {
+      window.removeEventListener('open_chat_room', handleOpenRoom);
+    };
+  }, [rooms]);
+
+  // Handle pending select room once room list is loaded
+  useEffect(() => {
+    if (rooms.length > 0 && pendingSelectRoomRef.current) {
+      const { teamId, trackId } = pendingSelectRoomRef.current;
+      let targetRoom;
+      if (teamId) {
+        targetRoom = rooms.find(r => r.teamId && r.teamId._id === teamId);
+      } else if (trackId) {
+        targetRoom = rooms.find(r => r.type === 'track_mentors' && r.trackId && r.trackId._id === trackId);
+      }
+      if (targetRoom) {
+        setSelectedRoom(targetRoom);
+        pendingSelectRoomRef.current = null;
+      }
+    }
+  }, [rooms]);
+
+  // Join all rooms for notification tracking
+  useEffect(() => {
+    if (socket && rooms.length > 0) {
+      rooms.forEach(room => {
+        socket.emit('join_room', room._id);
+      });
+    }
+  }, [socket, rooms]);
+
+  // Socket event listeners
+  useEffect(() => {
+    if (socket) {
+      socket.on('connect', () => setIsConnected(true));
+      socket.on('disconnect', () => setIsConnected(false));
+      socket.on('error', (err: any) => console.error("Socket error:", err));
+
+      socket.on('new_message', (message: Message) => {
+        const activeR = selectedRoomRef.current;
+        if (activeR && message.roomId === activeR._id) {
+          setMessages(prev => {
+            if (prev.find(m => m._id === message._id)) return prev;
+            return [...prev, message];
+          });
+
+          const isMsgFromMe = currentUserRef.current && (
+            currentUserRef.current.userId === message.senderId ||
+            currentUserRef.current._id === message.senderId ||
+            currentUserRef.current.id === message.senderId
+          );
+          if (!isMsgFromMe) {
+            playNotificationSound();
+          }
+
+          setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+          }, 100);
+        } else {
+          const isMsgFromMe = currentUserRef.current && (
+            currentUserRef.current.userId === message.senderId ||
+            currentUserRef.current._id === message.senderId ||
+            currentUserRef.current.id === message.senderId
+          );
+          if (!isMsgFromMe) {
+            setUnreadCounts(prev => ({
+              ...prev,
+              [message.roomId]: (prev[message.roomId] || 0) + 1
+            }));
+            playNotificationSound();
+            showDesktopNotification(message);
+          }
+        }
+      });
+
+      socket.on('message_recalled', (data: { messageId: string; roomId: string; content: string }) => {
+        setMessages(prev => prev.map(m => 
+          m._id === data.messageId ? { ...m, isRecalled: true, content: data.content } : m
+        ));
+      });
+    }
+    return () => {
+      if (socket) {
+        socket.off('connect');
+        socket.off('disconnect');
+        socket.off('error');
+        socket.off('new_message');
+        socket.off('message_recalled');
+      }
+    };
+  }, [socket]);
+
+  // Fetch messages for a selected room
+  const fetchMessages = async (roomId: string, pageNum = 1) => {
+    try {
+      setLoadingMessages(true);
+      const token = localStorage.getItem('token');
+      const resMsgs = await axios.get(`http://localhost:5000/api/chat/rooms/${roomId}/messages?page=${pageNum}&limit=50`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (pageNum === 1) {
+        setMessages(resMsgs.data);
+        setHasMore(resMsgs.data.length === 50);
+        setPage(1);
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+        }, 100);
+      } else {
+        const prevScrollHeight = messagesContainerRef.current?.scrollHeight || 0;
+        setMessages(prev => [...resMsgs.data, ...prev]);
+        setHasMore(resMsgs.data.length === 50);
+        setPage(pageNum);
+        setTimeout(() => {
+          if (messagesContainerRef.current) {
+            const newScrollHeight = messagesContainerRef.current.scrollHeight;
+            messagesContainerRef.current.scrollTop = newScrollHeight - prevScrollHeight;
+          }
+        }, 0);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingMessages(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedRoom) {
+      fetchMessages(selectedRoom._id, 1);
+      setUnreadCounts(prev => ({
+        ...prev,
+        [selectedRoom._id]: 0
+      }));
+    } else {
+      setMessages([]);
+    }
+  }, [selectedRoom]);
+
+  const loadMoreMessages = () => {
+    if (!selectedRoom || !hasMore || loadingMessages) return;
+    fetchMessages(selectedRoom._id, page + 1);
+  };
+
+  const handleScroll = () => {
+    if (messagesContainerRef.current) {
+      const { scrollTop } = messagesContainerRef.current;
+      if (scrollTop === 0) {
+        loadMoreMessages();
+      }
+    }
+  };
+
+  const handleCopy = (content: string) => {
+    navigator.clipboard.writeText(content);
+    toast.success("Đã sao chép tin nhắn vào bộ nhớ tạm");
+  };
+
+  const handleDeleteLocally = (messageId: string) => {
+    setMessages(prev => prev.filter(m => m._id !== messageId));
+    toast.success("Đã xóa tin nhắn phía bạn");
+  };
+
+  const sendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !selectedRoom || !socket) return;
+
+    socket.emit('send_message', {
+      roomId: selectedRoom._id,
+      content: newMessage.trim(),
+      replyTo: replyingTo ? {
+        messageId: replyingTo._id,
+        senderName: replyingTo.senderName,
+        content: replyingTo.content
+      } : undefined
+    });
+
+    setNewMessage('');
+    setReplyingTo(null);
+  };
+
+  const recallMessage = (messageId: string) => {
+    if (!socket || !selectedRoom) return;
+    if (window.confirm("Bạn có chắc chắn muốn thu hồi tin nhắn này?")) {
+      socket.emit('recall_message', { messageId, roomId: selectedRoom._id });
+    }
+  };
+
+  const getRoomName = (room: ChatRoom) => {
+    if (room.type === 'track_mentors') {
+      return `💬 Kênh Mentor - Bảng ${room.trackId?.name || 'Chung'}`;
+    }
+    
+    const isCurrentUserMentor = currentUser && room.mentorId && currentUser.id === room.mentorId._id;
+    if (isCurrentUserMentor) {
+      return `👥 Đội thi: ${room.teamId?.name || 'Đội thi'}`;
+    } else {
+      return `👨‍🏫 Mentor: ${room.mentorId?.fullName || 'Người hướng dẫn'}`;
+    }
+  };
+
+  const filteredRooms = rooms.filter(room => {
+    const roomName = getRoomName(room).toLowerCase();
+    return roomName.includes(searchQuery.toLowerCase());
+  });
+
+  const totalUnread = Object.values(unreadCounts).reduce((a, b) => a + b, 0);
+
+  if (rooms.length === 0) {
+    return null; // Don't show chat widget if the user has no rooms assigned
+  }
+
+  return (
+    <div className="fixed bottom-6 right-6 z-50 font-sans">
+      {/* Floating Chat Bubble Button */}
+      {!isOpen && (
+        <button
+          id="floating-chat-trigger"
+          onClick={() => setIsOpen(true)}
+          className="relative w-14 h-14 rounded-full bg-gradient-to-tr from-cyan-600 to-indigo-600 text-white flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer border border-white/10 hover:shadow-cyan-500/25"
+        >
+          <MessageSquare className="w-6 h-6 animate-pulse" />
+          {totalUnread > 0 && (
+            <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-extrabold w-5 h-5 rounded-full flex items-center justify-center border border-slate-900 shadow-md">
+              {totalUnread}
+            </span>
+          )}
+        </button>
+      )}
+
+      {/* Floating Chat Window */}
+      {isOpen && (
+        <div className="w-[360px] h-[500px] sm:w-[380px] sm:h-[550px] bg-[#0c1322] border border-slate-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
+          
+          {/* Header */}
+          <div className="px-4 py-3 bg-[#0d1629] border-b border-slate-800 flex items-center justify-between">
+            {selectedRoom ? (
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                {rooms.length > 1 && (
+                  <button 
+                    onClick={() => setSelectedRoom(null)}
+                    className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <ArrowLeft size={16} />
+                  </button>
+                )}
+                <div className="truncate flex-1 min-w-0">
+                  <h4 className="text-sm font-bold text-slate-100 truncate">{getRoomName(selectedRoom)}</h4>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {selectedRoom.type === 'track_mentors' 
+                        ? `${selectedRoom.members.length} mentor` 
+                        : isConnected ? 'Trực tuyến' : 'Ngoại tuyến'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <h4 className="text-sm font-black text-slate-100">Hộp thoại hỗ trợ</h4>
+                <p className="text-[10px] text-slate-400 mt-0.5 font-mono">Trao đổi trực tiếp với Mentor & Đội thi</p>
+              </div>
+            )}
+            
+            <button 
+              onClick={() => setIsOpen(false)}
+              className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer ml-2"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="flex-1 flex flex-col min-h-0 bg-[#070b13]">
+            {selectedRoom ? (
+              /* Room Chat view */
+              <>
+                {/* Messages feed */}
+                <div 
+                  ref={messagesContainerRef}
+                  onScroll={handleScroll}
+                  className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0"
+                >
+                  {loadingMessages && page > 1 && (
+                    <div className="text-center text-[10px] text-cyan-400/60 py-1 font-mono">Đang tải tin nhắn cũ...</div>
+                  )}
+                  
+                  {messages.length === 0 && !loadingMessages ? (
+                    <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-2">
+                      <div className="w-12 h-12 rounded-full bg-slate-800/30 flex items-center justify-center border border-slate-800/50">
+                        <User className="w-5 h-5 text-slate-500" />
+                      </div>
+                      <p className="text-xs">Bắt đầu câu chuyện tại đây!</p>
+                    </div>
+                  ) : (
+                    messages.map((msg, index) => {
+                      const isMe = currentUser?.userId === msg.senderId || currentUser?._id === msg.senderId || currentUser?.id === msg.senderId;
+                      const isRecalled = msg.isRecalled;
+                      return (
+                        <div key={msg._id || index} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[85%]`}>
+                            <div className={`flex items-end gap-1.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                              
+                              {/* Small Initials Avatar */}
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${isMe ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
+                                {(msg?.senderName || "U").charAt(0).toUpperCase()}
+                              </div>
+                              
+                              {/* Message bubble */}
+                              <div className="relative group/bubble flex items-center">
+                                <div className={`px-3 py-1.5 rounded-xl text-xs ${
+                                  isRecalled
+                                    ? isMe
+                                      ? 'border border-cyan-500/10 bg-cyan-950/10 text-slate-600 italic rounded-br-sm'
+                                      : 'border border-slate-800 bg-slate-900/20 text-slate-605 italic rounded-bl-sm'
+                                    : isMe
+                                      ? 'bg-gradient-to-tr from-cyan-600 to-blue-600 text-white rounded-br-sm shadow-[0_2px_8px_rgba(6,182,212,0.15)]'
+                                      : 'bg-slate-800 text-slate-200 rounded-bl-sm border border-slate-700/60'
+                                }`}>
+                                  
+                                  {/* Reply reference */}
+                                  {msg.replyTo && !isRecalled && (
+                                    <div className="mb-1.5 px-2 py-1 rounded bg-black/40 border-l-2 border-cyan-400 text-[10px] text-slate-300 max-w-full text-left">
+                                      <div className="font-extrabold text-[9px] text-cyan-400">@{msg.replyTo.senderName}</div>
+                                      <div className="truncate text-slate-400 max-h-5 font-mono">{msg.replyTo.content}</div>
+                                    </div>
+                                  )}
+                                  
+                                  {!isMe && (selectedRoom.type === 'track_mentors' || selectedRoom.members.length > 2) && (
+                                    <div className="text-[9px] font-extrabold text-cyan-400 mb-0.5 font-mono">{msg.senderName}</div>
+                                  )}
+                                  
+                                  <div className="break-words whitespace-pre-wrap leading-relaxed">{msg.content}</div>
+                                </div>
+
+                                {/* Action Buttons on Hover */}
+                                {!isRecalled && (
+                                  <div className={`opacity-0 pointer-events-none group-hover/bubble:opacity-100 group-hover/bubble:pointer-events-auto transition-opacity duration-150 absolute ${
+                                    isMe ? 'right-full pr-1.5' : 'left-full pl-1.5'
+                                  } top-1/2 -translate-y-1/2 flex items-center z-10`}
+                                  >
+                                    <div className="flex items-center gap-1 bg-[#101827] border border-slate-800 px-1 py-1 rounded-full shadow-lg">
+                                      
+                                      {/* Quote Reply */}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setReplyingTo(msg);
+                                        }}
+                                        className="w-5 h-5 rounded-full flex items-center justify-center hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                                        title="Trả lời"
+                                      >
+                                        <Quote size={10} className="fill-current" />
+                                      </button>
+
+                                      {/* Copy */}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleCopy(msg.content);
+                                        }}
+                                        className="w-5 h-5 rounded-full flex items-center justify-center hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                                        title="Sao chép"
+                                      >
+                                        <Forward size={11} />
+                                      </button>
+
+                                      {/* More Dropdown trigger */}
+                                      <div className="relative">
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setActiveMenuId(activeMenuId === msg._id ? null : msg._id);
+                                          }}
+                                          className="w-5 h-5 rounded-full flex items-center justify-center hover:bg-slate-800 text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+                                        >
+                                          <MoreHorizontal size={11} />
+                                        </button>
+
+                                        {activeMenuId === msg._id && (
+                                          <div 
+                                            onClick={(e) => e.stopPropagation()}
+                                            className={`absolute ${
+                                              isMe ? 'right-0' : 'left-0'
+                                            } top-full mt-1.5 bg-[#0d1629] border border-slate-800 rounded-lg shadow-xl py-1 z-20 w-32 overflow-hidden`}
+                                          >
+                                            <button
+                                              onClick={() => {
+                                                handleCopy(msg.content);
+                                                setActiveMenuId(null);
+                                              }}
+                                              className="w-full text-left px-2.5 py-1.5 hover:bg-slate-800 text-[10px] text-slate-300 hover:text-white transition-colors cursor-pointer"
+                                            >
+                                              Sao chép
+                                            </button>
+                                            {isMe && (
+                                              <button
+                                                onClick={() => {
+                                                  recallMessage(msg._id);
+                                                  setActiveMenuId(null);
+                                                }}
+                                                className="w-full text-left px-2.5 py-1.5 hover:bg-rose-500/20 text-[10px] text-rose-400 hover:text-rose-300 transition-colors cursor-pointer font-bold"
+                                              >
+                                                Thu hồi
+                                              </button>
+                                            )}
+                                            <button
+                                              onClick={() => {
+                                                handleDeleteLocally(msg._id);
+                                                setActiveMenuId(null);
+                                              }}
+                                              className="w-full text-left px-2.5 py-1.5 hover:bg-slate-800 text-[10px] text-slate-400 hover:text-white transition-colors cursor-pointer"
+                                            >
+                                              Xóa phía tôi
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Timestamp */}
+                            <span className={`text-[8px] text-slate-550 mt-0.5 font-mono ${isMe ? 'pr-7' : 'pl-7'}`}>
+                              {new Date(msg.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Input block */}
+                <div className="p-3 bg-[#0d1629] border-t border-slate-800">
+                  {replyingTo && (
+                    <div className="px-2.5 py-1.5 bg-slate-900 border-l-2 border-cyan-500 flex items-center justify-between text-[10px] text-slate-350 gap-2 mb-2 rounded">
+                      <div className="truncate flex-1">
+                        <span className="text-cyan-400 font-extrabold font-mono">ĐANG TRẢ LỜI @{replyingTo.senderName}:</span>{" "}
+                        <span className="italic text-slate-400 truncate">{replyingTo.content}</span>
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={() => setReplyingTo(null)}
+                        className="text-slate-500 hover:text-slate-350 cursor-pointer"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  )}
+
+                  <form onSubmit={sendMessage} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      placeholder="Nhập tin nhắn..."
+                      className="flex-1 bg-[#060b13] border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition-all placeholder:text-slate-500"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!newMessage.trim() || !isConnected}
+                      className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:hover:bg-cyan-600 text-white p-2 rounded-lg transition-colors flex items-center justify-center cursor-pointer shadow-md shadow-cyan-600/10"
+                    >
+                      <Send size={14} />
+                    </button>
+                  </form>
+                </div>
+              </>
+            ) : (
+              /* Rooms List view */
+              <div className="flex-1 flex flex-col min-h-0">
+                {/* Search Bar */}
+                {rooms.length > 5 && (
+                  <div className="p-3 border-b border-slate-800/60 flex items-center gap-2 bg-[#0a101d]">
+                    <Search size={14} className="text-slate-500" />
+                    <input
+                      type="text"
+                      placeholder="Tìm phòng chat..."
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      className="flex-1 bg-transparent text-xs text-slate-300 focus:outline-none placeholder:text-slate-650 font-mono"
+                    />
+                  </div>
+                )}
+                
+                {/* Room Cards list */}
+                <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+                  {filteredRooms.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-slate-500 text-xs">
+                      Không tìm thấy phòng nào.
+                    </div>
+                  ) : (
+                    filteredRooms.map(room => {
+                      const roomUnread = unreadCounts[room._id] || 0;
+                      return (
+                        <div 
+                          key={room._id}
+                          onClick={() => setSelectedRoom(room)}
+                          className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-800/40 border border-transparent hover:border-slate-800/60 transition-all cursor-pointer group bg-slate-900/10"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            {/* Icon container */}
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${room.type === 'track_mentors' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-cyan-500/10 text-cyan-400'}`}>
+                              <Users size={16} />
+                            </div>
+                            
+                            {/* Room Info */}
+                            <div className="truncate flex-1 min-w-0">
+                              <p className="text-xs font-bold text-slate-200 truncate group-hover:text-cyan-400 transition-colors">
+                                {getRoomName(room)}
+                              </p>
+                              <p className="text-[10px] text-slate-500 truncate mt-0.5 font-mono">
+                                {room.type === 'track_mentors' 
+                                  ? 'Kênh trao đổi các Mentor của Bảng đấu' 
+                                  : room.members.length + ' thành viên'}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {/* Unread badge / Arrow indicator */}
+                          <div className="flex items-center gap-1.5 pl-2 shrink-0">
+                            {roomUnread > 0 ? (
+                              <span className="bg-rose-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full">
+                                {roomUnread}
+                              </span>
+                            ) : (
+                              <span className="w-1.5 h-1.5 rounded-full bg-transparent group-hover:bg-cyan-500 transition-colors"></span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -8,6 +8,7 @@ const GithubRepository = mongoose.model('GithubRepository');
 const Team = mongoose.model('Team');
 
 const aiService = require('./aiService');
+const { parseAiResult } = require('./aiService');
 const { authenticateToken } = require('../auth/authMiddleware');
 
 /**
@@ -23,7 +24,12 @@ router.get('/team/:teamId', authenticateToken, async (req, res) => {
       .populate('repositoryId', 'repoName repoUrl')
       .sort({ createdAt: -1 });
       
-    res.json(analyses);
+    const cleanedAnalyses = analyses.map(a => {
+      const obj = a.toObject();
+      obj.result = parseAiResult(obj.result);
+      return obj;
+    });
+    res.json(cleanedAnalyses);
   } catch (error) {
     console.error('Fetch AI analyses error:', error.message);
     res.status(500).json({ message: 'Server error fetching AI analyses.' });
@@ -78,7 +84,9 @@ router.get('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy phân tích AI.' });
     }
     
-    res.json(analysis);
+    const obj = analysis.toObject();
+    obj.result = parseAiResult(obj.result);
+    res.json(obj);
   } catch (error) {
     console.error('Get AI analysis detail error:', error.message);
     res.status(500).json({ message: 'Server error fetching AI analysis details.' });
@@ -117,8 +125,8 @@ router.post('/team/:teamId/aggregate', authenticateToken, async (req, res) => {
       repositoryId: repo._id,
       teamId: teamId,
       analysisType: 'repository_review', // maps to team_aggregate
-      provider: 'Google Gemini',
-      model: 'gemini-3.1-flash-lite',
+      provider: aggResult._provider || 'Google Gemini',
+      model: aggResult._model || 'gemini-3.1-flash-lite',
       result: aggResult,
       status: 'completed',
       completedAt: new Date()
@@ -133,6 +141,77 @@ router.post('/team/:teamId/aggregate', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Manual aggregate review error:', error.message);
     res.status(500).json({ message: error.message || 'Server error running aggregate review.' });
+  }
+});
+
+/**
+ * @route   POST /api/ai-analyses/n8n-callback
+ * @desc    Callback endpoint for n8n to asynchronously save AI analysis results
+ * @access  Public (Secured via X-API-Key header)
+ */
+router.post('/n8n-callback', async (req, res) => {
+  const apiKey = req.headers['x-api-key'];
+  const expectedApiKey = process.env.N8N_API_KEY || 'seal-n8n-secret-key-2026';
+  
+  if (apiKey !== expectedApiKey) {
+    return res.status(401).json({ message: 'Unauthorized callback. Invalid X-API-Key.' });
+  }
+
+  const { analysisId, repositoryId, teamId, commitId, analysisType, result, status, provider, model } = req.body;
+
+  if (!repositoryId || !teamId || !analysisType || !result) {
+    return res.status(400).json({ message: 'Missing required fields: repositoryId, teamId, analysisType, result.' });
+  }
+
+  try {
+    const parsedResult = parseAiResult(result);
+    let aiAnalysis;
+    if (analysisId) {
+      aiAnalysis = await AiAnalysis.findById(analysisId);
+    }
+
+    if (!aiAnalysis && commitId) {
+      aiAnalysis = await AiAnalysis.findOne({ commitId, analysisType });
+    }
+
+    if (aiAnalysis) {
+      aiAnalysis.result = parsedResult;
+      aiAnalysis.status = status || 'completed';
+      if (provider) aiAnalysis.provider = provider;
+      if (model) aiAnalysis.model = model;
+      aiAnalysis.completedAt = new Date();
+      await aiAnalysis.save();
+      console.log(`[N8N CALLBACK] Updated existing AiAnalysis record: ${aiAnalysis._id}`);
+    } else {
+      aiAnalysis = new AiAnalysis({
+        repositoryId,
+        teamId,
+        commitId,
+        analysisType,
+        provider: provider || 'n8n-gemini',
+        model: model || 'n8n-workflow',
+        result: parsedResult,
+        status: status || 'completed',
+        completedAt: new Date()
+      });
+      await aiAnalysis.save();
+      console.log(`[N8N CALLBACK] Created new AiAnalysis record: ${aiAnalysis._id}`);
+    }
+
+    // If it's a commit review, update the commit message diff summary
+    if (analysisType === 'commit_review' && commitId) {
+      const Commit = mongoose.model('Commit');
+      const commit = await Commit.findById(commitId);
+      if (commit) {
+        commit.diffSummary = parsedResult.overall_picture?.push_summary || parsedResult.summary || '';
+        await commit.save();
+      }
+    }
+
+    res.json({ message: 'Analysis saved successfully.', analysis: aiAnalysis });
+  } catch (error) {
+    console.error('n8n callback error:', error.message);
+    res.status(500).json({ message: 'Server error saving callback analysis.' });
   }
 });
 

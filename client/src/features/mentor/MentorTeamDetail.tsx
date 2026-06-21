@@ -1,30 +1,19 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { ArrowLeft, Users, FileText, CheckSquare, GitCommit, ListChecks, Download, Plus, Trash2, Edit } from "lucide-react";
+import { ArrowLeft, Users, FileText, MessageSquare, GitCommit, ListChecks, Download } from "lucide-react";
 
 export default function MentorTeamDetail() {
   const { teamId } = useParams();
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
 
-  const [activeTab, setActiveTab] = useState("overview"); // overview, tasks, commits, rubric
+  const [activeTab, setActiveTab] = useState("overview"); // overview, chat, commits, rubric
   const [team, setTeam] = useState<any>(null);
-  const [tasks, setTasks] = useState<any[]>([]);
   const [commits, setCommits] = useState<any[]>([]);
   const [rubrics, setRubrics] = useState<any>(null);
   
   const [loading, setLoading] = useState(true);
-
-  // Form states for Tasks
-  const [showTaskModal, setShowTaskModal] = useState(false);
-  const [editingTask, setEditingTask] = useState<any>(null);
-  const [taskForm, setTaskForm] = useState({
-    title: "",
-    description: "",
-    assigneeId: "",
-    status: "TODO"
-  });
 
   useEffect(() => {
     if (!teamId) return;
@@ -32,17 +21,10 @@ export default function MentorTeamDetail() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // 1. Fetch team
         const teamRes = await axios.get(`http://localhost:5000/api/teams/${teamId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setTeam(teamRes.data);
-
-        // 2. Fetch tasks
-        const tasksRes = await axios.get(`http://localhost:5000/api/tasks/team/${teamId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setTasks(tasksRes.data);
 
         // 3. Fetch commits
         try {
@@ -74,39 +56,7 @@ export default function MentorTeamDetail() {
     fetchData();
   }, [teamId, token]);
 
-  const handleSaveTask = async (e: any) => {
-    e.preventDefault();
-    try {
-      if (editingTask) {
-        const res = await axios.put(`http://localhost:5000/api/tasks/${editingTask._id}`, taskForm, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setTasks(tasks.map(t => t._id === editingTask._id ? res.data : t));
-      } else {
-        const res = await axios.post(`http://localhost:5000/api/tasks`, { ...taskForm, teamId }, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setTasks([res.data, ...tasks]);
-      }
-      setShowTaskModal(false);
-      setEditingTask(null);
-      setTaskForm({ title: "", description: "", assigneeId: "", status: "TODO" });
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
-  const handleDeleteTask = async (id: string) => {
-    if (!confirm("Bạn có chắc muốn xóa nhiệm vụ này?")) return;
-    try {
-      await axios.delete(`http://localhost:5000/api/tasks/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setTasks(tasks.filter(t => t._id !== id));
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   if (loading || !team) {
     return <div className="text-center py-20 text-slate-400">Đang tải dữ liệu đội thi...</div>;
@@ -132,7 +82,7 @@ export default function MentorTeamDetail() {
       <div className="flex overflow-x-auto gap-2 mb-6 pb-2">
         {[
           { id: "overview", icon: Users, label: "Tổng quan & Đề thi" },
-          { id: "tasks", icon: CheckSquare, label: "Nhiệm vụ (Tasks)" },
+          { id: "chat", icon: MessageSquare, label: "Chat" },
           { id: "commits", icon: GitCommit, label: "Lịch sử Code" },
           { id: "rubric", icon: ListChecks, label: "Tiêu chí chấm điểm" },
         ].map(tab => (
@@ -177,14 +127,14 @@ export default function MentorTeamDetail() {
                   {team.trackId.attachments.map((file: any, idx: number) => (
                     <a 
                       key={idx} 
-                      href={file.url} 
+                      href={file.fileUrl} 
                       target="_blank"
                       rel="noreferrer"
                       className="flex items-center gap-3 bg-slate-900/80 p-3 rounded-xl border border-slate-700 hover:border-cyan-500/50 transition-colors"
                     >
                       <Download size={18} className="text-cyan-400" />
                       <div>
-                        <p className="text-sm font-bold text-white">{file.name || `Tài liệu đính kèm ${idx + 1}`}</p>
+                        <p className="text-sm font-bold text-white">{file.fileName || `Tài liệu đính kèm ${idx + 1}`}</p>
                         <p className="text-[10px] text-slate-500">Bấm để tải xuống/xem</p>
                       </div>
                     </a>
@@ -197,56 +147,22 @@ export default function MentorTeamDetail() {
           </div>
         )}
 
-        {/* Tasks Tab */}
-        {activeTab === "tasks" && (
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <CheckSquare className="text-emerald-400"/> Theo dõi tiến độ
-              </h3>
-              <button 
-                onClick={() => {
-                  setEditingTask(null);
-                  setTaskForm({ title: "", description: "", assigneeId: "", status: "TODO" });
-                  setShowTaskModal(true);
-                }}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-2 shadow-[0_0_10px_rgba(16,185,129,0.3)]"
-              >
-                <Plus size={14} /> Giao nhiệm vụ
-              </button>
+        {/* Chat Tab */}
+        {activeTab === "chat" && (
+          <div className="py-12 text-center flex flex-col items-center justify-center max-w-md mx-auto">
+            <div className="w-16 h-16 rounded-full bg-cyan-950 text-cyan-400 flex items-center justify-center mb-4">
+              <MessageSquare size={28} />
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {['TODO', 'IN_PROGRESS', 'DONE'].map(status => (
-                <div key={status} className="bg-slate-900/50 rounded-xl p-4 border border-slate-800">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-800 pb-2">
-                    {status === 'TODO' ? 'Cần làm' : status === 'IN_PROGRESS' ? 'Đang tiến hành' : 'Hoàn thành'}
-                    <span className="ml-2 bg-slate-800 px-2 py-0.5 rounded-full text-[10px]">
-                      {tasks.filter(t => t.status === status).length}
-                    </span>
-                  </h4>
-                  <div className="space-y-3">
-                    {tasks.filter(t => t.status === status).map(task => (
-                      <div key={task._id} className="bg-slate-800 p-3 rounded-lg shadow-sm border border-slate-700 hover:border-slate-500 transition-colors">
-                        <div className="flex justify-between items-start mb-2">
-                          <p className="font-bold text-sm text-white">{task.title}</p>
-                          <div className="flex gap-1">
-                            <button onClick={() => { setEditingTask(task); setTaskForm(task); setShowTaskModal(true); }} className="text-slate-400 hover:text-cyan-400"><Edit size={14} /></button>
-                            <button onClick={() => handleDeleteTask(task._id)} className="text-slate-400 hover:text-rose-400"><Trash2 size={14} /></button>
-                          </div>
-                        </div>
-                        <p className="text-xs text-slate-400 mb-3 line-clamp-2">{task.description}</p>
-                        <div className="text-[10px] font-mono flex items-center gap-2">
-                          <span className="bg-slate-900 px-2 py-1 rounded text-cyan-400">
-                            {task.assigneeId ? task.assigneeId.fullName : "Chưa phân công"}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <h3 className="text-white font-bold text-lg mb-2">Trò chuyện với Đội thi</h3>
+            <p className="text-slate-400 text-xs mb-6">Mở khung hội thoại nổi để trực tiếp trao đổi và hỗ trợ đội thi {team.name} giải quyết các khó khăn trong quá trình làm bài.</p>
+            <button 
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('open_chat_room', { detail: { teamId: team._id } }));
+              }}
+              className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase rounded-xl transition-all shadow-lg shadow-cyan-600/25 cursor-pointer font-sans"
+            >
+              Mở hộp thoại chat
+            </button>
           </div>
         )}
 
@@ -314,79 +230,7 @@ export default function MentorTeamDetail() {
         )}
       </div>
 
-      {/* Task Modal */}
-      {showTaskModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-white mb-4">
-              {editingTask ? "Cập nhật Nhiệm vụ" : "Giao Nhiệm vụ mới"}
-            </h3>
-            <form onSubmit={handleSaveTask} className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Tên nhiệm vụ</label>
-                <input 
-                  required
-                  type="text" 
-                  value={taskForm.title} 
-                  onChange={e => setTaskForm({...taskForm, title: e.target.value})}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Mô tả</label>
-                <textarea 
-                  rows={3}
-                  value={taskForm.description} 
-                  onChange={e => setTaskForm({...taskForm, description: e.target.value})}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Người phụ trách</label>
-                  <select 
-                    value={taskForm.assigneeId} 
-                    onChange={e => setTaskForm({...taskForm, assigneeId: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none"
-                  >
-                    <option value="">-- Chưa phân công --</option>
-                    {team.members?.map((m: any) => (
-                      <option key={m.userId._id} value={m.userId._id}>{m.userId.fullName}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Trạng thái</label>
-                  <select 
-                    value={taskForm.status} 
-                    onChange={e => setTaskForm({...taskForm, status: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-500 focus:outline-none"
-                  >
-                    <option value="TODO">Cần làm</option>
-                    <option value="IN_PROGRESS">Đang làm</option>
-                    <option value="DONE">Hoàn thành</option>
-                  </select>
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-slate-800">
-                <button 
-                  type="button" 
-                  onClick={() => setShowTaskModal(false)}
-                  className="px-4 py-2 text-sm font-bold text-slate-400 hover:text-white"
-                >
-                  Hủy
-                </button>
-                <button 
-                  type="submit" 
-                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-lg shadow-lg"
-                >
-                  {editingTask ? "Lưu thay đổi" : "Tạo nhiệm vụ"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }

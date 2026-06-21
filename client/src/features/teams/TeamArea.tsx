@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Link2, Save, RefreshCw, CheckCircle, Clock, FileDiff, BookOpen, Users } from 'lucide-react';
+import { Link2, Save, RefreshCw, CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare } from 'lucide-react';
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
   <svg
@@ -42,8 +42,7 @@ export default function TeamArea() {
   const [commits, setCommits] = useState<any[]>([]);
   const [selectedCommit, setSelectedCommit] = useState<any>(null);
 
-  // Tasks
-  const [tasks, setTasks] = useState<any[]>([]);
+
 
   // Status indicators
   const [loading, setLoading] = useState(true);
@@ -78,10 +77,7 @@ export default function TeamArea() {
         fetchCommits(res.data.team._id);
       }
       
-      // Fetch Tasks
-      if (res.data.team) {
-        fetchTasks(res.data.team._id);
-      }
+
     } catch (err: any) {
       console.error(err);
       setError(err.response?.data?.message || 'Lỗi tải thông tin đội thi. Vui lòng đảm bảo nhóm đã được xác nhận.');
@@ -108,28 +104,7 @@ export default function TeamArea() {
     setSelectedCommit(commitObj);
   };
 
-  const fetchTasks = async (teamId: string) => {
-    try {
-      const res = await axios.get(`http://localhost:5000/api/tasks/team/${teamId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setTasks(res.data);
-    } catch (err: any) {
-      console.error('Error fetching tasks:', err);
-    }
-  };
 
-  const updateTaskStatus = async (taskId: string, newStatus: string) => {
-    try {
-      const res = await axios.put(`http://localhost:5000/api/tasks/${taskId}`, { status: newStatus }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setTasks(tasks.map((t: any) => t._id === taskId ? res.data : t));
-      toast.success("Đã cập nhật tiến độ nhiệm vụ.");
-    } catch (err: any) {
-      toast.error("Lỗi cập nhật tiến độ.");
-    }
-  };
 
   useEffect(() => {
     fetchTeamData();
@@ -233,55 +208,26 @@ export default function TeamArea() {
         )}
       </div>
 
-      {/* Task Management Section */}
+      {/* Chat Section */}
       {team && (
-        <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all">
-          <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2 font-mono-tech">
-            <CheckCircle size={18} className="text-cyan-400" />
-            <span className="text-cyan-400">[NHIỆM_VỤ_ĐƯỢC_GIAO]</span>
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {['TODO', 'IN_PROGRESS', 'DONE'].map(status => {
-              const colTasks = tasks.filter((t: any) => t.status === status);
-              return (
-                <div key={status} className="bg-slate-900/40 rounded-xl p-4 border border-slate-800">
-                  <h3 className="text-xs font-bold text-slate-400 mb-4 tracking-widest uppercase flex items-center gap-2">
-                    {status === 'TODO' ? 'CẦN LÀM' : status === 'IN_PROGRESS' ? 'ĐANG TIẾN HÀNH' : 'HOÀN THÀNH'} 
-                    <span className="bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full text-[10px]">{colTasks.length}</span>
-                  </h3>
-                  <div className="space-y-3">
-                    {colTasks.map((t: any) => (
-                      <div key={t._id} className="bg-slate-800/50 p-3 rounded-lg border border-slate-700 hover:border-cyan-500/50 transition-all">
-                        <p className="text-sm font-bold text-white mb-1">{t.title}</p>
-                        {t.description && <p className="text-xs text-slate-400 mb-3">{t.description}</p>}
-                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-3 gap-2">
-                          <span className="text-[10px] bg-cyan-900/30 text-cyan-400 px-2 py-1 rounded font-mono inline-block text-center sm:text-left">
-                            {t.assigneeId ? t.assigneeId.fullName : 'Chưa phân công'}
-                          </span>
-                          
-                          <select 
-                            value={t.status}
-                            onChange={(e) => updateTaskStatus(t._id, e.target.value)}
-                            className="bg-slate-900 border border-slate-700 text-xs text-slate-300 rounded px-2 py-1 outline-none cursor-pointer hover:border-cyan-500/50 transition-colors"
-                          >
-                            <option value="TODO">Cần làm</option>
-                            <option value="IN_PROGRESS">Đang làm</option>
-                            <option value="DONE">Hoàn thành</option>
-                          </select>
-                        </div>
-                      </div>
-                    ))}
-                    {colTasks.length === 0 && (
-                      <div className="text-center py-6 text-slate-600 text-xs italic font-sans">
-                        Trống
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+        <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-cyan-950 text-cyan-400 rounded-xl">
+              <MessageSquare size={20} />
+            </div>
+            <div>
+              <h3 className="text-white font-bold">Hỗ trợ từ Mentor</h3>
+              <p className="text-xs text-slate-400 font-sans">Bạn có câu hỏi hoặc cần sự giúp đỡ? Hãy nhắn tin trao đổi trực tiếp với Mentor hướng dẫn.</p>
+            </div>
           </div>
+          <button 
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('open_chat_room', { detail: { teamId: team._id } }));
+            }}
+            className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase rounded-xl transition-all shadow-lg shadow-cyan-600/25 whitespace-nowrap cursor-pointer font-sans"
+          >
+            Nhắn tin ngay
+          </button>
         </div>
       )}
 
@@ -289,6 +235,37 @@ export default function TeamArea() {
         
         {/* Left Side: Topic Submission & Members info */}
         <div className="lg:col-span-1 space-y-8">
+
+          {/* Exam & Materials from BTC */}
+          <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all">
+            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2 font-mono-tech">
+              <BookOpen size={18} className="text-cyan-400" />
+              <span className="text-cyan-400">[ĐỀ_BÀI_&_TÀI_LIỆU_THI]</span>
+            </h2>
+            {team?.trackId?.attachments && team.trackId.attachments.length > 0 ? (
+              <div className="space-y-3">
+                {team.trackId.attachments.map((file: any, idx: number) => (
+                  <a
+                    key={idx}
+                    href={file.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-3 bg-slate-900/50 p-3 rounded-xl border border-slate-800 hover:border-cyan-500/50 transition-colors"
+                  >
+                    <BookOpen size={16} className="text-cyan-400 shrink-0" />
+                    <div className="truncate">
+                      <p className="text-xs font-bold text-white truncate">{file.fileName || `Tài liệu đính kèm ${idx + 1}`}</p>
+                      <p className="text-[9px] text-slate-500 font-sans">Bấm để mở link Google Drive lấy đề tài</p>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 italic py-2 text-center font-sans">
+                Chưa có đề bài hoặc tài liệu thi nào được đính kèm cho bảng đấu của bạn.
+              </p>
+            )}
+          </div>
           
           {/* Submit Topic and Documents */}
           <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all">

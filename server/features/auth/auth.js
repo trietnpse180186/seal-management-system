@@ -270,7 +270,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
  * @access  Private (System Admin)
  */
 router.post('/assign-role', authenticateToken, requireSystemAdmin, async (req, res) => {
-  const { userEmail, eventId, trackId, role } = req.body;
+  const { userEmail, eventId, trackId, role, teamId } = req.body;
 
   if (!userEmail || !eventId || !role) {
     return res.status(400).json({ message: 'User email, event ID, and role are required.' });
@@ -321,6 +321,36 @@ router.post('/assign-role', authenticateToken, requireSystemAdmin, async (req, r
       details: `Gán vai trò ${role} cho người dùng ${userEmail}`
     });
     await newLog.save();
+
+    // If role is mentor and teamId is specified, assign mentor to team and ensure chat room
+    if (role === 'mentor' && teamId) {
+      const Team = mongoose.model('Team');
+      const team = await Team.findById(teamId);
+      if (team) {
+        team.mentorId = targetUser._id;
+        await team.save();
+
+        const { ensureChatRoomForTeam } = require('../chat/chatRoomService');
+        await ensureChatRoomForTeam(team);
+      }
+    } else if (role === 'mentor' && trackId && !teamId) {
+      try {
+        const { ensureChatRoomsForMentorTrack } = require('../chat/chatRoomService');
+        await ensureChatRoomsForMentorTrack(targetUser._id, trackId, eventId);
+      } catch (chatErr) {
+        console.error('Error creating chat rooms for mentor on assignment:', chatErr.message);
+      }
+    }
+
+    // Ensure track-wide mentor group chat room is created/updated
+    if (role === 'mentor' && trackId) {
+      try {
+        const { ensureTrackMentorChatRoom } = require('../chat/chatRoomService');
+        await ensureTrackMentorChatRoom(trackId, eventId);
+      } catch (chatErr) {
+        console.error('Error creating track mentor group chat:', chatErr.message);
+      }
+    }
 
     res.status(201).json({ message: `Successfully assigned role ${role} to ${userEmail}.` });
 
@@ -623,7 +653,7 @@ router.post('/github', async (req, res) => {
  */
 router.get('/verify-email', async (req, res) => {
   const { token } = req.query;
-  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const clientUrl = process.env.CLIENT_URL || 'https://www.seal-hackathon.io.vn';
 
   if (!token) {
     return res.status(400).send(`

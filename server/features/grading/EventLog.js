@@ -12,4 +12,15 @@ const EventLogSchema = new Schema({
 
 EventLogSchema.index({ eventId: 1, createdAt: -1 });
 
+EventLogSchema.post('save', async function(doc) {
+  try {
+    const socketModule = require('../chat/socket');
+    const io = socketModule.getIO();
+    await doc.populate('actorId', 'fullName email');
+    io.emit('new_event_log', doc);
+  } catch (err) {
+    // Socket.io might not be initialized during setup scripts or tests, ignore
+  }
+});
+
 module.exports = mongoose.model('EventLog', EventLogSchema);

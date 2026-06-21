@@ -301,8 +301,16 @@ router.put("/:rubricId", authenticateToken, async (req, res) => {
     const { name, description, totalWeight, maxCriterionScore, isActive } =
       req.body;
 
-    if (name !== undefined) rubric.name = String(name).trim();
-    if (description !== undefined) rubric.description = description;
+    let rubricDetails = [];
+
+    if (name !== undefined && String(name).trim() !== rubric.name) {
+      rubricDetails.push(`Tên: "${rubric.name}" -> "${String(name).trim()}"`);
+      rubric.name = String(name).trim();
+    }
+    if (description !== undefined && description !== rubric.description) {
+      rubricDetails.push(`Mô tả`);
+      rubric.description = description;
+    }
 
     if (totalWeight !== undefined) {
       const parsedTotalWeight = toNumber(totalWeight, rubric.totalWeight);
@@ -319,21 +327,31 @@ router.put("/:rubricId", authenticateToken, async (req, res) => {
         });
       }
 
-      rubric.totalWeight = parsedTotalWeight;
+      if (parsedTotalWeight !== rubric.totalWeight) {
+        rubricDetails.push(`Trọng số: ${rubric.totalWeight}% -> ${parsedTotalWeight}%`);
+        rubric.totalWeight = parsedTotalWeight;
+      }
     }
 
     if (maxCriterionScore !== undefined) {
-      rubric.maxCriterionScore = toNumber(
-        maxCriterionScore,
-        rubric.maxCriterionScore,
-      );
+      const parsedMaxScore = toNumber(maxCriterionScore, rubric.maxCriterionScore);
+      if (parsedMaxScore !== rubric.maxCriterionScore) {
+        rubricDetails.push(`Điểm tối đa tiêu chí: ${rubric.maxCriterionScore} -> ${parsedMaxScore}`);
+        rubric.maxCriterionScore = parsedMaxScore;
+      }
     }
 
-    if (isActive !== undefined) {
+    if (isActive !== undefined && !!isActive !== rubric.isActive) {
+      rubricDetails.push(`Trạng thái hoạt động: ${rubric.isActive} -> ${!!isActive}`);
       rubric.isActive = !!isActive;
     }
 
     await rubric.save();
+
+    let details = `Cập nhật Rubric: ${rubric.name}`;
+    if (rubricDetails.length > 0) {
+      details = `Cập nhật Rubric "${rubric.name}": ${rubricDetails.join(', ')}`;
+    }
 
     // Create EventLog
     const EventLog = mongoose.model('EventLog');
@@ -341,7 +359,7 @@ router.put("/:rubricId", authenticateToken, async (req, res) => {
       eventId: rubric.eventId,
       actorId: req.user._id,
       action: 'update_rubric',
-      details: `Cập nhật Rubric: ${rubric.name}`
+      details
     });
     await newLog.save();
 

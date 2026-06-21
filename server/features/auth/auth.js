@@ -314,11 +314,26 @@ router.post('/assign-role', authenticateToken, requireSystemAdmin, async (req, r
 
     // Create EventLog
     const EventLog = mongoose.model('EventLog');
+    let roleDetails = `Gán vai trò "${role}" cho người dùng ${userEmail}`;
+    if (trackId) {
+      const Track = mongoose.model('Track');
+      const track = await Track.findById(trackId);
+      if (track) {
+        roleDetails += ` tại bảng đấu: "${track.name}"`;
+      }
+    }
+    if (teamId) {
+      const Team = mongoose.model('Team');
+      const team = await Team.findById(teamId);
+      if (team) {
+        roleDetails += ` của đội thi: "${team.name}"`;
+      }
+    }
     const newLog = new EventLog({
       eventId,
       actorId: req.user._id,
       action: 'assign_role',
-      details: `Gán vai trò ${role} cho người dùng ${userEmail}`
+      details: roleDetails
     });
     await newLog.save();
 

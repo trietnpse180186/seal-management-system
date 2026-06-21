@@ -99,7 +99,7 @@ router.post('/', authenticateToken, requireSystemAdmin, async (req, res) => {
       eventId: newEvent._id,
       actorId: req.user._id,
       action: 'create_event',
-      details: `Tạo sự kiện mới: ${newEvent.name} (${newEvent.semester} ${newEvent.year})`
+      details: `Tạo sự kiện mới: "${newEvent.name}" (Học kỳ: ${newEvent.semester}, Năm: ${newEvent.year}, Số lượng đội tối đa: ${newEvent.maxTeams || 0})`
     });
     await newLog.save();
 
@@ -287,11 +287,14 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
     await newTrack.save();
 
     // Create EventLog
+    const Round = mongoose.model('Round');
+    const round = await Round.findById(roundId);
+    const roundName = round ? round.name : roundId;
     const newLog = new EventLog({
       eventId,
       actorId: req.user._id,
       action: 'create_track',
-      details: `Tạo bảng đấu mới: ${newTrack.name} trong vòng thi ID: ${roundId}`
+      details: `Tạo bảng đấu mới: "${newTrack.name}" trong vòng thi: "${roundName}" (Số lượng đội tối đa: ${newTrack.maxTeams || 'Không giới hạn'})`
     });
     await newLog.save();
 
@@ -474,7 +477,7 @@ router.post('/:eventId/rounds', authenticateToken, async (req, res) => {
       eventId,
       actorId: req.user._id,
       action: 'create_round',
-      details: `Tạo vòng thi mới: ${newRound.name} (thứ tự: ${newRound.order})`
+      details: `Tạo vòng thi mới: "${newRound.name}" (Thứ tự: ${newRound.order}, Đội đi tiếp: ${newRound.advanceTopN || 'Tất cả'})`
     });
     await newLog.save();
 
@@ -602,11 +605,19 @@ router.delete('/:eventId/roles/:roleId', authenticateToken, async (req, res) => 
     // Create EventLog
     const targetUser = await User.findById(roleToUpdate.userId);
     const userEmailStr = targetUser ? targetUser.email : 'Unknown User';
+    let roleDetails = `Gỡ vai trò "${roleToUpdate.role}" của người dùng ${userEmailStr}`;
+    if (roleToUpdate.trackId) {
+      const Track = mongoose.model('Track');
+      const track = await Track.findById(roleToUpdate.trackId);
+      if (track) {
+        roleDetails += ` tại bảng đấu: "${track.name}"`;
+      }
+    }
     const newLog = new EventLog({
       eventId,
       actorId: req.user._id,
       action: 'remove_role',
-      details: `Gỡ vai trò ${roleToUpdate.role} của người dùng ${userEmailStr}`
+      details: roleDetails
     });
     await newLog.save();
 
@@ -728,7 +739,7 @@ router.post('/:eventId/distribute-teams', authenticateToken, async (req, res) =>
       eventId,
       actorId: req.user._id,
       action: 'distribute_teams',
-      details: `Phân chia ngẫu nhiên ${shuffledTeams.length} đội thi vào ${tracks.length} bảng đấu`
+      details: `Tự động phân bổ ${shuffledTeams.length} đội thi vào ${tracks.length} bảng đấu (${tracks.map(t => t.name).join(', ')})`
     });
     await newLog.save();
 
@@ -784,12 +795,30 @@ router.put('/:id', authenticateToken, async (req, res) => {
       }
     }
 
-    if (name) event.name = name;
-    if (semester) event.semester = semester;
-    if (year) event.year = parseInt(year);
-    if (description !== undefined) event.description = description;
-    if (bannerUrl !== undefined) event.bannerUrl = bannerUrl;
-    if (maxTeams) event.maxTeams = parseInt(maxTeams);
+    if (name && name !== event.name) {
+      logDetails.push(`Tên sự kiện: "${event.name}" -> "${name}"`);
+      event.name = name;
+    }
+    if (semester && semester !== event.semester) {
+      logDetails.push(`Học kỳ: "${event.semester}" -> "${semester}"`);
+      event.semester = semester;
+    }
+    if (year && parseInt(year) !== event.year) {
+      logDetails.push(`Năm: ${event.year} -> ${year}`);
+      event.year = parseInt(year);
+    }
+    if (description !== undefined && description !== event.description) {
+      logDetails.push(`Mô tả sự kiện`);
+      event.description = description;
+    }
+    if (bannerUrl !== undefined && bannerUrl !== event.bannerUrl) {
+      logDetails.push(`Ảnh banner`);
+      event.bannerUrl = bannerUrl;
+    }
+    if (maxTeams && parseInt(maxTeams) !== event.maxTeams) {
+      logDetails.push(`Số lượng đội tối đa: ${event.maxTeams || 0} -> ${maxTeams}`);
+      event.maxTeams = parseInt(maxTeams);
+    }
     
     if (registrationOpen !== undefined) {
       const newOpen = registrationOpen ? new Date(registrationOpen) : null;
@@ -832,6 +861,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
     
     if (githubOrgName && githubOrgName !== event.githubOrgName) {
+      logDetails.push(`GitHub Org: "${event.githubOrgName || 'Chưa liên kết'}" -> "${githubOrgName}"`);
       event.githubOrgName = githubOrgName;
       // Auto-provision or link new organization
       await githubService.createOrganization(githubOrgName);
@@ -851,9 +881,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
       } else {
         details = `Thay đổi trạng thái sự kiện "${event.name}" từ ${oldStatus} sang ${status}`;
       }
-    } else if (isTimeUpdated) {
-      action = 'update_event_time';
-      details = `Cập nhật thiết lập thời gian của sự kiện "${event.name}": ${logDetails.join(', ')}`;
+    } else if (logDetails.length > 0) {
+      if (isTimeUpdated && logDetails.every(detail => detail.includes('Thời gian'))) {
+        action = 'update_event_time';
+      }
+      details = `Cập nhật thông tin sự kiện "${event.name}": ${logDetails.join(', ')}`;
     }
 
     await event.save();

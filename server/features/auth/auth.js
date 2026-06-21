@@ -312,6 +312,16 @@ router.post('/assign-role', authenticateToken, requireSystemAdmin, async (req, r
 
     await newRole.save();
 
+    // Create EventLog
+    const EventLog = mongoose.model('EventLog');
+    const newLog = new EventLog({
+      eventId,
+      actorId: req.user._id,
+      action: 'assign_role',
+      details: `Gán vai trò ${role} cho người dùng ${userEmail}`
+    });
+    await newLog.save();
+
     // If role is mentor and teamId is specified, assign mentor to team and ensure chat room
     if (role === 'mentor' && teamId) {
       const Team = mongoose.model('Team');

@@ -212,6 +212,17 @@ router.post("/", authenticateToken, async (req, res) => {
     });
 
     await rubric.save();
+
+    // Create EventLog
+    const EventLog = mongoose.model('EventLog');
+    const newLog = new EventLog({
+      eventId,
+      actorId: req.user._id,
+      action: 'create_rubric',
+      details: `Tạo Rubric mới: ${rubric.name} cho vòng thi ID: ${roundId}`
+    });
+    await newLog.save();
+
     res.status(201).json(rubric);
   } catch (error) {
     console.error("Create Rubric Error:", error.message);
@@ -323,6 +334,17 @@ router.put("/:rubricId", authenticateToken, async (req, res) => {
     }
 
     await rubric.save();
+
+    // Create EventLog
+    const EventLog = mongoose.model('EventLog');
+    const newLog = new EventLog({
+      eventId: rubric.eventId,
+      actorId: req.user._id,
+      action: 'update_rubric',
+      details: `Cập nhật Rubric: ${rubric.name}`
+    });
+    await newLog.save();
+
     res.json(rubric);
   } catch (error) {
     console.error("Update Rubric Error:", error.message);
@@ -351,6 +373,16 @@ router.delete("/:rubricId", authenticateToken, async (req, res) => {
 
     rubric.isActive = false;
     await rubric.save();
+
+    // Create EventLog
+    const EventLog = mongoose.model('EventLog');
+    const newLog = new EventLog({
+      eventId: rubric.eventId,
+      actorId: req.user._id,
+      action: 'delete_rubric',
+      details: `Hủy kích hoạt Rubric: ${rubric.name}`
+    });
+    await newLog.save();
 
     res.json({ message: "Rubric deactivated successfully." });
   } catch (error) {
@@ -388,6 +420,16 @@ router.post("/:rubricId/lock", authenticateToken, async (req, res) => {
     rubric.lockedBy = req.user._id;
     rubric.lockedAt = new Date();
     await rubric.save();
+
+    // Create EventLog
+    const EventLog = mongoose.model('EventLog');
+    const newLog = new EventLog({
+      eventId: rubric.eventId,
+      actorId: req.user._id,
+      action: 'lock_rubric',
+      details: `Khóa Rubric: ${rubric.name}`
+    });
+    await newLog.save();
 
     res.json({ message: "Rubric locked and ready for grading.", rubric });
   } catch (error) {
@@ -606,6 +648,69 @@ router.post('/clone', authenticateToken, async (req, res) => {
 });
 
 /**
+/**
+ * @route   GET /api/rubrics/:rubricId/export
+ * @desc    Export a rubric and its criteria as JSON
+ * @access  Private (Coordinator or Admin)
+ */
+router.get('/:rubricId/export', authenticateToken, async (req, res) => {
+  try {
+    const rubric = await Rubric.findById(req.params.rubricId);
+    if (!rubric) return res.status(404).json({ message: 'Rubric not found.' });
+
+    // Auth check
+    if (!(await canManageRubric(req, rubric.eventId))) {
+      return res.status(403).json({ message: "Unauthorized." });
+    }
+
+    const criteria = await Criterion.find({ rubricId: rubric._id }).sort({ order: 1 });
+
+    const exportData = {
+      name: rubric.name,
+      description: rubric.description,
+      totalWeight: rubric.totalWeight,
+      maxCriterionScore: rubric.maxCriterionScore,
+      criteria: criteria.map(c => ({
+        code: c.code,
+        name: c.name,
+        description: c.description,
+        weight: c.weight,
+        maxScore: c.maxScore,
+        excellentDescription: c.excellentDescription,
+        goodDescription: c.goodDescription,
+        passedDescription: c.passedDescription,
+        failedDescription: c.failedDescription,
+        order: c.order,
+        gradingLevels: c.gradingLevels ? c.gradingLevels.map(lvl => ({
+          label: lvl.label,
+          minScore: lvl.minScore,
+          maxScore: lvl.maxScore,
+          description: lvl.description
+        })) : []
+      }))
+    };
+
+    // Create EventLog
+    const EventLog = mongoose.model('EventLog');
+    const newLog = new EventLog({
+      eventId: rubric.eventId,
+      actorId: req.user._id,
+      action: 'export_rubric',
+      details: `Xuất cấu hình Rubric: ${rubric.name} thành file JSON`
+    });
+    await newLog.save();
+
+    res.setHeader('Content-disposition', `attachment; filename=rubric-${rubric._id}.json`);
+    res.setHeader('Content-type', 'application/json');
+    res.json(exportData);
+
+  } catch (error) {
+    console.error('Export Rubric Error:', error.message);
+    res.status(500).json({ message: 'Server error exporting rubric.' });
+  }
+});
+
+/**
  * GET /api/rubrics/template/download
  * Download file Excel template mẫu cho import criteria
  */
@@ -706,6 +811,100 @@ router.get('/template/download', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Download Template Error:', error.message);
     res.status(500).json({ message: 'Server error generating template.' });
+  }
+});
+
+/**
+ * @route   POST /api/rubrics/import
+ * @desc    Import a rubric from JSON
+ * @access  Private (Coordinator or Admin)
+ */
+router.post('/import', authenticateToken, async (req, res) => {
+  const { eventId, trackId, roundId, rubricData } = req.body;
+
+  if (!eventId || !roundId || !rubricData) {
+    return res.status(400).json({ message: 'Event ID, Round ID, and Rubric data are required.' });
+  }
+
+  try {
+    // Auth Check
+    if (!req.user.isSystemAdmin) {
+      const coordinatorRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId,
+        role: 'coordinator',
+        status: 'active'
+      });
+      if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
+    }
+
+    // Check if rubric already exists for this target round
+    const existing = await Rubric.findOne({ roundId, isActive: true });
+    if (existing) {
+      return res.status(400).json({ message: 'An active rubric already exists for this round.' });
+    }
+
+    // Create new rubric
+    const newRubric = new Rubric({
+      eventId,
+      trackId: trackId || undefined,
+      roundId,
+      name: rubricData.name || 'Imported Rubric',
+      description: rubricData.description || '',
+      totalWeight: rubricData.totalWeight || 100,
+      maxCriterionScore: rubricData.maxCriterionScore || 10,
+      createdBy: req.user._id
+    });
+
+    await newRubric.save();
+
+    // Create criteria
+    const criteriaList = [];
+    if (Array.isArray(rubricData.criteria)) {
+      for (const c of rubricData.criteria) {
+        const criterion = new Criterion({
+          rubricId: newRubric._id,
+          code: String(c.code).trim().toUpperCase(),
+          name: String(c.name).trim(),
+          description: c.description || '',
+          weight: Number(c.weight || 0),
+          maxScore: c.maxScore !== undefined ? Number(c.maxScore) : 10,
+          excellentDescription: c.excellentDescription || '',
+          goodDescription: c.goodDescription || '',
+          passedDescription: c.passedDescription || '',
+          failedDescription: c.failedDescription || '',
+          order: c.order,
+          gradingLevels: Array.isArray(c.gradingLevels) ? c.gradingLevels.map(lvl => ({
+            label: String(lvl.label || '').trim(),
+            minScore: Number(lvl.minScore || 0),
+            maxScore: Number(lvl.maxScore || 0),
+            description: String(lvl.description || '').trim()
+          })) : []
+        });
+        criteriaList.push(criterion);
+      }
+      await Criterion.insertMany(criteriaList);
+    }
+
+    // Create EventLog
+    const EventLog = mongoose.model('EventLog');
+    const newLog = new EventLog({
+      eventId,
+      actorId: req.user._id,
+      action: 'import_rubric',
+      details: `Nhập cấu hình Rubric mới từ file JSON: ${newRubric.name}`
+    });
+    await newLog.save();
+
+    res.status(201).json({
+      message: 'Rubric imported successfully!',
+      rubric: newRubric,
+      criteria: criteriaList
+    });
+
+  } catch (error) {
+    console.error('Import Rubric Error:', error.message);
+    res.status(500).json({ message: 'Server error importing rubric.' });
   }
 });
 

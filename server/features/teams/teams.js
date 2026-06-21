@@ -976,6 +976,16 @@ router.put('/:teamId/assign-track', authenticateToken, async (req, res) => {
         });
     }
 
+    // Create EventLog
+    const EventLog = mongoose.model('EventLog');
+    const newLog = new EventLog({
+      eventId: team.eventId,
+      actorId: req.user._id,
+      action: 'assign_team_track',
+      details: `Phân đội ${team.name} vào bảng đấu ${track.name}`
+    });
+    await newLog.save();
+
     // Also ensure chat room is created if mentor exists
     await ensureChatRoomForTeam(team);
 

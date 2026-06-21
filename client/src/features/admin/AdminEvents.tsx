@@ -109,8 +109,9 @@ export default function AdminEvents({
 
   // Tab management state
   const [activeTab, setActiveTab] = useState<
-    "admin" | "events" | "teams" | "rounds" | "tracks" | "github" | "schedule"
+    "admin" | "events" | "teams" | "rounds" | "tracks" | "github" | "logs" | "schedule"
   >(defaultTab);
+  const [eventLogs, setEventLogs] = useState<any[]>([]);
   // Sidebar collapse state (for premium slide effect)
   // const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -271,6 +272,16 @@ export default function AdminEvents({
   }, [defaultTab]);
 
   useEffect(() => {
+    if (activeTab === "logs" && selectedEvent) {
+      fetchEventLogs();
+      const interval = setInterval(() => {
+        fetchEventLogs();
+      }, 5000); // Poll every 5 seconds
+      return () => clearInterval(interval);
+    }
+  }, [activeTab, selectedEvent]);
+
+  useEffect(() => {
     if (eventIdParam) {
       const foundEvent = events.find((e) => e._id === eventIdParam);
       if (foundEvent) {
@@ -373,8 +384,24 @@ export default function AdminEvents({
       fetchTeamsList();
       fetchRepositories(selectedEvent._id);
       fetchAllTeams(selectedEvent._id);
+      fetchEventLogs();
     } catch (err) {
       console.error("Lỗi fetch chi tiết sự kiện:", err);
+    }
+  };
+
+  const fetchEventLogs = async () => {
+    if (!selectedEvent) return;
+    try {
+      const res = await axios.get(
+        `http://localhost:5000/api/events/${selectedEvent._id}/logs`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setEventLogs(res.data || []);
+    } catch (err) {
+      console.error("Lỗi lấy nhật ký sự kiện:", err);
     }
   };
 
@@ -500,6 +527,44 @@ export default function AdminEvents({
       setMessage({
         type: "error",
         text: err.response?.data?.message || "Lỗi khi phân bảng đấu.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKickAllCollaborators = async (repoId: string) => {
+    if (
+      !window.confirm(
+        "Bạn có chắc chắn muốn thu hồi quyền truy cập (gỡ cộng tác viên) của toàn bộ thành viên nhóm và mentor khỏi repository này không?"
+      )
+    ) {
+      return;
+    }
+    setLoading(true);
+    setMessage({ type: "", text: "" });
+    try {
+      const res = await axios.post(
+        `http://localhost:5000/api/github-repositories/${repoId}/kick-all`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setMessage({
+        type: "success",
+        text: res.data.message || "Thu hồi quyền thành công!",
+      });
+      if (selectedEvent) {
+        fetchRepositories(selectedEvent._id);
+      }
+    } catch (err: any) {
+      console.error("Kick all collaborators error:", err);
+      setMessage({
+        type: "error",
+        text:
+          err.response?.data?.message ||
+          "Lỗi khi thu hồi quyền truy cập repository.",
       });
     } finally {
       setLoading(false);
@@ -1634,6 +1699,15 @@ export default function AdminEvents({
             <Github size={14} />
             GitHub & AI Đánh giá
           </button>
+          <button
+            onClick={() => setActiveTab("logs")}
+            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "logs"
+                ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+              }`}
+          >
+            Nhật ký hoạt động
+          </button>
         </div>
       )}
 
@@ -2058,6 +2132,8 @@ export default function AdminEvents({
             handleCreateRepo={handleCreateRepo}
             handleLinkRepo={handleLinkRepo}
             handleSyncRepo={handleSyncRepo}
+            selectedEvent={selectedEvent}
+            handleKickAllCollaborators={handleKickAllCollaborators}
           />
         ) : (
           <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">
@@ -2066,7 +2142,88 @@ export default function AdminEvents({
           </div>
         ))}
 
-      {/* 7. SCHEDULE TAB */}
+      {/* 7. EVENT LOGS TAB */}
+      {activeTab === "logs" &&
+        (selectedEvent ? (
+          <div className="glass p-6 rounded-2xl border border-slate-800/80 bg-slate-900/20 space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-white font-mono flex items-center gap-2">
+                  <Info size={20} className="text-cyan-400" />
+                  <span>NHẬT KÝ HOẠT ĐỘNG SỰ KIỆN</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Nhật ký lưu lại các thay đổi quan trọng đối với cấu trúc và thiết lập thời gian của sự kiện.
+                </p>
+              </div>
+              <button
+                onClick={fetchEventLogs}
+                className="bg-slate-950 hover:bg-slate-900 text-slate-300 hover:text-white px-3 py-1.5 rounded-xl border border-slate-800 text-xs font-mono transition-all cursor-pointer"
+              >
+                Tải lại nhật ký
+              </button>
+            </div>
+
+            {eventLogs.length > 0 ? (
+              <div className="flow-root">
+                <ul className="-mb-8">
+                  {eventLogs.map((log: any, logIdx: number) => (
+                    <li key={log._id}>
+                      <div className="relative pb-8">
+                        {logIdx !== eventLogs.length - 1 ? (
+                          <span
+                            className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-slate-800"
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                        <div className="relative flex space-x-3">
+                          <div>
+                            <span className="h-8 w-8 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center ring-8 ring-slate-900/50">
+                              <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0 pt-1.5 flex justify-between space-x-4">
+                            <div>
+                              <p className="text-sm text-slate-200">
+                                {log.details}{" "}
+                                <span className="font-mono text-xs text-slate-500 font-medium">
+                                  ({log.action})
+                                </span>
+                              </p>
+                              <p className="text-xs text-slate-500 mt-1 flex items-center gap-2">
+                                <span>Thực hiện bởi:</span>
+                                <span className="text-cyan-400 font-semibold">
+                                  {log.actorId?.fullName || "Hệ thống"}
+                                </span>
+                                <span>({log.actorId?.email || "N/A"})</span>
+                              </p>
+                            </div>
+                            <div className="text-right text-xs whitespace-nowrap text-slate-500 font-mono">
+                              <time dateTime={log.createdAt}>
+                                {new Date(log.createdAt).toLocaleString("vi-VN")}
+                              </time>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-slate-500 font-mono text-sm">
+                Chưa có nhật ký hoạt động nào được ghi nhận cho sự kiện này.
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">
+            Vui lòng chọn cuộc thi từ thanh tiêu đề hoặc trang Quản trị viên để
+            xem Nhật ký hoạt động.
+          </div>
+        ))}
+
+      {/* 8. SCHEDULE TAB */}
       {activeTab === "schedule" &&
         (selectedEvent ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fadeIn">

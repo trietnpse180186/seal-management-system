@@ -287,8 +287,6 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
     await newTrack.save();
 
     // Create EventLog
-    const Round = mongoose.model('Round');
-    const round = await Round.findById(roundId);
     const roundName = round ? round.name : roundId;
     const newLog = new EventLog({
       eventId,
@@ -350,6 +348,15 @@ router.put('/:eventId/tracks/:trackId', authenticateToken, async (req, res) => {
     }
 
     // Check maxTeams limits
+    const logDetails = [];
+    const oldName = track.name;
+    const oldDescription = track.description;
+    const oldMaxTeams = track.maxTeams;
+    const oldRoundId = track.roundId;
+    const oldStartTime = track.startTime;
+    const oldEndTime = track.endTime;
+    const oldGradingEndTime = track.gradingEndTime;
+
     if (maxTeams !== undefined) {
       const existingTracks = await Track.find({ eventId });
       const otherTracksMaxTeams = existingTracks
@@ -362,17 +369,65 @@ router.put('/:eventId/tracks/:trackId', authenticateToken, async (req, res) => {
         });
       }
       track.maxTeams = updatedMaxTeamsNum;
+      if (oldMaxTeams !== updatedMaxTeamsNum) {
+        logDetails.push(`Số lượng đội tối đa: ${oldMaxTeams || 0} -> ${updatedMaxTeamsNum}`);
+      }
     }
 
-    if (name) track.name = name;
-    if (description !== undefined) track.description = description;
-    if (roundId) track.roundId = roundId;
+    if (name && name !== oldName) {
+      logDetails.push(`Tên bảng đấu: "${oldName}" -> "${name}"`);
+      track.name = name;
+    }
+    if (description !== undefined && description !== oldDescription) {
+      logDetails.push(`Mô tả bảng đấu: "${oldDescription || ''}" -> "${description || ''}"`);
+      track.description = description;
+    }
+    if (roundId && roundId.toString() !== oldRoundId.toString()) {
+      const oldRoundObj = await Round.findById(oldRoundId);
+      const newRoundObj = await Round.findById(roundId);
+      const oldRoundName = oldRoundObj ? oldRoundObj.name : oldRoundId;
+      const newRoundName = newRoundObj ? newRoundObj.name : roundId;
+      logDetails.push(`Vòng thi: "${oldRoundName}" -> "${newRoundName}"`);
+      track.roundId = roundId;
+    }
     
-    if (startTime !== undefined) track.startTime = startTime ? new Date(startTime) : undefined;
-    if (endTime !== undefined) track.endTime = endTime ? new Date(endTime) : undefined;
-    if (gradingEndTime !== undefined) track.gradingEndTime = gradingEndTime ? new Date(gradingEndTime) : undefined;
+    if (startTime !== undefined) {
+      const newStart = startTime ? new Date(startTime) : null;
+      const oldStart = oldStartTime;
+      if ((!oldStart && newStart) || (oldStart && !newStart) || (oldStart && newStart && oldStart.getTime() !== newStart.getTime())) {
+        logDetails.push(`Thời gian bắt đầu: ${oldStart ? oldStart.toLocaleString('vi-VN') : 'Trống'} -> ${newStart ? newStart.toLocaleString('vi-VN') : 'Trống'}`);
+        track.startTime = newStart || undefined;
+      }
+    }
+    if (endTime !== undefined) {
+      const newEnd = endTime ? new Date(endTime) : null;
+      const oldEnd = oldEndTime;
+      if ((!oldEnd && newEnd) || (oldEnd && !newEnd) || (oldEnd && newEnd && oldEnd.getTime() !== newEnd.getTime())) {
+        logDetails.push(`Thời gian kết thúc: ${oldEnd ? oldEnd.toLocaleString('vi-VN') : 'Trống'} -> ${newEnd ? newEnd.toLocaleString('vi-VN') : 'Trống'}`);
+        track.endTime = newEnd || undefined;
+      }
+    }
+    if (gradingEndTime !== undefined) {
+      const newGradingEnd = gradingEndTime ? new Date(gradingEndTime) : null;
+      const oldGradingEnd = oldGradingEndTime;
+      if ((!oldGradingEnd && newGradingEnd) || (oldGradingEnd && !newGradingEnd) || (oldGradingEnd && newGradingEnd && oldGradingEnd.getTime() !== newGradingEnd.getTime())) {
+        logDetails.push(`Thời gian kết thúc chấm thi: ${oldGradingEnd ? oldGradingEnd.toLocaleString('vi-VN') : 'Trống'} -> ${newGradingEnd ? newGradingEnd.toLocaleString('vi-VN') : 'Trống'}`);
+        track.gradingEndTime = newGradingEnd || undefined;
+      }
+    }
 
     await track.save();
+
+    if (logDetails.length > 0) {
+      const newLog = new EventLog({
+        eventId,
+        actorId: req.user._id,
+        action: 'update_track',
+        details: `Cập nhật thông tin bảng đấu "${track.name}": ${logDetails.join(', ')}`
+      });
+      await newLog.save();
+    }
+
     res.json(track);
 
   } catch (error) {
@@ -426,6 +481,16 @@ router.delete('/:eventId/tracks/:trackId', authenticateToken, async (req, res) =
     }
 
     await Track.deleteOne({ _id: trackId });
+
+    // Create EventLog
+    const newLog = new EventLog({
+      eventId,
+      actorId: req.user._id,
+      action: 'delete_track',
+      details: `Xóa bảng đấu: "${track.name}"`
+    });
+    await newLog.save();
+
     res.json({ message: 'Track deleted successfully!' });
 
   } catch (error) {
@@ -783,15 +848,44 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 
     // Validation for event status change
-    if (status && status !== 'draft' && event.status === 'draft') {
-      const activeEvent = await Event.findOne({
-        _id: { $ne: event._id },
-        status: { $in: ['registration', 'ongoing'] }
-      });
-      if (activeEvent) {
+    if (status && status !== oldStatus) {
+      // 1. If there is any event currently ongoing, a draft event cannot change its status
+      if (oldStatus === 'draft') {
+        const ongoingEvent = await Event.findOne({ status: 'ongoing' });
+        if (ongoingEvent) {
+          return res.status(400).json({
+            message: `Không thể thay đổi trạng thái của sự kiện đang ở trạng thái draft vì đang có sự kiện khác đang diễn ra (ongoing): "${ongoingEvent.name}".`
+          });
+        }
+      }
+
+      // 2. Define valid transitions mapping
+      const validTransitions = {
+        draft: ['registration', 'cancelled'],
+        registration: ['ongoing', 'cancelled'],
+        ongoing: ['completed'],
+        completed: [],
+        cancelled: []
+      };
+
+      const allowedNext = validTransitions[oldStatus];
+      if (!allowedNext || !allowedNext.includes(status)) {
         return res.status(400).json({
-          message: `Không thể kích hoạt sự kiện này vì đang có sự kiện khác đang diễn ra: "${activeEvent.name}" (Trạng thái: ${activeEvent.status}).`
+          message: `Không thể chuyển trạng thái từ "${oldStatus}" sang "${status}". Trạng thái sự kiện phải được nâng theo từng bậc và không thể nhảy vọt.`
         });
+      }
+
+      // 3. Keep safety check to ensure only one active event (registration or ongoing) exists
+      if (status === 'registration') {
+        const activeEvent = await Event.findOne({
+          _id: { $ne: event._id },
+          status: { $in: ['registration', 'ongoing'] }
+        });
+        if (activeEvent) {
+          return res.status(400).json({
+            message: `Không thể chuyển sự kiện từ draft lên registration vì đang có sự kiện khác đang hoạt động: "${activeEvent.name}" (Trạng thái: ${activeEvent.status}). Chỉ khi sự kiện đó được chuyển thành completed hoặc cancelled thì mới có thể đăng ký sự kiện khác.`
+          });
+        }
       }
     }
 

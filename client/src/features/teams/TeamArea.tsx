@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Link2, Save, CheckCircle, Clock, FileDiff, BookOpen, Users } from 'lucide-react';
-import MentorChat from '../mentor/MentorChat';
+import { Link2, Save, CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare } from 'lucide-react';
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
   <svg
@@ -180,8 +179,24 @@ export default function TeamArea() {
 
       {/* Chat Section */}
       {team && (
-        <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all mb-8">
-          <MentorChat teamId={team._id} />
+        <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-cyan-950 text-cyan-400 rounded-xl">
+              <MessageSquare size={20} />
+            </div>
+            <div>
+              <h3 className="text-white font-bold">Hỗ trợ từ Mentor</h3>
+              <p className="text-xs text-slate-400 font-sans">Bạn có câu hỏi hoặc cần sự giúp đỡ? Hãy nhắn tin trao đổi trực tiếp với Mentor hướng dẫn.</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('open_chat_room', { detail: { teamId: team._id } }));
+            }}
+            className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase rounded-xl transition-all shadow-lg shadow-cyan-600/25 whitespace-nowrap cursor-pointer font-sans"
+          >
+            Nhắn tin ngay
+          </button>
         </div>
       )}
 
@@ -189,6 +204,37 @@ export default function TeamArea() {
         
         {/* Left Side: Topic Submission & Members info */}
         <div className="lg:col-span-1 space-y-8">
+
+          {/* Exam & Materials from BTC */}
+          <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all">
+            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2 font-mono-tech">
+              <BookOpen size={18} className="text-cyan-400" />
+              <span className="text-cyan-400">[ĐỀ_BÀI_&_TÀI_LIỆU_THI]</span>
+            </h2>
+            {team?.trackId?.attachments && team.trackId.attachments.length > 0 ? (
+              <div className="space-y-3">
+                {team.trackId.attachments.map((file: any, idx: number) => (
+                  <a
+                    key={idx}
+                    href={file.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-3 bg-slate-900/50 p-3 rounded-xl border border-slate-800 hover:border-cyan-500/50 transition-colors"
+                  >
+                    <BookOpen size={16} className="text-cyan-400 shrink-0" />
+                    <div className="truncate">
+                      <p className="text-xs font-bold text-white truncate">{file.fileName || `Tài liệu đính kèm ${idx + 1}`}</p>
+                      <p className="text-[9px] text-slate-500 font-sans">Bấm để mở link Google Drive lấy đề tài</p>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 italic py-2 text-center font-sans">
+                Chưa có đề bài hoặc tài liệu thi nào được đính kèm cho bảng đấu của bạn.
+              </p>
+            )}
+          </div>
           
           {/* Submit Topic and Documents */}
           <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all">

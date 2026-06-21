@@ -37,8 +37,11 @@ interface TracksTabProps {
   
   // Event roles and judge assignment props
   eventRoles?: any[];
-  handleAssignRoleForTrack?: (email: string, trackId: string, role?: "judge" | "mentor") => Promise<void>;
+  handleAssignRoleForTrack?: (email: string, trackId: string, role?: "judge" | "mentor", teamId?: string) => Promise<void>;
   handleRemoveRole?: (roleId: string) => Promise<void>;
+
+  // Team mentor assignment props
+  teamsList?: any[];
 }
 
 export default function TracksTab({
@@ -72,9 +75,11 @@ export default function TracksTab({
   eventRoles = [],
   handleAssignRoleForTrack,
   handleRemoveRole,
+  teamsList = [],
 }: TracksTabProps) {
   const [judgeEmail, setJudgeEmail] = useState("");
   const [memberRole, setMemberRole] = useState<"judge" | "mentor">("judge");
+  const [selectedTeamId, setSelectedTeamId] = useState("");
   const confirm = useConfirm();
 
   const maxEventTeams = selectedEvent?.maxTeams || 0;
@@ -282,12 +287,12 @@ export default function TracksTab({
 
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-                Đường dẫn / URL File
+                Đường dẫn Google Drive (Đề tài / Tài liệu)
               </label>
               <input
                 type="text"
                 required
-                placeholder="E.g. https://domain.com/exam.pdf"
+                placeholder="E.g. https://drive.google.com/drive/folders/..."
                 value={attachmentUrl}
                 onChange={(e) => setAttachmentUrl(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-xl text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
@@ -295,8 +300,7 @@ export default function TracksTab({
             </div>
 
             <div className="p-3 bg-slate-900/40 border border-slate-800/80 rounded-xl text-[10px] text-slate-400 font-sans">
-              Tài liệu sẽ được hiển thị ở Bảng điều khiển của thí sinh thuộc bảng
-              đấu đang chọn.
+              Hãy dán link chia sẻ thư mục hoặc file Google Drive chứa đề tài. Thí sinh của bảng đấu này sẽ truy cập trực tiếp vào link này để tải đề bài và tài liệu.
             </div>
 
             <button
@@ -318,34 +322,48 @@ export default function TracksTab({
 
             {/* List of judges and mentors */}
             <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-              {trackMembers.map((role: any) => (
-                <div
-                  key={role._id}
-                  className="p-2.5 bg-slate-900/40 rounded-xl border border-slate-800/60 text-xs flex justify-between items-center font-sans"
-                >
-                  <div className="flex items-center gap-2">
-                    <div>
-                      <p className="font-bold text-slate-200">
-                        {role.userId?.fullName || "Chưa rõ tên"}
-                      </p>
-                      <p className="text-[10px] text-slate-500 font-mono">
-                        {role.userId?.email}
-                      </p>
+              {trackMembers.map((role: any) => {
+                const mentoredTeam = teamsList.find(
+                  (t) =>
+                    String(t.mentorId?._id || t.mentorId) ===
+                    String(role.userId?._id || role.userId)
+                );
+                return (
+                  <div
+                    key={role._id}
+                    className="p-2.5 bg-slate-900/40 rounded-xl border border-slate-800/60 text-xs flex justify-between items-center font-sans"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div>
+                        <p className="font-bold text-slate-200">
+                          {role.userId?.fullName || "Chưa rõ tên"}
+                        </p>
+                        <p className="text-[10px] text-slate-500 font-mono">
+                          {role.userId?.email}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 items-center">
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${role.role === 'judge' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/30' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'}`}>
+                          {role.role === 'judge' ? 'Giám khảo' : 'Mentor'}
+                        </span>
+                        {role.role === 'mentor' && mentoredTeam && (
+                          <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                            Đội: {mentoredTeam.name}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${role.role === 'judge' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/30' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'}`}>
-                      {role.role === 'judge' ? 'Giám khảo' : 'Mentor'}
-                    </span>
+                    {handleRemoveRole && (
+                      <button
+                        onClick={() => handleRemoveRole(role._id)}
+                        className="text-rose-500 hover:text-rose-400 font-bold text-[9px] uppercase font-mono border border-rose-500/10 hover:border-rose-500/30 px-2 py-0.5 rounded bg-rose-500/5 cursor-pointer animate-all"
+                      >
+                        Xóa
+                      </button>
+                    )}
                   </div>
-                  {handleRemoveRole && (
-                    <button
-                      onClick={() => handleRemoveRole(role._id)}
-                      className="text-rose-500 hover:text-rose-400 font-bold text-[9px] uppercase font-mono border border-rose-500/10 hover:border-rose-500/30 px-2 py-0.5 rounded bg-rose-500/5 cursor-pointer animate-all"
-                    >
-                      Xóa
-                    </button>
-                  )}
-                </div>
-              ))}
+                );
+              })}
               {trackMembers.length === 0 && (
                 <p className="text-xs text-slate-500 italic py-2 text-center font-sans">
                   Chưa có giám khảo hay mentor nào được phân cho bảng này.
@@ -359,10 +377,16 @@ export default function TracksTab({
                 onSubmit={async (e) => {
                   e.preventDefault();
                   if (!judgeEmail) return;
-                  await handleAssignRoleForTrack(judgeEmail, selectedTrack._id, memberRole);
+                  await handleAssignRoleForTrack(
+                    judgeEmail,
+                    selectedTrack._id,
+                    memberRole,
+                    selectedTeamId || undefined
+                  );
                   setJudgeEmail("");
+                  setSelectedTeamId("");
                 }}
-                className="space-y-3 pt-3 border-t border-slate-800/80"
+                className="space-y-3.5 pt-3 border-t border-slate-800/80"
               >
                 <div className="flex gap-4 items-center">
                   <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 font-mono">
@@ -377,6 +401,38 @@ export default function TracksTab({
                     Mentor
                   </label>
                 </div>
+
+                {/* Team selection dropdown if adding Mentor */}
+                {memberRole === "mentor" && (
+                  <div className="space-y-1.5 text-left">
+                    <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+                      Chọn Đội thi phụ trách:
+                    </label>
+                    {(() => {
+                      const trackTeams = teamsList.filter(
+                        (team: any) =>
+                          team.status === "confirmed" &&
+                          ((team.trackId?._id || team.trackId) === selectedTrack._id) &&
+                          !team.mentorId
+                      );
+                      return (
+                        <CustomSelect
+                          value={selectedTeamId}
+                          onChange={setSelectedTeamId}
+                          options={[
+                            { value: "", label: "-- Tất cả / Chưa gán đội cụ thể --" },
+                            ...trackTeams.map((team: any) => ({
+                              value: team._id,
+                              label: team.name,
+                            })),
+                          ]}
+                          className="w-full"
+                        />
+                      );
+                    })()}
+                  </div>
+                )}
+
                 <div className="flex gap-2">
                   <input
                     type="email"

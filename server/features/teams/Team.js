@@ -9,7 +9,8 @@ const TeamSchema = new Schema({
   name: { type: String, required: true },
   status: { type: String, enum: ['pending_confirm', 'confirmed', 'disqualified'], default: 'pending_confirm' },
   disqualifyReason: { type: String },
-  topicSubmission: { type: Schema.Types.Mixed, default: {} }
+  topicSubmission: { type: Schema.Types.Mixed, default: {} },
+  mentorId: { type: Schema.Types.ObjectId, ref: 'User' }
 }, {
   timestamps: true
 });

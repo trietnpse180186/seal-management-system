@@ -1,16 +1,22 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { FolderKanban, CalendarPlus } from "lucide-react";
+import { FolderKanban, CalendarPlus, Info } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [logs, setLogs] = useState<any[]>([]);
 
   useEffect(() => {
     fetchEvents();
+    fetchAllLogs();
+    const interval = setInterval(() => {
+      fetchAllLogs();
+    }, 5000); // Poll every 5 seconds
+    return () => clearInterval(interval);
   }, []);
 
   const fetchEvents = async () => {
@@ -26,12 +32,24 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchAllLogs = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.get("http://localhost:5000/api/events/all/logs", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setLogs(res.data || []);
+    } catch (err) {
+      console.error("Lỗi lấy nhật ký hoạt động:", err);
+    }
+  };
+
   const handleEventDoubleClick = (eventObj: any) => {
     navigate(`/admin/events?eventId=${eventObj._id}`);
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
       {/* Page Title */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
@@ -100,6 +118,79 @@ export default function AdminDashboard() {
             Chưa có cuộc thi nào được khởi tạo.
           </p>
         )}
+      </div>
+
+      {/* EVENT LOGS SECTION */}
+      <div className="w-full space-y-4 pt-6 border-t border-slate-800/50">
+        <div className="flex items-center justify-between">
+          <h3 className="text-md font-bold text-white flex items-center gap-2 font-mono">
+            <Info size={18} className="text-cyan-400" />
+            <span>NHẬT KÝ HOẠT ĐỘNG HỆ THỐNG</span>
+          </h3>
+          <button
+            onClick={fetchAllLogs}
+            className="bg-slate-900 hover:bg-slate-850 text-slate-350 hover:text-white px-3 py-1.5 rounded-xl border border-slate-850 text-xs font-mono transition-all cursor-pointer"
+          >
+            Tải lại nhật ký
+          </button>
+        </div>
+
+        <div className="glass p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 max-h-96 overflow-y-auto">
+          {logs.length > 0 ? (
+            <div className="flow-root">
+              <ul className="-mb-8">
+                {logs.map((log: any, logIdx: number) => (
+                  <li key={log._id}>
+                    <div className="relative pb-8">
+                      {logIdx !== logs.length - 1 ? (
+                        <span
+                          className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-slate-800"
+                          aria-hidden="true"
+                        />
+                      ) : null}
+                      <div className="relative flex space-x-3">
+                        <div>
+                          <span className="h-8 w-8 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center ring-8 ring-slate-900/50">
+                            <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0 pt-1.5 flex justify-between space-x-4">
+                          <div>
+                            <p className="text-sm text-slate-200">
+                              <span className="text-cyan-405 font-bold font-mono mr-2 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20 text-[10px]">
+                                {log.eventId?.name || "HỆ THỐNG"}
+                              </span>
+                              {log.details}{" "}
+                              <span className="font-mono text-xs text-slate-500 font-medium">
+                                ({log.action})
+                              </span>
+                            </p>
+                            <p className="text-xs text-slate-500 mt-1.5 flex items-center gap-2">
+                              <span>Thực hiện bởi:</span>
+                              <span className="text-cyan-400 font-semibold font-mono">
+                                {log.actorId?.fullName || "Hệ thống"}
+                              </span>
+                              <span>({log.actorId?.email || "N/A"})</span>
+                            </p>
+                          </div>
+                          <div className="text-right text-xs whitespace-nowrap text-slate-500 font-mono">
+                            <time dateTime={log.createdAt}>
+                              {new Date(log.createdAt).toLocaleString("vi-VN")}
+                            </time>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="text-center py-8 text-slate-500 font-mono text-sm">
+              Chưa có nhật ký hoạt động nào được ghi nhận.
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

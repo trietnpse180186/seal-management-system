@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { ArrowLeft, Users, FileText, MessageSquare, GitCommit, ListChecks, Download } from "lucide-react";
-import MentorChat from "./MentorChat";
 
 export default function MentorTeamDetail() {
   const { teamId } = useParams();
@@ -128,14 +127,14 @@ export default function MentorTeamDetail() {
                   {team.trackId.attachments.map((file: any, idx: number) => (
                     <a 
                       key={idx} 
-                      href={file.url} 
+                      href={file.fileUrl} 
                       target="_blank"
                       rel="noreferrer"
                       className="flex items-center gap-3 bg-slate-900/80 p-3 rounded-xl border border-slate-700 hover:border-cyan-500/50 transition-colors"
                     >
                       <Download size={18} className="text-cyan-400" />
                       <div>
-                        <p className="text-sm font-bold text-white">{file.name || `Tài liệu đính kèm ${idx + 1}`}</p>
+                        <p className="text-sm font-bold text-white">{file.fileName || `Tài liệu đính kèm ${idx + 1}`}</p>
                         <p className="text-[10px] text-slate-500">Bấm để tải xuống/xem</p>
                       </div>
                     </a>
@@ -150,8 +149,20 @@ export default function MentorTeamDetail() {
 
         {/* Chat Tab */}
         {activeTab === "chat" && (
-          <div className="h-full">
-            <MentorChat teamId={teamId || ""} />
+          <div className="py-12 text-center flex flex-col items-center justify-center max-w-md mx-auto">
+            <div className="w-16 h-16 rounded-full bg-cyan-950 text-cyan-400 flex items-center justify-center mb-4">
+              <MessageSquare size={28} />
+            </div>
+            <h3 className="text-white font-bold text-lg mb-2">Trò chuyện với Đội thi</h3>
+            <p className="text-slate-400 text-xs mb-6">Mở khung hội thoại nổi để trực tiếp trao đổi và hỗ trợ đội thi {team.name} giải quyết các khó khăn trong quá trình làm bài.</p>
+            <button 
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('open_chat_room', { detail: { teamId: team._id } }));
+              }}
+              className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase rounded-xl transition-all shadow-lg shadow-cyan-600/25 cursor-pointer font-sans"
+            >
+              Mở hộp thoại chat
+            </button>
           </div>
         )}
 

@@ -30,6 +30,8 @@ interface GithubTabProps {
   setManualRepoUrl: (url: string) => void;
   handleCreateRepo: (teamId: string) => Promise<void>;
   handleLinkRepo: (e: React.FormEvent) => Promise<void>;
+  selectedEvent?: any;
+  handleKickAllCollaborators?: (repoId: string) => Promise<void>;
 }
 
 export default function GithubTab({
@@ -43,6 +45,8 @@ export default function GithubTab({
   setManualRepoUrl,
   handleCreateRepo,
   handleLinkRepo,
+  selectedEvent,
+  handleKickAllCollaborators,
 }: GithubTabProps) {
   return (
     <div className="glass p-6 rounded-2xl w-full mt-2 space-y-6 font-mono">
@@ -107,7 +111,14 @@ export default function GithubTab({
                   >
                     {r.syncStatus.toUpperCase()}
                   </span>
-
+                  {selectedEvent?.status === "completed" && handleKickAllCollaborators && (
+                    <button
+                      onClick={() => handleKickAllCollaborators(r._id)}
+                      className="bg-rose-600/90 hover:bg-rose-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all cursor-pointer border border-rose-500/20 shadow-md shadow-rose-950/20"
+                    >
+                      Thu hồi quyền (Kick)
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

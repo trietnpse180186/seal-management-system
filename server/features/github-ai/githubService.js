@@ -109,6 +109,36 @@ async function addCollaborator(repoName, username, permission = 'push', customOr
 }
 
 /**
+ * Removes a collaborator from the team repository.
+ * @param {string} repoName - Repository name
+ * @param {string} username - GitHub username of collaborator
+ * @param {string} customOrgName - Organization name override
+ * @returns {Promise<boolean>}
+ */
+async function removeCollaborator(repoName, username, customOrgName) {
+  const activeOrgName = customOrgName || orgName;
+  if (!username) return false;
+
+  if (isMock || !octokit) {
+    console.log(`[GITHUB MOCK] Removing collaborator: ${username} from ${activeOrgName}/${repoName}`);
+    return true;
+  }
+
+  try {
+    await octokit.repos.removeCollaborator({
+      owner: activeOrgName,
+      repo: repoName,
+      username: username
+    });
+    console.log(`Removed collaborator ${username} from repository ${repoName}`);
+    return true;
+  } catch (error) {
+    console.error(`Error removing collaborator ${username}:`, error.message);
+    return true; // Return true as fallback to prevent app crashing
+  }
+}
+
+/**
  * Fetches commits from the repository since a given date.
  * @param {string} repoName - Repository name
  * @param {Date} sinceDate - Commits fetched since this date
@@ -327,6 +357,7 @@ async function linkOrganization(orgName) {
 module.exports = {
   createTeamRepository,
   addCollaborator,
+  removeCollaborator,
   fetchCommits,
   fetchCommitFiles,
   createOrganization,

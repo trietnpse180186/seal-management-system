@@ -714,7 +714,7 @@ router.get('/my-team', authenticateToken, async (req, res) => {
     for (const record of memberRecords) {
       const foundTeam = await Team.findById(record.teamId)
         .populate('eventId', 'name semester year status')
-        .populate('trackId', 'name description');
+        .populate('trackId', 'name description attachments');
       if (foundTeam) {
         team = foundTeam;
         activeMemberRecord = record;
@@ -810,12 +810,13 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
         userRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: req.params.eventId,
-          $or: [{ roundId: null }, { roundId: { $exists: false } }],
           status: 'active'
         });
       }
 
-      if (userRole && (userRole.role === 'judge' || userRole.role === 'mentor' || userRole.role === 'coordinator') && userRole.trackId) {
+      if (userRole && userRole.role === 'mentor') {
+        query.mentorId = req.user._id;
+      } else if (userRole && (userRole.role === 'judge' || userRole.role === 'coordinator') && userRole.trackId) {
         query.trackId = userRole.trackId;
       } else if (!userRole) {
         return res.json([]); // No active role in this event/round, return empty
@@ -824,7 +825,8 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
 
     const teams = await Team.find(query)
       .populate('trackId', 'name')
-      .populate('leaderId', 'fullName email');
+      .populate('leaderId', 'fullName email')
+      .populate('mentorId', 'fullName email');
 
     const detailedTeams = await Promise.all(teams.map(async (t) => {
       const members = await TeamMember.find({ teamId: t._id }).populate('userId', 'fullName email studentId university githubUsername confirmStatus');
@@ -974,6 +976,16 @@ router.put('/:teamId/assign-track', authenticateToken, async (req, res) => {
         });
     }
 
+    // Create EventLog
+    const EventLog = mongoose.model('EventLog');
+    const newLog = new EventLog({
+      eventId: team.eventId,
+      actorId: req.user._id,
+      action: 'assign_team_track',
+      details: `Phân đội ${team.name} vào bảng đấu ${track.name}`
+    });
+    await newLog.save();
+
     // Also ensure chat room is created if mentor exists
     await ensureChatRoomForTeam(team);
 
@@ -997,7 +1009,8 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
   try {
     const team = await Team.findById(req.params.teamId)
       .populate('eventId', 'name semester year status')
-      .populate('trackId', 'name description');
+      .populate('trackId', 'name description')
+      .populate('mentorId', 'fullName email');
 
     if (!team) {
       return res.status(404).json({ message: 'Không tìm thấy thông tin đội thi.' });
@@ -1016,6 +1029,69 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Fetch Single Team Error:', error.message);
     res.status(500).json({ message: 'Lỗi hệ thống khi tải thông tin chi tiết nhóm.' });
+  }
+});
+
+/**
+ * @route   PUT /api/teams/:teamId/assign-mentor
+ * @desc    Assign a mentor to a specific team and ensure their chat room is created
+ * @access  Private (Coordinator or Admin)
+ */
+router.put('/:teamId/assign-mentor', authenticateToken, async (req, res) => {
+  const { teamId } = req.params;
+  const { mentorId } = req.body; // Can be a User ID or null/empty to unassign
+
+  try {
+    const team = await Team.findById(teamId);
+    if (!team) return res.status(404).json({ message: 'Không tìm thấy đội thi.' });
+
+    // Auth check
+    if (!req.user.isSystemAdmin) {
+      const coordinatorRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId: team.eventId,
+        role: 'coordinator',
+        status: 'active'
+      });
+      if (!coordinatorRole) {
+        return res.status(403).json({ message: 'Không có quyền truy cập. Yêu cầu vai trò Điều phối viên hoặc Quản trị viên.' });
+      }
+    }
+
+    // If mentorId is provided, verify they are actually registered as a mentor for this track/event
+    if (mentorId) {
+      const User = mongoose.model('User');
+      const mentor = await User.findById(mentorId);
+      if (!mentor) return res.status(404).json({ message: 'Mentor không tồn tại.' });
+
+      const mentorRole = await EventRole.findOne({
+        userId: mentorId,
+        eventId: team.eventId,
+        role: 'mentor',
+        status: 'active'
+      });
+      if (!mentorRole) {
+        return res.status(400).json({ message: 'Người dùng được chọn không phải là Mentor của sự kiện này.' });
+      }
+    }
+
+    team.mentorId = mentorId || undefined;
+    await team.save();
+
+    // If a mentor is assigned, ensure the chat room is created for them and this team
+    if (mentorId) {
+      const { ensureChatRoomForTeam } = require('../chat/chatRoomService');
+      await ensureChatRoomForTeam(team);
+    }
+
+    res.json({
+      message: mentorId ? 'Đã gán Mentor cho đội thi thành công.' : 'Đã hủy gán Mentor cho đội thi.',
+      team
+    });
+
+  } catch (error) {
+    console.error('Assign Mentor Error:', error.message);
+    res.status(500).json({ message: 'Lỗi hệ thống khi phân công Mentor.' });
   }
 });
 

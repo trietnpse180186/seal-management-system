@@ -10,6 +10,7 @@ const User = mongoose.model('User');
 const Team = mongoose.model('Team');
 const TeamMember = mongoose.model('TeamMember');
 const GithubRepository = mongoose.model('GithubRepository');
+const EventLog = mongoose.model('EventLog');
 
 const emailService = require('../notifications/emailService');
 const githubService = require('../github-ai/githubService');
@@ -93,6 +94,15 @@ router.post('/', authenticateToken, requireSystemAdmin, async (req, res) => {
     });
     await creatorRole.save();
 
+    // Create EventLog
+    const newLog = new EventLog({
+      eventId: newEvent._id,
+      actorId: req.user._id,
+      action: 'create_event',
+      details: `Tạo sự kiện mới: ${newEvent.name} (${newEvent.semester} ${newEvent.year})`
+    });
+    await newLog.save();
+
     res.status(201).json({
       message: 'Event created successfully!',
       event: newEvent
@@ -151,6 +161,37 @@ router.get('/judge/active-contest', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Fetch Active Contest for Judge Error:', error.message);
     res.status(500).json({ message: 'Server error retrieving active contest details.' });
+  }
+});
+
+/**
+ * @route   GET /api/events/all/logs
+ * @desc    Get all activity logs across all events
+ * @access  Private (Coordinator or Admin)
+ */
+router.get('/all/logs', authenticateToken, async (req, res) => {
+  try {
+    if (!req.user.isSystemAdmin) {
+      const coordinatorRole = await EventRole.findOne({
+        userId: req.user._id,
+        role: 'coordinator',
+        status: 'active'
+      });
+      if (!coordinatorRole) {
+        return res.status(403).json({ message: 'Unauthorized. Only coordinators or system administrators can view event logs.' });
+      }
+    }
+
+    const logs = await EventLog.find({})
+      .populate('actorId', 'fullName email')
+      .populate('eventId', 'name semester year')
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    res.json(logs);
+  } catch (error) {
+    console.error('Fetch All Event Logs Error:', error.message);
+    res.status(500).json({ message: 'Server error retrieving event logs.' });
   }
 });
 
@@ -244,6 +285,16 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
     });
 
     await newTrack.save();
+
+    // Create EventLog
+    const newLog = new EventLog({
+      eventId,
+      actorId: req.user._id,
+      action: 'create_track',
+      details: `Tạo bảng đấu mới: ${newTrack.name} trong vòng thi ID: ${roundId}`
+    });
+    await newLog.save();
+
     res.status(201).json(newTrack);
 
   } catch (error) {
@@ -417,6 +468,16 @@ router.post('/:eventId/rounds', authenticateToken, async (req, res) => {
     });
 
     await newRound.save();
+
+    // Create EventLog
+    const newLog = new EventLog({
+      eventId,
+      actorId: req.user._id,
+      action: 'create_round',
+      details: `Tạo vòng thi mới: ${newRound.name} (thứ tự: ${newRound.order})`
+    });
+    await newLog.save();
+
     res.status(201).json(newRound);
 
   } catch (error) {
@@ -538,6 +599,17 @@ router.delete('/:eventId/roles/:roleId', authenticateToken, async (req, res) => 
     roleToUpdate.status = 'removed';
     await roleToUpdate.save();
 
+    // Create EventLog
+    const targetUser = await User.findById(roleToUpdate.userId);
+    const userEmailStr = targetUser ? targetUser.email : 'Unknown User';
+    const newLog = new EventLog({
+      eventId,
+      actorId: req.user._id,
+      action: 'remove_role',
+      details: `Gỡ vai trò ${roleToUpdate.role} của người dùng ${userEmailStr}`
+    });
+    await newLog.save();
+
     res.json({ message: 'Successfully removed role assignment.' });
   } catch (error) {
     console.error('Remove Role Error:', error.message);
@@ -651,6 +723,15 @@ router.post('/:eventId/distribute-teams', authenticateToken, async (req, res) =>
       });
     }
 
+    // Create EventLog
+    const newLog = new EventLog({
+      eventId,
+      actorId: req.user._id,
+      action: 'distribute_teams',
+      details: `Phân chia ngẫu nhiên ${shuffledTeams.length} đội thi vào ${tracks.length} bảng đấu`
+    });
+    await newLog.save();
+
     res.json({
       message: `Đã phân chia thành công ${shuffledTeams.length} đội thi vào ${tracks.length} bảng đấu.`,
       distribution: distributionResult
@@ -674,6 +755,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (!event) return res.status(404).json({ message: 'Event not found.' });
 
     const oldStatus = event.status;
+    let logDetails = [];
+    let isTimeUpdated = false;
 
     // Auth check
     if (!req.user.isSystemAdmin) {
@@ -708,20 +791,81 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (bannerUrl !== undefined) event.bannerUrl = bannerUrl;
     if (maxTeams) event.maxTeams = parseInt(maxTeams);
     
-    if (registrationOpen !== undefined) event.registrationOpen = registrationOpen ? new Date(registrationOpen) : null;
-    if (registrationClose !== undefined) event.registrationClose = registrationClose ? new Date(registrationClose) : null;
-    if (contestStart !== undefined) event.contestStart = contestStart ? new Date(contestStart) : null;
-    if (contestEnd !== undefined) event.contestEnd = contestEnd ? new Date(contestEnd) : null;
+    if (registrationOpen !== undefined) {
+      const newOpen = registrationOpen ? new Date(registrationOpen) : null;
+      const oldOpen = event.registrationOpen;
+      if ((!oldOpen && newOpen) || (oldOpen && !newOpen) || (oldOpen && newOpen && oldOpen.getTime() !== newOpen.getTime())) {
+        event.registrationOpen = newOpen;
+        logDetails.push(`Thời gian mở đăng ký: ${newOpen ? newOpen.toLocaleString('vi-VN') : 'Trống'}`);
+        isTimeUpdated = true;
+      }
+    }
+
+    if (registrationClose !== undefined) {
+      const newClose = registrationClose ? new Date(registrationClose) : null;
+      const oldClose = event.registrationClose;
+      if ((!oldClose && newClose) || (oldClose && !newClose) || (oldClose && newClose && oldClose.getTime() !== newClose.getTime())) {
+        event.registrationClose = newClose;
+        logDetails.push(`Thời gian đóng đăng ký: ${newClose ? newClose.toLocaleString('vi-VN') : 'Trống'}`);
+        isTimeUpdated = true;
+      }
+    }
+
+    if (contestStart !== undefined) {
+      const newStart = contestStart ? new Date(contestStart) : null;
+      const oldStart = event.contestStart;
+      if ((!oldStart && newStart) || (oldStart && !newStart) || (oldStart && newStart && oldStart.getTime() !== newStart.getTime())) {
+        event.contestStart = newStart;
+        logDetails.push(`Thời gian bắt đầu sự kiện: ${newStart ? newStart.toLocaleString('vi-VN') : 'Trống'}`);
+        isTimeUpdated = true;
+      }
+    }
+
+    if (contestEnd !== undefined) {
+      const newEnd = contestEnd ? new Date(contestEnd) : null;
+      const oldEnd = event.contestEnd;
+      if ((!oldEnd && newEnd) || (oldEnd && !newEnd) || (oldEnd && newEnd && oldEnd.getTime() !== newEnd.getTime())) {
+        event.contestEnd = newEnd;
+        logDetails.push(`Thời gian kết thúc sự kiện: ${newEnd ? newEnd.toLocaleString('vi-VN') : 'Trống'}`);
+        isTimeUpdated = true;
+      }
+    }
     
     if (githubOrgName && githubOrgName !== event.githubOrgName) {
       event.githubOrgName = githubOrgName;
       // Auto-provision or link new organization
       await githubService.createOrganization(githubOrgName);
     }
-    
-    if (status) event.status = status;
+
+    let action = 'update_event';
+    let details = `Cập nhật thông tin sự kiện: ${event.name}`;
+
+    if (status && status !== oldStatus) {
+      event.status = status;
+      if (status === 'ongoing') {
+        action = 'event_started';
+        details = `Sự kiện "${event.name}" chính thức bắt đầu (ongoing)`;
+      } else if (status === 'completed') {
+        action = 'event_completed';
+        details = `Sự kiện "${event.name}" đã hoàn thành (completed)`;
+      } else {
+        details = `Thay đổi trạng thái sự kiện "${event.name}" từ ${oldStatus} sang ${status}`;
+      }
+    } else if (isTimeUpdated) {
+      action = 'update_event_time';
+      details = `Cập nhật thiết lập thời gian của sự kiện "${event.name}": ${logDetails.join(', ')}`;
+    }
 
     await event.save();
+
+    // Create EventLog
+    const newLog = new EventLog({
+      eventId: event._id,
+      actorId: req.user._id,
+      action,
+      details
+    });
+    await newLog.save();
 
     // Enqueue email notifications to all members when status shifts to 'registration'
     if (status === 'registration' && oldStatus !== 'registration') {
@@ -755,6 +899,39 @@ router.put('/:id', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Update Event Error:', error.message);
     res.status(500).json({ message: 'Server error updating event.' });
+  }
+});
+
+/**
+ * @route   GET /api/events/:eventId/logs
+ * @desc    Get all activity logs for a specific event
+ * @access  Private (Coordinator or Admin)
+ */
+router.get('/:eventId/logs', authenticateToken, async (req, res) => {
+  const { eventId } = req.params;
+
+  try {
+    // Auth Check
+    if (!req.user.isSystemAdmin) {
+      const coordinatorRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId,
+        role: 'coordinator',
+        status: 'active'
+      });
+      if (!coordinatorRole) {
+        return res.status(403).json({ message: 'Unauthorized. Only coordinators or system administrators can view event logs.' });
+      }
+    }
+
+    const logs = await EventLog.find({ eventId })
+      .populate('actorId', 'fullName email')
+      .sort({ createdAt: -1 });
+
+    res.json(logs);
+  } catch (error) {
+    console.error('Fetch Event Logs Error:', error.message);
+    res.status(500).json({ message: 'Server error retrieving event logs.' });
   }
 });
 

@@ -75,21 +75,36 @@ const GithubRepositorySchema = new mongoose.Schema({
   isArchived: { type: Boolean, default: false }
 });
 
+const GradingLevelSchema = new mongoose.Schema({
+  label: { type: String, required: true },
+  minScore: { type: Number, required: true },
+  maxScore: { type: Number, required: true },
+  description: { type: String, default: '' }
+}, { _id: true });
+
 const RubricSchema = new mongoose.Schema({
-  roundId: mongoose.Schema.Types.ObjectId,
-  name: String,
+  eventId: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
+  trackId: mongoose.Schema.Types.ObjectId,
+  roundId: { type: mongoose.Schema.Types.ObjectId, ref: 'Round', required: true },
+  name: { type: String, required: true },
+  description: String,
+  totalWeight: { type: Number, default: 100 },
+  maxCriterionScore: { type: Number, default: 10 },
+  version: { type: Number, default: 1 },
   isActive: { type: Boolean, default: true },
-});
+  isLocked: { type: Boolean, default: false },
+}, { timestamps: true });
 
 const CriterionSchema = new mongoose.Schema({
-  rubricId: mongoose.Schema.Types.ObjectId,
-  code: String,
-  name: String,
+  rubricId: { type: mongoose.Schema.Types.ObjectId, ref: 'Rubric', required: true },
+  code: { type: String, required: true },
+  name: { type: String, required: true },
   description: String,
-  maxScore: Number,
-  weight: Number,
+  weight: { type: Number, required: true },
+  maxScore: { type: Number, default: 10.0 },
   order: Number,
-});
+  gradingLevels: { type: [GradingLevelSchema], default: [] }
+}, { timestamps: true });
 
 // Compile models
 const User = mongoose.models.User || mongoose.model('User', UserSchema);
@@ -178,6 +193,7 @@ async function main() {
 
   // Create Rubric
   const rubric = new Rubric({
+    eventId: event._id,
     roundId: round._id,
     name: 'Bảng điểm Stress Test',
     isActive: true

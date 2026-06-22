@@ -14,9 +14,9 @@ export default function Timeline() {
       try {
         const res = await axios.get("http://localhost:5000/api/events");
         const events = res.data;
-        const ongoingEvents = events.filter((e: any) => e.status === "ongoing");
+        const activeEvents = events.filter((e: any) => e.status !== "draft");
         // Sort by createdAt descending to get the newest one
-        const newest = ongoingEvents.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] || null;
+        const newest = activeEvents.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] || null;
         setActiveEvent(newest);
       } catch (err) {
         console.error("Lỗi lấy lịch trình cuộc thi:", err);

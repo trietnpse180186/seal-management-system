@@ -101,8 +101,8 @@ export default function GuestPortal({ user }: GuestPortalProps) {
     const fetchEvents = async () => {
       try {
         const res = await axios.get("http://localhost:5000/api/events");
-        // Show only events that are in 'ongoing' status
-        setEvents(res.data.filter((e: any) => e.status === "ongoing"));
+        // Show only non-draft events
+        setEvents(res.data.filter((e: any) => e.status !== "draft"));
       } catch (err) {
         console.error("Lỗi lấy danh sách cuộc thi:", err);
       } finally {

@@ -101,8 +101,21 @@ export default function GuestPortal({ user }: GuestPortalProps) {
     const fetchEvents = async () => {
       try {
         const res = await axios.get("http://localhost:5000/api/events");
-        // Show only non-draft events
-        setEvents(res.data.filter((e: any) => e.status !== "draft"));
+        const allEvents = res.data;
+        
+        // Prioritize registration or ongoing events
+        let filtered = allEvents.filter((e: any) => e.status === "registration" || e.status === "ongoing");
+        
+        // Fallback to completed or prepare if none of the above exist
+        if (filtered.length === 0) {
+          filtered = allEvents.filter((e: any) => e.status === "completed" || e.status === "prepare");
+        }
+        
+        // Sort by newest
+        const sorted = filtered.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        
+        // Show only a single event
+        setEvents(sorted.length > 0 ? [sorted[0]] : []);
       } catch (err) {
         console.error("Lỗi lấy danh sách cuộc thi:", err);
       } finally {

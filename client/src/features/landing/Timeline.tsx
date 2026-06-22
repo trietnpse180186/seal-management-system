@@ -13,10 +13,20 @@ export default function Timeline() {
     const fetchEvents = async () => {
       try {
         const res = await axios.get("http://localhost:5000/api/events");
-        const events = res.data;
-        const activeEvents = events.filter((e: any) => e.status !== "draft");
-        // Sort by createdAt descending to get the newest one
-        const newest = activeEvents.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] || null;
+        const allEvents = res.data;
+        
+        // Prioritize registration or ongoing events
+        let filtered = allEvents.filter((e: any) => e.status === "registration" || e.status === "ongoing");
+        
+        // Fallback to completed or prepare if none of the above exist
+        if (filtered.length === 0) {
+          filtered = allEvents.filter((e: any) => e.status === "completed" || e.status === "prepare");
+        }
+        
+        // Sort by newest
+        const sorted = filtered.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        
+        const newest = sorted[0] || null;
         setActiveEvent(newest);
       } catch (err) {
         console.error("Lỗi lấy lịch trình cuộc thi:", err);

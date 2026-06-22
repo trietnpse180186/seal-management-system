@@ -1,26 +1,33 @@
 /**
- * State Management Layer
- * Manages contextual memory, history aggregation, and data handoffs.
+ * System-Level Harness: Layer 04 - Context & State Store
+ * Manages memory storage, session persistence, and aggregate history retrievals.
  */
 
-const dbTools = require('../tools/dbTools');
+const dbTools = require('../../features/github-ai/tools/dbTools');
 const mongoose = require('mongoose');
 
 /**
- * Load and format historical context and active rubric criteria for a team
+ * Load team historical memory and context for AI analysis
  */
-async function loadTeamAggregateContext(teamId) {
-  // 1. Fetch commits and prior reviews using dbTools
-  const commits = await dbTools.fetchTeamCommits(teamId, 200);
-  const priorReviews = await dbTools.fetchPriorReviews(teamId, 40);
+async function loadTeamAggregateContext(teamId, commitsLimit = 200, reviewsLimit = 40) {
+  const commits = await dbTools.fetchTeamCommits(teamId, commitsLimit);
+  const priorReviews = await dbTools.fetchPriorReviews(teamId, reviewsLimit);
 
   const commitSummaries = commits.map(c => `SHA: ${c.commitSha.substring(0, 7)}, Msg: ${c.message}, Committed: ${c.committedAt}`).join('\n');
   const reviewSummaries = priorReviews.map(r => {
-    const resultObj = typeof r.result === 'string' ? JSON.parse(r.result) : r.result;
+    // Safely parse results
+    let resultObj = r.result;
+    if (typeof resultObj === 'string') {
+      try {
+        resultObj = JSON.parse(resultObj);
+      } catch (err) {
+        // ignore
+      }
+    }
     return `Level: ${resultObj?.rag_maturity?.level || 'Basic'}, Summary: ${resultObj?.overall_picture?.push_summary || ''}`;
   }).join('\n');
 
-  // 2. Fetch active rubric criteria based on team's current round
+  // Fetch active criteria based on team's current round
   const Team = mongoose.model('Team');
   const Rubric = mongoose.model('Rubric');
   const Criterion = mongoose.model('Criterion');
@@ -51,7 +58,7 @@ async function loadTeamAggregateContext(teamId) {
       }
     }
   } catch (err) {
-    console.error('Error fetching round criteria in memoryManager:', err.message);
+    console.error('[CONTEXT STORE ERROR] Failed loading round criteria:', err.message);
   }
 
   let criteriaPrompt = '';

@@ -1,9 +1,47 @@
 /**
- * Prompts template definitions for AI Auditor Harness
+ * System-Level Harness: Layer 01 - Constraints & Boundaries
+ * Manages prompts, boundaries, token budgets, and scoping rules globally.
  */
 
-function getCommitReviewPrompt(authorName, authorGithubUsername, message, fileSummaries) {
-  return `
+const GLOBAL_SCOPE_CONFIG = {
+  MAX_SINGLE_FILE_PATCH_SIZE: 3000,
+  MAX_AGGREGATED_DIFF_SIZE: 50000,
+  
+  IGNORED_FILES: [
+    '.gitignore',
+    'package-lock.json',
+    'yarn.lock',
+    'pnpm-lock.yaml',
+    '.env',
+    '.env.example',
+    'README.md'
+  ]
+};
+
+/**
+ * Filter and truncate patch content to keep it within safe boundaries
+ */
+function enforceFilePatchBoundary(patchContent) {
+  if (!patchContent) return '';
+  if (patchContent.length > GLOBAL_SCOPE_CONFIG.MAX_SINGLE_FILE_PATCH_SIZE) {
+    return patchContent.substring(0, GLOBAL_SCOPE_CONFIG.MAX_SINGLE_FILE_PATCH_SIZE) + 
+      '\n... [Truncated due to System-Level Harness size limits] ...';
+  }
+  return patchContent;
+}
+
+/**
+ * Filter out ignored files
+ */
+function shouldIgnoreFile(filename) {
+  return GLOBAL_SCOPE_CONFIG.IGNORED_FILES.some(skip => filename.endsWith(skip));
+}
+
+/**
+ * Registry of system-wide prompts
+ */
+const promptsRegistry = {
+  commit_review: (authorName, authorGithubUsername, message, fileSummaries) => `
     You are an expert AI code reviewer. Analyze the following GitHub commit files and patch changes.
     Commit Author: ${authorName} (@${authorGithubUsername})
     Commit Message: ${message}
@@ -60,11 +98,9 @@ function getCommitReviewPrompt(authorName, authorGithubUsername, message, fileSu
     }
 
     IMPORTANT: You MUST write all descriptive fields (especially suggested_questions_for_team, overall_picture.push_summary, overall_picture.current_focus, overall_picture.project_about, assessment.advantages, assessment.disadvantages, assessment.improvement_areas, and suggested_test_cases) entirely in fluent, professional Vietnamese.
-  `;
-}
+  `,
 
-function getTeamAggregatePrompt(teamId, commitSummaries, reviewSummaries, criteriaPrompt) {
-  return `
+  repository_review: (teamId, commitSummaries, reviewSummaries, criteriaPrompt) => `
     You are an expert AI Judge Auditor for the SEAL Hackathon. Synthesize the development history of team ${teamId}.
     Use the following inputs:
     
@@ -105,10 +141,12 @@ function getTeamAggregatePrompt(teamId, commitSummaries, reviewSummaries, criter
         "evolution_notes": "notable milestones during the hackathon in Vietnamese"
       }
     }
-  `;
-}
+  `
+};
 
 module.exports = {
-  getCommitReviewPrompt,
-  getTeamAggregatePrompt
+  GLOBAL_SCOPE_CONFIG,
+  enforceFilePatchBoundary,
+  shouldIgnoreFile,
+  promptsRegistry
 };

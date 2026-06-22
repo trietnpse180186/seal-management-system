@@ -3,14 +3,15 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const isMock = process.env.GEMINI_SERVICE_MOCK === 'true';
 const apiKey = process.env.GEMINI_API_KEY;
 
-// Import 6 Harness Layers
-const prompts = require('./boundaries/prompts');
-const scopeRules = require('./boundaries/scopeRules');
-const outputValidator = require('./guardrails/outputValidator');
+// Import Global System-Level Harness Layers
+const promptsManager = require('../../harness/boundaries/promptsManager');
+const schemaValidator = require('../../harness/guardrails/schemaValidator');
+const contextStore = require('../../harness/memory/contextStore');
+const resilienceEngine = require('../../harness/feedback/resilienceEngine');
+const hitlManager = require('../../harness/telemetry/hitlManager');
+
+// Local tools for database saving
 const dbTools = require('./tools/dbTools');
-const memoryManager = require('./state/memoryManager');
-const retryManager = require('./feedback/retryManager');
-const hitlGateway = require('./approval/hitlGateway');
 
 let ai;
 if (!isMock && apiKey) {
@@ -28,6 +29,7 @@ async function callN8nWebhook(payload) {
   const n8nUrl = process.env.N8N_WEBHOOK_URL;
   if (!n8nUrl) return null;
   
+  const startTime = Date.now();
   console.log(`[N8N] Calling n8n webhook: ${n8nUrl} for ${payload.analysisType}...`);
   try {
     const response = await fetch(n8nUrl, {
@@ -43,7 +45,7 @@ async function callN8nWebhook(payload) {
     }
     
     const text = await response.text();
-    let resultJson = retryManager.autoFixJsonString(text);
+    let resultJson = resilienceEngine.autoFixJsonString(text);
     if (!resultJson) {
       throw new Error(`Failed to parse/fix n8n response as JSON: ${text.substring(0, 200)}`);
     }
@@ -62,9 +64,13 @@ async function callN8nWebhook(payload) {
       resultJson = resultJson.data;
     }
     
+    const latency = Date.now() - startTime;
+    hitlManager.recordTelemetry(latency, 0, true);
     console.log(`[N8N] Received successful response from n8n.`);
-    return outputValidator.parseAiResult(resultJson);
+    return schemaValidator.parseAiResult(resultJson);
   } catch (error) {
+    const latency = Date.now() - startTime;
+    hitlManager.recordTelemetry(latency, 0, false);
     console.error(`[N8N] Webhook call failed:`, error.message);
     return null;
   }
@@ -75,11 +81,11 @@ async function callN8nWebhook(payload) {
  */
 async function analyzeCommit(commit, files) {
   const fileSummaries = files.map(f => {
-    const patch = scopeRules.enforceFilePatchBoundary(f.patch);
+    const patch = promptsManager.enforceFilePatchBoundary(f.patch);
     return `File: ${f.filename}\nStatus: ${f.status}\nAdditions: ${f.additions}, Deletions: ${f.deletions}\nDiff:\n${patch}`;
   }).join('\n\n');
   
-  const prompt = prompts.getCommitReviewPrompt(
+  const prompt = promptsManager.promptsRegistry.commit_review(
     commit.authorName,
     commit.authorGithubUsername,
     commit.message,
@@ -101,7 +107,7 @@ async function analyzeCommit(commit, files) {
       status: f.status,
       additions: f.additions,
       deletions: f.deletions,
-      patch: scopeRules.enforceFilePatchBoundary(f.patch)
+      patch: promptsManager.enforceFilePatchBoundary(f.patch)
     })),
     prompt
   });
@@ -111,7 +117,7 @@ async function analyzeCommit(commit, files) {
     n8nResult._model = 'gemini-2.5-flash (via n8n)';
     
     // Check if HITL human approval is required
-    if (hitlGateway.requiresHumanApproval(n8nResult)) {
+    if (hitlManager.requiresHumanApproval(n8nResult)) {
       n8nResult._requires_approval = true;
     }
     return n8nResult;
@@ -196,35 +202,41 @@ async function analyzeCommit(commit, files) {
       _model: 'mock-model'
     };
 
-    if (hitlGateway.requiresHumanApproval(mockResult)) {
+    if (hitlManager.requiresHumanApproval(mockResult)) {
       mockResult._requires_approval = true;
     }
     return mockResult;
   }
 
-  // 3. Gemini Direct Analysis with Retry Loop
+  // 3. Gemini Direct Analysis with Resilience Engine
+  const startTime = Date.now();
   try {
-    const parsed = await retryManager.executeWithRetry(async () => {
+    const parsed = await resilienceEngine.executeWithRetry(async () => {
       const model = ai.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
       const result = await model.generateContent(prompt);
       const textResponse = result.response.text().trim();
       
-      const fixedJson = retryManager.autoFixJsonString(textResponse);
+      const fixedJson = resilienceEngine.autoFixJsonString(textResponse);
       if (!fixedJson) {
         throw new Error('LLM output could not be parsed as JSON');
       }
-      outputValidator.validateCommitReviewSchema(fixedJson);
+      schemaValidator.validateSchema(fixedJson, ['tech_stack', 'rag_maturity', 'overall_picture', 'assessment']);
       return fixedJson;
     }, 'Gemini Commit Review');
+
+    const latency = Date.now() - startTime;
+    hitlManager.recordTelemetry(latency, 0, true);
 
     parsed._provider = 'Google Gemini';
     parsed._model = 'gemini-3.1-flash-lite';
     
-    if (hitlGateway.requiresHumanApproval(parsed)) {
+    if (hitlManager.requiresHumanApproval(parsed)) {
       parsed._requires_approval = true;
     }
     return parsed;
   } catch (error) {
+    const latency = Date.now() - startTime;
+    hitlManager.recordTelemetry(latency, 0, false);
     console.error('Error generating per-push review with Gemini:', error.message);
     return {
       tech_stack: { frameworks: ["React", "Express"], llm_models: [], vector_db: [], agent_frameworks: [], third_party_tools: [] },
@@ -244,10 +256,10 @@ async function analyzeCommit(commit, files) {
  * Performs a deep historical aggregate analysis for the team.
  */
 async function analyzeTeamAggregate(teamId, commits, priorReviews) {
-  // Load State Context
-  const context = await memoryManager.loadTeamAggregateContext(teamId);
+  // Load State Context from Global Context Store
+  const context = await contextStore.loadTeamAggregateContext(teamId);
 
-  const prompt = prompts.getTeamAggregatePrompt(
+  const prompt = promptsManager.promptsRegistry.repository_review(
     teamId,
     context.commitSummaries,
     context.reviewSummaries,
@@ -320,25 +332,31 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
     };
   }
 
-  // 3. Gemini Direct Analysis with Retry Loop
+  // 3. Gemini Direct Analysis with Resilience Engine
+  const startTime = Date.now();
   try {
-    const parsed = await retryManager.executeWithRetry(async () => {
+    const parsed = await resilienceEngine.executeWithRetry(async () => {
       const model = ai.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
       const result = await model.generateContent(prompt);
       const textResponse = result.response.text().trim();
       
-      const fixedJson = retryManager.autoFixJsonString(textResponse);
+      const fixedJson = resilienceEngine.autoFixJsonString(textResponse);
       if (!fixedJson) {
         throw new Error('LLM output could not be parsed as JSON');
       }
-      outputValidator.validateTeamAggregateSchema(fixedJson);
+      schemaValidator.validateSchema(fixedJson, ['criteria_comments', 'smb_scale_advisory', 'overall_picture']);
       return fixedJson;
     }, 'Gemini Team Aggregate');
+
+    const latency = Date.now() - startTime;
+    hitlManager.recordTelemetry(latency, 0, true);
 
     parsed._provider = 'Google Gemini';
     parsed._model = 'gemini-3.1-flash-lite';
     return parsed;
   } catch (error) {
+    const latency = Date.now() - startTime;
+    hitlManager.recordTelemetry(latency, 0, false);
     console.error('Error generating aggregate review with Gemini:', error.message);
     const fallbackMap = {};
     const defaultCodes = context.roundCriteria.length > 0 ? context.roundCriteria.map(c => c.code) : ["R1_01", "R1_02", "R1_03", "R1_04", "R1_05", "R2_01", "R2_02", "R2_03", "R2_04", "R2_05"];
@@ -374,7 +392,7 @@ async function generateScoringSuggestion(repositorySnapshot, commits, criteria) 
 
   let cleanResult = null;
   if (latestAggReview && latestAggReview.result) {
-    cleanResult = outputValidator.parseAiResult(latestAggReview.result);
+    cleanResult = schemaValidator.parseAiResult(latestAggReview.result);
   }
   const hasAgg = cleanResult && cleanResult.criteria_comments;
 
@@ -421,5 +439,5 @@ module.exports = {
   analyzeCommit,
   analyzeTeamAggregate,
   generateScoringSuggestion,
-  parseAiResult: outputValidator.parseAiResult
+  parseAiResult: schemaValidator.parseAiResult
 };

@@ -1,19 +1,16 @@
 /**
- * Verification & Guardrails Layer
- * Handles output verification, JSON parsing, and schema validation.
+ * System-Level Harness: Layer 03 - Guardrails (Schema Validator)
+ * Validates and sanitizes LLM JSON output schemas.
  */
 
 /**
  * Safely parse AI results that might be wrapped in standard raw Gemini or string formats
- * @param {any} result - The raw result from LLM or n8n webhook
- * @returns {Object|string} Parsed JSON object or raw string if parsing fails
  */
 function parseAiResult(result) {
   if (!result) return result;
   
   // 1. If result is already an object, check if it's nested
   if (typeof result === 'object' && !Array.isArray(result)) {
-    // If it has standard wrappers, try to unpack
     if (result.output && typeof result.output === 'string') {
       return parseAiResult(result.output);
     }
@@ -32,10 +29,8 @@ function parseAiResult(result) {
       const cleaned = result.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
       return JSON.parse(cleaned);
     } catch (e) {
-      // Fallback for strings that might have other structures
       let text = null;
       try {
-        // Try parsing the root string as JSON first
         const rootParsed = JSON.parse(result);
         if (rootParsed.content && Array.isArray(rootParsed.content.parts) && rootParsed.content.parts[0]?.text) {
           text = rootParsed.content.parts[0].text;
@@ -45,7 +40,7 @@ function parseAiResult(result) {
           text = rootParsed.output;
         }
       } catch (err) {
-        // Not a direct JSON string, proceed with regex clean
+        // ignore
       }
 
       if (text) {
@@ -64,30 +59,22 @@ function parseAiResult(result) {
 }
 
 /**
- * Validates that the AI result has the necessary structure for commit reviews
+ * Checks if a parsed object satisfies a required JSON schema
  */
-function validateCommitReviewSchema(parsedResult) {
-  const requiredKeys = ['tech_stack', 'rag_maturity', 'overall_picture', 'assessment'];
-  for (const key of requiredKeys) {
-    if (!parsedResult || !parsedResult[key]) {
-      throw new Error(`Invalid AI result: Missing required root key "${key}"`);
-    }
+function validateSchema(parsedObject, requiredFields = []) {
+  if (!parsedObject || typeof parsedObject !== 'object') {
+    throw new Error('Verification failed: AI response is not a valid JSON object.');
   }
-  return true;
-}
 
-/**
- * Validates that the AI result has the necessary structure for team aggregates
- */
-function validateTeamAggregateSchema(parsedResult) {
-  if (!parsedResult || (!parsedResult.criteria_comments && !parsedResult.smb_scale_advisory)) {
-    throw new Error('Invalid AI result: Missing criteria_comments or smb_scale_advisory');
+  for (const field of requiredFields) {
+    if (parsedObject[field] === undefined) {
+      throw new Error(`Verification failed: Missing required output field "${field}"`);
+    }
   }
   return true;
 }
 
 module.exports = {
   parseAiResult,
-  validateCommitReviewSchema,
-  validateTeamAggregateSchema
+  validateSchema
 };

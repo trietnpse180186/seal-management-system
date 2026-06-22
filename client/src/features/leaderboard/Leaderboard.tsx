@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import axios from "axios";
 import {
   BarChart3,
@@ -17,9 +18,13 @@ export default function Leaderboard({
   roles?: any[];
 }) {
   const token = localStorage.getItem("token");
+  const [searchParams] = useSearchParams();
+  const queryEventId = searchParams.get("eventId");
+  const queryRoundId = searchParams.get("roundId");
 
   // Detect user role
   const isSystemAdmin = user?.isSystemAdmin;
+  const isSystemCoordinator = isSystemAdmin || roles.some((r: any) => r.role === "coordinator");
 
   const [events, setEvents] = useState<any[]>([]);
   const [selectedEventId, setSelectedEventId] = useState("");
@@ -45,21 +50,44 @@ export default function Leaderboard({
       .get("http://localhost:5000/api/events")
       .then((res) => {
         const allEvents = res.data;
-        // Prioritize ongoing event
-        let ongoingEvents = allEvents.filter((e: any) => e.status === "ongoing");
+        const activeEvents = allEvents.filter((e: any) => e.status !== "draft");
         
-        // Fallback to latest non-draft if no ongoing exists
-        if (ongoingEvents.length === 0) {
-          const activeEvents = allEvents.filter((e: any) => e.status !== "draft");
-          const sorted = activeEvents.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-          ongoingEvents = sorted.length > 0 ? [sorted[0]] : [];
+        if (isSystemCoordinator) {
+          // SystemAdmin/Coordinator: can see and choose all public events
+          setEvents(activeEvents);
+          if (queryEventId && activeEvents.some((e: any) => e._id === queryEventId)) {
+            setSelectedEventId(queryEventId);
+          } else if (activeEvents.length > 0) {
+            // Sort by newest
+            const sorted = activeEvents.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            setSelectedEventId(sorted[0]._id);
+          }
+        } else {
+          // Participant/Judge/Mentor: only see ongoing, or the queryEventId event they are trying to view
+          let visibleEvents = activeEvents.filter((e: any) => e.status === "ongoing");
+          if (queryEventId && activeEvents.some((e: any) => e._id === queryEventId)) {
+            const queryEvent = activeEvents.find((e: any) => e._id === queryEventId);
+            if (queryEvent && !visibleEvents.some((e: any) => e._id === queryEventId)) {
+              visibleEvents.push(queryEvent);
+            }
+          }
+          
+          // Fallback to newest if empty
+          if (visibleEvents.length === 0) {
+            const sorted = activeEvents.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            visibleEvents = sorted.length > 0 ? [sorted[0]] : [];
+          }
+          
+          setEvents(visibleEvents);
+          if (queryEventId && activeEvents.some((e: any) => e._id === queryEventId)) {
+            setSelectedEventId(queryEventId);
+          } else if (visibleEvents.length > 0) {
+            setSelectedEventId(visibleEvents[0]._id);
+          }
         }
-        
-        setEvents(ongoingEvents);
-        if (ongoingEvents.length > 0) setSelectedEventId(ongoingEvents[0]._id);
       })
       .catch((err) => console.error(err));
-  }, []);
+  }, [isSystemCoordinator, queryEventId]);
 
   useEffect(() => {
     if (!selectedEventId) return;
@@ -68,15 +96,21 @@ export default function Leaderboard({
       .then((res) => {
         setRounds(res.data.rounds || []);
         if (res.data.rounds && res.data.rounds.length > 0) {
-          setSelectedRoundId(res.data.rounds[0]._id);
-          setSelectedRound(res.data.rounds[0]);
+          if (queryRoundId && res.data.rounds.some((r: any) => r._id === queryRoundId)) {
+            setSelectedRoundId(queryRoundId);
+            const found = res.data.rounds.find((r: any) => r._id === queryRoundId);
+            setSelectedRound(found);
+          } else {
+            setSelectedRoundId(res.data.rounds[0]._id);
+            setSelectedRound(res.data.rounds[0]);
+          }
         } else {
           setSelectedRoundId("");
           setSelectedRound(null);
         }
       })
       .catch((err) => console.error(err));
-  }, [selectedEventId]);
+  }, [selectedEventId, queryRoundId]);
 
   const fetchRankings = useCallback(async () => {
     if (!selectedRoundId) {
@@ -183,14 +217,31 @@ export default function Leaderboard({
 
       {/* Selectors */}
       <div className="glass p-6 rounded-2xl flex flex-wrap gap-6 items-center border border-slate-800 hover:border-cyan-500/20 transition-all relative z-20">
-        <div>
-          <label className="block text-[10px] font-semibold uppercase text-slate-500 mb-1 font-mono tracking-wider">
-            Cuộc thi
-          </label>
-          <span className="text-sm font-extrabold text-cyan-400 uppercase tracking-tight block py-1.5 font-mono">
-            {events.find((e) => e._id === selectedEventId)?.name || '---'}
-          </span>
-        </div>
+        {isSystemCoordinator || events.length > 1 ? (
+          <div className="relative z-20">
+            <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
+              Cuộc thi
+            </label>
+            <CustomSelect
+              value={selectedEventId}
+              onChange={(val) => setSelectedEventId(val)}
+              options={events.map((e: any) => ({
+                value: e._id,
+                label: e.name,
+              }))}
+              className="w-48"
+            />
+          </div>
+        ) : (
+          <div>
+            <label className="block text-[10px] font-semibold uppercase text-slate-500 mb-1 font-mono tracking-wider">
+              Cuộc thi
+            </label>
+            <span className="text-sm font-extrabold text-cyan-400 uppercase tracking-tight block py-1.5 font-mono">
+              {events.find((e) => e._id === selectedEventId)?.name || '---'}
+            </span>
+          </div>
+        )}
 
         {/* Divider */}
         <div className="hidden sm:block w-px h-8 bg-slate-800"></div>

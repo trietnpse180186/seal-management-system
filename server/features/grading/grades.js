@@ -113,6 +113,71 @@ router.get('/suggestion', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @route   GET /api/grades/team/:teamId/achievements
+ * @desc    Get rankings and achievements for a team
+ * @access  Private (Participants of the team, Mentors, Coords, System Admin)
+ */
+router.get('/team/:teamId/achievements', authenticateToken, async (req, res) => {
+  try {
+    const team = await Team.findById(req.params.teamId);
+    if (!team) return res.status(404).json({ message: 'Team not found.' });
+
+    // 1. Auth check
+    let authorized = req.user.isSystemAdmin;
+    
+    // Check if system coordinator
+    if (!authorized) {
+      const coordRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId: team.eventId,
+        role: 'coordinator',
+        status: 'active'
+      });
+      authorized = !!coordRole;
+    }
+
+    // Check if team member
+    if (!authorized) {
+      const TeamMember = mongoose.model('TeamMember');
+      const member = await TeamMember.findOne({
+        teamId: team._id,
+        userId: req.user._id,
+        confirmStatus: 'confirmed'
+      });
+      authorized = !!member;
+    }
+
+    // Check if team mentor
+    if (!authorized) {
+      const mentorRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId: team.eventId,
+        trackId: team.trackId,
+        role: 'mentor',
+        status: 'active'
+      });
+      authorized = !!mentorRole;
+    }
+
+    if (!authorized) {
+      return res.status(403).json({ message: 'Bạn không có quyền truy cập thông tin thành tích của nhóm này.' });
+    }
+
+    const rankings = await Ranking.find({ teamId: req.params.teamId })
+      .populate('roundId', 'name status')
+      .populate('trackId', 'name')
+      .populate('eventId', 'name semester year status')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json(rankings);
+  } catch (error) {
+    console.error('Fetch Team Achievements Error:', error.message);
+    res.status(500).json({ message: 'Lỗi hệ thống khi tải thành tích nhóm.' });
+  }
+});
+
+/**
  * @route   GET /api/grades/team/:teamId/round/:roundId
  * @desc    Get existing score for a team in a round by the current judge
  * @access  Private (Judges / Coords)

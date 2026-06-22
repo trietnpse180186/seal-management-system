@@ -89,6 +89,11 @@ function startCronJobs() {
     } catch (error) {
       console.error('[CRON ERROR] Failed to auto transition event status:', error.message);
     }
+    try {
+      await distributeTrackTopics();
+    } catch (error) {
+      console.error('[CRON ERROR] Failed to automatically distribute track topics:', error.message);
+    }
   });
 
   console.log('[CRON] Background task scheduler started. Repo sync scheduled for every 30 minutes, event auto-transition every minute.');
@@ -450,8 +455,86 @@ ${aiResult.assessment?.improvement_areas || 'Không có thông tin.'}
   }
 }
 
+/**
+ * Automatically sends track exam/topics/attachments to team members when startTime starts.
+ * Runs every minute.
+ */
+async function distributeTrackTopics() {
+  const now = new Date();
+  const Track = mongoose.model('Track');
+  const Team = mongoose.model('Team');
+  const TeamMember = mongoose.model('TeamMember');
+  const Notification = mongoose.model('Notification');
+  const emailService = require('../notifications/emailService');
+  const { addInAppJob, isQueueAvailable } = require('../notifications/notificationQueue');
+
+  // Find tracks where startTime has started and attachments haven't been distributed yet
+  const pendingTracks = await Track.find({
+    startTime: { $ne: null, $lte: now },
+    isAttachmentSent: { $ne: true }
+  });
+
+  for (const track of pendingTracks) {
+    console.log(`[CRON] Track "${track.name}" startTime reached. Distributing topics/materials to teams...`);
+
+    // Find confirmed teams for this track
+    const teams = await Team.find({ trackId: track._id, status: 'confirmed' });
+    
+    for (const team of teams) {
+      // Find all confirmed members of the team
+      const members = await TeamMember.find({ teamId: team._id, confirmStatus: 'confirmed' }).populate('userId');
+      
+      for (const member of members) {
+        if (!member.userId) continue;
+
+        const user = member.userId;
+        const attachmentsList = track.attachments || [];
+
+        // Send in-app notification
+        const notifTitle = `Đề thi & tài liệu bảng đấu "${track.name}" đã được mở!`;
+        const notifBody = `Đề thi cho bảng đấu "${track.name}" đã bắt đầu. Hãy kiểm tra dashboard [ĐỀ_BÀI_&_TÀI_LIỆU_THI] để lấy đề bài và tài liệu làm bài!`;
+        
+        try {
+          if (isQueueAvailable()) {
+            await addInAppJob({
+              userId: user._id.toString(),
+              type: 'track_topic_opened',
+              title: notifTitle,
+              body: notifBody,
+            });
+          } else {
+            await new Notification({
+              userId: user._id,
+              type: 'track_topic_opened',
+              title: notifTitle,
+              body: notifBody,
+              channel: 'in_app',
+              status: 'sent',
+            }).save();
+          }
+        } catch (notifErr) {
+          console.error(`[CRON ERROR] Failed to send in-app notification to user ${user._id}:`, notifErr.message);
+        }
+
+        // Send email notification
+        try {
+          await emailService.sendTrackTopicDistribution(user.email, user.fullName, track.name, attachmentsList);
+        } catch (emailErr) {
+          console.error(`[CRON ERROR] Failed to send email to ${user.email}:`, emailErr.message);
+        }
+      }
+    }
+
+    // Mark track as distributed
+    track.isAttachmentSent = true;
+    await track.save();
+    console.log(`[CRON] Track "${track.name}" attachments distributed successfully.`);
+  }
+}
+
 module.exports = {
   startCronJobs,
   syncRepo,
-  syncAllRepositories
+  syncAllRepositories,
+  distributeTrackTopics
 };

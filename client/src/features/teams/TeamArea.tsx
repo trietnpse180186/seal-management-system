@@ -25,6 +25,43 @@ export default function TeamArea() {
   const token = localStorage.getItem('token');
   const [data, setData] = useState<any>(null);
 
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const startTimeStr = data?.team?.trackId?.startTime;
+    if (!startTimeStr) return;
+
+    const startTime = new Date(startTimeStr);
+    if (startTime <= new Date()) return;
+
+    const timer = setInterval(() => {
+      const now = new Date();
+      setCurrentTime(now);
+      if (now >= startTime) {
+        clearInterval(timer);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [data?.team?.trackId?.startTime]);
+
+  const getRemainingTimeText = (startTimeStr: string) => {
+    const diff = new Date(startTimeStr).getTime() - currentTime.getTime();
+    if (diff <= 0) return '00:00:00';
+    
+    const seconds = Math.floor((diff / 1000) % 60);
+    const minutes = Math.floor((diff / 1000 / 60) % 60);
+    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    
+    const pad = (num: number) => num.toString().padStart(2, '0');
+    
+    if (days > 0) {
+      return `${days} ngày ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    }
+    return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+  };
+
   const getTeamStatusText = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'confirmed': return 'ĐÃ XÁC NHẬN';
@@ -268,7 +305,19 @@ export default function TeamArea() {
               <BookOpen size={18} className="text-cyan-400" />
               <span className="text-cyan-400">[ĐỀ_BÀI_&_TÀI_LIỆU_THI]</span>
             </h2>
-            {team?.trackId?.attachments && team.trackId.attachments.length > 0 ? (
+            {team?.trackId?.startTime && new Date(team.trackId.startTime) > currentTime ? (
+              <div className="text-center py-4 space-y-2">
+                <p className="text-xs text-amber-500 font-sans font-semibold">
+                  Đề bài sẽ được tự động mở sau:
+                </p>
+                <p className="text-sm font-bold text-cyan-400 font-mono bg-slate-900/60 p-2.5 rounded-lg border border-slate-850 tracking-wider">
+                  {getRemainingTimeText(team.trackId.startTime)}
+                </p>
+                <p className="text-[10px] text-slate-500 font-mono">
+                  Thời gian mở đề: {new Date(team.trackId.startTime).toLocaleString('vi-VN')}
+                </p>
+              </div>
+            ) : team?.trackId?.attachments && team.trackId.attachments.length > 0 ? (
               <div className="space-y-3">
                 {team.trackId.attachments.map((file: any, idx: number) => (
                   <a

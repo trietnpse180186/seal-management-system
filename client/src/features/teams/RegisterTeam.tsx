@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { Users, UserPlus, Trash2, Calendar, FolderGit2, CheckCircle } from 'lucide-react';
@@ -42,7 +41,6 @@ export default function RegisterTeam() {
     if (msg) toast.success(msg);
   };
 
-  const navigate = useNavigate();
   const token = localStorage.getItem('token');
 
   useEffect(() => {
@@ -161,7 +159,7 @@ export default function RegisterTeam() {
       setMembers([]);
 
       setTimeout(() => {
-        navigate('/team-area');
+        window.location.href = '/team-area';
       }, 3000);
 
     } catch (err: any) {

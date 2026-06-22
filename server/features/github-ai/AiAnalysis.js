@@ -13,7 +13,7 @@ const AiAnalysisSchema = new Schema({
   prompt: { type: String },
   inputSummary: { type: Schema.Types.Mixed },
   result: { type: Schema.Types.Mixed },
-  status: { type: String, enum: ['pending', 'processing', 'completed', 'failed'], default: 'pending' },
+  status: { type: String, enum: ['pending', 'processing', 'completed', 'failed', 'pending_review', 'approved'], default: 'pending' },
   errorMessage: { type: String },
   createdAt: { type: Date, default: Date.now },
   completedAt: { type: Date }

@@ -269,6 +269,10 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                     <span>Khu vực đội thi</span>
                   </Link>
                 )}
+                <Link to="/my-achievements" className={linkClass("/my-achievements")}>
+                  <Award size={16} />
+                  <span>Thành tích của tôi</span>
+                </Link>
               </>
             )}
 

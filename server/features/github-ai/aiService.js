@@ -1,58 +1,24 @@
-const { GoogleGenAI } = require('@google/generative-ai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const isMock = process.env.GEMINI_SERVICE_MOCK === 'true';
 const apiKey = process.env.GEMINI_API_KEY;
 
+// Import 6 Harness Layers
+const prompts = require('./boundaries/prompts');
+const scopeRules = require('./boundaries/scopeRules');
+const outputValidator = require('./guardrails/outputValidator');
+const dbTools = require('./tools/dbTools');
+const memoryManager = require('./state/memoryManager');
+const retryManager = require('./feedback/retryManager');
+const hitlGateway = require('./approval/hitlGateway');
+
 let ai;
 if (!isMock && apiKey) {
   try {
-    const { GoogleGenerativeAI } = require('@google/generative-ai');
     ai = new GoogleGenerativeAI(apiKey);
   } catch (err) {
     console.error('Error initializing Google Generative AI:', err.message);
   }
-}
-
-/**
- * Safely parse AI results that might be wrapped in standard raw Gemini or string formats
- */
-function parseAiResult(result) {
-  if (!result) return result;
-  
-  // 1. If result is a string, try to parse it
-  if (typeof result === 'string') {
-    try {
-      const cleaned = result.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
-      return JSON.parse(cleaned);
-    } catch (e) {
-      return result;
-    }
-  }
-
-  // 2. If result has n8n / Gemini raw wrappers
-  let text = null;
-  if (result.content && Array.isArray(result.content.parts) && result.content.parts[0] && result.content.parts[0].text) {
-    text = result.content.parts[0].text;
-  } else if (result.text) {
-    text = result.text;
-  } else if (result.output && typeof result.output === 'string') {
-    text = result.output;
-  }
-
-  if (text) {
-    try {
-      const cleaned = text.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
-      const parsed = JSON.parse(cleaned);
-      // Preserve metadata if any
-      if (result._provider) parsed._provider = result._provider;
-      if (result._model) parsed._model = result._model;
-      return parsed;
-    } catch (e) {
-      // If parsing fails, fall through
-    }
-  }
-
-  return result;
 }
 
 /**
@@ -77,11 +43,9 @@ async function callN8nWebhook(payload) {
     }
     
     const text = await response.text();
-    let resultJson;
-    try {
-      resultJson = JSON.parse(text);
-    } catch (parseErr) {
-      throw new Error(`Failed to parse n8n response as JSON: ${text.substring(0, 200)}`);
+    let resultJson = retryManager.autoFixJsonString(text);
+    if (!resultJson) {
+      throw new Error(`Failed to parse/fix n8n response as JSON: ${text.substring(0, 200)}`);
     }
     
     // Normalize response if wrapped in array
@@ -99,7 +63,7 @@ async function callN8nWebhook(payload) {
     }
     
     console.log(`[N8N] Received successful response from n8n.`);
-    return parseAiResult(resultJson);
+    return outputValidator.parseAiResult(resultJson);
   } catch (error) {
     console.error(`[N8N] Webhook call failed:`, error.message);
     return null;
@@ -108,77 +72,24 @@ async function callN8nWebhook(payload) {
 
 /**
  * Analyzes a batch of commits (per-push) using Gemini AI.
- * @param {Object} commit - The representing Commit model object
- * @param {Array<Object>} files - Array of CommitFile objects
- * @returns {Promise<Object>} The structured JSON analysis result
  */
 async function analyzeCommit(commit, files) {
-  const fileSummaries = files.map(f => `File: ${f.filename}\nStatus: ${f.status}\nAdditions: ${f.additions}, Deletions: ${f.deletions}\nDiff:\n${f.patch}`).join('\n\n');
+  const fileSummaries = files.map(f => {
+    const patch = scopeRules.enforceFilePatchBoundary(f.patch);
+    return `File: ${f.filename}\nStatus: ${f.status}\nAdditions: ${f.additions}, Deletions: ${f.deletions}\nDiff:\n${patch}`;
+  }).join('\n\n');
   
-  const prompt = `
-    You are an expert AI code reviewer. Analyze the following GitHub commit files and patch changes.
-    Commit Author: ${commit.authorName} (@${commit.authorGithubUsername})
-    Commit Message: ${commit.message}
-    
-    Files changed:
-    ${fileSummaries}
-    
-    Please provide an analysis in JSON format with the following keys. Do not include markdown code block syntax. Return only raw JSON:
-    {
-      "tech_stack": {
-        "frameworks": ["e.g. React", "FastAPI"],
-        "llm_models": ["e.g. Gemini 1.5 Pro"],
-        "vector_db": ["e.g. ChromaDB"],
-        "agent_frameworks": ["e.g. LangChain"],
-        "third_party_tools": ["e.g. TailwindCSS"]
-      },
-      "inventory_exhaustive": {
-        "llm_models_and_apis": [],
-        "frameworks_and_runtimes": [],
-        "vector_databases": [],
-        "agent_orchestration": [],
-        "third_party_integrations": []
-      },
-      "agent_intelligence": {
-        "detected_skills": [],
-        "tool_definitions": [],
-        "reasoning_pattern": "e.g. ReAct | Plan-and-Solve | None",
-        "has_agent_config_files": false
-      },
-      "rag_maturity": {
-        "level": "Basic | Advanced | Agentic-RAG",
-        "features_detected": ["e.g. hybrid_search", "rerank", "metadata_filtering"]
-      },
-      "overall_picture": {
-        "project_about": "Brief description of what this project does",
-        "tools_plain_bullets": "- Tool 1\\n- Tool 2",
-        "current_focus": "What the developer is currently working on based on the commits",
-        "architectural_style": "e.g. Microservices, MVC",
-        "significant_change": true,
-        "push_summary": "Summary of the changes in this push"
-      },
-      "assessment": {
-        "advantages": "Pros of the design",
-        "disadvantages": "Cons of the design",
-        "improvement_areas": "Areas of enhancement",
-        "context_and_fit": "How it fits in the hackathon context",
-        "source_structure": "Quality of project structure",
-        "completeness": "Readiness level",
-        "security": "Security warnings (e.g. exposed keys, poor validation)"
-      },
-      "suggested_test_cases": ["Test case 1", "Test case 2"],
-      "suggested_questions_for_team": ["Question 1", "Question 2"],
-      "suggested_prompt_refinement": "Refinement suggestions for their LLM prompts"
-    }
+  const prompt = prompts.getCommitReviewPrompt(
+    commit.authorName,
+    commit.authorGithubUsername,
+    commit.message,
+    fileSummaries
+  );
 
-    IMPORTANT: You MUST write all descriptive fields (especially suggested_questions_for_team, overall_picture.push_summary, overall_picture.current_focus, overall_picture.project_about, assessment.advantages, assessment.disadvantages, assessment.improvement_areas, and suggested_test_cases) entirely in fluent, professional Vietnamese.
-  `;
-
-  // Try n8n webhook first if configured
+  // 1. Try n8n webhook first if configured
   const n8nResult = await callN8nWebhook({
     analysisType: 'commit_review',
     commit: {
-      _id: commit._id,
       commitSha: commit.commitSha,
       message: commit.message,
       authorName: commit.authorName,
@@ -190,7 +101,7 @@ async function analyzeCommit(commit, files) {
       status: f.status,
       additions: f.additions,
       deletions: f.deletions,
-      patch: f.patch
+      patch: scopeRules.enforceFilePatchBoundary(f.patch)
     })),
     prompt
   });
@@ -198,14 +109,19 @@ async function analyzeCommit(commit, files) {
   if (n8nResult) {
     n8nResult._provider = 'n8n-gemini';
     n8nResult._model = 'gemini-2.5-flash (via n8n)';
+    
+    // Check if HITL human approval is required
+    if (hitlGateway.requiresHumanApproval(n8nResult)) {
+      n8nResult._requires_approval = true;
+    }
     return n8nResult;
   }
 
+  // 2. Mock service fallback
   if (isMock || !ai) {
     console.log(`[GEMINI MOCK] Analyzing commit per-push: ${commit.commitSha.substring(0, 7)}`);
     await new Promise(resolve => setTimeout(resolve, 600));
 
-    // Simulated result based on commit messages
     let level = "Basic";
     let pattern = "None";
     let isSig = false;
@@ -225,7 +141,7 @@ async function analyzeCommit(commit, files) {
       securityWarn = ["Phát hiện rủi ro lưu trữ thông tin nhạy cảm ở dạng plain-text hoặc hardcode API key."];
     }
 
-    return {
+    const mockResult = {
       tech_stack: {
         frameworks: ["React", "Express", "Node.js"],
         llm_models: ["Gemini 1.5 Pro"],
@@ -279,18 +195,34 @@ async function analyzeCommit(commit, files) {
       _provider: 'Mock Service',
       _model: 'mock-model'
     };
+
+    if (hitlGateway.requiresHumanApproval(mockResult)) {
+      mockResult._requires_approval = true;
+    }
+    return mockResult;
   }
 
+  // 3. Gemini Direct Analysis with Retry Loop
   try {
-    const model = ai.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
-    const result = await model.generateContent(prompt);
-    const textResponse = result.response.text().trim();
-    
-    // Parse JSON safely
-    const cleanedText = textResponse.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
-    const parsed = JSON.parse(cleanedText);
+    const parsed = await retryManager.executeWithRetry(async () => {
+      const model = ai.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+      const result = await model.generateContent(prompt);
+      const textResponse = result.response.text().trim();
+      
+      const fixedJson = retryManager.autoFixJsonString(textResponse);
+      if (!fixedJson) {
+        throw new Error('LLM output could not be parsed as JSON');
+      }
+      outputValidator.validateCommitReviewSchema(fixedJson);
+      return fixedJson;
+    }, 'Gemini Commit Review');
+
     parsed._provider = 'Google Gemini';
     parsed._model = 'gemini-3.1-flash-lite';
+    
+    if (hitlGateway.requiresHumanApproval(parsed)) {
+      parsed._requires_approval = true;
+    }
     return parsed;
   } catch (error) {
     console.error('Error generating per-push review with Gemini:', error.message);
@@ -310,110 +242,19 @@ async function analyzeCommit(commit, files) {
 
 /**
  * Performs a deep historical aggregate analysis for the team.
- * @param {string} teamId - Team ID
- * @param {Array<Object>} commits - Last 200 commits metadata
- * @param {Array<Object>} priorReviews - Last 40 per-push reviews
- * @returns {Promise<Object>} Detailed R1/R2 and SMB advisories JSON
  */
 async function analyzeTeamAggregate(teamId, commits, priorReviews) {
-  const commitSummaries = commits.map(c => `SHA: ${c.commitSha.substring(0, 7)}, Msg: ${c.message}, Committed: ${c.committedAt}`).join('\n');
-  const reviewSummaries = priorReviews.map(r => `Level: ${r.result?.rag_maturity?.level || 'Basic'}, Summary: ${r.result?.overall_picture?.push_summary}`).join('\n');
+  // Load State Context
+  const context = await memoryManager.loadTeamAggregateContext(teamId);
 
-  // Dynamically query active criteria from Mongoose
-  const Team = require('mongoose').model('Team');
-  const Rubric = require('mongoose').model('Rubric');
-  const Criterion = require('mongoose').model('Criterion');
+  const prompt = prompts.getTeamAggregatePrompt(
+    teamId,
+    context.commitSummaries,
+    context.reviewSummaries,
+    context.criteriaPrompt
+  );
 
-  let roundCriteria = [];
-  try {
-    const team = await Team.findById(teamId);
-    if (team) {
-      let roundId = team.currentRoundId;
-      if (!roundId) {
-        const Round = require('mongoose').model('Round');
-        const activeRound = await Round.findOne({ eventId: team.eventId, status: 'active' });
-        if (activeRound) {
-          roundId = activeRound._id;
-        } else {
-          const firstRound = await Round.findOne({ eventId: team.eventId }).sort({ order: 1 });
-          if (firstRound) {
-            roundId = firstRound._id;
-          }
-        }
-      }
-
-      if (roundId) {
-        const rubric = await Rubric.findOne({ roundId, isActive: true });
-        if (rubric) {
-          roundCriteria = await Criterion.find({ rubricId: rubric._id }).sort({ order: 1 });
-        }
-      }
-    }
-  } catch (err) {
-    console.error('Error fetching round criteria for AI analysis:', err.message);
-  }
-
-  let criteriaPrompt = '';
-  if (roundCriteria.length > 0) {
-    criteriaPrompt = roundCriteria.map(c => `- **${c.code}**: ${c.name} (Mô tả: ${c.description || 'Không có mô tả.'}, Điểm tối đa: ${c.maxScore}đ)`).join('\n');
-  } else {
-    criteriaPrompt = `
-- **R1_01**: Problem & Solution Suitability
-- **R1_02**: Data Pipeline
-- **R1_03**: Retrieval & Citation
-- **R1_04**: Intent & Prompting
-- **R1_05**: Presentation/Documentation
-- **R2_01**: Agent & Multi-hop
-- **R2_02**: Model Resources Management
-- **R2_03**: Production-grade Operations
-- **R2_04**: Extensibility/Creativity
-- **R2_05**: Defensibility/Q&A preparation`;
-  }
-
-  const prompt = `
-    You are an expert AI Judge Auditor for the SEAL Hackathon. Synthesize the development history of team ${teamId}.
-    Use the following inputs:
-    
-    Commits history (up to 200):
-    ${commitSummaries}
-    
-    Prior reviews (up to 40):
-    ${reviewSummaries}
-    
-    Execute a 3-step reasoning process (B1, B2, B3):
-    1. B1 (System Identity): State what the system is, its use case, and boundaries.
-    2. B2 (Gap & Risk): Compare code state to target hackathon expectation. Identify technical debt and security risks.
-    3. B3 (Improvements): Suggest clear proposals.
-    
-    Rate the team qualitatively for the following criteria defined in the active Rubric. All qualitative grades MUST choose from ["Xuất sắc", "Tốt", "Khá", "Trung bình", "Yếu"]:
-    ${criteriaPrompt}
-    
-    IMPORTANT: You MUST write the detailed assessment comments, overall pictures, evolution notes, reasoning processes, and SMB Advisories entirely in fluent, professional Vietnamese.
-    Also compile an SMB Scale Advisory (system_identity_recap, summary, tech_and_architecture, cost_for_smb, throughput_and_reliability, observability_and_operations, data_and_integrations).
-    
-    Return a raw JSON block without markdown formatting or code block wrapper:
-    {
-      "criteria_comments": {
-        // You MUST include exactly one entry for each criterion code listed above.
-        // Format: "CODE": {"grade": "Tốt|Xuất sắc|...", "comment": "detailed review comment in Vietnamese explaining the grade based on code commits"}
-      },
-      "smb_scale_advisory": {
-        "system_identity_recap": "system identity recap in Vietnamese",
-        "summary": "overall viability summary in Vietnamese",
-        "tech_and_architecture": "architecture advice in Vietnamese",
-        "cost_for_smb": "estimated API and hosting costs in Vietnamese",
-        "throughput_and_reliability": "reliability pointers in Vietnamese",
-        "observability_and_operations": "monitoring advice in Vietnamese",
-        "data_and_integrations": "integration capabilities in Vietnamese"
-      },
-      "overall_picture": {
-        "historical_synthesis": "overview of the team development progress in Vietnamese",
-        "evolution_notes": "notable milestones during the hackathon in Vietnamese"
-      }
-    }
-  `;
-
-  // Try n8n webhook first if configured
+  // 1. Try n8n webhook first if configured
   const n8nResult = await callN8nWebhook({
     analysisType: 'repository_review',
     teamId,
@@ -435,46 +276,29 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
     return n8nResult;
   }
 
+  // 2. Mock service fallback
   if (isMock || !ai) {
     console.log(`[GEMINI MOCK] Analyzing team aggregate for: ${teamId}`);
     await new Promise(resolve => setTimeout(resolve, 800));
 
     const commentsMap = {};
-    if (roundCriteria.length > 0) {
-      roundCriteria.forEach(c => {
-        let commentText = `Nhóm thực hiện tốt tiêu chí ${c.name}, cấu trúc code sạch sẽ và rõ ràng.`;
-        let grade = "Tốt";
-        if (c.code === 'CODE') {
-          commentText = "Mã nguồn được cấu hình chuẩn, áp dụng các design pattern tối ưu, cấu trúc thư mục phân tách Layered MVC rõ ràng và dễ bảo trì.";
-          grade = "Tốt";
-        } else if (c.code === 'TEAM') {
-          commentText = "Sự phối hợp trong nhóm rất nhịp nhàng, đóng góp của các thành viên qua các commit đồng đều, lịch sử Git rõ ràng.";
-          grade = "Tốt";
-        } else if (c.code === 'R1_01') {
-          commentText = "Ý tưởng giải quyết bài toán logistics rất thực tế và thiết thực, có tính khả thi cao.";
-          grade = "Xuất sắc";
-        } else if (c.code === 'R1_02') {
-          commentText = "Pipeline xử lý dữ liệu và chia tài liệu thành chunking hợp lý, có overlap 15% để giữ ngữ cảnh.";
-          grade = "Tốt";
-        } else if (c.code === 'R1_03') {
-          commentText = "Đã có tìm kiếm ngữ nghĩa nhưng chưa có reranking nâng cao hoặc trích dẫn nguồn (citation) chi tiết.";
-          grade = "Khá";
-        }
-        commentsMap[c.code] = { grade, comment: commentText };
-      });
-    } else {
-      // Fallback defaults
-      commentsMap["R1_01"] = { grade: "Xuất sắc", comment: "Ý tưởng giải quyết bài toán logistics rất thực tế và thiết thực." };
-      commentsMap["R1_02"] = { grade: "Tốt", comment: "Pipeline xử lý PDF và chia chunking hợp lý, có overlap 15%." };
-      commentsMap["R1_03"] = { grade: "Khá", comment: "Đã có tìm kiếm ngữ nghĩa nhưng chưa có reranking nâng cao." };
-      commentsMap["R1_04"] = { grade: "Tốt", comment: "Prompts được thiết kế khá chỉnh chu, có phân vai rõ ràng." };
-      commentsMap["R1_05"] = { grade: "Tốt", comment: "README ghi chú cài đặt chi tiết, cấu trúc thư mục module hóa sạch sẽ." };
-      commentsMap["R2_01"] = { grade: "Khá", comment: "Có cài đặt agent dạng ReAct đơn giản, chưa thực sự tối ưu multi-hop." };
-      commentsMap["R2_02"] = { grade: "Tốt", comment: "Có theo dõi token sử dụng của các api calls cục bộ." };
-      commentsMap["R2_03"] = { grade: "Khá", comment: "Khả năng chịu lỗi trung bình, cần cấu hình retry khi sập network." };
-      commentsMap["R2_04"] = { grade: "Khá", comment: "Giải pháp ở mức tiêu chuẩn, độ đột phá công nghệ trung bình khá." };
-      commentsMap["R2_05"] = { grade: "Tốt", comment: "AI đề xuất bộ câu hỏi phản biện rất sát thực tế, giúp nhóm chuẩn bị tốt." };
-    }
+    const defaultCodes = context.roundCriteria.length > 0 ? context.roundCriteria.map(c => c.code) : ["R1_01", "R1_02", "R1_03", "R1_04", "R1_05", "R2_01", "R2_02", "R2_03", "R2_04", "R2_05"];
+    
+    defaultCodes.forEach(code => {
+      let commentText = `Nhóm thực hiện tốt tiêu chí này, cấu trúc code sạch sẽ và rõ ràng.`;
+      let grade = "Tốt";
+      if (code === 'R1_01') {
+        commentText = "Ý tưởng giải quyết bài toán logistics rất thực tế và thiết thực, có tính khả thi cao.";
+        grade = "Xuất sắc";
+      } else if (code === 'R1_02') {
+        commentText = "Pipeline xử lý dữ liệu và chia tài liệu thành chunking hợp lý, có overlap 15% để giữ ngữ cảnh.";
+        grade = "Tốt";
+      } else if (code === 'R1_03') {
+        commentText = "Đã có tìm kiếm ngữ nghĩa nhưng chưa có reranking nâng cao hoặc trích dẫn nguồn (citation) chi tiết.";
+        grade = "Khá";
+      }
+      commentsMap[code] = { grade, comment: commentText };
+    });
 
     return {
       criteria_comments: commentsMap,
@@ -496,19 +320,28 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
     };
   }
 
+  // 3. Gemini Direct Analysis with Retry Loop
   try {
-    const model = ai.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
-    const result = await model.generateContent(prompt);
-    const textResponse = result.response.text().trim();
-    const cleanedText = textResponse.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
-    const parsed = JSON.parse(cleanedText);
+    const parsed = await retryManager.executeWithRetry(async () => {
+      const model = ai.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+      const result = await model.generateContent(prompt);
+      const textResponse = result.response.text().trim();
+      
+      const fixedJson = retryManager.autoFixJsonString(textResponse);
+      if (!fixedJson) {
+        throw new Error('LLM output could not be parsed as JSON');
+      }
+      outputValidator.validateTeamAggregateSchema(fixedJson);
+      return fixedJson;
+    }, 'Gemini Team Aggregate');
+
     parsed._provider = 'Google Gemini';
     parsed._model = 'gemini-3.1-flash-lite';
     return parsed;
   } catch (error) {
     console.error('Error generating aggregate review with Gemini:', error.message);
     const fallbackMap = {};
-    const defaultCodes = roundCriteria.length > 0 ? roundCriteria.map(c => c.code) : ["R1_01", "R1_02", "R1_03", "R1_04", "R1_05", "R2_01", "R2_02", "R2_03", "R2_04", "R2_05"];
+    const defaultCodes = context.roundCriteria.length > 0 ? context.roundCriteria.map(c => c.code) : ["R1_01", "R1_02", "R1_03", "R1_04", "R1_05", "R2_01", "R2_02", "R2_03", "R2_04", "R2_05"];
     defaultCodes.forEach(code => {
       fallbackMap[code] = { grade: "Tốt", comment: `Phân tích chi tiết tiêu chí tạm thời chưa khả dụng. Chi tiết: ${error.message}` };
     });
@@ -522,37 +355,31 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
 
 /**
  * Suggests grades for a team's submission snapshot against a list of Rubric criteria.
- * Maps qualitative grades from aggregate review to numeric scores.
  */
 async function generateScoringSuggestion(repositorySnapshot, commits, criteria) {
-  // Try to find the latest completed team aggregate review for this team
   const AiAnalysis = require('mongoose').model('AiAnalysis');
   const latestAggReview = await AiAnalysis.findOne({
     teamId: repositorySnapshot.teamId,
     analysisType: 'repository_review',
-    status: 'completed'
+    status: { $in: ['completed', 'approved'] }
   }).sort({ createdAt: -1 });
 
-  // Map qualitative grades to numeric factors
   const gradeToScoreFactor = {
-    "Xuất sắc": 0.95, // 95% of max score
-    "Tốt": 0.82,      // 82% of max score
-    "Khá": 0.68,      // 68% of max score
-    "Trung bình": 0.50, // 50% of max score
-    "Yếu": 0.30       // 30% of max score
+    "Xuất sắc": 0.95,
+    "Tốt": 0.82,
+    "Khá": 0.68,
+    "Trung bình": 0.50,
+    "Yếu": 0.30
   };
 
   let cleanResult = null;
   if (latestAggReview && latestAggReview.result) {
-    cleanResult = parseAiResult(latestAggReview.result);
+    cleanResult = outputValidator.parseAiResult(latestAggReview.result);
   }
   const hasAgg = cleanResult && cleanResult.criteria_comments;
 
   return criteria.map(c => {
-    // Map criteria codes to R1/R2 keys
-    // Example codes: R1_01 or c.code
-    let critCode = c.code; // e.g. R1_01 or problem_solution
-    // If criterion code isn't exactly R1_01 etc., try matching by position or substring
+    let critCode = c.code;
     if (!critCode.startsWith('R1_') && !critCode.startsWith('R2_')) {
       if (c.code.toLowerCase().includes('prob') || c.code.toLowerCase().includes('fit')) critCode = 'R1_01';
       else if (c.code.toLowerCase().includes('data') || c.code.toLowerCase().includes('pipe')) critCode = 'R1_02';
@@ -566,7 +393,7 @@ async function generateScoringSuggestion(repositorySnapshot, commits, criteria) 
       else critCode = 'R2_05';
     }
 
-    let grade = "Tốt"; // Default fallback
+    let grade = "Tốt";
     let comment = "Nhóm thể hiện tiến độ làm việc ổn định, có commit giải quyết tiêu chí này.";
 
     if (hasAgg) {
@@ -594,6 +421,5 @@ module.exports = {
   analyzeCommit,
   analyzeTeamAggregate,
   generateScoringSuggestion,
-  parseAiResult
+  parseAiResult: outputValidator.parseAiResult
 };
-

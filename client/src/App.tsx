@@ -9,6 +9,7 @@ import RegisterTeam from './features/teams/RegisterTeam';
 import AdminDashboard from './features/admin/AdminDashboard';
 import AdminEvents from './features/admin/AdminEvents';
 import TeamArea from './features/teams/TeamArea';
+import MyAchievements from './features/teams/MyAchievements';
 import Leaderboard from './features/leaderboard/Leaderboard';
 import ProtectedRoute from './features/auth/ProtectedRoute';
 import GuestPortal from './features/landing/GuestPortal';
@@ -69,6 +70,12 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
           <Route path="/team-area" element={
             <ProtectedRoute user={user} roles={roles} allowedRoles={['participant']}>
               <TeamArea />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/my-achievements" element={
+            <ProtectedRoute user={user} roles={roles} allowedRoles={['participant']}>
+              <MyAchievements />
             </ProtectedRoute>
           } />
           

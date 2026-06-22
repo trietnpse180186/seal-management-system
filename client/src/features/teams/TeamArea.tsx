@@ -162,19 +162,76 @@ export default function TeamArea() {
     <div className="max-w-7xl mx-auto px-4 py-12 space-y-8 font-mono">
       
       {/* Top Banner team details */}
-      <div className="glass p-8 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden border border-slate-800 hover:border-cyan-500/30 transition-all">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
-        <div>
-          <span className="text-xs bg-cyan-950 text-cyan-400 border border-cyan-900 px-3 py-1 rounded-full font-bold">
-            {team?.trackId?.name || 'Bảng đấu'}
-          </span>
-          <h1 className="text-3xl font-black text-white mt-2">{team?.name}</h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Học kỳ: <span className="text-slate-300 font-bold">{team?.eventId?.name}</span> | Trạng thái: <span className="text-emerald-400 font-bold">{getTeamStatusText(team?.status)}</span>
-          </p>
+      <div className="glass p-8 rounded-3xl relative overflow-hidden border border-slate-800 hover:border-cyan-500/30 transition-all">
+        {/* Decorative elements */}
+        <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute -left-10 -bottom-10 w-40 h-40 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none"></div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
+          
+          {/* Main Info (Col 5): Team name & Status */}
+          <div className="lg:col-span-5 space-y-4">
+            <div className="flex items-center gap-2.5">
+              <span className="text-[10px] text-cyan-400 font-bold border border-cyan-500/30 px-2 py-0.5 rounded bg-cyan-950/20 tracking-widest uppercase">
+                [ĐỘI THI]
+              </span>
+              <span className={`text-[10px] px-2.5 py-0.5 rounded font-extrabold tracking-wider ${
+                team?.status?.toLowerCase() === 'confirmed'
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+              }`}>
+                {getTeamStatusText(team?.status)}
+              </span>
+            </div>
+            
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tight text-cyan-glow">
+                {team?.name}
+              </h1>
+              <p className="text-[11px] text-slate-400 mt-1.5 font-sans leading-relaxed">
+                Khu vực làm việc và theo dõi tiến độ chính thức của đội thi.
+              </p>
+            </div>
+          </div>
+
+          {/* Vertical Divider (Hidden on mobile) */}
+          <div className="hidden lg:block lg:col-span-1 h-16 border-l border-slate-800/80 mx-auto"></div>
+
+          {/* Contest Metadata (Col 3): Event & Semester */}
+          <div className="lg:col-span-3 space-y-3 font-sans">
+            <div>
+              <span className="text-[9px] text-slate-500 block uppercase font-mono tracking-wider font-bold">CUỘC THI</span>
+              <span className="text-sm font-extrabold text-white font-mono uppercase truncate block">
+                {team?.eventId?.name || '---'}
+              </span>
+            </div>
+            <div>
+              <span className="text-[9px] text-slate-500 block uppercase font-mono tracking-wider font-bold">HỌC KỲ</span>
+              <span className="text-xs font-bold text-slate-300 font-mono">
+                {team?.eventId?.semester ? `Kỳ ${team.eventId.semester} ${team.eventId.year}` : '---'}
+              </span>
+            </div>
+          </div>
+
+          {/* Track & Size Info (Col 3): Bảng đấu & Thành viên */}
+          <div className="lg:col-span-3 space-y-3 font-sans">
+            <div>
+              <span className="text-[9px] text-slate-500 block uppercase font-mono tracking-wider font-bold">BẢNG ĐẤU</span>
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-400 bg-cyan-950/40 border border-cyan-800/60 px-3 py-1 rounded-full mt-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                {team?.trackId?.name || 'Chờ phân bảng'}
+              </span>
+            </div>
+            <div>
+              <span className="text-[9px] text-slate-500 block uppercase font-mono tracking-wider font-bold">THÀNH VIÊN</span>
+              <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5 mt-1 font-mono">
+                <Users size={14} className="text-slate-400" />
+                <span>{members?.length || 0} Operators</span>
+              </span>
+            </div>
+          </div>
+
         </div>
-
-
       </div>
 
       {/* Chat Section */}

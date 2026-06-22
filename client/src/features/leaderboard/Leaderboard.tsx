@@ -44,8 +44,19 @@ export default function Leaderboard({
     axios
       .get("http://localhost:5000/api/events")
       .then((res) => {
-        setEvents(res.data);
-        if (res.data.length > 0) setSelectedEventId(res.data[0]._id);
+        const allEvents = res.data;
+        // Prioritize ongoing event
+        let ongoingEvents = allEvents.filter((e: any) => e.status === "ongoing");
+        
+        // Fallback to latest non-draft if no ongoing exists
+        if (ongoingEvents.length === 0) {
+          const activeEvents = allEvents.filter((e: any) => e.status !== "draft");
+          const sorted = activeEvents.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          ongoingEvents = sorted.length > 0 ? [sorted[0]] : [];
+        }
+        
+        setEvents(ongoingEvents);
+        if (ongoingEvents.length > 0) setSelectedEventId(ongoingEvents[0]._id);
       })
       .catch((err) => console.error(err));
   }, []);
@@ -113,11 +124,13 @@ export default function Leaderboard({
     fetchRankings();
   }, [fetchRankings]);
 
-  // Auto-refresh every 30s for coordinator (real-time)
+  // Auto-refresh every 30s for coordinator (real-time) when the tab is active
   useEffect(() => {
     if (!isCoordinator || !selectedRoundId) return;
     const interval = setInterval(() => {
-      fetchRankings();
+      if (!document.hidden) {
+        fetchRankings();
+      }
     }, 30000);
     return () => clearInterval(interval);
   }, [isCoordinator, selectedRoundId, fetchRankings]);
@@ -169,21 +182,18 @@ export default function Leaderboard({
       </div>
 
       {/* Selectors */}
-      <div className="glass p-6 rounded-2xl flex flex-wrap gap-4 items-center border border-slate-800 hover:border-cyan-500/20 transition-all relative z-20">
-        <div className="relative z-20">
-          <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
+      <div className="glass p-6 rounded-2xl flex flex-wrap gap-6 items-center border border-slate-800 hover:border-cyan-500/20 transition-all relative z-20">
+        <div>
+          <label className="block text-[10px] font-semibold uppercase text-slate-500 mb-1 font-mono tracking-wider">
             Cuộc thi
           </label>
-          <CustomSelect
-            value={selectedEventId}
-            onChange={(val) => setSelectedEventId(val)}
-            options={events.map((e: any) => ({
-              value: e._id,
-              label: e.name,
-            }))}
-            className="w-48"
-          />
+          <span className="text-sm font-extrabold text-cyan-400 uppercase tracking-tight block py-1.5 font-mono">
+            {events.find((e) => e._id === selectedEventId)?.name || '---'}
+          </span>
         </div>
+
+        {/* Divider */}
+        <div className="hidden sm:block w-px h-8 bg-slate-800"></div>
 
         <div className="relative z-20">
           <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">

@@ -2,7 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // URL mặc định khi test trên máy ảo Android (10.0.2.2 ánh xạ tới localhost của máy chủ dev)
-export const DEFAULT_API_URL = 'http://10.0.2.2:5000/api';
+export const DEFAULT_API_URL = 'https://seal-backend.onrender.com/api';
 
 let currentApiUrl = DEFAULT_API_URL;
 

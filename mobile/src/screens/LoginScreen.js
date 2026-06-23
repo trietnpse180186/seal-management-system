@@ -15,14 +15,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
-import api, { initApiUrl, updateBaseUrl } from '../api/api';
-import { Settings, ShieldAlert } from 'lucide-react-native';
+import api, { getBaseUrl } from '../api/api';
+import { ShieldAlert } from 'lucide-react-native';
 
 WebBrowser.maybeCompleteAuthSession();
 
 const getWebClientUrl = (apiUrl) => {
   try {
     if (!apiUrl) return 'http://10.0.2.2:5173';
+    if (apiUrl.includes('seal-backend.onrender.com')) {
+      return 'https://www.seal-hackathon.io.vn';
+    }
     const match = apiUrl.match(/^(https?:\/\/)([^:/]+)/i);
     if (match) {
       const protocol = match[1];
@@ -39,9 +42,6 @@ const getWebClientUrl = (apiUrl) => {
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [apiUrl, setApiUrl] = useState('');
-  const [webUrl, setWebUrl] = useState('');
-  const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState('');
@@ -56,17 +56,6 @@ export default function LoginScreen({ navigation }) {
   useEffect(() => {
     const checkExistingSession = async () => {
       try {
-        const currentUrl = await initApiUrl();
-        setApiUrl(currentUrl);
-
-        // Load saved Web Client URL hoặc tự suy luận
-        const savedWebUrl = await AsyncStorage.getItem('web_client_url');
-        if (savedWebUrl) {
-          setWebUrl(savedWebUrl);
-        } else {
-          setWebUrl(getWebClientUrl(currentUrl));
-        }
-
         const token = await AsyncStorage.getItem('token');
         const userStr = await AsyncStorage.getItem('user');
         const rolesStr = await AsyncStorage.getItem('roles');
@@ -123,12 +112,13 @@ export default function LoginScreen({ navigation }) {
     setError('');
     setLoading(true);
     try {
-      const finalWebUrl = webUrl || getWebClientUrl(apiUrl);
+      const currentApiUrl = getBaseUrl();
+      const finalWebUrl = getWebClientUrl(currentApiUrl);
       const redirectUrl = AuthSession.makeRedirectUri({
         scheme: 'sealhackathon',
         path: 'redirect',
       });
-      const authUrl = `${finalWebUrl}/login?platform=mobile&mobile_redirect=${encodeURIComponent(redirectUrl)}&provider=${provider}&api_url=${encodeURIComponent(apiUrl)}`;
+      const authUrl = `${finalWebUrl}/login?platform=mobile&mobile_redirect=${encodeURIComponent(redirectUrl)}&provider=${provider}&api_url=${encodeURIComponent(currentApiUrl)}`;
 
       const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
 
@@ -163,25 +153,10 @@ export default function LoginScreen({ navigation }) {
   };
 
   const handleGoogleLogin = async (isRealFlow = false) => {
-    if (!isRealFlow) {
-      setMockProvider('google');
-      setMockEmail('');
-      setMockFullName('');
-      setShowMockModal(true);
-      return;
-    }
     await handleOAuthRealFlow('google');
   };
 
   const handleGithubLogin = async (isRealFlow = false) => {
-    if (!isRealFlow) {
-      setMockProvider('github');
-      setMockEmail('');
-      setMockUsername('');
-      setMockFullName('');
-      setShowMockModal(true);
-      return;
-    }
     await handleOAuthRealFlow('github');
   };
 
@@ -242,15 +217,7 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
-  const saveApiSettings = async () => {
-    if (!apiUrl.trim()) return;
-    await updateBaseUrl(apiUrl.trim());
-    if (webUrl.trim()) {
-      await AsyncStorage.setItem('web_client_url', webUrl.trim());
-    }
-    setShowSettings(false);
-    setError('');
-  };
+
 
   if (initializing) {
     return (
@@ -433,47 +400,7 @@ export default function LoginScreen({ navigation }) {
           </Modal>
 
 
-          {/* Cấu hình kết nối API */}
-          <View style={styles.settingsSection}>
-            <TouchableOpacity
-              style={styles.settingsToggle}
-              onPress={() => setShowSettings(!showSettings)}
-            >
-              <Settings size={16} color="#849495" />
-              <Text style={styles.settingsToggleText}>Cấu hình API kết nối</Text>
-            </TouchableOpacity>
 
-            {showSettings ? (
-              <View style={styles.settingsBox}>
-                <Text style={styles.settingsTitle}>ĐỊA CHỈ API SERVER</Text>
-                <TextInput
-                  style={styles.settingsInput}
-                  placeholder="http://10.0.2.2:5000/api"
-                  placeholderTextColor="#849495"
-                  value={apiUrl}
-                  onChangeText={setApiUrl}
-                  autoCapitalize="none"
-                />
-
-                <Text style={styles.settingsTitle}>ĐỊA CHỈ WEB CLIENT (OAUTH BRIDGE)</Text>
-                <TextInput
-                  style={styles.settingsInput}
-                  placeholder="http://10.0.2.2:5173"
-                  placeholderTextColor="#849495"
-                  value={webUrl}
-                  onChangeText={setWebUrl}
-                  autoCapitalize="none"
-                />
-
-                <TouchableOpacity
-                  style={styles.settingsSaveBtn}
-                  onPress={saveApiSettings}
-                >
-                  <Text style={styles.settingsSaveBtnText}>LƯU CẤU HÌNH</Text>
-                </TouchableOpacity>
-              </View>
-            ) : null}
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

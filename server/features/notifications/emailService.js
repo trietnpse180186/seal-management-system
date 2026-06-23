@@ -342,8 +342,67 @@ async function sendEventCreationNotification(email, fullName, eventName, semeste
   }
 }
 
+/**
+ * Sends a notification email to a member when track topics/materials are distributed.
+ * @param {string} email - Recipient email
+ * @param {string} fullName - Recipient full name
+ * @param {string} trackName - Name of the track
+ * @param {Array} attachments - List of attachments with fileName and fileUrl
+ * @returns {Promise<boolean>}
+ */
+async function sendTrackTopicDistribution(email, fullName, trackName, attachments) {
+  const fileLinks = attachments.map((att, idx) => {
+    return `<li style="margin: 8px 0;"><a href="${att.fileUrl}" style="color: #00f0ff; text-decoration: underline;" target="_blank">${att.fileName || `Tài liệu ${idx + 1}`}</a></li>`;
+  }).join('');
+
+  const mailOptions = {
+    from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
+    to: email,
+    subject: `[SEAL Hackathon] Đề thi bảng đấu "${trackName}" đã chính thức được mở!`,
+    html: `
+      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #1e293b; border-radius: 12px; background-color: #0b1329; color: #f1f5f9; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <h2 style="color: #00f0ff; text-align: center; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 1.5px; text-shadow: 0 0 15px rgba(0, 240, 255, 0.4); margin-bottom: 25px; font-size: 20px;">ĐỀ THI & TÀI LIỆU ĐÃ ĐƯỢC MỞ</h2>
+        <p style="font-size: 15px; line-height: 1.6;">Xin chào <strong>${fullName}</strong>,</p>
+        <p style="font-size: 15px; line-height: 1.6;">Thời gian làm bài thi của bảng đấu <strong>"${trackName}"</strong> đã bắt đầu. Ban tổ chức đã mở liên kết đề bài và tài liệu học tập của bảng đấu này.</p>
+        <p style="font-size: 15px; line-height: 1.6;">Bạn có thể truy cập danh sách tài liệu trực tiếp dưới đây hoặc đăng nhập vào hệ thống để bắt đầu làm bài:</p>
+        
+        <div style="background-color: #0d1e3d; padding: 20px; border-radius: 8px; margin: 25px 0; border: 1px solid #1e293b;">
+          <p style="margin: 0 0 10px 0; font-weight: bold; color: #ffffff;">Tài liệu đính kèm:</p>
+          <ul style="margin: 0; padding-left: 20px;">
+            ${fileLinks || '<li style="color: #94a3b8;">Không có liên kết tài liệu đính kèm nào.</li>'}
+          </ul>
+        </div>
+        
+        <div style="text-align: center; margin: 35px 0;">
+          <a href="${process.env.CLIENT_URL || 'https://www.seal-hackathon.io.vn'}" style="background-color: #00f0ff; color: #0b1329; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 0 20px rgba(0, 240, 255, 0.5); text-transform: uppercase; font-size: 13px; letter-spacing: 1px;">Vào Dashboard Làm Bài</a>
+        </div>
+        <hr style="border: 0; border-top: 1px solid #1e293b; margin-top: 30px; margin-bottom: 20px;">
+        <p style="font-size: 12px; color: #64748b; text-align: center;">Hệ thống Quản lý SEAL Hackathon &copy; 2026</p>
+      </div>
+    `
+  };
+
+  if (isMock) {
+    console.log('\n--- [EMAIL MOCK SERVICE: TOPIC DISTRIBUTION] ---');
+    console.log(`To: ${email}`);
+    console.log(`Subject: ${mailOptions.subject}`);
+    console.log('----------------------------------------------\n');
+    return true;
+  }
+
+  try {
+    const info = await sendMailHelper(mailOptions);
+    console.log(`Topic email sent to ${email}: ${info.messageId}`);
+    return true;
+  } catch (error) {
+    console.error(`Error sending topic email to ${email}:`, error);
+    throw error;
+  }
+}
+
 module.exports = {
   sendTeamInvitation,
   sendEmailVerification,
-  sendEventCreationNotification
+  sendEventCreationNotification,
+  sendTrackTopicDistribution
 };

@@ -64,19 +64,19 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     const prov = params.get('provider');
     if (plat) {
       setPlatform(plat);
-      sessionStorage.setItem('mobile_platform', plat);
+      localStorage.setItem('mobile_platform', plat);
     }
     if (redir) {
       setMobileRedirect(redir);
-      sessionStorage.setItem('mobile_redirect', redir);
+      localStorage.setItem('mobile_redirect', redir);
     }
     if (apiU) {
       setMobileApiUrl(apiU);
-      sessionStorage.setItem('mobile_api_url', apiU);
+      localStorage.setItem('mobile_api_url', apiU);
     }
     if (prov) {
       setProvider(prov);
-      sessionStorage.setItem('mobile_provider', prov);
+      localStorage.setItem('mobile_provider', prov);
     }
 
     // Clean query parameters from URL so that on reload/refresh they are gone!
@@ -86,18 +86,26 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   }, []);
 
   const getBaseUrl = () => {
-    return mobileApiUrl || sessionStorage.getItem('mobile_api_url') || 'http://localhost:5000/api';
+    const localUrl = mobileApiUrl || localStorage.getItem('mobile_api_url');
+    if (localUrl) return localUrl;
+
+    // Fallback based on client hostname
+    if (window.location.hostname.includes('seal-hackathon.io.vn') || 
+        window.location.hostname.includes('vercel.app')) {
+      return 'https://seal-backend.onrender.com/api';
+    }
+    return 'http://localhost:5000/api';
   };
 
   const handleMobileRedirect = (token: string, user: any, roles: any[]) => {
-    const plat = platform || sessionStorage.getItem('mobile_platform');
-    const redir = mobileRedirect || sessionStorage.getItem('mobile_redirect');
+    const plat = platform || localStorage.getItem('mobile_platform');
+    const redir = mobileRedirect || localStorage.getItem('mobile_redirect');
 
     if (plat === 'mobile' && redir) {
-      sessionStorage.removeItem('mobile_platform');
-      sessionStorage.removeItem('mobile_redirect');
-      sessionStorage.removeItem('mobile_provider');
-      sessionStorage.setItem('mobile_api_url', ''); // clean up API URL
+      localStorage.removeItem('mobile_platform');
+      localStorage.removeItem('mobile_redirect');
+      localStorage.removeItem('mobile_provider');
+      localStorage.setItem('mobile_api_url', ''); // clean up API URL
 
       setPlatform(null);
       setProvider(null);
@@ -151,6 +159,13 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         } catch (err: any) {
           console.error(err);
           setError(err.response?.data?.message || 'Lỗi xác thực GitHub bằng code.');
+          
+          // Clear mobile session to prevent auto-redirect loop on error
+          localStorage.removeItem('mobile_platform');
+          localStorage.removeItem('mobile_redirect');
+          localStorage.removeItem('mobile_provider');
+          setPlatform(null);
+          setProvider(null);
         } finally {
           setLoading(false);
         }
@@ -191,6 +206,13 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           } catch (err: any) {
             console.error(err);
             setError(err.response?.data?.message || 'Lỗi đăng nhập Google.');
+            
+            // Clear mobile session to prevent auto-redirect loop on error
+            localStorage.removeItem('mobile_platform');
+            localStorage.removeItem('mobile_redirect');
+            localStorage.removeItem('mobile_provider');
+            setPlatform(null);
+            setProvider(null);
           } finally {
             setLoading(false);
           }
@@ -217,8 +239,8 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const plat = platform || sessionStorage.getItem('mobile_platform');
-    const prov = provider || sessionStorage.getItem('mobile_provider');
+    const plat = platform || localStorage.getItem('mobile_platform');
+    const prov = provider || localStorage.getItem('mobile_provider');
     const isCallback = window.location.hash.includes('id_token=') || params.has('code');
 
     if (plat === 'mobile' && !isCallback) {

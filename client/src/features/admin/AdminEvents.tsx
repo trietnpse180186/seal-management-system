@@ -133,6 +133,7 @@ export default function AdminEvents({
   const [editEventRegClose, setEditEventRegClose] = useState("");
   const [editEventContestStart, setEditEventContestStart] = useState("");
   const [editEventContestEnd, setEditEventContestEnd] = useState("");
+  const [editCommitSyncInterval, setEditCommitSyncInterval] = useState("30");
 
   // Track Schedule States
   const [selectedTrackForSchedule, setSelectedTrackForSchedule] = useState<any>(null);
@@ -187,6 +188,7 @@ export default function AdminEvents({
     setEditEventRegClose(formatForDateTimeLocal(eventObj.registrationClose));
     setEditEventContestStart(formatForDateTimeLocal(eventObj.contestStart));
     setEditEventContestEnd(formatForDateTimeLocal(eventObj.contestEnd));
+    setEditCommitSyncInterval(String(eventObj.commitSyncInterval || 30));
   };
 
   const handleSelectTrackForSchedule = (trackObj: any) => {
@@ -212,10 +214,11 @@ export default function AdminEvents({
       const res = await axios.put(
         `http://localhost:5000/api/events/${selectedEvent._id}`,
         {
-          registrationOpen: editEventRegOpen || null,
-          registrationClose: editEventRegClose || null,
-          contestStart: editEventContestStart || null,
-          contestEnd: editEventContestEnd || null,
+          registrationOpen: editEventRegOpen ? new Date(editEventRegOpen).toISOString() : null,
+          registrationClose: editEventRegClose ? new Date(editEventRegClose).toISOString() : null,
+          contestStart: editEventContestStart ? new Date(editEventContestStart).toISOString() : null,
+          contestEnd: editEventContestEnd ? new Date(editEventContestEnd).toISOString() : null,
+          commitSyncInterval: parseInt(editCommitSyncInterval) || 30,
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -242,9 +245,9 @@ export default function AdminEvents({
       const res = await axios.put(
         `http://localhost:5000/api/events/${selectedEvent._id}/tracks/${selectedTrackForSchedule._id}`,
         {
-          startTime: trackStartTime || null,
-          endTime: trackEndTime || null,
-          gradingEndTime: trackGradingEndTime || null,
+          startTime: trackStartTime ? new Date(trackStartTime).toISOString() : null,
+          endTime: trackEndTime ? new Date(trackEndTime).toISOString() : null,
+          gradingEndTime: trackGradingEndTime ? new Date(trackGradingEndTime).toISOString() : null,
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -930,7 +933,7 @@ export default function AdminEvents({
         {
           name: roundName,
           order: parseInt(roundOrder),
-          submissionDeadline: roundDeadline || undefined,
+          submissionDeadline: roundDeadline ? new Date(roundDeadline).toISOString() : undefined,
           advanceTopN: parseInt(roundLimit),
         },
         { headers: { Authorization: `Bearer ${token}` } },
@@ -2277,6 +2280,21 @@ export default function AdminEvents({
                       value={editEventContestEnd}
                       onChange={setEditEventContestEnd}
                       placeholder="Chọn thời gian kết thúc..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider font-mono">
+                      Chu kỳ tự động đồng bộ Commit (Phút)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      required
+                      value={editCommitSyncInterval}
+                      onChange={(e) => setEditCommitSyncInterval(e.target.value)}
+                      className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono"
+                      placeholder="Nhập số phút..."
                     />
                   </div>
 

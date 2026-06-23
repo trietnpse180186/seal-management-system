@@ -32,6 +32,7 @@ const EventSchema = new mongoose.Schema({
   contestStart: Date,
   contestEnd: Date,
   githubOrgName: String,
+  commitSyncInterval: { type: Number, default: 30 }
 });
 
 const TrackSchema = new mongoose.Schema({

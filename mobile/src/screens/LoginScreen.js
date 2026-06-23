@@ -15,8 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
-import api, { initApiUrl, updateBaseUrl } from '../api/api';
-import { Settings, ShieldAlert } from 'lucide-react-native';
+import api, { getBaseUrl } from '../api/api';
+import { ShieldAlert } from 'lucide-react-native';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -42,9 +42,6 @@ const getWebClientUrl = (apiUrl) => {
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [apiUrl, setApiUrl] = useState('');
-  const [webUrl, setWebUrl] = useState('');
-  const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState('');
@@ -59,17 +56,6 @@ export default function LoginScreen({ navigation }) {
   useEffect(() => {
     const checkExistingSession = async () => {
       try {
-        const currentUrl = await initApiUrl();
-        setApiUrl(currentUrl);
-
-        // Load saved Web Client URL hoặc tự suy luận
-        const savedWebUrl = await AsyncStorage.getItem('web_client_url');
-        if (savedWebUrl) {
-          setWebUrl(savedWebUrl);
-        } else {
-          setWebUrl(getWebClientUrl(currentUrl));
-        }
-
         const token = await AsyncStorage.getItem('token');
         const userStr = await AsyncStorage.getItem('user');
         const rolesStr = await AsyncStorage.getItem('roles');
@@ -126,12 +112,13 @@ export default function LoginScreen({ navigation }) {
     setError('');
     setLoading(true);
     try {
-      const finalWebUrl = webUrl || getWebClientUrl(apiUrl);
+      const currentApiUrl = getBaseUrl();
+      const finalWebUrl = getWebClientUrl(currentApiUrl);
       const redirectUrl = AuthSession.makeRedirectUri({
         scheme: 'sealhackathon',
         path: 'redirect',
       });
-      const authUrl = `${finalWebUrl}/login?platform=mobile&mobile_redirect=${encodeURIComponent(redirectUrl)}&provider=${provider}&api_url=${encodeURIComponent(apiUrl)}`;
+      const authUrl = `${finalWebUrl}/login?platform=mobile&mobile_redirect=${encodeURIComponent(redirectUrl)}&provider=${provider}&api_url=${encodeURIComponent(currentApiUrl)}`;
 
       const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
 
@@ -230,15 +217,7 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
-  const saveApiSettings = async () => {
-    if (!apiUrl.trim()) return;
-    await updateBaseUrl(apiUrl.trim());
-    if (webUrl.trim()) {
-      await AsyncStorage.setItem('web_client_url', webUrl.trim());
-    }
-    setShowSettings(false);
-    setError('');
-  };
+
 
   if (initializing) {
     return (
@@ -419,6 +398,7 @@ export default function LoginScreen({ navigation }) {
               </View>
             </View>
           </Modal>
+
 
 
         </ScrollView>

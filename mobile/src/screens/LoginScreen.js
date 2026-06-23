@@ -23,6 +23,9 @@ WebBrowser.maybeCompleteAuthSession();
 const getWebClientUrl = (apiUrl) => {
   try {
     if (!apiUrl) return 'http://10.0.2.2:5173';
+    if (apiUrl.includes('seal-backend.onrender.com')) {
+      return 'https://www.seal-hackathon.io.vn';
+    }
     const match = apiUrl.match(/^(https?:\/\/)([^:/]+)/i);
     if (match) {
       const protocol = match[1];
@@ -163,25 +166,10 @@ export default function LoginScreen({ navigation }) {
   };
 
   const handleGoogleLogin = async (isRealFlow = false) => {
-    if (!isRealFlow) {
-      setMockProvider('google');
-      setMockEmail('');
-      setMockFullName('');
-      setShowMockModal(true);
-      return;
-    }
     await handleOAuthRealFlow('google');
   };
 
   const handleGithubLogin = async (isRealFlow = false) => {
-    if (!isRealFlow) {
-      setMockProvider('github');
-      setMockEmail('');
-      setMockUsername('');
-      setMockFullName('');
-      setShowMockModal(true);
-      return;
-    }
     await handleOAuthRealFlow('github');
   };
 

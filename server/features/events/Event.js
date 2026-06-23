@@ -15,7 +15,8 @@ const EventSchema = new Schema({
   status: { type: String, enum: ['draft', 'registration', 'prepare', 'ongoing', 'completed', 'cancelled'], default: 'draft' },
   githubOrgName: { type: String },
   githubOrgCreated: { type: Boolean, default: false },
-  attachments: { type: Schema.Types.Mixed, default: [] }
+  attachments: { type: Schema.Types.Mixed, default: [] },
+  commitSyncInterval: { type: Number, default: 30 }
 }, {
   timestamps: true
 });

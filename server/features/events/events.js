@@ -52,7 +52,7 @@ router.get('/', async (req, res) => {
  * @access  Private (System Admin)
  */
 router.post('/', authenticateToken, requireSystemAdmin, async (req, res) => {
-  const { name, semester, year, description, bannerUrl, maxTeams, githubOrgName } = req.body;
+  const { name, semester, year, description, bannerUrl, maxTeams, githubOrgName, commitSyncInterval } = req.body;
 
   if (!name || !semester || !year) {
     return res.status(400).json({ message: 'Event name, semester, and year are required.' });
@@ -75,6 +75,7 @@ router.post('/', authenticateToken, requireSystemAdmin, async (req, res) => {
       bannerUrl,
       maxTeams: maxTeams ? parseInt(maxTeams) : 20,
       githubOrgName: githubOrgName || 'seal-hackathon-2026',
+      commitSyncInterval: commitSyncInterval ? parseInt(commitSyncInterval) : 30,
       status: 'draft',
       registrationOpen: null,
       registrationClose: null
@@ -825,7 +826,7 @@ router.post('/:eventId/distribute-teams', authenticateToken, async (req, res) =>
  * @access  Private
  */
 router.put('/:id', authenticateToken, async (req, res) => {
-  const { name, semester, year, description, bannerUrl, maxTeams, githubOrgName, status, registrationOpen, registrationClose, contestStart, contestEnd } = req.body;
+  const { name, semester, year, description, bannerUrl, maxTeams, githubOrgName, status, registrationOpen, registrationClose, contestStart, contestEnd, commitSyncInterval } = req.body;
   try {
     const event = await Event.findById(req.params.id);
     if (!event) return res.status(404).json({ message: 'Event not found.' });
@@ -913,6 +914,16 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (maxTeams && parseInt(maxTeams) !== event.maxTeams) {
       logDetails.push(`Số lượng đội tối đa: ${event.maxTeams || 0} -> ${maxTeams}`);
       event.maxTeams = parseInt(maxTeams);
+    }
+
+    if (commitSyncInterval !== undefined) {
+      const parsedInterval = parseInt(commitSyncInterval);
+      if (!isNaN(parsedInterval) && parsedInterval > 0) {
+        if (event.commitSyncInterval !== parsedInterval) {
+          logDetails.push(`Chu kỳ đồng bộ commit: ${event.commitSyncInterval || 30} phút -> ${parsedInterval} phút`);
+          event.commitSyncInterval = parsedInterval;
+        }
+      }
     }
     
     if (registrationOpen !== undefined) {

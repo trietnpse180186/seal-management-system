@@ -20,6 +20,7 @@ const EventSchema = new mongoose.Schema({
   semester: String,
   year: Number,
   status: String,
+  commitSyncInterval: { type: Number, default: 30 }
 });
 
 const GithubRepositorySchema = new mongoose.Schema({

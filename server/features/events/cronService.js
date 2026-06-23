@@ -67,20 +67,66 @@ async function autoTransitionEvents() {
 }
 
 /**
+ * Checks all active repositories and syncs those whose commit sync interval is due.
+ */
+async function checkAndSyncDueRepositories() {
+  const activeRepos = await GithubRepository.find({ isArchived: false });
+  const eventIntervals = {}; // cache to avoid multiple queries for the same event
+  
+  const concurrencyLimit = 3;
+  const executing = [];
+
+  for (const repo of activeRepos) {
+    let commitSyncInterval = 30; // default 30 minutes
+    
+    if (repo.eventId) {
+      const eventIdStr = repo.eventId.toString();
+      if (eventIntervals[eventIdStr] !== undefined) {
+        commitSyncInterval = eventIntervals[eventIdStr];
+      } else {
+        const event = await Event.findById(repo.eventId);
+        commitSyncInterval = (event && typeof event.commitSyncInterval === 'number') 
+          ? event.commitSyncInterval 
+          : 30;
+        eventIntervals[eventIdStr] = commitSyncInterval;
+      }
+    }
+
+    const lastSynced = repo.lastSyncedAt ? new Date(repo.lastSyncedAt).getTime() : 0;
+    const elapsedMinutes = (Date.now() - lastSynced) / (1000 * 60);
+
+    if (elapsedMinutes >= commitSyncInterval) {
+      console.log(`[CRON] Repo ${repo.repoName} is due for sync (elapsed: ${elapsedMinutes.toFixed(1)}m, interval: ${commitSyncInterval}m)`);
+      const p = (async () => {
+        try {
+          await syncRepo(repo._id);
+        } catch (err) {
+          console.error(`[CRON ERROR] Failed syncing repo ID ${repo._id}:`, err.message);
+        }
+      })();
+
+      executing.push(p);
+
+      const clean = () => {
+        const idx = executing.indexOf(p);
+        if (idx > -1) executing.splice(idx, 1);
+      };
+      p.then(clean, clean);
+
+      if (executing.length >= concurrencyLimit) {
+        await Promise.race(executing);
+      }
+    }
+  }
+
+  await Promise.all(executing);
+}
+
+/**
  * Initializes cron jobs for the system
  */
 function startCronJobs() {
   console.log('[CRON] Initializing background task schedulers...');
-
-  // Schedule to run every 30 minutes: '*/30 * * * *'
-  cron.schedule('*/30 * * * *', async () => {
-    console.log('[CRON] Running scheduled 30-minute GitHub commit sync...');
-    try {
-      await syncAllRepositories();
-    } catch (error) {
-      console.error('[CRON ERROR] Failed to sync commits:', error.message);
-    }
-  });
 
   // Schedule to run every 1 minute: '* * * * *'
   cron.schedule('* * * * *', async () => {
@@ -89,9 +135,15 @@ function startCronJobs() {
     } catch (error) {
       console.error('[CRON ERROR] Failed to auto transition event status:', error.message);
     }
+    
+    try {
+      await checkAndSyncDueRepositories();
+    } catch (error) {
+      console.error('[CRON ERROR] Failed to check and sync due repositories:', error.message);
+    }
   });
 
-  console.log('[CRON] Background task scheduler started. Repo sync scheduled for every 30 minutes, event auto-transition every minute.');
+  console.log('[CRON] Background task scheduler started. Repo sync check and event auto-transition scheduled for every minute.');
 }
 
 /**

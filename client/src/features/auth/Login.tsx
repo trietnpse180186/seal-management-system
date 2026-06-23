@@ -78,6 +78,11 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       setProvider(prov);
       sessionStorage.setItem('mobile_provider', prov);
     }
+
+    // Clean query parameters from URL so that on reload/refresh they are gone!
+    if (plat || redir || apiU || prov) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, []);
 
   const getBaseUrl = () => {
@@ -93,6 +98,10 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       sessionStorage.removeItem('mobile_redirect');
       sessionStorage.removeItem('mobile_provider');
       sessionStorage.setItem('mobile_api_url', ''); // clean up API URL
+
+      setPlatform(null);
+      setProvider(null);
+      setShowMockGoogle(false);
 
       const targetUrl = `${redir}?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}&roles=${encodeURIComponent(JSON.stringify(roles))}`;
       window.location.href = targetUrl;

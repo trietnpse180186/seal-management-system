@@ -421,47 +421,6 @@ export default function LoginScreen({ navigation }) {
           </Modal>
 
 
-          {/* Cấu hình kết nối API */}
-          <View style={styles.settingsSection}>
-            <TouchableOpacity
-              style={styles.settingsToggle}
-              onPress={() => setShowSettings(!showSettings)}
-            >
-              <Settings size={16} color="#849495" />
-              <Text style={styles.settingsToggleText}>Cấu hình API kết nối</Text>
-            </TouchableOpacity>
-
-            {showSettings ? (
-              <View style={styles.settingsBox}>
-                <Text style={styles.settingsTitle}>ĐỊA CHỈ API SERVER</Text>
-                <TextInput
-                  style={styles.settingsInput}
-                  placeholder="http://10.0.2.2:5000/api"
-                  placeholderTextColor="#849495"
-                  value={apiUrl}
-                  onChangeText={setApiUrl}
-                  autoCapitalize="none"
-                />
-
-                <Text style={styles.settingsTitle}>ĐỊA CHỈ WEB CLIENT (OAUTH BRIDGE)</Text>
-                <TextInput
-                  style={styles.settingsInput}
-                  placeholder="http://10.0.2.2:5173"
-                  placeholderTextColor="#849495"
-                  value={webUrl}
-                  onChangeText={setWebUrl}
-                  autoCapitalize="none"
-                />
-
-                <TouchableOpacity
-                  style={styles.settingsSaveBtn}
-                  onPress={saveApiSettings}
-                >
-                  <Text style={styles.settingsSaveBtnText}>LƯU CẤU HÌNH</Text>
-                </TouchableOpacity>
-              </View>
-            ) : null}
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

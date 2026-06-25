@@ -92,7 +92,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     // Fallback based on client hostname
     if (window.location.hostname.includes('seal-hackathon.io.vn') || 
         window.location.hostname.includes('vercel.app')) {
-      return 'https://seal-backend.onrender.com/api';
+      return 'https://seal-management-system.onrender.com/api';
     }
     return 'http://localhost:5000/api';
   };

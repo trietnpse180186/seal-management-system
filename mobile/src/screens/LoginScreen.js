@@ -23,7 +23,7 @@ WebBrowser.maybeCompleteAuthSession();
 const getWebClientUrl = (apiUrl) => {
   try {
     if (!apiUrl) return 'http://10.0.2.2:5173';
-    if (apiUrl.includes('seal-backend.onrender.com')) {
+    if (apiUrl.includes('seal-management-system.onrender.com') || apiUrl.includes('seal-backend.onrender.com')) {
       return 'https://www.seal-hackathon.io.vn';
     }
     const match = apiUrl.match(/^(https?:\/\/)([^:/]+)/i);

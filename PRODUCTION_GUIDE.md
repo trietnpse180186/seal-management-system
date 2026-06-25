@@ -111,7 +111,7 @@ Dùng để gửi email lời mời kèm mã xác thực/link kích hoạt thậ
    * **Build Command**: `npm install`
    * **Start Command**: `node ./bin/www`
 4. Vào tab **Environment**, nhập toàn bộ các biến môi trường cấu hình thực tế ở mục 2.
-5. Nhấn **Create Web Service**. Khi deploy hoàn tất, lưu lại địa chỉ URL của Backend (ví dụ: `https://seal-backend.onrender.com`).
+5. Nhấn **Create Web Service**. Khi deploy hoàn tất, lưu lại địa chỉ URL của Backend (ví dụ: `https://seal-management-system.onrender.com`).
 
 ### 3.2 Deploy Frontend trên Vercel
 1. Đăng nhập [Vercel.com](https://vercel.com/) -> Chọn **Add New...** -> **Project**.
@@ -123,7 +123,7 @@ Dùng để gửi email lời mời kèm mã xác thực/link kích hoạt thậ
    * **Output Directory**: `dist`
 4. Thêm một biến môi trường duy nhất:
    * **Key**: `VITE_API_URL`
-   * **Value**: `https://seal-backend.onrender.com` *(Địa chỉ URL Render vừa deploy)*
+   * **Value**: `https://seal-management-system.onrender.com` *(Địa chỉ URL Render vừa deploy)*
 5. Nhấn **Deploy**. Hệ thống sẽ tự động build và cấp phát domain cho bạn (ví dụ: `https://seal-client.vercel.app`).
 
 ### 3.3 Thiết lập Webhook/CI CD Tự Động Deploy

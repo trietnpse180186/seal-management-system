@@ -3,6 +3,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { Users, UserPlus, Trash2, Calendar, FolderGit2, CheckCircle } from 'lucide-react';
 import CustomSelect from '../shared/CustomSelect';
+import { Link } from 'react-router-dom';
 
 interface MemberInput {
   email: string;
@@ -33,6 +34,11 @@ export default function RegisterTeam() {
 
   const [loading, setLoading] = useState(false);
   const [success, _setSuccess] = useState('');
+  const [alreadyHasTeam, setAlreadyHasTeam] = useState(false);
+  const [existingTeamName, setExistingTeamName] = useState('');
+  const [checkingTeam, setCheckingTeam] = useState(true);
+  const [loadingEvents, setLoadingEvents] = useState(true);
+
   const setError = (msg: string) => {
     if (msg) toast.error(msg);
   };
@@ -44,7 +50,38 @@ export default function RegisterTeam() {
   const token = localStorage.getItem('token');
 
   useEffect(() => {
+    if (!token) {
+      setCheckingTeam(false);
+      return;
+    }
+    axios.get('http://localhost:5000/api/teams/my-team', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => {
+        const team = res.data?.team;
+        const isEventEnded = team && (
+          team.eventId?.status === 'completed' || 
+          team.eventId?.status === 'cancelled' ||
+          (team.eventId?.contestEnd && new Date(team.eventId.contestEnd) <= new Date())
+        );
+        if (team && !isEventEnded) {
+          setAlreadyHasTeam(true);
+          setExistingTeamName(team.name);
+        } else {
+          setAlreadyHasTeam(false);
+        }
+      })
+      .catch(_err => {
+        setAlreadyHasTeam(false);
+      })
+      .finally(() => {
+        setCheckingTeam(false);
+      });
+  }, [token]);
+
+  useEffect(() => {
     // Fetch active events
+    setLoadingEvents(true);
     axios.get('http://localhost:5000/api/events')
       .then(res => {
         const activeEvents = res.data.filter((e: any) => e.status === 'registration');
@@ -53,7 +90,10 @@ export default function RegisterTeam() {
           setSelectedEventId(activeEvents[0]._id);
         }
       })
-      .catch(err => console.error('Error fetching events:', err));
+      .catch(err => console.error('Error fetching events:', err))
+      .finally(() => {
+        setLoadingEvents(false);
+      });
   }, []);
 
   useEffect(() => {
@@ -169,6 +209,62 @@ export default function RegisterTeam() {
       setLoading(false);
     }
   };
+
+  if (checkingTeam || loadingEvents) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-24 text-center font-mono">
+        <p className="text-slate-400 text-lg animate-pulse">Đang tải thông tin...</p>
+      </div>
+    );
+  }
+
+  if (alreadyHasTeam) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-24 text-center font-mono space-y-6">
+        <div className="inline-flex bg-cyan-500/10 p-4 rounded-full text-cyan-400 mb-2 border border-cyan-500/20">
+          <Users size={40} />
+        </div>
+        <h3 className="text-2xl font-bold text-white">Bạn đã tham gia đội thi "{existingTeamName}"</h3>
+        <p className="text-slate-400 max-w-md mx-auto text-sm leading-relaxed">
+          Hệ thống ghi nhận bạn đã là thành viên chính thức của một đội thi đang hoạt động.
+        </p>
+        <div>
+          <Link
+            to="/team-area"
+            className="inline-flex items-center justify-center px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all"
+          >
+            Vào Khu vực Đội thi
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (events.length === 0) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-12 font-mono">
+        <div className="flex items-center gap-3 mb-8">
+          <div>
+            <h1 className="text-3xl font-extrabold text-white">
+              <span className="text-cyan-400 text-cyan-glow font-mono-tech">ĐĂNG KÝ ĐỘI THI</span>
+            </h1>
+            <p className="text-slate-400 text-sm mt-1">Thành lập nhóm và mời các thành viên tham gia</p>
+          </div>
+        </div>
+        <div className="glass glow-blue p-8 rounded-3xl text-center mb-8 border-cyan-500/30 font-mono space-y-4">
+          <div className="inline-flex bg-cyan-500/10 p-4 rounded-full text-cyan-400 mb-2 border border-cyan-500/20">
+            <Calendar size={40} />
+          </div>
+          <h3 className="text-xl font-bold text-white uppercase tracking-tight text-cyan-glow">
+            Hiện đang không có cuộc thi nào mở đăng ký
+          </h3>
+          <p className="text-slate-400 max-w-md mx-auto text-sm leading-relaxed">
+            Vui lòng theo dõi thông tin từ Ban tổ chức để cập nhật các sự kiện Hackathon mới nhất sắp diễn ra.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12 font-mono">

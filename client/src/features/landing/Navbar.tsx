@@ -189,26 +189,6 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
     roles?.some((r) => r.role === "participant") ||
     (!isSystemAdmin && !isCoordinator && !isJudge && !isMentor);
 
-  const [hasTeam, setHasTeam] = useState(false);
-
-  useEffect(() => {
-    if (user && isParticipant) {
-      const checkTeamStatus = async () => {
-        try {
-          const token = localStorage.getItem("token");
-          const res = await axios.get("http://localhost:5000/api/teams/my-team", {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          setHasTeam(!!res.data.team);
-        } catch (err) {
-          setHasTeam(false);
-        }
-      };
-      checkTeamStatus();
-    } else {
-      setHasTeam(false);
-    }
-  }, [user, roles, isParticipant]);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -255,21 +235,17 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                   <Compass size={16} />
                   <span>Trang chủ</span>
                 </Link>
-                {!hasTeam && (
-                  <Link
-                    to="/register-team"
-                    className={linkClass("/register-team")}
-                  >
-                    <Users size={16} />
-                    <span>Đăng ký đội</span>
-                  </Link>
-                )}
-                {hasTeam && (
-                  <Link to="/team-area" className={linkClass("/team-area")}>
-                    <GitBranch size={16} />
-                    <span>Khu vực đội thi</span>
-                  </Link>
-                )}
+                <Link
+                  to="/register-team"
+                  className={linkClass("/register-team")}
+                >
+                  <Users size={16} />
+                  <span>Đăng ký đội</span>
+                </Link>
+                <Link to="/team-area" className={linkClass("/team-area")}>
+                  <GitBranch size={16} />
+                  <span>Khu vực đội thi</span>
+                </Link>
                 <Link to="/my-achievements" className={linkClass("/my-achievements")}>
                   <Award size={16} />
                   <span>Thành tích của tôi</span>
@@ -312,10 +288,12 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
             )}
 
             {/* General Links */}
-            <Link to="/leaderboard" className={linkClass("/leaderboard")}>
-              <BarChart2 size={16} />
-              <span>Bảng xếp hạng</span>
-            </Link>
+            {isCoordinator && (
+              <Link to="/leaderboard" className={linkClass("/leaderboard")}>
+                <BarChart2 size={16} />
+                <span>Bảng xếp hạng</span>
+              </Link>
+            )}
           </div>
         )}
         {/* User Info & Actions */}

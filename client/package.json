@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
-    "@tailwindcss/vite": "^4.3.0",
     "axios": "^1.16.1",
     "gsap": "^3.15.0",
     "lucide-react": "^1.16.0",
@@ -20,7 +19,7 @@
     "react-router-dom": "^7.15.1",
     "socket.io-client": "^4.8.3",
     "sonner": "^2.0.7",
-    "tailwindcss": "^4.3.0",
+    "tailwindcss": "^3.4.17",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
@@ -28,13 +27,18 @@
     "@types/node": "^24.12.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-react": "^5.2.0",
+    "autoprefixer": "^10.4.20",
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
+    "postcss": "^8.4.49",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
-    "vite": "^8.0.12"
+    "vite": "^6.2.0"
+  },
+  "overrides": {
+    "rollup": "npm:@rollup/wasm-node"
   }
 }

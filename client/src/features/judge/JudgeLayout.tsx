@@ -4,7 +4,6 @@ import axios from 'axios';
 import {
   LayoutDashboard,
   BookOpen,
-  Trophy,
   LogOut,
   Bell
 } from 'lucide-react';
@@ -94,11 +93,6 @@ export default function JudgeLayout({ user, onLogout }: JudgeLayoutProps) {
       path: '/judge/projects',
       label: 'Dự án cần chấm',
       icon: BookOpen
-    },
-    {
-      path: '/judge/leaderboard',
-      label: 'Bảng xếp hạng',
-      icon: Trophy
     }
   ];
 

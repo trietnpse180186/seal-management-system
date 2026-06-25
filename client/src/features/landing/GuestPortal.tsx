@@ -131,8 +131,18 @@ export default function GuestPortal({ user }: GuestPortalProps) {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.data && res.data.team) {
-          setHasTeam(true);
-          setTeamName(res.data.team.name);
+          const team = res.data.team;
+          const isEventEnded = team && (
+            team.eventId?.status === 'completed' || 
+            team.eventId?.status === 'cancelled' ||
+            (team.eventId?.contestEnd && new Date(team.eventId.contestEnd) <= new Date())
+          );
+          if (team && !isEventEnded) {
+            setHasTeam(true);
+            setTeamName(team.name);
+          } else {
+            setHasTeam(false);
+          }
         } else {
           setHasTeam(false);
         }
@@ -416,12 +426,18 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                         )}
                         
                         {e.status === "ongoing" && (
-                          <button
-                            onClick={() => navigate("/leaderboard")}
-                            className="w-full py-3 border border-slate-800 rounded-xl bg-slate-900/40 text-slate-350 text-xs font-bold hover:bg-slate-800/60 hover:text-white transition-all uppercase tracking-wider text-center cursor-pointer font-mono"
-                          >
-                            Bảng xếp hạng live
-                          </button>
+                          hasTeam ? (
+                            <button
+                              onClick={() => navigate("/team-area")}
+                              className="w-full py-3 border border-cyan-500/30 rounded-xl bg-cyan-500/10 text-cyan-400 text-sm font-bold hover:bg-cyan-500/20 transition-all uppercase tracking-wider text-center cursor-pointer font-mono"
+                            >
+                              Vào khu vực đội
+                            </button>
+                          ) : (
+                            <div className="w-full py-3 border border-slate-800 rounded-xl bg-slate-900/30 text-slate-500 text-sm font-bold text-center uppercase tracking-wider font-mono">
+                              Đã đóng đăng ký (Đang diễn ra)
+                            </div>
+                          )
                         )}
                       </div>
                     </div>
@@ -536,12 +552,18 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                       )}
                       
                       {e.status === "ongoing" && (
-                        <button
-                          onClick={() => navigate("/leaderboard")}
-                          className="w-full mt-2 py-2 border border-slate-800 rounded-xl bg-slate-900/40 text-slate-300 text-xs font-bold hover:bg-slate-800/60 hover:text-white transition-all uppercase tracking-wider text-center cursor-pointer font-mono"
-                        >
-                          Bảng xếp hạng live
-                        </button>
+                        hasTeam ? (
+                          <button
+                            onClick={() => navigate("/team-area")}
+                            className="w-full mt-2 py-2 border border-cyan-500/30 rounded-xl bg-cyan-500/10 text-cyan-400 text-xs font-bold hover:bg-cyan-500/20 transition-all uppercase tracking-wider text-center cursor-pointer font-mono"
+                          >
+                            Vào khu vực đội
+                          </button>
+                        ) : (
+                          <div className="w-full mt-2 py-2 border border-slate-800 rounded-xl bg-slate-900/30 text-slate-500 text-xs font-bold text-center uppercase tracking-wider font-mono">
+                            Đã đóng đăng ký (Đang diễn ra)
+                          </div>
+                        )
                       )}
                     </div>
                   </div>

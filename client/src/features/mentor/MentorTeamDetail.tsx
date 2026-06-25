@@ -171,7 +171,7 @@ export default function MentorTeamDetail() {
                 <MessageSquare size={28} />
               </div>
               <h3 className="text-slate-400 font-bold text-lg mb-2">Hộp thoại chat chưa khả dụng</h3>
-              <p className="text-slate-500 text-xs leading-relaxed">Kênh chat sẽ được mở khi cuộc thi chính thức bước vào giai đoạn thi đấu (Ongoing). Hiện trạng thái cuộc thi là: <strong className="text-amber-500 font-mono uppercase">{team.eventId?.status || 'Draft'}</strong>.</p>
+              <p className="text-slate-500 text-xs leading-relaxed">Kênh chat sẽ được mở khi cuộc thi chính thức bước vào giai đoạn thi đấu.</p>
             </div>
           )
         )}

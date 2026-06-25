@@ -42,8 +42,8 @@ function initQueue() {
           type: 'exponential',
           delay: 10000, // 10s → 50s → 250s
         },
-        removeOnComplete: { count: 100 }, // Keep last 100 completed jobs
-        removeOnFail: { count: 200 },     // Keep last 200 failed jobs
+        removeOnComplete: true, // Remove completed jobs immediately to release the jobId lock for subsequent syncs
+        removeOnFail: true,     // Remove failed jobs immediately as well to avoid locking the repository on failures
       },
     });
 

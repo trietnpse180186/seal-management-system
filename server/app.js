@@ -11,8 +11,13 @@ const mongoose = require("mongoose");
 const { initQueue } = require('./features/notifications/notificationQueue');
 const { startNotificationWorker } = require('./features/notifications/notificationWorker');
 
+// GitHub AI job queue & worker (BullMQ + Redis)
+const githubAiQueue = require('./features/github-ai/githubAiQueue');
+const githubAiWorker = require('./features/github-ai/githubAiWorker');
+
 // Initialize Redis queue connection at startup
 initQueue();
+githubAiQueue.initQueue();
 
 // Import all models to register their schemas in Mongoose
 require("./features/auth/User");
@@ -80,6 +85,9 @@ mongoose
 
     // Start notification worker after MongoDB is ready
     startNotificationWorker();
+
+    // Start GitHub AI worker after MongoDB is ready
+    githubAiWorker.startWorker();
   })
   .catch((err) => {
     console.error("Failed to connect to MongoDB:", err.message);
@@ -95,7 +103,11 @@ app.use(
 );
 
 app.use(logger("dev"));
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));

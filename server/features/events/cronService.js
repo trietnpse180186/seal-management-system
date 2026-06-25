@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const mongoose = require('mongoose');
 const githubService = require('../github-ai/githubService');
 const aiService = require('../github-ai/aiService');
+const githubAiQueue = require('../github-ai/githubAiQueue');
 
 // Retrieve models dynamically to avoid import circular issues
 const GithubRepository = mongoose.model('GithubRepository');
@@ -99,7 +100,11 @@ async function checkAndSyncDueRepositories() {
       console.log(`[CRON] Repo ${repo.repoName} is due for sync (elapsed: ${elapsedMinutes.toFixed(1)}m, interval: ${commitSyncInterval}m)`);
       const p = (async () => {
         try {
-          await syncRepo(repo._id);
+          if (githubAiQueue.isQueueAvailable()) {
+            await githubAiQueue.addSyncJob(repo._id.toString());
+          } else {
+            await syncRepo(repo._id);
+          }
         } catch (err) {
           console.error(`[CRON ERROR] Failed syncing repo ID ${repo._id}:`, err.message);
         }
@@ -165,7 +170,11 @@ async function syncAllRepositories() {
   for (const repo of activeRepos) {
     const p = (async () => {
       try {
-        await syncRepo(repo._id);
+        if (githubAiQueue.isQueueAvailable()) {
+          await githubAiQueue.addSyncJob(repo._id.toString());
+        } else {
+          await syncRepo(repo._id);
+        }
       } catch (err) {
         console.error(`[CRON ERROR] Failed syncing repo ID ${repo._id}:`, err.message);
       }

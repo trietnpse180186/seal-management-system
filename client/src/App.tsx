@@ -18,7 +18,6 @@ import JudgeDashboard from './features/judge/JudgeDashboard';
 import JudgeProjects from './features/judge/JudgeProjects';
 import JudgeScoring from './features/judge/JudgeScoring';
 import JudgeTeamActivity from './features/judge/JudgeTeamActivity';
-import JudgeLeaderboard from './features/judge/JudgeLeaderboard';
 import AdminGradesView from './features/admin/AdminGradesView';
 import AdminLayout from './features/admin/AdminLayout';
 import MentorDashboard from './features/mentor/MentorDashboard';
@@ -102,7 +101,6 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
             <Route path="projects" element={<JudgeProjects />} />
             <Route path="score/:teamId" element={<JudgeScoring />} />
             <Route path="activity/:teamId" element={<JudgeTeamActivity />} />
-            <Route path="leaderboard" element={<JudgeLeaderboard />} />
           </Route>
           
           {/* Mentor Routes */}

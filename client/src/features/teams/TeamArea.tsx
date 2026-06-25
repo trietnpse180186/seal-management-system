@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { Link2, Save, CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare } from 'lucide-react';
+import RegisterTeam from './RegisterTeam';
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
   <svg
@@ -96,27 +97,41 @@ export default function TeamArea() {
   const fetchTeamData = async () => {
     try {
       setLoading(true);
+      setError('');
       const res = await axios.get('http://localhost:5000/api/teams/my-team', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setData(res.data);
       
-      // Load topic forms if present
-      if (res.data.team?.topicSubmission) {
-        setTopicTitle(res.data.team.topicSubmission.title || '');
-        setTopicDesc(res.data.team.topicSubmission.description || '');
-        setDocLink(res.data.team.topicSubmission.documentationLink || '');
-      }
+      const team = res.data?.team;
+      const isEventEnded = team && (
+        team.eventId?.status === 'completed' || 
+        team.eventId?.status === 'cancelled' ||
+        (team.eventId?.contestEnd && new Date(team.eventId.contestEnd) <= new Date())
+      );
+      if (isEventEnded) {
+        setData({ team: null });
+      } else {
+        setData(res.data);
+        
+        // Load topic forms if present
+        if (res.data.team?.topicSubmission) {
+          setTopicTitle(res.data.team.topicSubmission.title || '');
+          setTopicDesc(res.data.team.topicSubmission.description || '');
+          setDocLink(res.data.team.topicSubmission.documentationLink || '');
+        }
 
-      // Fetch commits if repo exists
-      if (res.data.repository) {
-        fetchCommits(res.data.team._id);
+        // Fetch commits if repo exists
+        if (res.data.repository) {
+          fetchCommits(res.data.team._id);
+        }
       }
-      
-
     } catch (err: any) {
       console.error(err);
-      setError(err.response?.data?.message || 'Lỗi tải thông tin đội thi. Vui lòng đảm bảo nhóm đã được xác nhận.');
+      if (err.response?.status === 404) {
+        setData({ team: null });
+      } else {
+        setError(err.response?.data?.message || 'Lỗi tải thông tin đội thi.');
+      }
     } finally {
       setLoading(false);
     }
@@ -194,6 +209,16 @@ export default function TeamArea() {
   }
 
   const { team, members, repository } = data || {};
+
+  const isEventEnded = team && (
+    team.eventId?.status === 'completed' || 
+    team.eventId?.status === 'cancelled' ||
+    (team.eventId?.contestEnd && new Date(team.eventId.contestEnd) <= new Date())
+  );
+
+  if (!team || isEventEnded) {
+    return <RegisterTeam />;
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 space-y-8 font-mono">

@@ -713,7 +713,7 @@ router.get('/my-team', authenticateToken, async (req, res) => {
     // Find the first confirmed record pointing to an active team that actually exists
     for (const record of memberRecords) {
       const foundTeam = await Team.findById(record.teamId)
-        .populate('eventId', 'name semester year status')
+        .populate('eventId', 'name semester year status contestEnd registrationClose')
         .populate('trackId', 'name description attachments startTime endTime');
       if (foundTeam) {
         team = foundTeam;
@@ -1008,7 +1008,7 @@ router.put('/:teamId/assign-track', authenticateToken, async (req, res) => {
 router.get('/:teamId', authenticateToken, async (req, res) => {
   try {
     const team = await Team.findById(req.params.teamId)
-      .populate('eventId', 'name semester year status')
+      .populate('eventId', 'name semester year status contestEnd registrationClose')
       .populate('trackId', 'name description')
       .populate('mentorId', 'fullName email');
 

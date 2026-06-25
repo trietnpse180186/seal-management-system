@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 const GithubRepository = mongoose.model('GithubRepository');
 const Team = mongoose.model('Team');
@@ -9,6 +10,7 @@ const EventRole = mongoose.model('EventRole');
 
 const githubService = require('./githubService');
 const cronService = require('../events/cronService');
+const githubAiQueue = require('./githubAiQueue');
 const { authenticateToken } = require('../auth/authMiddleware');
 
 /**
@@ -273,6 +275,104 @@ router.post('/:id/kick-all', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Kick all collaborators error:', error.message);
     res.status(500).json({ message: 'Server error kicking collaborators.' });
+  }
+});
+
+/**
+ * @route   POST /api/github-repositories/webhook
+ * @desc    Receive GitHub Organization/Repository push webhooks, verify signature, and queue sync task
+ * @access  Public
+ */
+router.post('/webhook', async (req, res) => {
+  const signature = req.headers['x-hub-signature-256'];
+  const githubEvent = req.headers['x-github-event'];
+  const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
+
+  console.log(`[GITHUB WEBHOOK] Received GitHub event: ${githubEvent}`);
+
+  // 1. Verify GitHub event
+  if (githubEvent !== 'push') {
+    // We only care about push events. Return 200 OK so GitHub knows we received it.
+    return res.json({ message: 'Event ignored. Only push events are processed.' });
+  }
+
+  // 2. Verify signature (only if secret is configured on BE)
+  if (webhookSecret) {
+    if (!signature) {
+      console.warn('[GITHUB WEBHOOK] Missing X-Hub-Signature-256 header.');
+      return res.status(401).json({ message: 'Missing signature.' });
+    }
+
+    const rawBody = req.rawBody;
+    if (!rawBody) {
+      console.error('[GITHUB WEBHOOK] Raw body is missing. Check Express rawBody configuration.');
+      return res.status(500).json({ message: 'Internal server error verifying signature.' });
+    }
+
+    const hmac = crypto.createHmac('sha256', webhookSecret);
+    const digest = 'sha256=' + hmac.update(rawBody).digest('hex');
+
+    // Constant-time comparison to prevent timing attacks
+    try {
+      const trusted = Buffer.from(digest, 'utf8');
+      const untrusted = Buffer.from(signature, 'utf8');
+      if (trusted.length !== untrusted.length || !crypto.timingSafeEqual(trusted, untrusted)) {
+        console.warn('[GITHUB WEBHOOK] Invalid signature.');
+        return res.status(401).json({ message: 'Invalid signature.' });
+      }
+    } catch (err) {
+      console.error('[GITHUB WEBHOOK] Signature matching error:', err.message);
+      return res.status(401).json({ message: 'Invalid signature verification process.' });
+    }
+  } else {
+    console.log('[GITHUB WEBHOOK] GITHUB_WEBHOOK_SECRET not configured. Skipping signature verification.');
+  }
+
+  // 3. Process push payload
+  try {
+    const { ref, repository } = req.body;
+    if (!repository || !repository.name || !repository.owner || !repository.owner.login) {
+      return res.status(400).json({ message: 'Invalid payload structure. Repository details missing.' });
+    }
+
+    const repoName = repository.name.toLowerCase();
+    const orgName = repository.owner.login.toLowerCase();
+
+    console.log(`[GITHUB WEBHOOK] Push detected on repo: ${orgName}/${repoName}, ref: ${ref}`);
+
+    // Find repository in database (case-insensitive)
+    const repo = await GithubRepository.findOne({
+      repoName: { $regex: new RegExp(`^${repoName}$`, 'i') },
+      orgName: { $regex: new RegExp(`^${orgName}$`, 'i') },
+      isArchived: false
+    });
+
+    if (!repo) {
+      console.log(`[GITHUB WEBHOOK] Repository ${orgName}/${repoName} not found in database or is archived.`);
+      return res.status(404).json({ message: 'Repository not registered in system.' });
+    }
+
+    // 4. Enqueue or run syncRepo
+    if (githubAiQueue.isQueueAvailable()) {
+      await githubAiQueue.addSyncJob(repo._id.toString());
+      console.log(`[GITHUB WEBHOOK] Enqueued sync job for ${repo.repoName}`);
+      res.json({ message: 'GitHub push event received and enqueued for sync.', repositoryId: repo._id });
+    } else {
+      console.log(`[GITHUB WEBHOOK] Redis queue not available. Running sync asynchronously in background for ${repo.repoName}...`);
+      // Fallback: Run in background asynchronously without blocking the response
+      // Wrap in setTimeout to defer execution and let the HTTP response close immediately
+      setTimeout(async () => {
+        try {
+          await cronService.syncRepo(repo._id);
+        } catch (err) {
+          console.error(`[GITHUB WEBHOOK BACKGROUND ERROR] Sync failed for ${repo.repoName}:`, err.message);
+        }
+      }, 100);
+      res.json({ message: 'GitHub push event received. Synchronizing in background.', repositoryId: repo._id });
+    }
+  } catch (error) {
+    console.error('[GITHUB WEBHOOK ERROR]', error.message);
+    res.status(500).json({ message: 'Server error processing webhook.' });
   }
 });
 

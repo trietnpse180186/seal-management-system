@@ -142,8 +142,8 @@ async function main() {
       await repo.save();
       console.log(`[DB] Updated syncStatus of ${repo.repoName} to 'not_synced'.`);
 
-      // Wait a moment to avoid hitting secondary limits
-      await sleep(1000);
+      // Wait a moment to avoid hitting secondary limits (increased to 4 seconds)
+      await sleep(4000);
 
     } catch (error) {
       console.error(`\x1b[31m[ERROR] Failed to commit to ${repo.repoName}:\x1b[0m`, error.message);

@@ -72,12 +72,26 @@ Dùng để phân tích patch code diff của commit và đưa ra gợi ý chấ
    GEMINI_API_KEY=AIzaSyyour_gemini_api_key_here
    ```
 
-### 2.4 Cấu hình Gửi Email Thực Tế qua Brevo (`EMAIL_` variables)
-Dùng để gửi email lời mời kèm mã xác thực/link kích hoạt thật cho các thành viên:
+### 2.4 Cấu hình Gửi Email Thực Tế (Resend API hoặc Brevo/Standard SMTP)
+Dùng để gửi email lời mời kèm mã xác thực/link kích hoạt thật cho các thành viên. Hệ thống tự động định tuyến thông minh dựa trên định dạng của khóa API:
+
+#### Cách 1: Sử dụng Resend API (Khuyến khích - Tránh bị chặn cổng mạng)
+1. Đăng ký tài khoản tại [Resend.com](https://resend.com/).
+2. Tạo một **API Key** mới (bắt đầu bằng `re_...`).
+3. Cấu hình các biến môi trường sau trên Render:
+   ```env
+   EMAIL_SERVICE_MOCK=false
+   EMAIL_PASS=re_your_resend_api_key_here # API Key của Resend
+   EMAIL_FROM=onboarding@resend.dev # Hoặc email gửi từ domain bạn đã xác thực trên Resend
+   ```
+   > [!NOTE]
+   > Do hệ thống tự động nhận diện nếu `EMAIL_PASS` bắt đầu bằng `re_`, nó sẽ tự động gửi qua Resend HTTP API (Port 443) bảo mật và ổn định, tránh mọi lỗi chặn cổng SMTP truyền thống trên môi trường Render.
+
+#### Cách 2: Sử dụng Brevo SMTP (Hoặc SMTP chuẩn khác)
 1. Đăng ký tài khoản tại [Brevo.com](https://www.brevo.com/).
-2. Vào **SMTP & API** -> Lấy **SMTP Server** (`smtp-relay.brevo.com`), **Port** (`587`), **Login** (ví dụ: `ac6e22001@smtp-brevo.com`).
-3. Tạo một **SMTP Key** mới và copy mã (`xsmtpsib-...`).
-4. Cấu hình biến môi trường:
+2. Vào **SMTP & API** -> Lấy **SMTP Server** (`smtp-relay.brevo.com`), **Port** (`587`), và **Login** (ví dụ: `ac6e22001@smtp-brevo.com`).
+3. Tạo một **SMTP Key** mới (bắt đầu bằng `xsmtpsib-...`).
+4. Cấu hình các biến môi trường sau trên Render:
    ```env
    EMAIL_SERVICE_MOCK=false
    EMAIL_HOST=smtp-relay.brevo.com
@@ -86,6 +100,7 @@ Dùng để gửi email lời mời kèm mã xác thực/link kích hoạt thậ
    EMAIL_PASS=xsmtpsib-your_brevo_smtp_key_here
    EMAIL_FROM="SEAL Hackathon" <email-dang-ky-brevo-cua-ban@gmail.com> # Phải là email đã xác thực trên Brevo
    ```
+
 
 ### 2.5 Cấu hình Đăng Nhập Mạng Xã Hội (OAuth Client IDs)
 Để ứng viên và ban tổ chức có thể đăng nhập bằng tài khoản Google hoặc GitHub thật:

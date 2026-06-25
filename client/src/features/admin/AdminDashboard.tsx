@@ -18,7 +18,8 @@ export default function AdminDashboard() {
     fetchAllLogs();
     const token = localStorage.getItem("token");
     if (token) {
-      const sock = io("http://localhost:5000", { query: { token } });
+      const socketUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+      const sock = io(socketUrl, { query: { token } });
       socketRef.current = sock;
       sock.on("new_event_log", (newLog: any) => {
         setLogs((prev) => [newLog, ...prev]);

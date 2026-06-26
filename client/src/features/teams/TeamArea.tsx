@@ -85,9 +85,6 @@ export default function TeamArea() {
     _setError(msg);
     if (msg) toast.error(msg);
   };
-  const setSuccess = (msg: string) => {
-    if (msg) toast.success(msg);
-  };
 
   const fetchTeamData = async () => {
     try {

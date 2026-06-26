@@ -826,7 +826,7 @@ router.post('/:eventId/distribute-teams', authenticateToken, async (req, res) =>
  * @access  Private
  */
 router.put('/:id', authenticateToken, async (req, res) => {
-  const { name, semester, year, description, bannerUrl, maxTeams, githubOrgName, status, registrationOpen, registrationClose, contestStart, contestEnd, commitSyncInterval } = req.body;
+  const { name, semester, year, description, bannerUrl, maxTeams, githubOrgName, status, registrationOpen, registrationClose, contestStart, contestEnd, commitSyncInterval, mainGoal, durationText, memberLimitText, prizePoolText, phase1Description, phase2Description, phase3Description, rules } = req.body;
   try {
     const event = await Event.findById(req.params.id);
     if (!event) return res.status(404).json({ message: 'Event not found.' });
@@ -971,6 +971,39 @@ router.put('/:id', authenticateToken, async (req, res) => {
       event.githubOrgName = githubOrgName;
       // Auto-provision or link new organization
       await githubService.createOrganization(githubOrgName);
+    }
+
+    if (mainGoal !== undefined) {
+      logDetails.push(`Mục tiêu chính`);
+      event.mainGoal = mainGoal;
+    }
+    if (durationText !== undefined) {
+      logDetails.push(`Thời gian cuộc thi`);
+      event.durationText = durationText;
+    }
+    if (memberLimitText !== undefined) {
+      logDetails.push(`Giới hạn thành viên`);
+      event.memberLimitText = memberLimitText;
+    }
+    if (prizePoolText !== undefined) {
+      logDetails.push(`Quỹ giải thưởng`);
+      event.prizePoolText = prizePoolText;
+    }
+    if (phase1Description !== undefined) {
+      logDetails.push(`Mô tả Giai đoạn 1`);
+      event.phase1Description = phase1Description;
+    }
+    if (phase2Description !== undefined) {
+      logDetails.push(`Mô tả Giai đoạn 2`);
+      event.phase2Description = phase2Description;
+    }
+    if (phase3Description !== undefined) {
+      logDetails.push(`Mô tả Giai đoạn 3`);
+      event.phase3Description = phase3Description;
+    }
+    if (rules !== undefined) {
+      logDetails.push(`Quy định cuộc thi`);
+      event.rules = rules;
     }
 
     let action = 'update_event';

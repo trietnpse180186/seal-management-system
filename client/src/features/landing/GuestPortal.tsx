@@ -266,7 +266,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
               </button>
             ) : (
               <button
-                onClick={() => navigate("/register-team")}
+                onClick={() => navigate("/team-area")}
                 className="btn-primary font-bold px-8 py-3 uppercase tracking-wider flex items-center gap-2"
               >
                 <Users size={18} />
@@ -401,7 +401,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                               if (hasTeam) {
                                 navigate("/team-area");
                               } else {
-                                navigate(`/register-team?eventId=${e._id}`);
+                                navigate(`/team-area?eventId=${e._id}`);
                               }
                             }}
                             className="w-full py-3 border border-cyan-500/30 rounded-xl bg-cyan-500/10 text-cyan-400 text-sm font-bold hover:bg-cyan-500/20 transition-all uppercase tracking-wider text-center cursor-pointer font-mono"
@@ -527,7 +527,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                             if (hasTeam) {
                               navigate("/team-area");
                             } else {
-                              navigate(`/register-team?eventId=${e._id}`);
+                              navigate(`/team-area?eventId=${e._id}`);
                             }
                           }}
                           className="w-full mt-2 py-2 border border-cyan-500/30 rounded-xl bg-cyan-500/10 text-cyan-400 text-xs font-bold hover:bg-cyan-500/20 transition-all uppercase tracking-wider text-center cursor-pointer font-mono"
@@ -598,10 +598,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                   Mục tiêu chính
                 </h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Phát triển các giải pháp sáng tạo để giải quyết bài toán thực
-                  tế và xây dựng hệ thống phần mềm chất lượng. Các đội thi cần
-                  tối ưu mã nguồn, liên kết repository và tối ưu hóa hệ thống
-                  dưới sự hỗ trợ của AI.
+                  {activeEvent?.mainGoal || "Phát triển các giải pháp sáng tạo để giải quyết bài toán thực tế và xây dựng hệ thống phần mềm chất lượng. Các đội thi cần tối ưu mã nguồn, liên kết repository và tối ưu hóa hệ thống dưới sự hỗ trợ của AI."}
                 </p>
               </div>
 
@@ -610,14 +607,16 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                   <div className="text-[9px] text-slate-500 mb-1">
                     THỜI GIAN
                   </div>
-                  <div className="text-sm font-bold text-white">48 GIỜ</div>
+                  <div className="text-sm font-bold text-white">
+                    {activeEvent?.durationText || "48 GIỜ"}
+                  </div>
                 </div>
                 <div className="border border-slate-800 p-3 bg-slate-900/30 rounded-xl">
                   <div className="text-[9px] text-slate-500 mb-1">
                     SỐ THÀNH VIÊN
                   </div>
                   <div className="text-sm font-bold text-white">
-                    2-4 OPERATORS
+                    {activeEvent?.memberLimitText || "2-4 OPERATORS"}
                   </div>
                 </div>
                 <div className="border border-slate-800 p-3 bg-slate-900/30 rounded-xl col-span-2 flex justify-between items-center">
@@ -626,7 +625,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                       QUỸ GIẢI THƯỞNG
                     </div>
                     <div className="text-sm font-bold text-cyan-400">
-                      $50,000 USD
+                      {activeEvent?.prizePoolText || "$50,000 USD"}
                     </div>
                   </div>
                   <DollarSign size={20} className="text-cyan-400/40" />
@@ -667,7 +666,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                   </div>
                 </div>
                 <p className={phase1.descClass}>
-                  Các đội thi thực hiện đăng ký tài khoản, liên kết thành viên nhóm và liên kết repository Github chính thức để chuẩn bị nhận nhiệm vụ.
+                  {activeEvent?.phase1Description || "Các đội thi thực hiện đăng ký tài khoản, liên kết thành viên nhóm và liên kết repository Github chính thức để chuẩn bị nhận nhiệm vụ."}
                 </p>
               </div>
 
@@ -688,7 +687,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                   </div>
                 </div>
                 <p className={phase2.descClass}>
-                  Giai đoạn lập trình cường độ cao. Các đội thực hiện giải quyết yêu cầu dự án, liên tục push commit để AI tự động phân tích và đánh giá chất lượng mã nguồn.
+                  {activeEvent?.phase2Description || "Giai đoạn lập trình cường độ cao. Các đội thực hiện giải quyết yêu cầu dự án, liên tục push commit để AI tự động phân tích và đánh giá chất lượng mã nguồn."}
                 </p>
               </div>
 
@@ -709,7 +708,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                   </div>
                 </div>
                 <p className={phase3.descClass}>
-                  Dừng cổng nộp bài, đóng repository. Các đội thi chuẩn bị báo cáo dự án trước hội đồng giám khảo và nhận kết quả xếp hạng chung cuộc từ hệ thống.
+                  {activeEvent?.phase3Description || "Dừng cổng nộp bài, đóng repository. Các đội thi chuẩn bị báo cáo dự án trước hội đồng giám khảo và nhận kết quả xếp hạng chung cuộc từ hệ thống."}
                 </p>
               </div>
             </div>
@@ -726,37 +725,24 @@ export default function GuestPortal({ user }: GuestPortalProps) {
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-          <div className="p-4 border border-slate-850 hover:border-cyan-500/40 transition-colors bg-slate-900/20 rounded-xl">
-            <Cpu size={24} className="text-cyan-400 mb-3" />
-            <h3 className="text-xs text-white font-bold uppercase tracking-wider mb-2">
-              Mã nguồn tự viết
-            </h3>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              Tất cả các dòng code chính và sản phẩm phải được viết trong thời
-              gian diễn ra cuộc thi. Các thư viện và framework có sẵn được phép
-              sử dụng nếu là mã nguồn mở.
-            </p>
-          </div>
-          <div className="p-4 border border-slate-850 hover:border-cyan-500/40 transition-colors bg-slate-900/20 rounded-xl">
-            <Users size={24} className="text-cyan-400 mb-3" />
-            <h3 className="text-xs text-white font-bold uppercase tracking-wider mb-2">
-              Giới hạn đội thi
-            </h3>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              Mỗi đội phải có từ 2 đến 4 thành viên. Không cho phép tham gia cá
-              nhân hoặc đội thi có số lượng vượt mức quy định.
-            </p>
-          </div>
-          <div className="p-4 border border-slate-850 hover:border-cyan-500/40 transition-colors bg-slate-900/20 rounded-xl">
-            <Shield size={24} className="text-cyan-400 mb-3" />
-            <h3 className="text-xs text-white font-bold uppercase tracking-wider mb-2">
-              Ranh giới Đạo đức
-            </h3>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              Bất kỳ hành vi gian lận hoặc tấn công phá hoại hạ tầng bên ngoài
-              phạm vi quy định sẽ dẫn đến việc truất quyền thi đấu ngay lập tức.
-            </p>
-          </div>
+          {(activeEvent?.rules || [
+            { title: "Mã nguồn tự viết", description: "Tất cả các dòng code chính và sản phẩm phải được viết trong thời gian diễn ra cuộc thi. Các thư viện và framework có sẵn được phép sử dụng nếu là mã nguồn mở." },
+            { title: "Giới hạn đội thi", description: "Mỗi đội phải có từ 2 đến 4 thành viên. Không cho phép tham gia cá nhân hoặc đội thi có số lượng vượt mức quy định." },
+            { title: "Ranh giới Đạo đức", description: "Bất kỳ hành vi gian lận hoặc tấn công phá hoại hạ tầng bên ngoài phạm vi quy định sẽ dẫn đến việc truất quyền thi đấu ngay lập tức." }
+          ]).map((r: any, idx: number) => {
+            const IconComponent = idx === 0 ? Cpu : idx === 1 ? Users : Shield;
+            return (
+              <div key={idx} className="p-4 border border-slate-850 hover:border-cyan-500/40 transition-colors bg-slate-900/20 rounded-xl">
+                <IconComponent size={24} className="text-cyan-400 mb-3" />
+                <h3 className="text-xs text-white font-bold uppercase tracking-wider mb-2">
+                  {r.title}
+                </h3>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  {r.description}
+                </p>
+              </div>
+            );
+          })}
         </div>
       </section>
 
@@ -775,7 +761,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
           </button>
         ) : (
           <button
-            onClick={() => navigate("/register-team")}
+            onClick={() => navigate("/team-area")}
             className="btn-primary font-bold text-sm px-12 py-4 uppercase tracking-widest flex items-center gap-2 group"
           >
             <span>Đăng ký thành lập đội thi</span>

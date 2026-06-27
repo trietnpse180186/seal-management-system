@@ -168,14 +168,14 @@ export default function AdminEvents({
   const [editRules, setEditRules] = useState<any[]>([]);
 
   // Track Schedule States
-  const [selectedTrackForSchedule, setSelectedTrackForSchedule] = useState<any>(null);
+  const [_selectedTrackForSchedule, _setSelectedTrackForSchedule] = useState<any>(null);
   const [trackStartTime, setTrackStartTime] = useState("");
   const [trackEndTime, setTrackEndTime] = useState("");
   const [trackGradingEndTime, setTrackGradingEndTime] = useState("");
 
   // Creation Wizard States
   const [isWizardMode, setIsWizardModeState] = useState(() => sessionStorage.getItem("isWizardMode") === "true");
-  const [wizardStep, setWizardStepState] = useState(() => parseInt(sessionStorage.getItem("wizardStep") || "1"));
+  const [_wizardStep, setWizardStepState] = useState(() => parseInt(sessionStorage.getItem("wizardStep") || "1"));
 
   const setIsWizardMode = (val: boolean) => {
     setIsWizardModeState(val);

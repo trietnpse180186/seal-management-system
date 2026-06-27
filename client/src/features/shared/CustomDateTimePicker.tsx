@@ -6,6 +6,8 @@ interface CustomDateTimePickerProps {
   onChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  minDate?: string;
+  maxDate?: string;
 }
 
 const MONTHS = [
@@ -25,23 +27,6 @@ const MONTHS = [
 
 const WEEKDAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 
-const validate = (date: Date | null, hr12: number, min: number, ampm: "AM" | "PM"): string => {
-  if (!date) return "";
-  const newDate = new Date(date);
-  let hr24 = hr12 % 12;
-  if (ampm === "PM") {
-    hr24 += 12;
-  }
-  newDate.setHours(hr24, min, 0, 0);
-
-  const now = new Date();
-  now.setSeconds(0, 0);
-  now.setMilliseconds(0);
-  if (newDate < now) {
-    return "Không chọn thời gian quá khứ";
-  }
-  return "";
-};
 
 const getCombinedDate = (date: Date | null, hr12: number, min: number, ampm: "AM" | "PM"): Date | null => {
   if (!date) return null;
@@ -59,6 +44,8 @@ export default function CustomDateTimePicker({
   onChange,
   placeholder = "Chọn thời gian...",
   disabled = false,
+  minDate,
+  maxDate,
 }: CustomDateTimePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -99,16 +86,128 @@ export default function CustomDateTimePicker({
       }
     } else {
       setSelectedDate(null);
-      const now = new Date();
-      let hr = now.getHours();
+      let defaultDate = new Date();
+      if (minDate) {
+        const parsedMin = new Date(minDate);
+        if (!isNaN(parsedMin.getTime()) && parsedMin > defaultDate) {
+          defaultDate = parsedMin;
+        }
+      }
+      setCurrentMonth(new Date(defaultDate.getFullYear(), defaultDate.getMonth(), 1));
+      
+      let hr = defaultDate.getHours();
       const ampmVal = hr >= 12 ? "PM" : "AM";
       setSelectedAmpm(ampmVal);
       hr = hr % 12;
       setSelectedHour(hr === 0 ? 12 : hr);
-      setSelectedMinute(now.getMinutes());
+      setSelectedMinute(defaultDate.getMinutes());
       setTimeError("");
     }
-  }, [value, isOpen]);
+  }, [value, isOpen, minDate, maxDate]);
+
+  // Helper to check if a specific hour is disabled under a given AM/PM
+  const isHourDisabled = (hr: number, ap: "AM" | "PM" = selectedAmpm) => {
+    if (!selectedDate) return false;
+    let hr24 = hr % 12;
+    if (ap === "PM") hr24 += 12;
+    const dateToCheck = new Date(selectedDate);
+    if (minDate) {
+      const minD = new Date(minDate);
+      dateToCheck.setHours(hr24, 59, 59, 999);
+      if (dateToCheck <= minD) return true;
+    }
+    if (maxDate) {
+      const maxD = new Date(maxDate);
+      dateToCheck.setHours(hr24, 0, 0, 0);
+      if (dateToCheck > maxD) return true;
+    }
+    const now = new Date();
+    dateToCheck.setHours(hr24, 59, 59, 999);
+    if (dateToCheck < now) return true;
+    return false;
+  };
+
+  // Helper to check if a specific minute is disabled under a given hour and AM/PM
+  const isMinuteDisabled = (min: number, h: number = selectedHour, ap: "AM" | "PM" = selectedAmpm) => {
+    if (!selectedDate) return false;
+    let hr24 = h % 12;
+    if (ap === "PM") hr24 += 12;
+    const dateToCheck = new Date(selectedDate);
+    dateToCheck.setHours(hr24, min, 0, 0);
+    if (minDate) {
+      const minD = new Date(minDate);
+      if (dateToCheck <= minD) return true;
+    }
+    if (maxDate) {
+      const maxD = new Date(maxDate);
+      if (dateToCheck > maxD) return true;
+    }
+    const now = new Date();
+    if (dateToCheck < now) return true;
+    return false;
+  };
+
+  // Helper to check if AM/PM is disabled
+  const isAmpmDisabled = (ap: "AM" | "PM") => {
+    if (!selectedDate) return false;
+
+    const checkDisabled = (apVal: "AM" | "PM") => {
+      const dateToCheck = new Date(selectedDate);
+      if (apVal === "AM") {
+        if (minDate) {
+          const minD = new Date(minDate);
+          dateToCheck.setHours(11, 59, 59, 999);
+          if (dateToCheck <= minD) return true;
+        }
+        const now = new Date();
+        dateToCheck.setHours(11, 59, 59, 999);
+        if (dateToCheck < now) return true;
+      } else {
+        if (maxDate) {
+          const maxD = new Date(maxDate);
+          dateToCheck.setHours(12, 0, 0, 0);
+          if (dateToCheck > maxD) return true;
+        }
+      }
+      return false;
+    };
+
+    const amDisabled = checkDisabled("AM");
+    const pmDisabled = checkDisabled("PM");
+
+    if (amDisabled && pmDisabled) {
+      // If both are disabled, keep both enabled to avoid infinite loop
+      return false;
+    }
+
+    return ap === "AM" ? amDisabled : pmDisabled;
+  };
+
+  // Time clamping effect to ensure selected hour/min/ampm are always valid
+  useEffect(() => {
+    if (!selectedDate) return;
+
+    let currentAmpm = selectedAmpm;
+    if (isAmpmDisabled(currentAmpm)) {
+      currentAmpm = currentAmpm === "AM" ? "PM" : "AM";
+    }
+
+    let currentHour = selectedHour;
+    if (isHourDisabled(currentHour, currentAmpm)) {
+      const validHr = hoursArray.find((h) => !isHourDisabled(h, currentAmpm));
+      if (validHr) currentHour = validHr;
+    }
+
+    let currentMin = selectedMinute;
+    if (isMinuteDisabled(currentMin, currentHour, currentAmpm)) {
+      const validMin = minutesArray.find((m) => !isMinuteDisabled(m, currentHour, currentAmpm));
+      if (validMin !== undefined) currentMin = validMin;
+    }
+
+    if (currentAmpm !== selectedAmpm) setSelectedAmpm(currentAmpm);
+    if (currentHour !== selectedHour) setSelectedHour(currentHour);
+    if (currentMin !== selectedMinute) setSelectedMinute(currentMin);
+  }, [selectedDate, minDate, maxDate, selectedAmpm, selectedHour, selectedMinute]);
 
   // Click outside listener
   useEffect(() => {
@@ -141,8 +240,38 @@ export default function CustomDateTimePicker({
     const hr12 = hr % 12 === 0 ? 12 : hr % 12;
     const hrStr = String(hr12).padStart(2, "0");
     const minStr = String(date.getMinutes()).padStart(2, "0");
-    
     return `${m}/${d}/${y} ${hrStr}:${minStr} ${ampmStr}`;
+  };
+
+  const validate = (date: Date | null, hr12: number, min: number, ampm: "AM" | "PM"): string => {
+    if (!date) return "";
+    const newDate = new Date(date);
+    let hr24 = hr12 % 12;
+    if (ampm === "PM") {
+      hr24 += 12;
+    }
+    newDate.setHours(hr24, min, 0, 0);
+
+    const now = new Date();
+    if (newDate < now) {
+      return "Không chọn thời gian quá khứ";
+    }
+
+    if (minDate) {
+      const minD = new Date(minDate);
+      if (newDate <= minD) {
+        return `Thời gian phải sau ${displayFormat(minD)}`;
+      }
+    }
+
+    if (maxDate) {
+      const maxD = new Date(maxDate);
+      if (newDate > maxD) {
+        return `Thời gian phải trước hoặc bằng ${displayFormat(maxD)}`;
+      }
+    }
+
+    return "";
   };
 
   const handleSelectDay = (date: Date) => {
@@ -281,12 +410,24 @@ export default function CustomDateTimePicker({
     );
   };
 
-  const isPastDay = (d: Date) => {
+  const isDateDisabled = (d: Date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const checkDate = new Date(d);
     checkDate.setHours(0, 0, 0, 0);
-    return checkDate < today;
+    if (checkDate < today) return true;
+
+    if (minDate) {
+      const minD = new Date(minDate);
+      minD.setHours(0, 0, 0, 0);
+      if (checkDate < minD) return true;
+    }
+    if (maxDate) {
+      const maxD = new Date(maxDate);
+      maxD.setHours(23, 59, 59, 999);
+      if (checkDate > maxD) return true;
+    }
+    return false;
   };
 
   const hoursArray = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -349,7 +490,7 @@ export default function CustomDateTimePicker({
               {cells.map((cell, idx) => {
                 const isSelected = selectedDate ? isSameDay(cell.date, selectedDate) : false;
                 const isToday = isSameDay(cell.date, new Date());
-                const isDisabled = isPastDay(cell.date);
+                const isDisabled = isDateDisabled(cell.date);
                 
                 return (
                   <button
@@ -407,15 +548,19 @@ export default function CustomDateTimePicker({
               <div className="flex-1 flex flex-col overflow-y-auto scrollbar-none pr-1">
                 {hoursArray.map((hr) => {
                   const active = selectedHour === hr;
+                  const disabledOption = isHourDisabled(hr);
                   return (
                     <button
                       key={hr}
                       type="button"
+                      disabled={disabledOption}
                       onClick={() => handleSelectHour(hr)}
-                      className={`w-full py-1.5 mb-1 rounded-lg text-center text-xs font-mono font-semibold transition-all cursor-pointer ${
-                        active
-                          ? "bg-cyan-500 text-slate-950 font-bold"
-                          : "text-slate-400 hover:bg-slate-900 hover:text-white"
+                      className={`w-full py-1.5 mb-1 rounded-lg text-center text-xs font-mono font-semibold transition-all ${
+                        disabledOption
+                          ? "text-slate-800 opacity-20 cursor-not-allowed"
+                          : active
+                          ? "bg-cyan-500 text-slate-950 font-bold cursor-pointer"
+                          : "text-slate-400 hover:bg-slate-900 hover:text-white cursor-pointer"
                       }`}
                     >
                       {String(hr).padStart(2, "0")}
@@ -428,15 +573,19 @@ export default function CustomDateTimePicker({
               <div className="flex-1 flex flex-col overflow-y-auto scrollbar-none pr-1">
                 {minutesArray.map((min) => {
                   const active = selectedMinute === min;
+                  const disabledOption = isMinuteDisabled(min);
                   return (
                     <button
                       key={min}
                       type="button"
+                      disabled={disabledOption}
                       onClick={() => handleSelectMinute(min)}
-                      className={`w-full py-1.5 mb-1 rounded-lg text-center text-xs font-mono font-semibold transition-all cursor-pointer ${
-                        active
-                          ? "bg-cyan-500 text-slate-950 font-bold"
-                          : "text-slate-400 hover:bg-slate-900 hover:text-white"
+                      className={`w-full py-1.5 mb-1 rounded-lg text-center text-xs font-mono font-semibold transition-all ${
+                        disabledOption
+                          ? "text-slate-800 opacity-20 cursor-not-allowed"
+                          : active
+                          ? "bg-cyan-500 text-slate-950 font-bold cursor-pointer"
+                          : "text-slate-400 hover:bg-slate-900 hover:text-white cursor-pointer"
                       }`}
                     >
                       {String(min).padStart(2, "0")}
@@ -449,15 +598,19 @@ export default function CustomDateTimePicker({
               <div className="w-[50px] flex flex-col justify-start">
                 {(["AM", "PM"] as const).map((ap) => {
                   const active = selectedAmpm === ap;
+                  const disabledOption = isAmpmDisabled(ap);
                   return (
                     <button
                       key={ap}
                       type="button"
+                      disabled={disabledOption}
                       onClick={() => handleSelectAmpm(ap)}
-                      className={`w-full py-2 mb-1.5 rounded-lg text-center text-xs font-mono font-bold transition-all cursor-pointer ${
-                        active
-                          ? "bg-cyan-500 text-slate-950 font-bold"
-                          : "text-slate-400 hover:bg-slate-900 hover:text-white"
+                      className={`w-full py-2 mb-1.5 rounded-lg text-center text-xs font-mono font-bold transition-all ${
+                        disabledOption
+                          ? "text-slate-800 opacity-20 cursor-not-allowed"
+                          : active
+                          ? "bg-cyan-500 text-slate-950 font-bold cursor-pointer"
+                          : "text-slate-400 hover:bg-slate-900 hover:text-white cursor-pointer"
                       }`}
                     >
                       {ap}

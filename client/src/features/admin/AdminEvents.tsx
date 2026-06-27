@@ -11,6 +11,7 @@ import {
   X,
   User,
   Activity,
+  ChevronDown,
 } from "lucide-react";
 import TeamsTab from "./TeamsTab";
 import TracksTab from "./TracksTab";
@@ -20,6 +21,7 @@ import { toast } from "sonner";
 import { useConfirm } from "../shared/ConfirmDialog";
 import CustomSelect from "../shared/CustomSelect";
 import CustomDateTimePicker from "../shared/CustomDateTimePicker";
+import CustomDateRangePicker from "../shared/CustomDateRangePicker";
 
 const Github = ({
   size = 20,
@@ -113,11 +115,28 @@ export default function AdminEvents({
   };
 
   // Tab management state
-  const [activeTab, setActiveTab] = useState<
+  const [activeTab, setActiveTabState] = useState<
     "admin" | "events" | "teams" | "rounds" | "tracks" | "github" | "logs" | "schedule" | "portal"
-  >(defaultTab);
+  >(() => (sessionStorage.getItem("activeTab") as any) || defaultTab);
+
+  const setActiveTab = (tab: "admin" | "events" | "teams" | "rounds" | "tracks" | "github" | "logs" | "schedule" | "portal") => {
+    setActiveTabState(tab);
+    sessionStorage.setItem("activeTab", tab);
+  };
   const [eventLogs, setEventLogs] = useState<any[]>([]);
   const [selectedLog, setSelectedLog] = useState<any | null>(null);
+  const [isEditingEventTitle, setIsEditingEventTitle] = useState(false);
+  const eventTitleRef = React.useRef<HTMLDivElement | null>(null);
+  React.useEffect(() => {
+    if (!isEditingEventTitle) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (eventTitleRef.current && !eventTitleRef.current.contains(e.target as Node)) {
+        setIsEditingEventTitle(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isEditingEventTitle]);
   const socketRef = React.useRef<Socket | null>(null);
   // Sidebar collapse state (for premium slide effect)
   // const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -135,6 +154,9 @@ export default function AdminEvents({
   const [editEventContestEnd, setEditEventContestEnd] = useState("");
   const [editCommitSyncInterval, setEditCommitSyncInterval] = useState("30");
 
+  // Round Schedule States
+  const [selectedRoundForSchedule, setSelectedRoundForSchedule] = useState<any>(null);
+
   // Portal Content States
   const [editMainGoal, setEditMainGoal] = useState("");
   const [editDurationText, setEditDurationText] = useState("");
@@ -146,10 +168,32 @@ export default function AdminEvents({
   const [editRules, setEditRules] = useState<any[]>([]);
 
   // Track Schedule States
-  const [selectedTrackForSchedule, setSelectedTrackForSchedule] = useState<any>(null);
+  const [_selectedTrackForSchedule, _setSelectedTrackForSchedule] = useState<any>(null);
   const [trackStartTime, setTrackStartTime] = useState("");
   const [trackEndTime, setTrackEndTime] = useState("");
   const [trackGradingEndTime, setTrackGradingEndTime] = useState("");
+
+  // Creation Wizard States
+  const [isWizardMode, setIsWizardModeState] = useState(() => sessionStorage.getItem("isWizardMode") === "true");
+  const [_wizardStep, setWizardStepState] = useState(() => parseInt(sessionStorage.getItem("wizardStep") || "1"));
+
+  const setIsWizardMode = (val: boolean) => {
+    setIsWizardModeState(val);
+    if (val) {
+      sessionStorage.setItem("isWizardMode", "true");
+    } else {
+      sessionStorage.removeItem("isWizardMode");
+      sessionStorage.removeItem("wizardStep");
+    }
+  };
+
+  const setWizardStep = (val: number | ((prev: number) => number)) => {
+    setWizardStepState((prev) => {
+      const next = typeof val === "function" ? val(prev) : val;
+      sessionStorage.setItem("wizardStep", String(next));
+      return next;
+    });
+  };
 
   // Rubric Edit Form States
   const [selectedRubricRoundId, setSelectedRubricRoundId] = useState("");
@@ -201,12 +245,20 @@ export default function AdminEvents({
     setEditCommitSyncInterval(String(eventObj.commitSyncInterval || 30));
   };
 
-  const handleSelectTrackForSchedule = (trackObj: any) => {
-    setSelectedTrackForSchedule(trackObj);
-    if (trackObj) {
-      setTrackStartTime(formatForDateTimeLocal(trackObj.startTime));
-      setTrackEndTime(formatForDateTimeLocal(trackObj.endTime));
-      setTrackGradingEndTime(formatForDateTimeLocal(trackObj.gradingEndTime));
+  const handleSelectRoundForSchedule = (roundObj: any) => {
+    setSelectedRoundForSchedule(roundObj);
+    if (roundObj) {
+      const roundTracks = tracks.filter((t: any) => t.roundId === roundObj._id);
+      if (roundTracks.length > 0) {
+        const firstTrack = roundTracks[0];
+        setTrackStartTime(formatForDateTimeLocal(firstTrack.startTime));
+        setTrackEndTime(formatForDateTimeLocal(firstTrack.endTime));
+        setTrackGradingEndTime(formatForDateTimeLocal(firstTrack.gradingEndTime));
+      } else {
+        setTrackStartTime("");
+        setTrackEndTime("");
+        setTrackGradingEndTime("");
+      }
     } else {
       setTrackStartTime("");
       setTrackEndTime("");
@@ -217,6 +269,25 @@ export default function AdminEvents({
   const handleSaveEventSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEvent) return;
+
+    const regOpen = editEventRegOpen ? new Date(editEventRegOpen) : null;
+    const regClose = editEventRegClose ? new Date(editEventRegClose) : null;
+    const contestStart = editEventContestStart ? new Date(editEventContestStart) : null;
+    const contestEnd = editEventContestEnd ? new Date(editEventContestEnd) : null;
+
+    if (regOpen && regClose && regOpen > regClose) {
+      toast.error("Thời gian mở đăng ký không thể sau thời gian đóng đăng ký!");
+      return;
+    }
+    if (regClose && contestStart && regClose > contestStart) {
+      toast.error("Thời gian đóng đăng ký phải diễn ra trước khi thời gian thi đấu bắt đầu!");
+      return;
+    }
+    if (contestStart && contestEnd && contestStart > contestEnd) {
+      toast.error("Thời gian bắt đầu thi đấu không thể sau thời gian kết thúc cuộc thi!");
+      return;
+    }
+
     setLoading(true);
     setMessage({ type: "", text: "" });
 
@@ -245,32 +316,81 @@ export default function AdminEvents({
     }
   };
 
-  const handleSaveTrackSchedule = async (e: React.FormEvent) => {
+  const handleSaveRoundSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedEvent || !selectedTrackForSchedule) return;
+    if (!selectedEvent || !selectedRoundForSchedule) return;
+
+    const eventStart = editEventContestStart ? new Date(editEventContestStart) : null;
+    const eventEnd = editEventContestEnd ? new Date(editEventContestEnd) : null;
+
+    if (!eventStart || !eventEnd) {
+      toast.error("Vui lòng cấu hình thời gian thi đấu của cuộc thi trước!");
+      return;
+    }
+
+    const rStart = trackStartTime ? new Date(trackStartTime) : null;
+    const rEnd = trackEndTime ? new Date(trackEndTime) : null;
+    const rGrading = trackGradingEndTime ? new Date(trackGradingEndTime) : null;
+
+    if (rStart && rEnd && rStart > rEnd) {
+      toast.error("Thời gian bắt đầu làm bài không thể sau hạn nộp bài!");
+      return;
+    }
+    if (rStart && rStart < eventStart) {
+      toast.error("Thời gian bắt đầu làm bài của vòng thi không thể trước thời gian bắt đầu thi đấu của cuộc thi!");
+      return;
+    }
+    if (rEnd && rEnd > eventEnd) {
+      toast.error("Hạn nộp bài của vòng thi không thể sau thời gian kết thúc cuộc thi!");
+      return;
+    }
+    if (rEnd && rGrading && rEnd >= rGrading) {
+      toast.error("Hạn nộp bài của vòng thi phải diễn ra trước thời gian kết thúc chấm bài!");
+      return;
+    }
+    if (rGrading && eventEnd && rGrading > eventEnd) {
+      toast.error("Thời gian chấm bài kết thúc không thể sau thời gian kết thúc cuộc thi!");
+      return;
+    }
+
+    const roundTracks = tracks.filter((t: any) => t.roundId === selectedRoundForSchedule._id);
+    if (roundTracks.length === 0) {
+      toast.error("Vòng thi này chưa có bảng đấu nào. Vui lòng tạo bảng đấu trước khi lưu lịch trình!");
+      return;
+    }
+
     setLoading(true);
     setMessage({ type: "", text: "" });
 
     try {
-      const res = await axios.put(
-        `http://localhost:5000/api/events/${selectedEvent._id}/tracks/${selectedTrackForSchedule._id}`,
-        {
-          startTime: trackStartTime ? new Date(trackStartTime).toISOString() : null,
-          endTime: trackEndTime ? new Date(trackEndTime).toISOString() : null,
-          gradingEndTime: trackGradingEndTime ? new Date(trackGradingEndTime).toISOString() : null,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
+      const updatePromises = roundTracks.map((track: any) =>
+        axios.put(
+          `http://localhost:5000/api/events/${selectedEvent._id}/tracks/${track._id}`,
+          {
+            startTime: trackStartTime ? new Date(trackStartTime).toISOString() : null,
+            endTime: trackEndTime ? new Date(trackEndTime).toISOString() : null,
+            gradingEndTime: trackGradingEndTime ? new Date(trackGradingEndTime).toISOString() : null,
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
       );
-      
-      // Update track in tracks list
-      setTracks(prev => prev.map(t => t._id === res.data._id ? res.data : t));
-      setSelectedTrackForSchedule(res.data);
-      toast.success("Đã cập nhật lịch trình bảng đấu thành công!");
-      setMessage({ type: "success", text: "Đã cập nhật lịch trình bảng đấu thành công!" });
+
+      const results = await Promise.all(updatePromises);
+
+      setTracks((prev) => {
+        let updated = [...prev];
+        results.forEach((res) => {
+          updated = updated.map((t) => (t._id === res.data._id ? res.data : t));
+        });
+        return updated;
+      });
+
+      toast.success("Đã cập nhật lịch trình vòng thi thành công!");
+      setMessage({ type: "success", text: "Đã cập nhật lịch trình vòng thi thành công!" });
     } catch (err: any) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Lỗi khi cập nhật lịch trình bảng đấu.");
-      setMessage({ type: "error", text: err.response?.data?.message || "Lỗi khi cập nhật lịch trình bảng đấu." });
+      toast.error(err.response?.data?.message || "Lỗi khi cập nhật lịch trình vòng thi.");
+      setMessage({ type: "error", text: err.response?.data?.message || "Lỗi khi cập nhật lịch trình vòng thi." });
     } finally {
       setLoading(false);
     }
@@ -288,7 +408,9 @@ export default function AdminEvents({
   }, [selectedEvent]);
 
   useEffect(() => {
-    setActiveTab(defaultTab);
+    if (!sessionStorage.getItem("activeTab")) {
+      setActiveTab(defaultTab);
+    }
   }, [defaultTab]);
 
   useEffect(() => {
@@ -313,6 +435,10 @@ export default function AdminEvents({
 
   useEffect(() => {
     if (eventIdParam) {
+      const creatingId = sessionStorage.getItem("creatingEventId");
+      if (!creatingId || eventIdParam !== creatingId) {
+        setIsWizardMode(false);
+      }
       const foundEvent = events.find((e) => e._id === eventIdParam);
       if (foundEvent) {
         setSelectedEvent(foundEvent);
@@ -323,11 +449,17 @@ export default function AdminEvents({
         setEditEventMaxTeams(String(foundEvent.maxTeams || 10));
         setEditEventGithubOrgName(foundEvent.githubOrgName || "");
         populateEventSchedule(foundEvent);
-      } else if (events.length > 0) {
-        setSelectedEvent(null);
       }
-    } else {
-      setSelectedEvent(null);
+    } else if (!isWizardMode && events.length > 0 && !selectedEvent) {
+      const defaultEvent = events[0];
+      setSelectedEvent(defaultEvent);
+      setEditEventName(defaultEvent.name || "");
+      setEditEventSemester(defaultEvent.semester || "Spring");
+      setEditEventYear(String(defaultEvent.year || 2026));
+      setEditEventDesc(defaultEvent.description || "");
+      setEditEventMaxTeams(String(defaultEvent.maxTeams || 10));
+      setEditEventGithubOrgName(defaultEvent.githubOrgName || "");
+      populateEventSchedule(defaultEvent);
     }
   }, [eventIdParam, events]);
 
@@ -386,7 +518,9 @@ export default function AdminEvents({
         `http://localhost:5000/api/events/${selectedEvent._id}`,
       );
       setTracks(res.data.tracks || []);
-      setRounds(res.data.rounds || []);
+      const fetchedRounds = res.data.rounds || [];
+      setRounds(fetchedRounds);
+      setRoundOrder(String(fetchedRounds.length + 1));
 
       if (res.data.tracks && res.data.tracks.length > 0 && !selectedTrack) {
         setSelectedTrack(res.data.tracks[0]);
@@ -399,14 +533,14 @@ export default function AdminEvents({
         populateEventSchedule(res.data.event);
       }
 
-      if (res.data.tracks && res.data.tracks.length > 0) {
-        if (selectedTrackForSchedule) {
-          const updatedTrack = res.data.tracks.find((t: any) => t._id === selectedTrackForSchedule._id);
-          if (updatedTrack) {
-            setSelectedTrackForSchedule(updatedTrack);
+      if (res.data.rounds && res.data.rounds.length > 0) {
+        if (selectedRoundForSchedule) {
+          const updatedRound = res.data.rounds.find((r: any) => r._id === selectedRoundForSchedule._id);
+          if (updatedRound) {
+            setSelectedRoundForSchedule(updatedRound);
           }
         } else {
-          handleSelectTrackForSchedule(res.data.tracks[0]);
+          handleSelectRoundForSchedule(res.data.rounds[0]);
         }
       }
 
@@ -602,6 +736,8 @@ export default function AdminEvents({
   };
 
   const handleSelectEvent = (eventObj: any) => {
+    sessionStorage.removeItem("creatingEventId");
+    setIsWizardMode(false);
     setSelectedEvent(eventObj);
     setSelectedTrack(null);
 
@@ -667,7 +803,16 @@ export default function AdminEvents({
       );
 
       const newEvent = res.data.event;
+      sessionStorage.setItem("creatingEventId", newEvent._id);
       setSelectedEvent(newEvent);
+      setEditEventName(newEvent.name || "");
+      setEditEventSemester(newEvent.semester || "Spring");
+      setEditEventYear(String(newEvent.year || 2026));
+      setEditEventDesc(newEvent.description || "");
+      setEditEventMaxTeams(String(newEvent.maxTeams || 10));
+      setEditEventGithubOrgName(newEvent.githubOrgName || "");
+      populateEventSchedule(newEvent);
+      setSearchParams({ eventId: newEvent._id });
       setTracks([]);
       setRounds([]);
       setSelectedTrack(null);
@@ -681,7 +826,9 @@ export default function AdminEvents({
       });
 
       fetchEvents();
-      setActiveTab("admin"); // Go to admin tab to view it
+      setIsWizardMode(true);
+      setWizardStep(2);
+      setActiveTab("rounds");
     } catch (err: any) {
       setMessage({
         type: "error",
@@ -726,6 +873,10 @@ export default function AdminEvents({
 
   const handleUpdateEventStatus = async (newStatus: string) => {
     if (!selectedEvent) return;
+    if (newStatus !== "cancelled" && newStatus !== selectedEvent.status) {
+      toast.error("Trạng thái cuộc thi được tự động chuyển đổi theo thời gian. Bạn chỉ có thể chuyển thủ công sang Hủy (Cancelled)!");
+      return;
+    }
     setMessage({ type: "", text: "" });
     setLoading(true);
 
@@ -1013,54 +1164,55 @@ export default function AdminEvents({
 
       const newRound = roundRes.data;
 
-      // 2. Setup Rubric (Create empty or Clone) - unconditionally linked to Round
-      if (rubricTypeOption === "existing" && selectedSourceRubricId) {
-        // Clone rubric API
-        await axios.post(
-          "http://localhost:5000/api/rubrics/clone",
-          {
-            fromRubricId: selectedSourceRubricId,
-            eventId: selectedEvent._id,
-            roundId: newRound._id,
-            name: `Rubric ${newRound.name}`,
-          },
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-        setMessage({
-          type: "success",
-          text: `Tạo vòng đấu "${newRound.name}" và sao chép Rubric thành công!`,
-        });
-      } else {
-        // Create empty Rubric
-        await axios.post(
-          "http://localhost:5000/api/rubrics",
-          {
-            eventId: selectedEvent._id,
-            roundId: newRound._id,
-            name: rubricName || `Rubric ${newRound.name}`,
-          },
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-        setMessage({
-          type: "success",
-          text: `Tạo vòng đấu "${newRound.name}" và khởi tạo Rubric trống thành công!`,
-        });
+      // 2. Setup Rubric (Create empty or Clone)
+      let rubricCreated = false;
+      try {
+        if (rubricTypeOption === "existing" && selectedSourceRubricId) {
+          await axios.post(
+            "http://localhost:5000/api/rubrics/clone",
+            {
+              fromRubricId: selectedSourceRubricId,
+              eventId: selectedEvent._id,
+              roundId: newRound._id,
+              name: `Rubric ${newRound.name}`,
+            },
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
+          rubricCreated = true;
+        } else {
+          await axios.post(
+            "http://localhost:5000/api/rubrics",
+            {
+              eventId: selectedEvent._id,
+              roundId: newRound._id,
+              name: rubricName || `Rubric ${newRound.name}`,
+            },
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
+          rubricCreated = true;
+        }
+      } catch (rubricErr: any) {
+        console.error("Rubric creation error:", rubricErr);
+        toast.error(`Cảnh báo: Tạo Rubric thất bại - ${rubricErr.response?.data?.message || rubricErr.message}`);
       }
 
+      setMessage({
+        type: "success",
+        text: rubricCreated 
+          ? `Tạo vòng đấu "${newRound.name}" và Rubric thành công!`
+          : `Tạo vòng đấu "${newRound.name}" thành công (chưa tạo được Rubric).`,
+      });
+
       setRoundName("");
-      setRoundOrder("1");
       setRoundLimit("3");
       setRoundDeadline("");
       setRubricName("");
       setSelectedSourceRubricId("");
 
-      // Refresh event details
+      // Refresh event details and select new round
       await fetchEventDetails();
-
-      // Auto select the new round to view rubric
       setSelectedRubricRoundId(newRound._id);
-
-      // Re-fetch existing rubrics list
+      await fetchRoundsAndRubric(newRound._id);
       fetchExistingRubrics();
     } catch (err: any) {
       setMessage({
@@ -1072,15 +1224,16 @@ export default function AdminEvents({
     }
   };
 
-  const fetchRoundsAndRubric = async () => {
-    if (!selectedRubricRoundId) {
+  const fetchRoundsAndRubric = async (targetRoundId?: string) => {
+    const roundToFetch = targetRoundId || selectedRubricRoundId;
+    if (!roundToFetch) {
       setRubric(null);
       setCriteria([]);
       return;
     }
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/rubrics/round/${selectedRubricRoundId}`,
+        `http://localhost:5000/api/rubrics/round/${roundToFetch}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -1114,30 +1267,27 @@ export default function AdminEvents({
       );
       if (associatedRound) {
         setSelectedRubricRoundId(associatedRound._id);
-      } else {
-        setSelectedRubricRoundId("");
-        setRubric(null);
-        setCriteria([]);
       }
-    } else {
-      setSelectedRubricRoundId("");
-      setRubric(null);
-      setCriteria([]);
+    } else if (rounds.length > 0) {
+      const exists = rounds.some((r: any) => r._id === selectedRubricRoundId);
+      if (!exists) {
+        setSelectedRubricRoundId(rounds[rounds.length - 1]._id);
+      }
     }
   }, [selectedTrack, rounds]);
 
   const handleCreateRubric = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedEvent || !selectedTrack || !selectedRubricRoundId) return;
+    if (!selectedEvent || !selectedRubricRoundId) return;
 
     try {
       await axios.post(
         "http://localhost:5000/api/rubrics",
         {
           eventId: selectedEvent._id,
-          trackId: selectedTrack._id,
+          trackId: selectedTrack ? selectedTrack._id : undefined,
           roundId: selectedRubricRoundId,
-          name: rubricName,
+          name: rubricName || "Rubric Đánh giá",
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -1615,54 +1765,52 @@ export default function AdminEvents({
 
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
-      {/* Page Title */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 relative z-30">
-        <div>
-          <h1 className="text-3xl font-extrabold text-white">
-            <span className="text-cyan-400 text-cyan-glow font-mono-tech">THIẾT LẬP SỰ KIỆN</span>
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Cấu hình cuộc thi, bảng đấu, vòng đấu, rubric chấm điểm và phân
-            quyền ban tổ chức.
-          </p>
-        </div>
-        {/* Quick select event */}
-        {events.length > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 font-mono">
-              Xem nhanh cuộc thi:
-            </span>
-            <CustomSelect
-              value={selectedEvent?._id || ""}
-              onChange={(val) => {
-                const ev = events.find((event) => event._id === val);
-                if (ev) handleSelectEvent(ev);
-              }}
-              options={events.map((e: any) => ({
-                value: e._id,
-                label: `${e.name} (${e.semester} ${e.year})`,
-              }))}
-              placeholder="-- Chọn cuộc thi --"
-              className="w-56 font-bold"
-            />
-          </div>
-        )}
-      </div>
-
-
+    <div className="max-w-7xl mx-auto px-4 pt-4 pb-8 space-y-6">
       {/* EVENT HEADER PANEL (if selected) */}
       {selectedEvent && (
-        <div className="glass p-6 rounded-2xl relative bg-gradient-to-r from-cyan-950/20 to-slate-900/20 z-10">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-2xl"></div>
+        <div className="glass p-6 rounded-2xl relative bg-gradient-to-r from-cyan-950/20 to-slate-900/20 z-30">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none"></div>
           <div className="flex justify-between items-start flex-col md:flex-row gap-4">
-            <div>
+            <div className="relative" ref={eventTitleRef}>
               <span className="text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded font-mono font-bold uppercase tracking-wider">
                 [DETAIL_BOARD]
               </span>
-              <h1 className="text-2xl font-black text-white mt-2 font-mono uppercase tracking-tight">
-                {selectedEvent.name}
+              <h1
+                className="text-2xl font-black text-white mt-2 font-mono uppercase tracking-tight flex items-center gap-2 group cursor-pointer select-none"
+                onClick={() => events.length > 1 && setIsEditingEventTitle((v) => !v)}
+              >
+                <span>{selectedEvent.name}</span>
+                {events.length > 1 && (
+                  <ChevronDown
+                    size={18}
+                    className={`text-cyan-400/50 group-hover:text-cyan-400 transition-all mt-0.5 shrink-0 ${isEditingEventTitle ? "rotate-180 text-cyan-400" : ""}`}
+                  />
+                )}
               </h1>
+              {/* Floating event picker */}
+              {isEditingEventTitle && events.length > 1 && (
+                <div
+                  className="absolute left-0 top-full mt-2 z-50 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl shadow-black/50 overflow-y-auto max-h-60 min-w-[280px] scrollbar-thin scrollbar-thumb-slate-800"
+                >
+                  {events.map((e: any) => (
+                    <button
+                      key={e._id}
+                      onClick={() => {
+                        handleSelectEvent(e);
+                        setIsEditingEventTitle(false);
+                      }}
+                      className={`w-full text-left px-4 py-2.5 text-sm font-mono transition-colors cursor-pointer
+                        ${e._id === selectedEvent._id
+                          ? "bg-cyan-500/15 text-cyan-300 font-bold"
+                          : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                        }`}
+                    >
+                      <span className="uppercase font-bold block truncate">{e.name}</span>
+                      <span className="text-[11px] text-slate-500 font-sans normal-case">{e.semester} {e.year}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               <p className="text-xs text-slate-400 mt-1">
                 Học kỳ: {selectedEvent.semester} {selectedEvent.year} | Trạng
                 thái:{" "}
@@ -1680,20 +1828,24 @@ export default function AdminEvents({
                   value={selectedEvent.status}
                   onChange={(val) => handleUpdateEventStatus(val)}
                   options={[
-                    { value: "draft", label: "Draft" },
-                    { value: "registration", label: "Registration" },
-                    { value: "ongoing", label: "Ongoing" },
-                    { value: "completed", label: "Completed" },
-                    { value: "cancelled", label: "Cancelled" },
+                    { value: "draft", label: "Draft", disabled: selectedEvent.status !== "draft" },
+                    { value: "registration", label: "Registration", disabled: selectedEvent.status !== "registration" },
+                    { value: "ongoing", label: "Ongoing", disabled: selectedEvent.status !== "ongoing" },
+                    { value: "completed", label: "Completed", disabled: selectedEvent.status !== "completed" },
+                    { value: "cancelled", label: "Cancelled (Hủy cuộc thi)" },
                   ]}
-                  className="w-36 font-semibold"
+                  className="w-44 font-semibold"
                 />
               </div>
               <button
                 onClick={() => {
+                  sessionStorage.removeItem("creatingEventId");
                   setSelectedEvent(null);
+                  setIsWizardMode(true);
+                  setWizardStep(1);
+                  setActiveTab("events");
                 }}
-                className="bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white px-3 py-2 rounded-xl border border-slate-800 text-xs font-mono flex items-center gap-1 cursor-pointer"
+                className="bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white px-3.5 py-2 rounded-xl border border-slate-800 text-xs font-mono flex items-center gap-1.5 cursor-pointer shrink-0 transition-all shadow-md active:scale-95 z-20"
               >
                 <CalendarPlus size={14} />
                 Tạo cuộc thi mới
@@ -1710,79 +1862,152 @@ export default function AdminEvents({
       {/* TAB NAVIGATION BAR */}
       {defaultTab === "events" && (
         <div className="flex flex-wrap gap-3 border-b border-slate-800/80 pb-3">
-          <button
-            onClick={() => setActiveTab("events")}
-            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "events"
-              ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-              : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-              }`}
-          >
-            Thông tin sự kiện
-          </button>
-          <button
-            onClick={() => setActiveTab("schedule")}
-            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "schedule"
-              ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-              : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-              }`}
-          >
-            Thiết lập thời gian
-          </button>
-          <button
-            onClick={() => setActiveTab("teams")}
-            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "teams"
-              ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-              : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-              }`}
-          >
-            Đội thi tham gia
-          </button>
-          <button
-            onClick={() => setActiveTab("rounds")}
-            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "rounds"
-              ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-              : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-              }`}
-          >
-            Vòng thi & Tiêu chí
-          </button>
-          <button
-            onClick={() => setActiveTab("tracks")}
-            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "tracks"
-              ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-              : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-              }`}
-          >
-            Bảng đấu
-          </button>
-          <button
-            onClick={() => setActiveTab("github")}
-            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${activeTab === "github"
-              ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-              : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-              }`}
-          >
-            <Github size={14} />
-            GitHub & AI Đánh giá
-          </button>
-          <button
-            onClick={() => setActiveTab("portal")}
-            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${activeTab === "portal"
-              ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-              : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-              }`}
-          >
-            Nội dung Portal
-          </button>
-          <button
-            onClick={() => setActiveTab("logs")}
-            className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "logs"
-                ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-              }`}
-          >
-            Nhật ký hoạt động
-          </button>
+          {(isWizardMode || selectedEvent === null) ? (
+            <>
+              <button
+                onClick={() => setActiveTab("events")}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "events"
+                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  }`}
+              >
+                1. Thông tin sự kiện
+              </button>
+              <button
+                onClick={() => {
+                  if (!selectedEvent) {
+                    toast.error("Vui lòng khởi tạo thông tin sự kiện ở Bước 1 trước!");
+                    return;
+                  }
+                  setActiveTab("rounds");
+                }}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${!selectedEvent ? "opacity-40 cursor-not-allowed" : ""} ${activeTab === "rounds"
+                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  }`}
+              >
+                2. Vòng thi & Tiêu chí
+              </button>
+              <button
+                onClick={() => {
+                  if (!selectedEvent) {
+                    toast.error("Vui lòng khởi tạo thông tin sự kiện ở Bước 1 trước!");
+                    return;
+                  }
+                  if (rounds.length === 0) {
+                    toast.error("Vui lòng tạo ít nhất 1 vòng thi ở Bước 2 trước khi sang bước Bảng đấu!");
+                    return;
+                  }
+                  setActiveTab("tracks");
+                }}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${(!selectedEvent || rounds.length === 0) ? "opacity-40 cursor-not-allowed" : ""} ${activeTab === "tracks"
+                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  }`}
+              >
+                3. Bảng đấu
+              </button>
+              <button
+                onClick={() => {
+                  if (!selectedEvent) {
+                    toast.error("Vui lòng khởi tạo thông tin sự kiện ở Bước 1 trước!");
+                    return;
+                  }
+                  if (rounds.length === 0) {
+                    toast.error("Vui lòng tạo ít nhất 1 vòng thi ở Bước 2 trước!");
+                    return;
+                  }
+                  if (tracks.length === 0) {
+                    toast.error("Vui lòng tạo ít nhất 1 bảng đấu ở Bước 3 trước khi sang Thiết lập thời gian!");
+                    return;
+                  }
+                  setActiveTab("schedule");
+                }}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${(!selectedEvent || tracks.length === 0) ? "opacity-40 cursor-not-allowed" : ""} ${activeTab === "schedule"
+                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  }`}
+              >
+                4. Thiết lập thời gian
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setActiveTab("events")}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "events"
+                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  }`}
+              >
+                Thông tin sự kiện
+              </button>
+              <button
+                onClick={() => setActiveTab("schedule")}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "schedule"
+                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  }`}
+              >
+                Thiết lập thời gian
+              </button>
+              <button
+                onClick={() => setActiveTab("teams")}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "teams"
+                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  }`}
+              >
+                Đội thi tham gia
+              </button>
+              <button
+                onClick={() => setActiveTab("rounds")}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "rounds"
+                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  }`}
+              >
+                Vòng thi & Tiêu chí
+              </button>
+              <button
+                onClick={() => setActiveTab("tracks")}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "tracks"
+                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  }`}
+              >
+                Bảng đấu
+              </button>
+              <button
+                onClick={() => setActiveTab("github")}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${activeTab === "github"
+                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  }`}
+              >
+                <Github size={14} />
+                GitHub & AI Đánh giá
+              </button>
+              <button
+                onClick={() => setActiveTab("portal")}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${activeTab === "portal"
+                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  }`}
+              >
+                Nội dung Portal
+              </button>
+              <button
+                onClick={() => setActiveTab("logs")}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "logs"
+                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  }`}
+              >
+                Nhật ký hoạt động
+              </button>
+            </>
+          )}
         </div>
       )}
 
@@ -1793,10 +2018,10 @@ export default function AdminEvents({
 
       {/* 2. EVENTS SETTINGS TAB */}
       {activeTab === "events" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="w-full">
           {/* Main settings form */}
-          <div className="lg:col-span-2 glass p-6 rounded-2xl relative">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/5 rounded-full blur-3xl"></div>
+          <div className="glass p-6 rounded-2xl relative">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
             {selectedEvent ? (
               // EDIT SELECTED EVENT FORM
@@ -2012,7 +2237,7 @@ export default function AdminEvents({
                       className="bg-cyan-500 hover:bg-cyan-500 font-bold px-6 py-2.5 rounded-xl text-sm transition-all flex items-center gap-2 cursor-pointer font-mono"
                     >
                       <span>
-                        {loading ? "Đang khởi tạo..." : "Khởi tạo Cuộc thi"}
+                        {loading ? "Đang khởi tạo..." : (isWizardMode || selectedEvent === null ? "Khởi tạo & Đến Bước 2: Vòng thi →" : "Khởi tạo Cuộc thi")}
                       </span>
                       <CalendarPlus size={16} />
                     </button>
@@ -2020,25 +2245,6 @@ export default function AdminEvents({
                 </form>
               </>
             )}
-          </div>
-
-          {/* Quick instructions */}
-          <div className="lg:col-span-1 space-y-6 z-[-1]">
-            <div className="glass p-6 rounded-2xl">
-              <h3 className="text-md font-bold text-white mb-3 flex items-center gap-1.5 font-mono">
-                <Info size={16} className="text-cyan-400" />
-                <span>HƯỚNG DẪN THIẾT LẬP</span>
-              </h3>
-              <p className="text-xs text-slate-400 leading-relaxed font-sans">
-                {selectedEvent
-                  ? "Bạn đang chỉnh sửa cấu hình của cuộc thi được chọn. Thay đổi các thông tin chi tiết như tên, mô tả hoặc giới hạn số đội, sau đó bấm Lưu thay đổi."
-                  : "Khởi tạo một cuộc thi mới đại diện cho học kỳ cụ thể. Cuộc thi này sẽ chứa các bảng đấu (Tracks) và vòng thi (Rounds) tiếp theo."}
-              </p>
-              <div className="mt-4 p-3 bg-slate-900/60 rounded-xl border border-slate-800 text-[11px] text-cyan-300 font-mono">
-                Lưu ý: Chỉ hệ thống Admin/Ban tổ chức mới được quyền khởi tạo
-                hoặc cấu hình cuộc thi mới.
-              </div>
-            </div>
           </div>
         </div>
       )}
@@ -2064,39 +2270,66 @@ export default function AdminEvents({
       {/* 4. TRACKS TAB */}
       {activeTab === "tracks" &&
         (selectedEvent ? (
-          <TracksTab
-            selectedEvent={selectedEvent}
-            tracks={tracks}
-            trackName={trackName}
-            setTrackName={setTrackName}
-            trackDesc={trackDesc}
-            setTrackDesc={setTrackDesc}
-            trackMax={trackMax}
-            setTrackMax={setTrackMax}
-            trackRoundId={trackRoundId}
-            setTrackRoundId={setTrackRoundId}
-            handleCreateTrack={handleCreateTrack}
-            selectedTrack={selectedTrack}
-            setSelectedTrack={setSelectedTrack}
-            editingTrack={editingTrack}
-            setEditingTrack={setEditingTrack}
-            handleUpdateTrack={handleUpdateTrack}
-            handleDeleteTrack={handleDeleteTrack}
-            rounds={rounds}
-            setSelectedRubricRoundId={setSelectedRubricRoundId}
-            setRubric={setRubric}
-            setCriteria={setCriteria}
-            attachmentName={attachmentName}
-            setAttachmentName={setAttachmentName}
-            attachmentUrl={attachmentUrl}
-            setAttachmentUrl={setAttachmentUrl}
-            handleUploadExam={handleUploadExam}
-            loading={loading}
-            eventRoles={eventRoles}
-            handleAssignRoleForTrack={handleAssignRoleForTrack}
-            handleRemoveRole={handleRemoveRole}
-            teamsList={teamsList}
-          />
+          <div>
+            <TracksTab
+              selectedEvent={selectedEvent}
+              tracks={tracks}
+              trackName={trackName}
+              setTrackName={setTrackName}
+              trackDesc={trackDesc}
+              setTrackDesc={setTrackDesc}
+              trackMax={trackMax}
+              setTrackMax={setTrackMax}
+              trackRoundId={trackRoundId}
+              setTrackRoundId={setTrackRoundId}
+              handleCreateTrack={handleCreateTrack}
+              selectedTrack={selectedTrack}
+              setSelectedTrack={setSelectedTrack}
+              editingTrack={editingTrack}
+              setEditingTrack={setEditingTrack}
+              handleUpdateTrack={handleUpdateTrack}
+              handleDeleteTrack={handleDeleteTrack}
+              rounds={rounds}
+              setSelectedRubricRoundId={setSelectedRubricRoundId}
+              setRubric={setRubric}
+              setCriteria={setCriteria}
+              attachmentName={attachmentName}
+              setAttachmentName={setAttachmentName}
+              attachmentUrl={attachmentUrl}
+              setAttachmentUrl={setAttachmentUrl}
+              handleUploadExam={handleUploadExam}
+              loading={loading}
+              eventRoles={eventRoles}
+              handleAssignRoleForTrack={handleAssignRoleForTrack}
+              handleRemoveRole={handleRemoveRole}
+              teamsList={teamsList}
+            />
+            {isWizardMode && (
+              <div className="mt-8 p-4 glass rounded-2xl flex justify-between items-center">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("rounds")}
+                  className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  ← Quay lại: Vòng thi & Tiêu chí
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (tracks.length === 0) {
+                      toast.error("Vui lòng tạo ít nhất 1 bảng đấu trước khi chuyển sang bước tiếp theo!");
+                      return;
+                    }
+                    setWizardStep((prev) => Math.max(prev, 4));
+                    setActiveTab("schedule");
+                  }}
+                  className="px-6 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white font-mono text-xs font-bold shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  Tiếp tục: Thiết lập thời gian →
+                </button>
+              </div>
+            )}
+          </div>
         ) : (
           <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">
             Vui lòng chọn cuộc thi từ thanh tiêu đề hoặc trang Quản trị viên để
@@ -2107,83 +2340,110 @@ export default function AdminEvents({
       {/* 5. ROUNDS TAB */}
       {activeTab === "rounds" &&
         (selectedEvent ? (
-          <RoundsTab
-            selectedEvent={selectedEvent}
-            tracks={tracks}
-            rounds={rounds}
-            selectedTrack={selectedTrack}
-            setSelectedTrack={setSelectedTrack}
-            selectedRubricRoundId={selectedRubricRoundId}
-            setSelectedRubricRoundId={setSelectedRubricRoundId}
-            roundName={roundName}
-            setRoundName={setRoundName}
-            roundOrder={roundOrder}
-            setRoundOrder={setRoundOrder}
-            roundDeadline={roundDeadline}
-            setRoundDeadline={setRoundDeadline}
-            roundLimit={roundLimit}
-            setRoundLimit={setRoundLimit}
-            rubricTypeOption={rubricTypeOption}
-            setRubricTypeOption={setRubricTypeOption}
-            existingRubrics={existingRubrics}
-            selectedSourceRubricId={selectedSourceRubricId}
-            setSelectedSourceRubricId={setSelectedSourceRubricId}
-            rubricName={rubricName}
-            setRubricName={setRubricName}
-            handleCreateRound={handleCreateRound}
-            rubric={rubric}
-            criteria={criteria}
-            editingRubric={editingRubric}
-            setEditingRubric={setEditingRubric}
-            editRubricName={editRubricName}
-            setEditRubricName={setEditRubricName}
-            editRubricDesc={editRubricDesc}
-            setEditRubricDesc={setEditRubricDesc}
-            editRubricTotalWeight={editRubricTotalWeight}
-            setEditRubricTotalWeight={setEditRubricTotalWeight}
-            editRubricMaxScore={editRubricMaxScore}
-            setEditRubricMaxScore={setEditRubricMaxScore}
-            editRubricIsActive={editRubricIsActive}
-            setEditRubricIsActive={setEditRubricIsActive}
-            handleUpdateRubric={handleUpdateRubric}
-            handleDeleteRubric={handleDeleteRubric}
-            handleLockRubric={handleLockRubric}
-            handleAdvanceRound={handleAdvanceRound}
-            handleLockRound={handleLockRound}
-            critCode={critCode}
-            setCritCode={setCritCode}
-            critName={critName}
-            setCritName={setCritName}
-            critWeight={critWeight}
-            setCritWeight={setCritWeight}
-            critDesc={critDesc}
-            setCritDesc={setCritDesc}
-            critMaxScore={critMaxScore}
-            setCritMaxScore={setCritMaxScore}
-            critGradingLevels={critGradingLevels}
-            setCritGradingLevels={setCritGradingLevels}
-            editingCriterion={editingCriterion}
-            setEditingCriterion={setEditingCriterion}
-            handleSaveCriterion={handleSaveCriterion}
-            handleDeleteCriterion={handleDeleteCriterion}
-            handleStartEditCriterion={handleStartEditCriterion}
-            handleCancelEditCriterion={handleCancelEditCriterion}
-            levelLabel={levelLabel}
-            setLevelLabel={setLevelLabel}
-            levelMinScore={levelMinScore}
-            setLevelMinScore={setLevelMinScore}
-            levelMaxScore={levelMaxScore}
-            setLevelMaxScore={setLevelMaxScore}
-            levelDesc={levelDesc}
-            setLevelDesc={setLevelDesc}
-            handleAddGradingLevel={handleAddGradingLevel}
-            handleRemoveGradingLevel={handleRemoveGradingLevel}
-            handleCreateRubric={handleCreateRubric}
-            loading={loading}
-            setRubric={setRubric}
-            setCriteria={setCriteria}
-            fetchRoundsAndRubric={fetchRoundsAndRubric}
-          />
+          <div>
+            <RoundsTab
+              selectedEvent={selectedEvent}
+              tracks={tracks}
+              rounds={rounds}
+              selectedTrack={selectedTrack}
+              setSelectedTrack={setSelectedTrack}
+              selectedRubricRoundId={selectedRubricRoundId}
+              setSelectedRubricRoundId={setSelectedRubricRoundId}
+              roundName={roundName}
+              setRoundName={setRoundName}
+              roundOrder={roundOrder}
+              setRoundOrder={setRoundOrder}
+              roundDeadline={roundDeadline}
+              setRoundDeadline={setRoundDeadline}
+              roundLimit={roundLimit}
+              setRoundLimit={setRoundLimit}
+              rubricTypeOption={rubricTypeOption}
+              setRubricTypeOption={setRubricTypeOption}
+              existingRubrics={existingRubrics}
+              selectedSourceRubricId={selectedSourceRubricId}
+              setSelectedSourceRubricId={setSelectedSourceRubricId}
+              rubricName={rubricName}
+              setRubricName={setRubricName}
+              handleCreateRound={handleCreateRound}
+              rubric={rubric}
+              criteria={criteria}
+              editingRubric={editingRubric}
+              setEditingRubric={setEditingRubric}
+              editRubricName={editRubricName}
+              setEditRubricName={setEditRubricName}
+              editRubricDesc={editRubricDesc}
+              setEditRubricDesc={setEditRubricDesc}
+              editRubricTotalWeight={editRubricTotalWeight}
+              setEditRubricTotalWeight={setEditRubricTotalWeight}
+              editRubricMaxScore={editRubricMaxScore}
+              setEditRubricMaxScore={setEditRubricMaxScore}
+              editRubricIsActive={editRubricIsActive}
+              setEditRubricIsActive={setEditRubricIsActive}
+              handleUpdateRubric={handleUpdateRubric}
+              handleDeleteRubric={handleDeleteRubric}
+              handleLockRubric={handleLockRubric}
+              handleAdvanceRound={handleAdvanceRound}
+              handleLockRound={handleLockRound}
+              critCode={critCode}
+              setCritCode={setCritCode}
+              critName={critName}
+              setCritName={setCritName}
+              critWeight={critWeight}
+              setCritWeight={setCritWeight}
+              critDesc={critDesc}
+              setCritDesc={setCritDesc}
+              critMaxScore={critMaxScore}
+              setCritMaxScore={setCritMaxScore}
+              critGradingLevels={critGradingLevels}
+              setCritGradingLevels={setCritGradingLevels}
+              editingCriterion={editingCriterion}
+              setEditingCriterion={setEditingCriterion}
+              handleSaveCriterion={handleSaveCriterion}
+              handleDeleteCriterion={handleDeleteCriterion}
+              handleStartEditCriterion={handleStartEditCriterion}
+              handleCancelEditCriterion={handleCancelEditCriterion}
+              levelLabel={levelLabel}
+              setLevelLabel={setLevelLabel}
+              levelMinScore={levelMinScore}
+              setLevelMinScore={setLevelMinScore}
+              levelMaxScore={levelMaxScore}
+              setLevelMaxScore={setLevelMaxScore}
+              levelDesc={levelDesc}
+              setLevelDesc={setLevelDesc}
+              handleAddGradingLevel={handleAddGradingLevel}
+              handleRemoveGradingLevel={handleRemoveGradingLevel}
+              handleCreateRubric={handleCreateRubric}
+              loading={loading}
+              setRubric={setRubric}
+              setCriteria={setCriteria}
+              fetchRoundsAndRubric={fetchRoundsAndRubric}
+            />
+            {isWizardMode && (
+              <div className="mt-8 p-4 glass rounded-2xl flex justify-between items-center">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("events")}
+                  className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  ← Quay lại: Thông tin sự kiện
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (rounds.length === 0) {
+                      toast.error("Vui lòng tạo ít nhất 1 vòng thi trước khi chuyển sang bước tiếp theo!");
+                      return;
+                    }
+                    setWizardStep((prev) => Math.max(prev, 3));
+                    setActiveTab("tracks");
+                  }}
+                  className="px-6 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white font-mono text-xs font-bold shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  Tiếp tục: Tạo Bảng đấu →
+                </button>
+              </div>
+            )}
+          </div>
         ) : (
           <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">
             Vui lòng chọn cuộc thi từ thanh tiêu đề hoặc trang Quản trị viên để
@@ -2322,45 +2582,31 @@ export default function AdminEvents({
                 <form onSubmit={handleSaveEventSchedule} className="space-y-4">
                   <div>
                     <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
-                      Thời gian mở đăng ký (Registration)
+                      Thời gian đăng ký (Mở đăng ký → Đóng đăng ký)
                     </label>
-                    <CustomDateTimePicker
-                      value={editEventRegOpen}
-                      onChange={setEditEventRegOpen}
-                      placeholder="Chọn thời gian mở đăng ký..."
+                    <CustomDateRangePicker
+                      startValue={editEventRegOpen}
+                      endValue={editEventRegClose}
+                      onStartChange={setEditEventRegOpen}
+                      onEndChange={setEditEventRegClose}
+                      startLabel="Mở đăng ký"
+                      endLabel="Đóng đăng ký"
+                      maxDate={editEventContestStart}
                     />
                   </div>
 
                   <div>
                     <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
-                      Thời gian đóng đăng ký (Đóng Đăng ký & Prepare)
+                      Thời gian thi đấu (Bắt đầu → Kết thúc)
                     </label>
-                    <CustomDateTimePicker
-                      value={editEventRegClose}
-                      onChange={setEditEventRegClose}
-                      placeholder="Chọn thời gian đóng đăng ký..."
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
-                      Bắt đầu thi đấu (Chuyển sang Ongoing)
-                    </label>
-                    <CustomDateTimePicker
-                      value={editEventContestStart}
-                      onChange={setEditEventContestStart}
-                      placeholder="Chọn thời gian bắt đầu thi..."
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
-                      Kết thúc cuộc thi (Completed)
-                    </label>
-                    <CustomDateTimePicker
-                      value={editEventContestEnd}
-                      onChange={setEditEventContestEnd}
-                      placeholder="Chọn thời gian kết thúc..."
+                    <CustomDateRangePicker
+                      startValue={editEventContestStart}
+                      endValue={editEventContestEnd}
+                      onStartChange={setEditEventContestStart}
+                      onEndChange={setEditEventContestEnd}
+                      startLabel="Bắt đầu thi"
+                      endLabel="Kết thúc"
+                      minDate={editEventRegClose}
                     />
                   </div>
 
@@ -2391,74 +2637,59 @@ export default function AdminEvents({
                 </form>
               </div>
 
-              {/* Status information panel */}
-              <div className="mt-6 p-4 bg-slate-950/50 border border-slate-800/80 rounded-xl text-[11px] text-slate-400 leading-relaxed font-mono">
-                <span className="text-cyan-400 font-bold">ℹ️ Hướng dẫn chuyển trạng thái tự động:</span>
-                <ul className="list-disc list-inside mt-2 space-y-1">
-                  <li><strong>Draft &rarr; Registration:</strong> Khi tới thời điểm mở đăng ký.</li>
-                  <li><strong>Registration &rarr; Ongoing:</strong> Khi tới thời điểm bắt đầu thi.</li>
-                  <li><strong>Ongoing &rarr; Completed:</strong> Khi tới thời điểm kết thúc cuộc thi.</li>
-                </ul>
-              </div>
             </div>
 
-            {/* Track Schedule Card */}
+            {/* Round Schedule Card */}
             <div className="glass p-6 rounded-2xl relative flex flex-col justify-between">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-2xl"></div>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none"></div>
               <div>
                 <h3 className="text-md font-bold text-white mb-4 flex items-center gap-1.5 font-mono">
                   <Clock size={16} className="text-cyan-400" />
-                  <span>Lịch trình bảng đấu (Tracks)</span>
+                  <span>Lịch trình vòng thi (Rounds)</span>
                 </h3>
                 <p className="text-slate-400 text-xs mb-6">
-                  Thiết lập thời gian làm bài (nộp bài) và thời gian chấm bài cho từng bảng đấu. Bộ đếm thời gian của Giám khảo sẽ dựa trên thông số này.
+                  Thiết lập thời gian làm bài (nộp bài) và thời gian chấm bài cho từng vòng thi. Lịch trình sẽ tự động áp dụng cho tất cả bảng đấu thuộc vòng đó.
                 </p>
 
-                {tracks.length === 0 ? (
+                {rounds.length === 0 ? (
                   <div className="text-center py-12 text-slate-500 text-xs font-mono">
-                    Chưa có bảng đấu nào trong cuộc thi này.
+                    Chưa có vòng thi nào trong cuộc thi này.
                   </div>
                 ) : (
-                  <form onSubmit={handleSaveTrackSchedule} className="space-y-4">
+                  <form onSubmit={handleSaveRoundSchedule} className="space-y-4">
                     <div>
                       <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
-                        Chọn bảng đấu (Track)
+                        Chọn vòng thi (Round)
                       </label>
                       <CustomSelect
-                        value={selectedTrackForSchedule?._id || ""}
+                        value={selectedRoundForSchedule?._id || ""}
                         onChange={(val) => {
-                          const t = tracks.find((track) => track._id === val);
-                          handleSelectTrackForSchedule(t);
+                          const r = rounds.find((round: any) => round._id === val);
+                          handleSelectRoundForSchedule(r);
                         }}
-                        options={tracks.map((t) => ({
-                          value: t._id,
-                          label: `${t.name} (Vòng: ${rounds.find((r) => r._id === t.roundId)?.name || "Chưa gán"})`,
+                        options={rounds.map((r: any) => ({
+                          value: r._id,
+                          label: `${r.name}`,
                         }))}
                         className="w-full"
                       />
                     </div>
 
-                    {selectedTrackForSchedule && (
+                    {selectedRoundForSchedule && (
                       <>
                         <div>
                           <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
-                            Thời gian bắt đầu làm bài
+                            Thời gian làm bài (Bắt đầu làm bài → Hạn nộp bài)
                           </label>
-                          <CustomDateTimePicker
-                            value={trackStartTime}
-                            onChange={setTrackStartTime}
-                            placeholder="Chọn thời gian bắt đầu làm bài..."
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
-                            Hạn nộp bài (Thời gian làm bài kết thúc)
-                          </label>
-                          <CustomDateTimePicker
-                            value={trackEndTime}
-                            onChange={setTrackEndTime}
-                            placeholder="Chọn hạn nộp bài..."
+                          <CustomDateRangePicker
+                            startValue={trackStartTime}
+                            endValue={trackEndTime}
+                            onStartChange={setTrackStartTime}
+                            onEndChange={setTrackEndTime}
+                            startLabel="Bắt đầu làm bài"
+                            endLabel="Hạn nộp bài"
+                            minDate={editEventContestStart}
+                            maxDate={editEventContestEnd}
                           />
                         </div>
 
@@ -2470,6 +2701,8 @@ export default function AdminEvents({
                             value={trackGradingEndTime}
                             onChange={setTrackGradingEndTime}
                             placeholder="Chọn thời gian kết thúc chấm..."
+                            minDate={trackEndTime}
+                            maxDate={editEventContestEnd}
                           />
                         </div>
 
@@ -2479,7 +2712,7 @@ export default function AdminEvents({
                             disabled={loading}
                             className="w-full bg-cyan-500 hover:bg-cyan-600 disabled:bg-slate-800 text-white font-bold text-xs py-3 rounded-xl transition-all uppercase tracking-wider cursor-pointer shadow-lg shadow-cyan-500/20"
                           >
-                            {loading ? "Đang lưu..." : "Lưu lịch trình bảng đấu"}
+                            {loading ? "Đang lưu..." : "Lưu lịch trình vòng thi"}
                           </button>
                         </div>
                       </>
@@ -2488,6 +2721,29 @@ export default function AdminEvents({
                 )}
               </div>
             </div>
+            {isWizardMode && (
+              <div className="mt-8 p-4 glass rounded-2xl flex justify-between items-center">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("tracks")}
+                  className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  ← Quay lại: Bảng đấu
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    sessionStorage.removeItem("creatingEventId");
+                    setIsWizardMode(false);
+                    toast.success("Chúc mừng! Bạn đã hoàn tất toàn bộ các bước khởi tạo cuộc thi mới!");
+                    setActiveTab("events");
+                  }}
+                  className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-mono text-xs font-bold shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  Hoàn tất khởi tạo cuộc thi ✓
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">

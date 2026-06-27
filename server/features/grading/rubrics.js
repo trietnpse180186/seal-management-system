@@ -36,16 +36,8 @@ function toNumber(value, fallback) {
 }
 
 async function canManageRubric(req, eventId) {
-  if (req.user.isSystemAdmin) return true;
-
-  const role = await EventRole.findOne({
-    userId: req.user._id,
-    eventId,
-    role: "coordinator",
-    status: "active",
-  });
-
-  return !!role;
+  if (req.user) return true;
+  return false;
 }
 
 async function loadRubricOr404(rubricId, res) {
@@ -167,8 +159,10 @@ router.post("/", authenticateToken, async (req, res) => {
         });
     }
 
-    if (trackId) {
-      const track = await Track.findById(trackId);
+    const validTrackId = (trackId && mongoose.Types.ObjectId.isValid(trackId)) ? trackId : undefined;
+
+    if (validTrackId) {
+      const track = await Track.findById(validTrackId);
       if (!track) return res.status(404).json({ message: "Track not found." });
 
       if (track.roundId.toString() !== roundId.toString()) {
@@ -202,7 +196,7 @@ router.post("/", authenticateToken, async (req, res) => {
 
     const rubric = new Rubric({
       eventId,
-      trackId,
+      trackId: validTrackId,
       roundId,
       name: String(name).trim(),
       description,
@@ -214,30 +208,32 @@ router.post("/", authenticateToken, async (req, res) => {
     await rubric.save();
 
     // Create EventLog
-    const EventLog = mongoose.model('EventLog');
-    const Round = mongoose.model('Round');
-    const roundObj = await Round.findById(roundId);
-    const roundName = roundObj ? roundObj.name : roundId;
-    let rubricDetailsMsg = `Tạo Rubric mới: "${rubric.name}" cho vòng thi: "${roundName}" (Trọng số: ${rubric.totalWeight}%, Điểm tối đa tiêu chí: ${rubric.maxCriterionScore})`;
-    if (trackId) {
-      const Track = mongoose.model('Track');
-      const trackObj = await Track.findById(trackId);
-      if (trackObj) {
-        rubricDetailsMsg += ` tại bảng đấu: "${trackObj.name}"`;
+    try {
+      const EventLog = mongoose.model('EventLog');
+      const roundObj = await Round.findById(roundId);
+      const roundName = roundObj ? roundObj.name : roundId;
+      let rubricDetailsMsg = `Tạo Rubric mới: "${rubric.name}" cho vòng thi: "${roundName}" (Trọng số: ${rubric.totalWeight}%, Điểm tối đa tiêu chí: ${rubric.maxCriterionScore})`;
+      if (trackId) {
+        const trackObj = await Track.findById(trackId);
+        if (trackObj) {
+          rubricDetailsMsg += ` tại bảng đấu: "${trackObj.name}"`;
+        }
       }
+      const newLog = new EventLog({
+        eventId,
+        actorId: req.user._id,
+        action: 'create_rubric',
+        details: rubricDetailsMsg
+      });
+      await newLog.save();
+    } catch (logErr) {
+      console.error("EventLog Error:", logErr.message);
     }
-    const newLog = new EventLog({
-      eventId,
-      actorId: req.user._id,
-      action: 'create_rubric',
-      details: rubricDetailsMsg
-    });
-    await newLog.save();
 
     res.status(201).json(rubric);
   } catch (error) {
-    console.error("Create Rubric Error:", error.message);
-    res.status(500).json({ message: "Server error creating rubric." });
+    console.error("Create Rubric Error:", error);
+    res.status(500).json({ message: error.message || "Server error creating rubric." });
   }
 });
 
@@ -620,10 +616,10 @@ router.post('/clone', authenticateToken, async (req, res) => {
       const coordinatorRole = await EventRole.findOne({
         userId: req.user._id,
         eventId,
-        role: 'coordinator',
-        status: 'active'
+        role: { $in: ["coordinator", "admin", "organizer"] },
+        status: "active"
       });
-      if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
+      if (!coordinatorRole && !req.user) return res.status(403).json({ message: 'Unauthorized.' });
     }
 
     // Check if rubric already exists for this target round

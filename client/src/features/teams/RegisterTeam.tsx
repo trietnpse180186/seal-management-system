@@ -3,7 +3,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { Users, UserPlus, Trash2, Calendar, FolderGit2, CheckCircle } from 'lucide-react';
 import CustomSelect from '../shared/CustomSelect';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 interface MemberInput {
   email: string;
@@ -14,6 +14,8 @@ interface MemberInput {
 }
 
 export default function RegisterTeam() {
+  const [searchParams] = useSearchParams();
+  const eventIdParam = searchParams.get('eventId');
   const [events, setEvents] = useState<any[]>([]);
   const [selectedEventId, setSelectedEventId] = useState('');
 
@@ -87,7 +89,8 @@ export default function RegisterTeam() {
         const activeEvents = res.data.filter((e: any) => e.status === 'registration');
         setEvents(activeEvents);
         if (activeEvents.length > 0) {
-          setSelectedEventId(activeEvents[0]._id);
+          const matchedEvent = activeEvents.find((e: any) => e._id === eventIdParam);
+          setSelectedEventId(matchedEvent ? matchedEvent._id : activeEvents[0]._id);
         }
       })
       .catch(err => console.error('Error fetching events:', err))

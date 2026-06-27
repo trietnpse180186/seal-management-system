@@ -5,7 +5,6 @@ import Navbar from './features/landing/Navbar';
 import Footer from './features/landing/Footer';
 import Login from './features/auth/Login';
 import LandingPage from './features/landing/LandingPage';
-import RegisterTeam from './features/teams/RegisterTeam';
 import AdminDashboard from './features/admin/AdminDashboard';
 import AdminEvents from './features/admin/AdminEvents';
 import TeamArea from './features/teams/TeamArea';
@@ -54,11 +53,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
           } />
           <Route path="/login" element={!user ? <Login onLoginSuccess={handleLoginSuccess} /> : <Navigate to="/" />} />
           
-          <Route path="/register-team" element={
-            <ProtectedRoute user={user} roles={roles} allowedRoles={['participant']}>
-              <RegisterTeam />
-            </ProtectedRoute>
-          } />
+          <Route path="/register-team" element={<Navigate to="/team-area" replace />} />
 
           <Route path="/guest-portal" element={
             <ProtectedRoute user={user} roles={roles} allowedRoles={['participant']}>

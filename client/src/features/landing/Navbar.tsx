@@ -235,13 +235,6 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                   <Compass size={16} />
                   <span>Trang chủ</span>
                 </Link>
-                <Link
-                  to="/register-team"
-                  className={linkClass("/register-team")}
-                >
-                  <Users size={16} />
-                  <span>Đăng ký đội</span>
-                </Link>
                 <Link to="/team-area" className={linkClass("/team-area")}>
                   <GitBranch size={16} />
                   <span>Khu vực đội thi</span>

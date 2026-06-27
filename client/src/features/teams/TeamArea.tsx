@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Link2, Save, CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare } from 'lucide-react';
+import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare } from 'lucide-react';
 import RegisterTeam from './RegisterTeam';
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
@@ -71,10 +71,6 @@ export default function TeamArea() {
     }
   };
   
-  // Topic Submission Form
-  const [topicTitle, setTopicTitle] = useState('');
-  const [topicDesc, setTopicDesc] = useState('');
-  const [docLink, setDocLink] = useState('');
   
   // Git commits & AI report
   const [commits, setCommits] = useState<any[]>([]);
@@ -84,14 +80,10 @@ export default function TeamArea() {
 
   // Status indicators
   const [loading, setLoading] = useState(true);
-  const [submittingTopic, setSubmittingTopic] = useState(false);
   const [error, _setError] = useState('');
   const setError = (msg: string) => {
     _setError(msg);
     if (msg) toast.error(msg);
-  };
-  const setSuccess = (msg: string) => {
-    if (msg) toast.success(msg);
   };
 
   const fetchTeamData = async () => {
@@ -113,12 +105,7 @@ export default function TeamArea() {
       } else {
         setData(res.data);
         
-        // Load topic forms if present
-        if (res.data.team?.topicSubmission) {
-          setTopicTitle(res.data.team.topicSubmission.title || '');
-          setTopicDesc(res.data.team.topicSubmission.description || '');
-          setDocLink(res.data.team.topicSubmission.documentationLink || '');
-        }
+
 
         // Fetch commits if repo exists
         if (res.data.repository) {
@@ -163,31 +150,7 @@ export default function TeamArea() {
 
 
 
-  const handleSaveTopic = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmittingTopic(true);
-    setError('');
-    setSuccess('');
 
-    try {
-      await axios.post(
-        'http://localhost:5000/api/teams/submit-topic',
-        {
-          teamId: data.team._id,
-          title: topicTitle,
-          description: topicDesc,
-          documentationLink: docLink
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setSuccess('Đã lưu đề tài và file tài liệu thành công!');
-      fetchTeamData();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Chỉ có trưởng nhóm mới được cập nhật chủ đề.');
-    } finally {
-      setSubmittingTopic(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -367,53 +330,6 @@ export default function TeamArea() {
             )}
           </div>
           
-          {/* Submit Topic and Documents */}
-          <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all">
-            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2 font-mono-tech">
-              <BookOpen size={18} className="text-cyan-400" />
-              <span className="text-cyan-400">[NỘP_ĐỀ_TÀI_&_LINK_TOPIC]</span>
-            </h2>
-
-            <form onSubmit={handleSaveTopic} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Tên Đề tài / Dự án</label>
-                <input
-                  type="text" required placeholder="Hệ thống quản lý chuỗi cung ứng"
-                  value={topicTitle} onChange={e => setTopicTitle(e.target.value)}
-                  className="w-full bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Mô tả ngắn</label>
-                <textarea
-                  placeholder="Mô tả dự án hackathon của nhóm..." rows={3}
-                  value={topicDesc} onChange={e => setTopicDesc(e.target.value)}
-                  className="w-full bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
-                ></textarea>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Link Tài liệu / File đề xuất</label>
-                <div className="relative">
-                  <Link2 className="absolute left-3 top-2 text-slate-500" size={14} />
-                  <input
-                    type="url" placeholder="https://drive.google.com/..."
-                    value={docLink} onChange={e => setDocLink(e.target.value)}
-                    className="w-full bg-slate-900/50 border border-slate-800 text-white pl-9 pr-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit" disabled={submittingTopic}
-                className="w-full bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold py-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer font-mono-tech border border-cyan-500/20"
-              >
-                <Save size={14} />
-                <span>{submittingTopic ? 'ĐANG_LƯU...' : 'LƯU_ĐỀ_TÀI'}</span>
-              </button>
-            </form>
-          </div>
 
           {/* Members Invite Confirmations Status */}
           <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all">

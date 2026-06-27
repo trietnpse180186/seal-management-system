@@ -551,6 +551,9 @@ router.post('/:eventId/rounds', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('Create Round Error:', error.message);
+    if (error.code === 11000) {
+      return res.status(400).json({ message: `Thứ tự vòng thi (${order}) đã tồn tại trong cuộc thi này. Vui lòng chọn thứ tự khác.` });
+    }
     res.status(500).json({ message: 'Server error creating round.' });
   }
 });

@@ -147,7 +147,6 @@ export default function MentorTeamDetail() {
           </div>
         )}
 
-        {/* Chat Tab */}
         {activeTab === "chat" && (
           team.eventId?.status === 'ongoing' ? (
             <div className="py-12 text-center flex flex-col items-center justify-center max-w-md mx-auto animate-fadeIn">
@@ -170,8 +169,16 @@ export default function MentorTeamDetail() {
               <div className="w-16 h-16 rounded-full bg-slate-800 text-slate-500 flex items-center justify-center mb-4">
                 <MessageSquare size={28} />
               </div>
-              <h3 className="text-slate-400 font-bold text-lg mb-2">Hộp thoại chat chưa khả dụng</h3>
-              <p className="text-slate-500 text-xs leading-relaxed">Kênh chat sẽ được mở khi cuộc thi chính thức bước vào giai đoạn thi đấu.</p>
+              <h3 className="text-slate-400 font-bold text-lg mb-2">
+                {team.eventId?.status === 'completed' || team.eventId?.status === 'cancelled'
+                  ? 'Kênh chat đã đóng'
+                  : 'Hộp thoại chat chưa khả dụng'}
+              </h3>
+              <p className="text-slate-500 text-xs leading-relaxed">
+                {team.eventId?.status === 'completed' || team.eventId?.status === 'cancelled'
+                  ? 'Cuộc thi đã kết thúc. Lịch sử chat chỉ còn hiển thị với Ban tổ chức (Coordinator).'
+                  : 'Kênh chat sẽ được mở khi cuộc thi chính thức bước vào giai đoạn thi đấu.'}
+              </p>
             </div>
           )
         )}

@@ -3,6 +3,7 @@ const Schema = mongoose.Schema;
 
 const TeamMemberSchema = new Schema({
   teamId: { type: Schema.Types.ObjectId, ref: 'Team', required: true },
+  eventId: { type: Schema.Types.ObjectId, ref: 'Event', required: true },
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   role: { type: String, enum: ['leader', 'member'], required: true },
   confirmStatus: { type: String, enum: ['pending', 'confirmed', 'rejected'], default: 'pending' },
@@ -15,6 +16,15 @@ const TeamMemberSchema = new Schema({
 });
 
 TeamMemberSchema.index({ teamId: 1, userId: 1 }, { unique: true });
+// Partial unique index: Chỉ cấm trùng lặp khi đang pending hoặc đã confirmed.
+// Cho phép user bị reject ở đội này được mời lại bởi đội khác trong cùng cuộc thi.
+TeamMemberSchema.index(
+  { eventId: 1, userId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { confirmStatus: { $in: ['pending', 'confirmed'] } }
+  }
+);
 TeamMemberSchema.index({ userId: 1 });
 
 module.exports = mongoose.model('TeamMember', TeamMemberSchema);

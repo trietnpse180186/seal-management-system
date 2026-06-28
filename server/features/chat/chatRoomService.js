@@ -4,32 +4,32 @@ async function ensureChatRoomForTeam(team) {
   const ChatRoom = mongoose.model('ChatRoom');
   const TeamMember = mongoose.model('TeamMember');
 
-  if (!team.mentorId) return;
-
-  // Find all team members
+  // Tìm tất cả các thành viên đã xác nhận của đội
   const teamMembers = await TeamMember.find({ teamId: team._id, confirmStatus: 'confirmed' });
   const memberIds = teamMembers.map(tm => tm.userId);
 
-  // Check if room already exists
-  const existingRoom = await ChatRoom.findOne({ teamId: team._id, mentorId: team.mentorId });
-  if (!existingRoom) {
-    const room = new ChatRoom({
+  // Tìm phòng chat chung của đội thi với mentor
+  let room = await ChatRoom.findOne({ teamId: team._id, type: 'team_mentor' });
+  if (!room) {
+    room = new ChatRoom({
       teamId: team._id,
-      mentorId: team.mentorId,
+      trackId: team.trackId,
       eventId: team.eventId,
-      members: [...memberIds, team.mentorId]
+      type: 'team_mentor',
+      members: memberIds
     });
     await room.save();
-    console.log(`[CHAT] Created room for team ${team.name} and mentor ${team.mentorId}`);
+    console.log(`[CHAT] Created general team_mentor room for team ${team.name}`);
   } else {
-    // Ensure all current members are in the room
-    const allMembers = [...memberIds, team.mentorId];
-    const newMembers = allMembers.filter(id => !existingRoom.members.includes(id));
+    // Đảm bảo tất cả thành viên hiện tại đều có mặt trong thành viên phòng
+    const currentMemberIds = room.members.map(id => id.toString());
+    const newMembers = memberIds.filter(id => !currentMemberIds.includes(id.toString()));
     if (newMembers.length > 0) {
-      existingRoom.members.push(...newMembers);
-      await existingRoom.save();
+      room.members.push(...newMembers);
+      await room.save();
     }
   }
+  return room;
 }
 
 async function ensureChatRoomsForMentorTrack(mentorUserId, trackId, eventId) {
@@ -78,8 +78,118 @@ async function ensureTrackMentorChatRoom(trackId, eventId) {
   }
 }
 
+async function ensureEventGeneralChatRoom(eventId) {
+  const ChatRoom = mongoose.model('ChatRoom');
+  let room = await ChatRoom.findOne({ eventId, type: 'event_general' });
+  if (!room) {
+    room = new ChatRoom({
+      eventId,
+      type: 'event_general',
+      members: []
+    });
+    await room.save();
+    console.log(`[CHAT] Created event_general room for event ${eventId}`);
+  }
+  return room;
+}
+
+const ENDED_EVENT_STATUSES = ['completed', 'cancelled'];
+
+function normalizeEventId(eventId) {
+  return eventId?._id ? eventId._id : eventId;
+}
+
+async function isEventChatClosed(eventId) {
+  const Event = mongoose.model('Event');
+  const id = normalizeEventId(eventId);
+  const event = await Event.findById(id).select('status').lean();
+  return !event || ENDED_EVENT_STATUSES.includes(event.status);
+}
+
+async function isCoordinatorForEvent(userId, eventId) {
+  const EventRole = mongoose.model('EventRole');
+  const id = normalizeEventId(eventId);
+  const role = await EventRole.findOne({
+    userId,
+    eventId: id,
+    role: 'coordinator',
+    status: 'active'
+  });
+  return !!role;
+}
+
+async function canViewEndedEventChat(userId, eventId, isSystemAdmin = false) {
+  if (isSystemAdmin) return true;
+  return isCoordinatorForEvent(userId, eventId);
+}
+
+function isRoomVisibleToUser(room, { isSystemAdmin = false, coordinatorEventIds = [] } = {}) {
+  const eventStatus = room.eventId?.status;
+  const eventId = normalizeEventId(room.eventId)?.toString();
+  if (!ENDED_EVENT_STATUSES.includes(eventStatus)) {
+    return eventStatus === 'ongoing';
+  }
+  return isSystemAdmin || coordinatorEventIds.includes(eventId);
+}
+
+async function checkRoomAccess(room, userId, options = {}) {
+  const { isSystemAdmin = false, requireWrite = false } = options;
+  const EventRole = mongoose.model('EventRole');
+  const TeamMember = mongoose.model('TeamMember');
+  const Team = mongoose.model('Team');
+
+  if (!room?.eventId) return false;
+
+  const eventId = normalizeEventId(room.eventId);
+  const chatClosed = await isEventChatClosed(eventId);
+
+  if (chatClosed) {
+    const canView = await canViewEndedEventChat(userId, eventId, isSystemAdmin);
+    if (!canView) return false;
+    return !requireWrite;
+  }
+
+  // 1. Nếu là thành viên trực tiếp hoặc mentor được gán
+  if (room.members && room.members.some(id => id.toString() === userId.toString())) return true;
+  if (room.mentorId && room.mentorId.toString() === userId.toString()) return true;
+
+  // 2. Nếu là phòng chat chung (event_general)
+  if (room.type === 'event_general') {
+    const isMember = await TeamMember.findOne({ userId }).populate('teamId');
+    if (isMember && isMember.teamId && isMember.teamId.eventId.toString() === room.eventId.toString()) {
+      return true;
+    }
+    const hasRole = await EventRole.findOne({ userId, eventId: room.eventId, status: 'active' });
+    if (hasRole) return true;
+  }
+
+  // 3. Nếu là phòng chat đội thi (team_mentor), cho phép mentor thuộc bảng đó xem
+  if (room.type === 'team_mentor') {
+    const team = await Team.findById(room.teamId);
+    if (team) {
+      const isTrackMentor = await EventRole.findOne({
+        userId,
+        eventId: team.eventId,
+        trackId: team.trackId,
+        role: 'mentor',
+        status: 'active'
+      });
+      if (isTrackMentor) return true;
+    }
+  }
+
+  return false;
+}
+
 module.exports = {
   ensureChatRoomForTeam,
   ensureChatRoomsForMentorTrack,
-  ensureTrackMentorChatRoom
+  ensureTrackMentorChatRoom,
+  ensureEventGeneralChatRoom,
+  checkRoomAccess,
+  ENDED_EVENT_STATUSES,
+  isEventChatClosed,
+  canViewEndedEventChat,
+  isCoordinatorForEvent,
+  isRoomVisibleToUser
 };

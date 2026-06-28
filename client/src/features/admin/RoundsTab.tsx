@@ -1,20 +1,22 @@
 import React, { useState, useRef } from "react";
-import { ListOrdered, ChevronRight, Award, Lock, Download, Upload, FileSpreadsheet, X, AlertTriangle, CheckCircle } from "lucide-react";
+import { ListOrdered, ChevronRight, Award, Lock, Download, Upload, FileSpreadsheet, X, AlertTriangle, CheckCircle, Trash2, Edit2 } from "lucide-react";
 import axios from "axios";
 import * as XLSX from "xlsx";
 import CustomSelect from "../shared/CustomSelect";
-import CustomDateTimePicker from "../shared/CustomDateTimePicker";
 
 interface RoundsTabProps {
   selectedEvent: any;
   tracks: any[];
   rounds: any[];
+  isSystemAdmin?: boolean;
   selectedTrack: any;
   setSelectedTrack: (track: any) => void;
   selectedRubricRoundId: string;
   setSelectedRubricRoundId: (id: string) => void;
   handleAdvanceRound: (roundId: string) => Promise<void>;
   handleLockRound: (roundId: string) => Promise<void>;
+  handleDeleteRound?: (roundId: string) => void;
+  handleUpdateRound?: (roundId: string, updatedData: any) => Promise<void>;
 
   // Create Round form props
   roundName: string;
@@ -52,6 +54,7 @@ interface RoundsTabProps {
   handleUpdateRubric: (e: React.FormEvent) => Promise<void>;
   handleDeleteRubric: () => Promise<void>;
   handleLockRubric: () => Promise<void>;
+  handleUnlockRubric: () => Promise<void>;
 
   // Criteria props
   critCode: string;
@@ -98,12 +101,15 @@ export default function RoundsTab({
   selectedEvent,
   tracks,
   rounds,
+  isSystemAdmin,
   selectedTrack,
   setSelectedTrack,
   selectedRubricRoundId,
   setSelectedRubricRoundId,
   handleAdvanceRound,
   handleLockRound,
+  handleDeleteRound,
+  handleUpdateRound,
 
   roundName,
   setRoundName,
@@ -138,6 +144,7 @@ export default function RoundsTab({
   handleUpdateRubric,
   handleDeleteRubric,
   handleLockRubric,
+  handleUnlockRubric,
 
   critCode,
   setCritCode,
@@ -175,8 +182,33 @@ export default function RoundsTab({
   // Read unused props to satisfy the TS compiler (noUnusedLocals: true)
   const selectedRound = rounds.find((r: any) => r._id === selectedRubricRoundId);
   if (false as boolean) {
-    console.log(selectedTrack, setSelectedTrack, setRubric, setCriteria);
+    console.log(selectedTrack, setSelectedTrack, setRubric, setCriteria, roundDeadline, setRoundDeadline);
   }
+
+  // Edit Round modal state
+  const [editingRound, setEditingRound] = useState<any | null>(null);
+  const [editRoundNameInput, setEditRoundNameInput] = useState("");
+  const [editRoundOrderInput, setEditRoundOrderInput] = useState("1");
+  const [editRoundTopNInput, setEditRoundTopNInput] = useState("3");
+
+  const handleOpenEditRound = (e: React.MouseEvent, r: any) => {
+    e.stopPropagation();
+    setEditingRound(r);
+    setEditRoundNameInput(r.name || "");
+    setEditRoundOrderInput(String(r.order || 1));
+    setEditRoundTopNInput(String(r.advanceTopN || 3));
+  };
+
+  const handleSaveEditRound = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingRound || !handleUpdateRound) return;
+    await handleUpdateRound(editingRound._id, {
+      name: editRoundNameInput,
+      order: parseInt(editRoundOrderInput),
+      advanceTopN: parseInt(editRoundTopNInput),
+    });
+    setEditingRound(null);
+  };
 
   const handleExportRubric = async (rubricId: string) => {
     try {
@@ -549,7 +581,34 @@ export default function RoundsTab({
                       ))}
                   </div>
                 </div>
-                <ChevronRight size={14} />
+                <div className="flex items-center gap-1 shrink-0">
+                  {isSystemAdmin && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={(e) => handleOpenEditRound(e, r)}
+                        className="p-1.5 text-slate-400 hover:text-cyan-300 hover:bg-slate-800/80 rounded-lg transition-colors cursor-pointer"
+                        title="Sửa thông tin vòng thi"
+                      >
+                        <Edit2 size={13} />
+                      </button>
+                      {handleDeleteRound && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteRound(r._id);
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-950/60 rounded-lg transition-colors cursor-pointer"
+                          title="Xóa vòng thi này"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </>
+                  )}
+                  <ChevronRight size={14} />
+                </div>
               </button>
             ))}
             {rounds.length === 0 && (
@@ -610,17 +669,6 @@ export default function RoundsTab({
                 className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
               />
             </div>
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
-              Thời hạn nộp bài (Deadline)
-            </label>
-            <CustomDateTimePicker
-              value={roundDeadline}
-              onChange={setRoundDeadline}
-              placeholder="Chọn thời hạn nộp bài..."
-            />
           </div>
 
           {/* Rubric Configuration */}
@@ -873,14 +921,22 @@ export default function RoundsTab({
                       </div>
                     )}
 
-                    {!rubric.isLocked && (
+                    {!rubric.isLocked ? (
                       <button
                         onClick={handleLockRubric}
-                        className="bg-cyan-500 hover:bg-cyan-500 text-[9px] font-bold px-2.5 py-1 rounded text-white cursor-pointer"
+                        className="bg-cyan-500 hover:bg-cyan-400 text-[9px] font-bold px-2.5 py-1 rounded text-white cursor-pointer transition-all shadow-md shadow-cyan-500/20"
                       >
                         KHÓA RUBRIC
                       </button>
-                    )}
+                    ) : isSystemAdmin ? (
+                      <button
+                        onClick={handleUnlockRubric}
+                        className="bg-amber-600 hover:bg-amber-500 text-[9px] font-bold px-2.5 py-1 rounded text-white cursor-pointer transition-all shadow-md shadow-amber-600/20"
+                        title="Quyền Super-Admin: Bẻ khóa Rubric để mở lại luồng chỉnh sửa tiêu chí"
+                      >
+                        🔓 BẺ KHÓA (UNLOCK)
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => handleExportRubric(rubric._id)}
@@ -1499,6 +1555,81 @@ export default function RoundsTab({
           </p>
         )}
       </div>
+
+      {/* Edit Round Modal */}
+      {editingRound && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200 font-sans">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-white font-mono flex items-center gap-2">
+                <Edit2 className="text-cyan-400" size={18} />
+                <span>Chỉnh Sửa Vòng Thi</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingRound(null)}
+                className="text-slate-400 hover:text-white cursor-pointer text-sm font-mono"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditRound} className="space-y-4 text-xs font-mono">
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Tên Vòng Thi <span className="text-rose-500">*</span></label>
+                <input
+                  type="text"
+                  required
+                  value={editRoundNameInput}
+                  onChange={(e) => setEditRoundNameInput(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500"
+                  placeholder="e.g. Vòng Sơ Loại"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-300 mb-1">Thứ Tự Vòng <span className="text-rose-500">*</span></label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={editRoundOrderInput}
+                    onChange={(e) => setEditRoundOrderInput(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-300 mb-1">Lấy Top N Đội</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={editRoundTopNInput}
+                    onChange={(e) => setEditRoundTopNInput(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingRound(null)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-mono text-xs cursor-pointer"
+                >
+                  Hủy Bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white font-bold rounded-xl font-mono text-xs shadow-lg shadow-cyan-500/20 cursor-pointer"
+                >
+                  Cập Nhật Vòng Thi
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

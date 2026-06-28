@@ -32,6 +32,12 @@ module.exports = {
     io.on('connection', (socket) => {
       const userId = socket.decoded.id;
       console.log(`User connected: ${userId}`);
+
+      const getAccessOptions = async (requireWrite = false) => {
+        const User = mongoose.model('User');
+        const user = await User.findById(userId).select('isSystemAdmin').lean();
+        return { isSystemAdmin: !!user?.isSystemAdmin, requireWrite };
+      };
       
       // Each user joins their personal room for targeted push notifications
       socket.join(`user:${userId}`);
@@ -41,8 +47,9 @@ module.exports = {
           const ChatRoom = mongoose.model('ChatRoom');
           const room = await ChatRoom.findById(roomId);
           if (room) {
-            const hasAccess = room.members.some(memberId => memberId.toString() === userId) || 
-                              (room.mentorId && room.mentorId.toString() === userId);
+            const { checkRoomAccess } = require('./chatRoomService');
+            const accessOptions = await getAccessOptions(false);
+            const hasAccess = await checkRoomAccess(room, userId, accessOptions);
             
             if (hasAccess) {
               socket.join(roomId);
@@ -72,7 +79,31 @@ module.exports = {
           const Notification = mongoose.model('Notification');
           const User = mongoose.model('User');
           const { roomId, content, replyTo } = data;
-          
+
+          // [CRITICAL-2 FIX] Validate input trước khi thực hiện bất kỳ thác tác nào
+          if (!content || typeof content !== 'string' || content.trim().length === 0) {
+            return socket.emit('error', { message: 'Nội dung tin nhắn không được để trống.' });
+          }
+          if (content.length > 2000) {
+            return socket.emit('error', { message: 'Tin nhắn quá dài (tối đa 2000 ký tự).' });
+          }
+          if (!mongoose.Types.ObjectId.isValid(roomId)) {
+            return socket.emit('error', { message: 'ID phòng chat không hợp lệ.' });
+          }
+
+          // [CRITICAL-2 FIX] Kiểm tra quyền gửi tin nhắn — bắt buộc, chần mọi bypass
+          const room = await ChatRoom.findById(roomId);
+          if (!room) {
+            return socket.emit('error', { message: 'Không tìm thấy phòng chat.' });
+          }
+          const { checkRoomAccess } = require('./chatRoomService');
+          const accessOptions = await getAccessOptions(true);
+          const canSend = await checkRoomAccess(room, userId, accessOptions);
+          if (!canSend) {
+            console.warn(`[SECURITY] Unauthorized send_message attempt by user ${userId} to room ${roomId}`);
+            return socket.emit('error', { message: 'Unauthorized: Bạn không có quyền nhắn tin trong phòng này.' });
+          }
+
           const user = await User.findById(userId);
           if (!user) {
             console.warn(`Sender user not found for ID: ${userId}`);
@@ -83,7 +114,7 @@ module.exports = {
             roomId,
             senderId: user._id,
             senderName: user.fullName || user.email,
-            content,
+            content: content.trim(),
             replyTo: replyTo ? {
               messageId: replyTo.messageId,
               senderName: replyTo.senderName,
@@ -103,6 +134,18 @@ module.exports = {
               const allUsers = [...(room.members || [])];
               if (room.mentorId) {
                 allUsers.push(room.mentorId);
+              }
+              // Nếu là phòng chat của đội thi với mentor, gửi thông báo cho tất cả mentor của bảng đấu đó
+              if (room.type === 'team_mentor' && room.trackId) {
+                const EventRole = mongoose.model('EventRole');
+                const trackMentors = await EventRole.find({
+                  eventId: room.eventId,
+                  trackId: room.trackId,
+                  role: 'mentor',
+                  status: 'active'
+                });
+                const mentorUserIds = trackMentors.map(m => m.userId);
+                allUsers.push(...mentorUserIds);
               }
               // Deduplicate and filter out sender
               const uniqueUserIds = Array.from(new Set(allUsers.map(id => id.toString())));
@@ -144,6 +187,11 @@ module.exports = {
           const ChatMessage = mongoose.model('ChatMessage');
           const { messageId, roomId } = data;
 
+          // [CRITICAL-3 FIX] Validate roomId hợp lệ trước khi làm gì
+          if (!mongoose.Types.ObjectId.isValid(roomId) || !mongoose.Types.ObjectId.isValid(messageId)) {
+            return socket.emit('error', { message: 'Dữ liệu không hợp lệ.' });
+          }
+
           const message = await ChatMessage.findById(messageId);
           if (!message) {
             console.warn(`Message not found: ${messageId}`);
@@ -151,11 +199,30 @@ module.exports = {
             return;
           }
 
+          // [CRITICAL-3 FIX] Xác minh tin nhắn thuộc đúng phòng được truyền lên
+          if (message.roomId.toString() !== roomId.toString()) {
+            console.warn(`[SECURITY] recall_message roomId mismatch by user ${userId}: expected ${message.roomId}, got ${roomId}`);
+            return socket.emit('error', { message: 'Tin nhắn này không thuộc phòng chat đã chỉ định.' });
+          }
+
           // Verify the sender is the one recalling it
           if (message.senderId.toString() !== userId.toString()) {
             console.warn(`Unauthorized recall attempt by user ${userId} for message ${messageId}`);
             socket.emit('error', { message: 'You can only recall your own messages' });
             return;
+          }
+
+          const ChatRoom = mongoose.model('ChatRoom');
+          const room = await ChatRoom.findById(roomId);
+          if (!room) {
+            return socket.emit('error', { message: 'Không tìm thấy phòng chat.' });
+          }
+
+          const { checkRoomAccess } = require('./chatRoomService');
+          const accessOptions = await getAccessOptions(true);
+          const canRecall = await checkRoomAccess(room, userId, accessOptions);
+          if (!canRecall) {
+            return socket.emit('error', { message: 'Cuộc thi đã kết thúc. Không thể thu hồi tin nhắn.' });
           }
 
           message.isRecalled = true;

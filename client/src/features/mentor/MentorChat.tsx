@@ -33,11 +33,18 @@ interface ChatRoom {
   mentorId?: { _id: string; fullName: string; email: string };
   trackId?: { _id: string; name: string };
   eventId?: { _id: string; name: string; status: string };
-  type: 'team_mentor' | 'track_mentors';
+  type: 'team_mentor' | 'track_mentors' | 'event_general';
   members: ChatMember[];
 }
 
-export default function MentorChat() {
+interface MentorChatProps {
+  roles?: any[];
+  isSystemAdmin?: boolean;
+}
+
+const ENDED_EVENT_STATUSES = ['completed', 'cancelled'];
+
+export default function MentorChat({ roles = [], isSystemAdmin = false }: MentorChatProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null);
@@ -48,6 +55,8 @@ export default function MentorChat() {
   const [isConnected, setIsConnected] = useState(false);
   const [unreadCounts, setUnreadCounts] = useState<{ [roomId: string]: number }>({});
   const [searchQuery, setSearchQuery] = useState('');
+  const [mentorTeams, setMentorTeams] = useState<any[]>([]);
+
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -64,6 +73,25 @@ export default function MentorChat() {
   const selectedRoomRef = useRef<ChatRoom | null>(null);
   const currentUserRef = useRef<any>(null);
   const pendingSelectRoomRef = useRef<{ teamId?: string; trackId?: string } | null>(null);
+  const coordinatorEventIds = new Set(
+    roles
+      .filter((r) => r.role === 'coordinator')
+      .map((r) => (typeof r.eventId === 'object' ? r.eventId?._id : r.eventId)?.toString())
+      .filter(Boolean)
+  );
+  const isCoordinator = isSystemAdmin || coordinatorEventIds.size > 0;
+
+  const isRoomReadOnly = (room: ChatRoom | null) =>
+    !!room && ENDED_EVENT_STATUSES.includes(room.eventId?.status || '');
+
+  const isRoomVisible = (room: ChatRoom) => {
+    const status = room.eventId?.status;
+    const eventId = typeof room.eventId === 'object' ? room.eventId?._id?.toString() : room.eventId?.toString();
+    if (ENDED_EVENT_STATUSES.includes(status || '')) {
+      return isSystemAdmin || (eventId ? coordinatorEventIds.has(eventId) : false);
+    }
+    return status === 'ongoing';
+  };
 
   useEffect(() => {
     selectedRoomRef.current = selectedRoom;
@@ -116,14 +144,13 @@ export default function MentorChat() {
       const resRooms = await axios.get(`http://localhost:5000/api/chat/rooms`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
-      // Only show rooms that belong to an ongoing event
-      const ongoingRooms = resRooms.data.filter((r: any) => r.eventId?.status === 'ongoing');
-      setRooms(ongoingRooms);
+
+      const visibleRooms = resRooms.data.filter((r: ChatRoom) => isRoomVisible(r));
+      setRooms(visibleRooms);
       
       // Auto-select room if only 1 exists
-      if (ongoingRooms.length === 1 && !selectedRoomRef.current) {
-        setSelectedRoom(ongoingRooms[0]);
+      if (visibleRooms.length === 1 && !selectedRoomRef.current) {
+        setSelectedRoom(visibleRooms[0]);
       }
     } catch (error) {
       console.error("Error fetching chat rooms:", error);
@@ -154,9 +181,23 @@ export default function MentorChat() {
         console.error("Error fetching user profile in chat:", err);
       }
     };
-    fetchUser();
+    const fetchMentorTeams = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (token) {
+          const res = await axios.get('http://localhost:5000/api/chat/mentor/teams', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setMentorTeams(res.data || []);
+        }
+      } catch (err) {
+        console.error("Error fetching mentor teams:", err);
+      }
+    };
 
+    fetchUser();
     fetchRooms();
+    fetchMentorTeams();
 
     // Setup socket connection
     const token = localStorage.getItem('token');
@@ -365,6 +406,11 @@ export default function MentorChat() {
     e.preventDefault();
     if (!newMessage.trim() || !selectedRoom || !socket) return;
 
+    if (isRoomReadOnly(selectedRoom)) {
+      toast.error('Cuộc thi đã kết thúc. Chỉ có thể xem lịch sử chat.');
+      return;
+    }
+
     socket.emit('send_message', {
       roomId: selectedRoom._id,
       content: newMessage.trim(),
@@ -386,17 +432,49 @@ export default function MentorChat() {
     }
   };
 
+  const handleStartChatWithTeam = async (teamId: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const res = await axios.post('http://localhost:5000/api/chat/rooms/team', { teamId }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const room = res.data;
+      setRooms(prev => {
+        if (prev.find(r => r._id === room._id)) return prev;
+        return [room, ...prev];
+      });
+      setSelectedRoom(room);
+      if (socket) {
+        socket.emit('join_room', room._id);
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Không thể bắt đầu chat với đội thi này.");
+    }
+  };
+
   const getRoomName = (room: ChatRoom) => {
+    const archivedSuffix = ENDED_EVENT_STATUSES.includes(room.eventId?.status || '')
+      ? ' (Lưu trữ)'
+      : '';
+    if (room.type === 'event_general') {
+      return `📢 Kênh Chung - ${room.eventId?.name || 'Cuộc thi'}${archivedSuffix}`;
+    }
     if (room.type === 'track_mentors') {
-      return `💬 Kênh Mentor - Bảng ${room.trackId?.name || 'Chung'}`;
+      return `💬 Kênh Mentor - Bảng ${room.trackId?.name || 'Chung'}${archivedSuffix}`;
     }
     
-    const isCurrentUserMentor = currentUser && room.mentorId && currentUser.id === room.mentorId._id;
-    if (isCurrentUserMentor) {
-      return `👥 Đội thi: ${room.teamId?.name || 'Đội thi'}`;
-    } else {
-      return `👨‍🏫 Mentor: ${room.mentorId?.fullName || 'Người hướng dẫn'}`;
+    const isTeamMember = room.members && room.members.some(m => 
+      m.id === currentUser?.id || 
+      m._id === currentUser?.id || 
+      m.id === currentUser?.userId || 
+      m._id === currentUser?.userId
+    );
+
+    if (isTeamMember) {
+      return `👨‍🏫 Hỗ trợ từ Mentor${archivedSuffix}`;
     }
+    return `👥 Đội thi: ${room.teamId?.name || 'Đội thi'}${archivedSuffix}`;
   };
 
   const filteredRooms = rooms.filter(room => {
@@ -433,43 +511,59 @@ export default function MentorChat() {
         <div className="w-[360px] h-[500px] sm:w-[380px] sm:h-[550px] bg-[#0c1322] border border-slate-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
           
           {/* Header */}
-          <div className="px-4 py-3 bg-[#0d1629] border-b border-slate-800 flex items-center justify-between">
-            {selectedRoom ? (
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                {rooms.length > 1 && (
-                  <button 
-                    onClick={() => setSelectedRoom(null)}
-                    className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
-                  >
-                    <ArrowLeft size={16} />
-                  </button>
-                )}
-                <div className="truncate flex-1 min-w-0">
-                  <h4 className="text-sm font-bold text-slate-100 truncate">{getRoomName(selectedRoom)}</h4>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></span>
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      {selectedRoom.type === 'track_mentors' 
-                        ? `${selectedRoom.members.length} mentor` 
-                        : isConnected ? 'Trực tuyến' : 'Ngoại tuyến'}
-                    </span>
+          {(() => {
+            const isTeamRoom = selectedRoom && selectedRoom.type === 'team_mentor';
+            return (
+              <div className={`px-4 py-3 border-b flex items-center justify-between transition-all duration-300 ${
+                isTeamRoom 
+                  ? 'bg-gradient-to-r from-[#0d1629] to-[#0a2538]/40 border-cyan-500/30 shadow-[0_1px_10px_rgba(6,182,212,0.1)]' 
+                  : 'bg-[#0d1629] border-slate-800'
+              }`}>
+                {selectedRoom ? (
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    {rooms.length > 1 && (
+                      <button 
+                        onClick={() => setSelectedRoom(null)}
+                        className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
+                      >
+                        <ArrowLeft size={16} />
+                      </button>
+                    )}
+                    <div className="truncate flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-slate-100 truncate">{getRoomName(selectedRoom)}</h4>
+                        {isTeamRoom && (
+                          <span className="shrink-0 bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[8px] font-black px-2 py-0.5 rounded-full shadow-[0_0_8px_rgba(6,182,212,0.4)] animate-pulse">
+                            ĐỘI THI
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></span>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {selectedRoom.type === 'track_mentors' 
+                            ? `${selectedRoom.members.length} mentor` 
+                            : isConnected ? 'Trực tuyến' : 'Ngoại tuyến'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div>
+                    <h4 className="text-sm font-black text-slate-100">Hộp thoại hỗ trợ</h4>
+                    <p className="text-[10px] text-slate-400 mt-0.5 font-mono">Trao đổi trực tiếp với Mentor & Đội thi</p>
+                  </div>
+                )}
+                
+                <button 
+                  onClick={() => setIsOpen(false)}
+                  className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer ml-2"
+                >
+                  <X size={18} />
+                </button>
               </div>
-            ) : (
-              <div>
-                <h4 className="text-sm font-black text-slate-100">Hộp thoại hỗ trợ</h4>
-                <p className="text-[10px] text-slate-400 mt-0.5 font-mono">Trao đổi trực tiếp với Mentor & Đội thi</p>
-              </div>
-            )}
-            
-            <button 
-              onClick={() => setIsOpen(false)}
-              className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer ml-2"
-            >
-              <X size={18} />
-            </button>
-          </div>
+            );
+          })()}
 
           {/* Body */}
           <div className="flex-1 flex flex-col min-h-0 bg-[#070b13]">
@@ -637,6 +731,12 @@ export default function MentorChat() {
 
                 {/* Input block */}
                 <div className="p-3 bg-[#0d1629] border-t border-slate-800">
+                  {isRoomReadOnly(selectedRoom) ? (
+                    <div className="text-center text-[10px] text-slate-500 py-2 font-mono uppercase tracking-wider">
+                      Cuộc thi đã kết thúc — Chế độ xem lịch sử (chỉ Coordinator)
+                    </div>
+                  ) : (
+                    <>
                   {replyingTo && (
                     <div className="px-2.5 py-1.5 bg-slate-900 border-l-2 border-cyan-500 flex items-center justify-between text-[10px] text-slate-350 gap-2 mb-2 rounded">
                       <div className="truncate flex-1">
@@ -669,6 +769,8 @@ export default function MentorChat() {
                       <Send size={14} />
                     </button>
                   </form>
+                    </>
+                  )}
                 </div>
               </>
             ) : (
@@ -690,51 +792,83 @@ export default function MentorChat() {
                 
                 {/* Room Cards list */}
                 <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
-                  {filteredRooms.length === 0 ? (
+                  {filteredRooms.length === 0 && mentorTeams.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-slate-500 text-xs">
                       Không tìm thấy phòng nào.
                     </div>
                   ) : (
-                    filteredRooms.map(room => {
-                      const roomUnread = unreadCounts[room._id] || 0;
-                      return (
-                        <div 
-                          key={room._id}
-                          onClick={() => setSelectedRoom(room)}
-                          className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-800/40 border border-transparent hover:border-slate-800/60 transition-all cursor-pointer group bg-slate-900/10"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                            {/* Icon container */}
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${room.type === 'track_mentors' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-cyan-500/10 text-cyan-400'}`}>
-                              <Users size={16} />
+                    <>
+                      {filteredRooms.map(room => {
+                        const roomUnread = unreadCounts[room._id] || 0;
+                        return (
+                          <div 
+                            key={room._id}
+                            onClick={() => setSelectedRoom(room)}
+                            className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-800/40 border border-transparent hover:border-slate-800/60 transition-all cursor-pointer group bg-slate-900/10 mb-1.5"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                              {/* Icon container */}
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${room.type === 'track_mentors' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-cyan-500/10 text-cyan-400'}`}>
+                                <Users size={16} />
+                              </div>
+                              
+                              {/* Room Info */}
+                              <div className="truncate flex-1 min-w-0">
+                                <p className="text-xs font-bold text-slate-200 truncate group-hover:text-cyan-400 transition-colors">
+                                  {getRoomName(room)}
+                                </p>
+                                <p className="text-[10px] text-slate-550 truncate mt-0.5 font-mono">
+                                  {room.type === 'event_general'
+                                    ? 'Phòng chat chung của cuộc thi'
+                                    : room.type === 'track_mentors'
+                                    ? 'Kênh trao đổi các Mentor của Bảng đấu'
+                                    : room.members.length + ' thành viên'}
+                                </p>
+                              </div>
                             </div>
                             
-                            {/* Room Info */}
-                            <div className="truncate flex-1 min-w-0">
-                              <p className="text-xs font-bold text-slate-200 truncate group-hover:text-cyan-400 transition-colors">
-                                {getRoomName(room)}
-                              </p>
-                              <p className="text-[10px] text-slate-500 truncate mt-0.5 font-mono">
-                                {room.type === 'track_mentors' 
-                                  ? 'Kênh trao đổi các Mentor của Bảng đấu' 
-                                  : room.members.length + ' thành viên'}
-                              </p>
+                            {/* Unread badge / Arrow indicator */}
+                            <div className="flex items-center gap-1.5 pl-2 shrink-0">
+                              {roomUnread > 0 ? (
+                                <span className="bg-rose-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full">
+                                  {roomUnread}
+                                </span>
+                              ) : (
+                                <span className="w-1.5 h-1.5 rounded-full bg-transparent group-hover:bg-cyan-500 transition-colors"></span>
+                              )}
                             </div>
                           </div>
-                          
-                          {/* Unread badge / Arrow indicator */}
-                          <div className="flex items-center gap-1.5 pl-2 shrink-0">
-                            {roomUnread > 0 ? (
-                              <span className="bg-rose-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full">
-                                {roomUnread}
-                              </span>
-                            ) : (
-                              <span className="w-1.5 h-1.5 rounded-full bg-transparent group-hover:bg-cyan-500 transition-colors"></span>
-                            )}
+                        );
+                      })}
+
+                      {mentorTeams.length > 0 && (
+                        <div className="mt-4 pt-3 border-t border-slate-800/60">
+                          <p className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest font-mono px-2 mb-2">Đội thi thuộc bảng của bạn</p>
+                          <div className="space-y-1.5">
+                            {mentorTeams.map(t => {
+                              return (
+                                <div 
+                                  key={t._id}
+                                  onClick={() => handleStartChatWithTeam(t._id)}
+                                  className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-800/20 border border-transparent hover:border-slate-850 transition-all cursor-pointer bg-slate-900/5"
+                                >
+                                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                    <div className="w-7 h-7 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-xs font-bold font-mono">
+                                      {t.name.charAt(0)}
+                                    </div>
+                                    <div className="truncate flex-1 min-w-0">
+                                      <p className="text-xs font-bold text-slate-300 truncate">{t.name}</p>
+                                      <p className="text-[9px] text-slate-550 font-mono truncate">{t.trackName}</p>
+                                    </div>
+                                  </div>
+                                  <span className="text-[9px] font-extrabold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded uppercase tracking-wider shrink-0">Chat</span>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
-                      );
-                    })
+                      )}
+                    </>
                   )}
                 </div>
               </div>

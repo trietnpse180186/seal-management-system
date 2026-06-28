@@ -67,7 +67,39 @@ router.post('/register', authenticateToken, async (req, res) => {
       }
     }
 
-    // 2. Validate that team name is unique inside the event
+    // 2. Validate that none of the members or the leader are already in another team in this event
+    const activeTeams = await Team.find({ eventId, status: { $in: ['confirmed', 'pending_confirm'] } });
+    const activeTeamIds = activeTeams.map(t => t._id);
+
+    // Check leader
+    const leaderHasTeam = await TeamMember.findOne({
+      teamId: { $in: activeTeamIds },
+      userId: req.user._id
+    });
+    if (leaderHasTeam) {
+      return res.status(400).json({ message: 'Tài khoản của bạn đã đăng ký tham gia một nhóm khác trong cuộc thi này.' });
+    }
+
+    // Check members
+    for (const memberData of membersList) {
+      const { email } = memberData;
+      if (!email) continue;
+
+      const existingUser = await User.findOne({ email: email.toLowerCase() });
+      if (existingUser) {
+        const memberHasTeam = await TeamMember.findOne({
+          teamId: { $in: activeTeamIds },
+          userId: existingUser._id
+        });
+        if (memberHasTeam) {
+          return res.status(400).json({
+            message: `Thành viên với email "${email}" đã đăng ký tham gia một nhóm khác trong cuộc thi này.`
+          });
+        }
+      }
+    }
+
+    // 3. Validate that team name is unique inside the event
     const nameFilter = { eventId, name: teamName };
     if (trackId) nameFilter.trackId = trackId;
     const existingTeam = await Team.findOne(nameFilter);
@@ -89,6 +121,7 @@ router.post('/register', authenticateToken, async (req, res) => {
     // 4. Register/Handle Leader as TeamMember
     const leaderMember = new TeamMember({
       teamId: team._id,
+      eventId: team.eventId,
       userId: req.user._id,
       role: 'leader',
       confirmStatus: 'confirmed',
@@ -154,6 +187,7 @@ router.post('/register', authenticateToken, async (req, res) => {
 
       const teamMember = new TeamMember({
         teamId: team._id,
+        eventId: team.eventId,
         userId: memberUser._id,
         role: 'member',
         confirmStatus: 'pending',
@@ -261,6 +295,14 @@ router.post('/register', authenticateToken, async (req, res) => {
         console.error('[ROLLBACK ERROR] Failed to clean up team registration:', rollbackError.message);
       }
     }
+    
+    // Xử lý lỗi trùng lặp duy nhất (Race condition / Concurrent registration)
+    if (error.code === 11000) {
+      return res.status(400).json({ 
+        message: 'Một hoặc nhiều thành viên (hoặc chính bạn) đã được đăng ký vào một đội khác trong cuộc thi này.' 
+      });
+    }
+    
     res.status(500).json({ message: 'Đăng ký đội thất bại.' });
   }
 });

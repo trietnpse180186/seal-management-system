@@ -29,6 +29,8 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
   const location = useLocation();
   const isJudgeRoute = location.pathname.startsWith('/judge');
   const isAdminRoute = location.pathname.startsWith('/admin');
+  const isCoordinator = user?.isSystemAdmin || roles?.some((r: any) => r.role === 'coordinator');
+  const showChatWidget = user && !isJudgeRoute && (!isAdminRoute || isCoordinator);
 
   return (
     <div className="min-h-screen bg-gradient-dark flex flex-col">
@@ -117,7 +119,9 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
 
       {!isJudgeRoute && !isAdminRoute && <Footer />}
       
-      {user && !isJudgeRoute && !isAdminRoute && <MentorChat />}
+      {showChatWidget && (
+        <MentorChat roles={roles} isSystemAdmin={!!user?.isSystemAdmin} />
+      )}
     </div>
   );
 }

@@ -79,14 +79,13 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
       .map((r) => (typeof r.eventId === 'object' ? r.eventId?._id : r.eventId)?.toString())
       .filter(Boolean)
   );
-  const isCoordinator = isSystemAdmin || coordinatorEventIds.size > 0;
 
   const isRoomReadOnly = (room: ChatRoom | null) =>
     !!room && ENDED_EVENT_STATUSES.includes(room.eventId?.status || '');
 
   const isRoomVisible = (room: ChatRoom) => {
     const status = room.eventId?.status;
-    const eventId = typeof room.eventId === 'object' ? room.eventId?._id?.toString() : room.eventId?.toString();
+    const eventId = room.eventId?._id?.toString();
     if (ENDED_EVENT_STATUSES.includes(status || '')) {
       return isSystemAdmin || (eventId ? coordinatorEventIds.has(eventId) : false);
     }

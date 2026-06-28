@@ -559,6 +559,46 @@ router.post('/:eventId/rounds', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @route   PUT /api/events/:eventId/rounds/:roundId
+ * @desc    Update a Round in an event
+ * @access  Private (System Admin or Coordinator)
+ */
+router.put('/:eventId/rounds/:roundId', authenticateToken, async (req, res) => {
+  const { eventId, roundId } = req.params;
+  const { name, order, submissionDeadline, advanceTopN } = req.body;
+
+  try {
+    if (!req.user.isSystemAdmin) {
+      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator', status: 'active' });
+      if (!isCoord) return res.status(403).json({ message: 'Unauthorized to edit round.' });
+    }
+
+    const round = await Round.findById(roundId);
+    if (!round) return res.status(404).json({ message: 'Round not found.' });
+
+    if (name !== undefined) round.name = name;
+    if (order !== undefined) round.order = parseInt(order);
+    if (submissionDeadline !== undefined) round.submissionDeadline = submissionDeadline ? new Date(submissionDeadline) : undefined;
+    if (advanceTopN !== undefined) round.advanceTopN = advanceTopN ? parseInt(advanceTopN) : undefined;
+
+    await round.save();
+
+    const newLog = new EventLog({
+      eventId,
+      actorId: req.user._id,
+      action: 'update_round',
+      details: `Cập nhật thông tin vòng thi: "${round.name}" (Thứ tự: ${round.order})`
+    });
+    await newLog.save();
+
+    res.json(round);
+  } catch (error) {
+    console.error('Update Round Error:', error.message);
+    res.status(500).json({ message: 'Server error updating round.' });
+  }
+});
+
+/**
  * @route   POST /api/events/:eventId/upload-exam
  * @desc    Simulate exam attachment file upload
  * @access  Private (Coordinator or Admin)
@@ -853,44 +893,49 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     // Validation for event status change
     if (status && status !== oldStatus) {
-      // 1. If there is any event currently ongoing, a draft event cannot change its status
-      if (oldStatus === 'draft') {
-        const ongoingEvent = await Event.findOne({ status: 'ongoing' });
-        if (ongoingEvent) {
+      const isForceOverride = req.body.isForceOverride === true || req.user.isSystemAdmin;
+      if (!isForceOverride) {
+        // 1. If there is any event currently ongoing, a draft event cannot change its status
+        if (oldStatus === 'draft') {
+          const ongoingEvent = await Event.findOne({ status: 'ongoing' });
+          if (ongoingEvent) {
+            return res.status(400).json({
+              message: `Không thể thay đổi trạng thái của sự kiện đang ở trạng thái draft vì đang có sự kiện khác đang diễn ra (ongoing): "${ongoingEvent.name}".`
+            });
+          }
+        }
+
+        // 2. Define valid transitions mapping (supports legacy 'prepare' to 'ongoing' transition)
+        const validTransitions = {
+          draft: ['registration', 'cancelled'],
+          registration: ['ongoing', 'cancelled'],
+          prepare: ['ongoing'],
+          ongoing: ['completed'],
+          completed: [],
+          cancelled: []
+        };
+
+        const allowedNext = validTransitions[oldStatus];
+        if (!allowedNext || !allowedNext.includes(status)) {
           return res.status(400).json({
-            message: `Không thể thay đổi trạng thái của sự kiện đang ở trạng thái draft vì đang có sự kiện khác đang diễn ra (ongoing): "${ongoingEvent.name}".`
+            message: `Không thể chuyển trạng thái từ "${oldStatus}" sang "${status}". Trạng thái sự kiện phải được nâng theo từng bậc và không thể nhảy vọt.`
           });
         }
-      }
 
-      // 2. Define valid transitions mapping (supports legacy 'prepare' to 'ongoing' transition)
-      const validTransitions = {
-        draft: ['registration', 'cancelled'],
-        registration: ['ongoing', 'cancelled'],
-        prepare: ['ongoing'],
-        ongoing: ['completed'],
-        completed: [],
-        cancelled: []
-      };
-
-      const allowedNext = validTransitions[oldStatus];
-      if (!allowedNext || !allowedNext.includes(status)) {
-        return res.status(400).json({
-          message: `Không thể chuyển trạng thái từ "${oldStatus}" sang "${status}". Trạng thái sự kiện phải được nâng theo từng bậc và không thể nhảy vọt.`
-        });
-      }
-
-      // 3. Keep safety check to ensure only one active event (registration or ongoing) exists
-      if (status === 'registration') {
-        const activeEvent = await Event.findOne({
-          _id: { $ne: event._id },
-          status: { $in: ['registration', 'ongoing'] }
-        });
-        if (activeEvent) {
-          return res.status(400).json({
-            message: `Không thể chuyển sự kiện từ draft lên registration vì đang có sự kiện khác đang hoạt động: "${activeEvent.name}" (Trạng thái: ${activeEvent.status}). Chỉ khi sự kiện đó được chuyển thành completed hoặc cancelled thì mới có thể đăng ký sự kiện khác.`
+        // 3. Keep safety check to ensure only one active event (registration or ongoing) exists
+        if (status === 'registration') {
+          const activeEvent = await Event.findOne({
+            _id: { $ne: event._id },
+            status: { $in: ['registration', 'ongoing'] }
           });
+          if (activeEvent) {
+            return res.status(400).json({
+              message: `Không thể chuyển sự kiện từ draft lên registration vì đang có sự kiện khác đang hoạt động: "${activeEvent.name}" (Trạng thái: ${activeEvent.status}). Chỉ khi sự kiện đó được chuyển thành completed hoặc cancelled thì mới có thể đăng ký sự kiện khác.`
+            });
+          }
         }
+      } else {
+        logDetails.push(`[SUPER-ADMIN OVERRIDE] Ép chuyển trạng thái: "${oldStatus}" -> "${status}"`);
       }
     }
 
@@ -1106,6 +1151,77 @@ router.get('/:eventId/logs', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Fetch Event Logs Error:', error.message);
     res.status(500).json({ message: 'Server error retrieving event logs.' });
+  }
+});
+
+/**
+ * @route   DELETE /api/events/:id
+ * @desc    Delete an Event and all associated resources
+ * @access  Private (System Admin or Event Coordinator)
+ */
+router.delete('/:id', authenticateToken, async (req, res) => {
+  const eventId = req.params.id;
+  try {
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: 'Event not found.' });
+
+    if (!req.user.isSystemAdmin) {
+      return res.status(403).json({ message: 'Quyền truy cập bị từ chối. Chỉ System Admin mới có quyền xóa cuộc thi.' });
+    }
+
+    const Rubric = mongoose.model('Rubric');
+    const Team = mongoose.model('Team');
+
+    await Event.findByIdAndDelete(eventId);
+    await Track.deleteMany({ eventId });
+    await Round.deleteMany({ eventId });
+    await Rubric.deleteMany({ eventId });
+    await EventRole.deleteMany({ eventId });
+    await EventLog.deleteMany({ eventId });
+    await Team.deleteMany({ eventId });
+
+    res.json({ message: 'Đã xóa cuộc thi và tất cả dữ liệu liên quan thành công!' });
+  } catch (error) {
+    console.error('Delete Event Error:', error.message);
+    res.status(500).json({ message: 'Server error deleting event.' });
+  }
+});
+
+/**
+ * @route   DELETE /api/events/:eventId/rounds/:roundId
+ * @desc    Delete a Round in an Event
+ * @access  Private (System Admin or Event Coordinator)
+ */
+router.delete('/:eventId/rounds/:roundId', authenticateToken, async (req, res) => {
+  const { eventId, roundId } = req.params;
+  try {
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: 'Event not found.' });
+
+    if (!req.user.isSystemAdmin) {
+      return res.status(403).json({ message: 'Quyền truy cập bị từ chối. Chỉ System Admin mới có quyền xóa vòng thi.' });
+    }
+
+    const round = await Round.findById(roundId);
+    if (!round) return res.status(404).json({ message: 'Round not found.' });
+
+    const Rubric = mongoose.model('Rubric');
+    await Round.findByIdAndDelete(roundId);
+    await Rubric.deleteMany({ roundId });
+    await Track.updateMany({ roundId }, { $unset: { roundId: "" } });
+
+    const newLog = new EventLog({
+      eventId,
+      actorId: req.user._id,
+      action: 'delete_round',
+      details: `Xóa vòng thi: "${round.name}" (Vòng ${round.order})`
+    });
+    await newLog.save();
+
+    res.json({ message: 'Đã xóa vòng thi thành công!' });
+  } catch (error) {
+    console.error('Delete Round Error:', error.message);
+    res.status(500).json({ message: 'Server error deleting round.' });
   }
 });
 

@@ -12,6 +12,7 @@ import {
   User,
   Activity,
   ChevronDown,
+  Trash2,
 } from "lucide-react";
 import TeamsTab from "./TeamsTab";
 import TracksTab from "./TracksTab";
@@ -55,6 +56,16 @@ export default function AdminEvents({
   defaultTab = "events",
 }: AdminEventsProps) {
   const token = localStorage.getItem("token");
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    if (token) {
+      axios.get("http://localhost:5000/api/auth/me", {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(res => setCurrentUser(res.data.user)).catch(() => {});
+    }
+  }, [token]);
+
   const [searchParams, setSearchParams] = useSearchParams();
   const confirm = useConfirm();
 
@@ -871,9 +882,10 @@ export default function AdminEvents({
     }
   };
 
-  const handleUpdateEventStatus = async (newStatus: string) => {
+  const handleUpdateEventStatus = async (newStatus: string, isForce: boolean = false) => {
     if (!selectedEvent) return;
-    if (newStatus !== "cancelled" && newStatus !== selectedEvent.status) {
+    const forceFlag = isForce || !!currentUser?.isSystemAdmin;
+    if (!forceFlag && newStatus !== "cancelled" && newStatus !== selectedEvent.status) {
       toast.error("Trạng thái cuộc thi được tự động chuyển đổi theo thời gian. Bạn chỉ có thể chuyển thủ công sang Hủy (Cancelled)!");
       return;
     }
@@ -883,12 +895,12 @@ export default function AdminEvents({
     try {
       const res = await axios.put(
         `http://localhost:5000/api/events/${selectedEvent._id}`,
-        { status: newStatus },
+        { status: newStatus, isForceOverride: forceFlag },
         { headers: { Authorization: `Bearer ${token}` } },
       );
       setMessage({
         type: "success",
-        text: "Cập nhật trạng thái cuộc thi thành công!",
+        text: forceFlag ? "⚡ Ép chuyển trạng thái cuộc thi thành công!" : "Cập nhật trạng thái cuộc thi thành công!",
       });
       setSelectedEvent(res.data.event);
       fetchEvents();
@@ -901,6 +913,48 @@ export default function AdminEvents({
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteEvent = async () => {
+    if (!selectedEvent) return;
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa cuộc thi "${selectedEvent.name}"? Tất cả dữ liệu vòng thi, tiêu chí và đội thi sẽ bị xóa vĩnh viễn!`)) return;
+    try {
+      await axios.delete(`http://localhost:5000/api/events/${selectedEvent._id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("Đã xóa cuộc thi thành công!");
+      setSelectedEvent(null);
+      fetchEvents();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Lỗi khi xóa cuộc thi.");
+    }
+  };
+
+  const handleDeleteRound = async (roundId: string) => {
+    if (!selectedEvent || !roundId) return;
+    if (!window.confirm("Bạn có chắc chắn muốn xóa vòng thi này? Các tiêu chí và rubric thuộc vòng thi sẽ bị xóa!")) return;
+    try {
+      await axios.delete(`http://localhost:5000/api/events/${selectedEvent._id}/rounds/${roundId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("Đã xóa vòng thi thành công!");
+      fetchEventDetails();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Lỗi khi xóa vòng thi.");
+    }
+  };
+
+  const handleUpdateRound = async (roundId: string, updatedData: any) => {
+    if (!selectedEvent || !roundId) return;
+    try {
+      await axios.put(`http://localhost:5000/api/events/${selectedEvent._id}/rounds/${roundId}`, updatedData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("Cập nhật thông tin vòng thi thành công!");
+      fetchEventDetails();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Lỗi khi cập nhật vòng thi.");
     }
   };
 
@@ -1533,6 +1587,33 @@ export default function AdminEvents({
     }
   };
 
+  const handleUnlockRubric = async () => {
+    if (!rubric) return;
+    setMessage({ type: "", text: "" });
+    setLoading(true);
+
+    try {
+      const res = await axios.post(
+        `http://localhost:5000/api/rubrics/${rubric._id}/unlock`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      setRubric(res.data.rubric);
+      setMessage({
+        type: "success",
+        text: "Đã bẻ khóa (Force Unlock) Rubric thành công! Bạn có thể chỉnh sửa lại tiêu chí.",
+      });
+      fetchRoundsAndRubric();
+    } catch (err: any) {
+      setMessage({
+        type: "error",
+        text: err.response?.data?.message || "Lỗi mở khóa Rubric.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAdvanceRound = async (roundId: string) => {
     if (!selectedEvent || !roundId) return;
 
@@ -1820,21 +1901,21 @@ export default function AdminEvents({
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl">
-                <label className="text-[10px] font-bold text-slate-400 uppercase font-mono">
-                  Trạng thái:
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border ${currentUser?.isSystemAdmin ? 'bg-amber-950/20 border-amber-500/40' : 'bg-slate-950 border-slate-800'}`}>
+                <label className={`text-[10px] font-bold uppercase font-mono ${currentUser?.isSystemAdmin ? 'text-amber-400' : 'text-slate-400'}`}>
+                  {currentUser?.isSystemAdmin ? '⚡ Trạng thái:' : 'Trạng thái:'}
                 </label>
                 <CustomSelect
                   value={selectedEvent.status}
-                  onChange={(val) => handleUpdateEventStatus(val)}
+                  onChange={(val) => handleUpdateEventStatus(val, currentUser?.isSystemAdmin)}
                   options={[
-                    { value: "draft", label: "Draft", disabled: selectedEvent.status !== "draft" },
-                    { value: "registration", label: "Registration", disabled: selectedEvent.status !== "registration" },
-                    { value: "ongoing", label: "Ongoing", disabled: selectedEvent.status !== "ongoing" },
-                    { value: "completed", label: "Completed", disabled: selectedEvent.status !== "completed" },
-                    { value: "cancelled", label: "Cancelled (Hủy cuộc thi)" },
+                    { value: "draft", label: "Draft", disabled: !currentUser?.isSystemAdmin && selectedEvent.status !== "draft" },
+                    { value: "registration", label: "Registration", disabled: !currentUser?.isSystemAdmin && selectedEvent.status !== "registration" },
+                    { value: "ongoing", label: "Ongoing", disabled: !currentUser?.isSystemAdmin && selectedEvent.status !== "ongoing" },
+                    { value: "completed", label: "Completed", disabled: !currentUser?.isSystemAdmin && selectedEvent.status !== "completed" },
+                    { value: "cancelled", label: "Cancelled" },
                   ]}
-                  className="w-44 font-semibold"
+                  className="w-48 font-semibold"
                 />
               </div>
               <button
@@ -1850,13 +1931,18 @@ export default function AdminEvents({
                 <CalendarPlus size={14} />
                 Tạo cuộc thi mới
               </button>
+              {currentUser?.isSystemAdmin && (
+                <button
+                  onClick={handleDeleteEvent}
+                  className="bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 hover:text-rose-200 px-3.5 py-2 rounded-xl border border-rose-800/40 text-xs font-mono flex items-center gap-1.5 cursor-pointer shrink-0 transition-all shadow-md active:scale-95 z-20"
+                  title="Quyền Super-Admin: Xóa vĩnh viễn cuộc thi này"
+                >
+                  <Trash2 size={14} />
+                  Xóa cuộc thi
+                </button>
+              )}
             </div>
           </div>
-          {selectedEvent.description && (
-            <p className="text-xs text-slate-400 mt-4 leading-relaxed bg-slate-950/30 p-3 rounded-xl border border-slate-800/40">
-              {selectedEvent.description}
-            </p>
-          )}
         </div>
       )}
       {/* TAB NAVIGATION BAR */}
@@ -2345,6 +2431,7 @@ export default function AdminEvents({
               selectedEvent={selectedEvent}
               tracks={tracks}
               rounds={rounds}
+              isSystemAdmin={currentUser?.isSystemAdmin}
               selectedTrack={selectedTrack}
               setSelectedTrack={setSelectedTrack}
               selectedRubricRoundId={selectedRubricRoundId}
@@ -2382,8 +2469,11 @@ export default function AdminEvents({
               handleUpdateRubric={handleUpdateRubric}
               handleDeleteRubric={handleDeleteRubric}
               handleLockRubric={handleLockRubric}
+              handleUnlockRubric={handleUnlockRubric}
               handleAdvanceRound={handleAdvanceRound}
               handleLockRound={handleLockRound}
+              handleDeleteRound={handleDeleteRound}
+              handleUpdateRound={handleUpdateRound}
               critCode={critCode}
               setCritCode={setCritCode}
               critName={critName}

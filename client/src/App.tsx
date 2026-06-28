@@ -18,6 +18,7 @@ import JudgeProjects from './features/judge/JudgeProjects';
 import JudgeScoring from './features/judge/JudgeScoring';
 import JudgeTeamActivity from './features/judge/JudgeTeamActivity';
 import AdminGradesView from './features/admin/AdminGradesView';
+import AdminUsersView from './features/admin/AdminUsersView';
 import AdminLayout from './features/admin/AdminLayout';
 import MentorDashboard from './features/mentor/MentorDashboard';
 import MentorTeamDetail from './features/mentor/MentorTeamDetail';
@@ -81,6 +82,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
           }>
             <Route index element={<AdminDashboard />} />
             <Route path="events" element={<AdminEvents />} />
+            <Route path="users" element={<AdminUsersView />} />
             <Route path="grades" element={<AdminGradesView />} />
             <Route path="leaderboard" element={<Leaderboard user={user} roles={roles} />} />
           </Route>
@@ -244,6 +246,12 @@ export default function App() {
           setUser(null);
           setRoles([]);
           window.location.href = '/login?expired=true';
+        } else if (error.response && error.response.status === 403 && (error.response.data?.isDeactivated || error.response.data?.message?.includes('khóa'))) {
+          // Locked user auto logout
+          localStorage.removeItem('token');
+          setUser(null);
+          setRoles([]);
+          window.location.href = '/login?locked=true';
         }
         return Promise.reject(error);
       }

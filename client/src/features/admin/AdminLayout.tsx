@@ -6,6 +6,7 @@ import {
   Settings2,
   Award,
   Trophy,
+  Users,
   LogOut,
   Bell,
 } from 'lucide-react';
@@ -101,6 +102,11 @@ export default function AdminLayout({ user, onLogout }: AdminLayoutProps) {
       icon: Settings2
     },
     {
+      path: '/admin/users',
+      label: 'Quản lý tài khoản',
+      icon: Users
+    },
+    {
       path: '/admin/grades',
       label: 'Xem chi tiết điểm',
       icon: Award
@@ -129,13 +135,17 @@ export default function AdminLayout({ user, onLogout }: AdminLayoutProps) {
           </div>
           <div className="overflow-hidden">
             <h4 className="text-xs font-bold text-white truncate">{user?.fullName || 'Admin Name'}</h4>
-            <p className="text-[9px] text-cyan-400 font-mono uppercase tracking-wider">Vai trò: Ban tổ chức</p>
+            <p className="text-[9px] text-cyan-400 font-mono uppercase tracking-wider">
+              {user?.isSystemAdmin ? '⚡ System Admin' : 'Ban tổ chức (Coordinator)'}
+            </p>
           </div>
         </div>
 
         {/* Navigation Links */}
         <nav className="flex-1 py-6 space-y-2 overflow-y-auto px-3">
-          {navItems.map((item) => {
+          {navItems
+            .filter((item) => item.path !== '/admin/users' || user?.isSystemAdmin)
+            .map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
             return (

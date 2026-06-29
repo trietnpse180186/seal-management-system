@@ -474,6 +474,48 @@ router.post("/:rubricId/lock", authenticateToken, async (req, res) => {
 });
 
 /**
+ * POST /api/rubrics/:rubricId/unlock
+ * Bẻ khóa Rubric (Force Unlock) cho Super-Admin / Coordinator để mở lại luồng chấm điểm
+ */
+router.post("/:rubricId/unlock", authenticateToken, async (req, res) => {
+  try {
+    const rubric = await loadRubricOr404(req.params.rubricId, res);
+    if (!rubric) return;
+
+    if (!(await canManageRubric(req, rubric.eventId))) {
+      return res.status(403).json({ message: "Unauthorized." });
+    }
+
+    rubric.isLocked = false;
+    rubric.lockedBy = null;
+    rubric.lockedAt = null;
+    await rubric.save();
+
+    // Create EventLog
+    try {
+      const EventLog = mongoose.model('EventLog');
+      const Round = mongoose.model('Round');
+      const roundObj = await Round.findById(rubric.roundId);
+      const roundName = roundObj ? roundObj.name : rubric.roundId;
+      const newLog = new EventLog({
+        eventId: rubric.eventId,
+        actorId: req.user._id,
+        action: 'unlock_rubric',
+        details: `Mở khóa Tối thượng (Force Unlock) Rubric: "${rubric.name}" của vòng thi: "${roundName}"`
+      });
+      await newLog.save();
+    } catch (logErr) {
+      console.error("EventLog Error:", logErr.message);
+    }
+
+    res.json({ message: "Bẻ khóa Rubric thành công! Bạn có thể chỉnh sửa lại tiêu chí.", rubric });
+  } catch (error) {
+    console.error("Unlock Rubric Error:", error.message);
+    res.status(500).json({ message: error.message || "Server error unlocking rubric." });
+  }
+});
+
+/**
  * POST /api/rubrics/:rubricId/criteria
  * Thêm hoặc liên kết criterion mới trực tiếp qua rubric (Legacy URL support)
  */

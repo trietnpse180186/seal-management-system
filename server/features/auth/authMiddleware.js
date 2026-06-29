@@ -25,7 +25,10 @@ async function authenticateToken(req, res, next) {
     }
 
     if (!user.isActive) {
-      return res.status(403).json({ message: 'User account is deactivated.' });
+      return res.status(403).json({ 
+        message: 'Tài khoản của bạn đã bị khóa hoặc ngừng hoạt động. Vui lòng liên hệ Admin.',
+        isDeactivated: true
+      });
     }
 
     // Verify session ID

@@ -12,6 +12,8 @@ interface TracksTabProps {
   setTrackDesc: (val: string) => void;
   trackMax: string;
   setTrackMax: (val: string) => void;
+  trackAdvanceTopN: string;
+  setTrackAdvanceTopN: (val: string) => void;
   trackRoundId: string;
   setTrackRoundId: (val: string) => void;
   handleCreateTrack: (e: React.FormEvent) => Promise<void>;
@@ -25,14 +27,7 @@ interface TracksTabProps {
   setSelectedRubricRoundId: (id: string) => void;
   setRubric: (rubric: any) => void;
   setCriteria: (criteria: any[]) => void;
-  
-  // Attachments Props
-  attachmentName: string;
-  setAttachmentName: (val: string) => void;
-  attachmentUrl: string;
-  setAttachmentUrl: (val: string) => void;
-  handleUploadExam: (e: React.FormEvent) => Promise<void>;
-  
+
   loading: boolean;
   
   // Event roles and judge assignment props
@@ -42,6 +37,9 @@ interface TracksTabProps {
 
   // Team mentor assignment props
   teamsList?: any[];
+  allUsers?: any[];
+  token: string | null;
+  fetchEventDetails?: () => Promise<void>;
 }
 
 export default function TracksTab({
@@ -52,6 +50,8 @@ export default function TracksTab({
   setTrackDesc,
   trackMax,
   setTrackMax,
+  trackAdvanceTopN,
+  setTrackAdvanceTopN,
   trackRoundId,
   setTrackRoundId,
   handleCreateTrack,
@@ -66,21 +66,21 @@ export default function TracksTab({
   setRubric,
   setCriteria,
   
-  attachmentName,
-  setAttachmentName,
-  attachmentUrl,
-  setAttachmentUrl,
-  handleUploadExam,
-  
   eventRoles = [],
   handleAssignRoleForTrack,
   handleRemoveRole,
   teamsList = [],
+  allUsers = [],
+  token: _token,
+  fetchEventDetails: _fetchEventDetails,
 }: TracksTabProps) {
   const [judgeEmail, setJudgeEmail] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [memberRole, setMemberRole] = useState<"judge" | "mentor">("judge");
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const confirm = useConfirm();
+
+
 
   const maxEventTeams = selectedEvent?.maxTeams || 0;
   const totalAllocatedTeams = tracks.reduce((sum, t) => sum + (t.maxTeams || 0), 0);
@@ -91,6 +91,13 @@ export default function TracksTab({
       (role.role === "judge" || role.role === "mentor") &&
       ((role.trackId?._id || role.trackId) === selectedTrack?._id)
   );
+
+  const filteredUsers = allUsers.filter(user => {
+    if (!judgeEmail) return false;
+    const emailLower = user.email.toLowerCase();
+    const queryLower = judgeEmail.toLowerCase();
+    return emailLower.includes(queryLower) && emailLower !== queryLower;
+  });
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -145,6 +152,7 @@ export default function TracksTab({
                       setTrackRoundId(t.roundId);
                       setTrackName(t.name);
                       setTrackMax(t.maxTeams.toString());
+                      setTrackAdvanceTopN(t.advanceTopN ? t.advanceTopN.toString() : "");
                       setTrackDesc(t.description || "");
                     }}
                     className="text-slate-400 hover:text-cyan-400 transition-colors p-1 cursor-pointer"
@@ -235,6 +243,20 @@ export default function TracksTab({
             />
           </div>
 
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
+              Số đội lấy đi tiếp (N đội cao điểm nhất)
+            </label>
+            <input
+              type="number"
+              required
+              placeholder="Số đội đi tiếp (e.g. 3)"
+              value={trackAdvanceTopN}
+              onChange={(e) => setTrackAdvanceTopN(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
+            />
+          </div>
+
           <div className="flex gap-2">
             <button
               type="submit"
@@ -250,6 +272,7 @@ export default function TracksTab({
                   setTrackRoundId("");
                   setTrackName("");
                   setTrackMax("");
+                  setTrackAdvanceTopN("");
                   setTrackDesc("");
                 }}
                 className="px-4 py-2 border border-slate-700 hover:border-slate-600 hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs font-semibold rounded-lg cursor-pointer font-mono transition-all"
@@ -263,53 +286,17 @@ export default function TracksTab({
 
       {/* Column 2: Attachments & Judges list stack */}
       <div className="space-y-6">
-        {/* Exam Upload / Attachments */}
-        <div className="glass p-6 rounded-2xl">
-          <h3 className="text-md font-bold text-white mb-4 flex items-center gap-1.5 font-mono">
-            <BookOpen size={16} className="text-cyan-400" />
-            <span>Đề bài & Tài liệu đính kèm</span>
+        {/* Exam materials — moved to Round schedule tab */}
+        <div className="glass p-6 rounded-2xl border border-amber-500/20 bg-amber-500/5">
+          <h3 className="text-md font-bold text-white mb-2 flex items-center gap-1.5 font-mono">
+            <BookOpen size={16} className="text-amber-400" />
+            <span>Đề bài & Tài liệu</span>
           </h3>
-
-          <form onSubmit={handleUploadExam} className="space-y-4">
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-                Tên Tài liệu
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="E.g. Đề bài chung, Tài liệu API..."
-                value={attachmentName}
-                onChange={(e) => setAttachmentName(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-                Đường dẫn Google Drive (Đề tài / Tài liệu)
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="E.g. https://drive.google.com/drive/folders/..."
-                value={attachmentUrl}
-                onChange={(e) => setAttachmentUrl(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
-              />
-            </div>
-
-            <div className="p-3 bg-slate-900/40 border border-slate-800/80 rounded-xl text-[10px] text-slate-400 font-sans">
-              Hãy dán link chia sẻ thư mục hoặc file Google Drive chứa đề tài. Thí sinh của bảng đấu này sẽ truy cập trực tiếp vào link này để tải đề bài và tài liệu.
-            </div>
-
-            <button
-              type="submit"
-              className="w-full bg-cyan-500 hover:bg-cyan-500 text-white text-xs font-bold py-2 rounded-lg cursor-pointer font-mono"
-            >
-              Tải Lên Tài Liệu
-            </button>
-          </form>
+          <p className="text-[11px] text-slate-400 font-sans leading-relaxed">
+            Gắn <strong>1 link Google Drive cho cả vòng thi</strong> tại tab{" "}
+            <strong className="text-cyan-400">Thiết lập thời gian → Lịch trình vòng thi (Rounds)</strong>.
+            Hệ thống chỉ share Drive cho email thành viên đội đã xác nhận.
+          </p>
         </div>
 
         {/* Judge Assignment Card */}
@@ -433,20 +420,44 @@ export default function TracksTab({
                   </div>
                 )}
 
-                <div className="flex gap-2">
-                  <input
-                    type="email"
-                    required
-                    placeholder="email@domain.com"
-                    value={judgeEmail}
-                    onChange={(e) => setJudgeEmail(e.target.value)}
-                    className="flex-1 px-3 py-2.5 rounded-xl text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200 focus:outline-none focus:border-cyan-500"
-                  />
+                <div className="flex gap-2 relative">
+                  <div className="flex-1 relative">
+                    <input
+                      type="email"
+                      required
+                      placeholder="email@domain.com"
+                      value={judgeEmail}
+                      onChange={(e) => {
+                        setJudgeEmail(e.target.value);
+                        setShowSuggestions(true);
+                      }}
+                      onFocus={() => setShowSuggestions(true)}
+                      onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                      className="w-full px-3 py-2.5 rounded-xl text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200 focus:outline-none focus:border-cyan-500"
+                    />
+                    {showSuggestions && filteredUsers.length > 0 && (
+                      <div className="absolute left-0 right-0 bottom-full mb-1 z-50 max-h-45 overflow-y-auto bg-slate-900 border border-slate-800 rounded-xl shadow-xl divide-y divide-slate-800/60">
+                        {filteredUsers.map((user) => (
+                          <button
+                            key={user._id}
+                            type="button"
+                            onClick={() => {
+                              setJudgeEmail(user.email);
+                              setShowSuggestions(false);
+                            }}
+                            className="w-full text-left px-3 py-2 text-xs font-mono hover:bg-slate-800 text-slate-300 hover:text-white transition-colors block"
+                          >
+                            <span className="font-semibold">{user.fullName}</span> ({user.email})
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <button
                     type="submit"
-                    className="bg-cyan-500 hover:bg-cyan-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer font-mono whitespace-nowrap"
+                    className="bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer font-mono whitespace-nowrap transition-colors"
                   >
-                    + Thêm
+                    + Phân công
                   </button>
                 </div>
               </form>

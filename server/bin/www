@@ -32,9 +32,14 @@ socketIo.init(server);
  * Listen on provided port, on all network interfaces.
  */
 
-server.listen(port, () => {
+server.listen(port, async () => {
   console.log(`Server successfully started on port ${port}`);
-  // Start the background cron processes
+  try {
+    const { validateDriveConnection } = require('../features/events/driveAccessService');
+    await validateDriveConnection();
+  } catch (e) {
+    console.error('[DRIVE] Config check skipped:', e.message);
+  }
   cronService.startCronJobs();
 });
 server.on('error', onError);

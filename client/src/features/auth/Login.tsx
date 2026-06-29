@@ -39,9 +39,17 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const [university, setUniversity] = useState('');
   const [githubUsername, setGithubUsername] = useState('');
 
+  const [errorMessage, setErrorMessage] = useState(() => {
+    return sessionStorage.getItem('login_error_persistent') || '';
+  });
+
   const setError = (msg: string) => {
+    setErrorMessage(msg);
     if (msg) {
+      sessionStorage.setItem('login_error_persistent', msg);
       toast.error(msg);
+    } else {
+      sessionStorage.removeItem('login_error_persistent');
     }
   };
   const [loading, setLoading] = useState(false);
@@ -123,8 +131,12 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
     const expired = params.get('expired');
+    const locked = params.get('locked');
 
-    if (expired === 'true') {
+    if (locked === 'true') {
+      setError('Tài khoản của bạn đã bị khóa bởi Quản trị viên (Admin). Vui lòng liên hệ Admin để biết thêm chi tiết.');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (expired === 'true') {
       setError('Phiên đăng nhập đã hết hạn hoặc tài khoản được đăng nhập từ thiết bị khác.');
       window.history.replaceState({}, document.title, window.location.pathname);
     }
@@ -567,7 +579,22 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           </p>
         </div>
 
-
+        {errorMessage && (
+          <div className="mb-5 p-3.5 bg-rose-950/90 border border-rose-500/80 rounded-xl text-rose-200 text-xs font-mono flex items-center justify-between shadow-xl animate-in fade-in zoom-in-95">
+            <div className="flex items-center gap-2.5">
+              <span className="text-rose-400 font-bold text-base">⚠️</span>
+              <span className="leading-relaxed">{errorMessage}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setError('')}
+              className="text-rose-400 hover:text-white font-bold ml-3 text-sm cursor-pointer shrink-0"
+              title="Đóng thông báo"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
 

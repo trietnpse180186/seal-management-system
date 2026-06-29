@@ -132,6 +132,14 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Thông tin đăng nhập không chính xác.' });
     }
 
+    // Check if user is locked / deactivated
+    if (!user.isActive) {
+      return res.status(403).json({ 
+        message: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin.',
+        isDeactivated: true 
+      });
+    }
+
     // Check if user is approved (email verified)
     if (!user.isApproved) {
       const loginFailLog = new EventLog({
@@ -484,6 +492,13 @@ router.post('/google', async (req, res) => {
       await user.save();
     }
 
+    if (!user.isActive) {
+      return res.status(403).json({ 
+        message: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin.',
+        isDeactivated: true 
+      });
+    }
+
     // Check session concurrency
     if (user.activeSessionId && user.lastActiveAt && (Date.now() - new Date(user.lastActiveAt).getTime() < 20000)) {
       return res.status(409).json({ 
@@ -665,6 +680,13 @@ router.post('/github', async (req, res) => {
       if (updated) {
         await user.save();
       }
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({ 
+        message: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin.',
+        isDeactivated: true 
+      });
     }
 
     // Check session concurrency
@@ -950,6 +972,316 @@ router.post('/heartbeat', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Heartbeat Error:', error.message);
     res.status(500).json({ message: 'Server error during heartbeat.' });
+  }
+});
+
+/**
+ * @route   GET /api/auth/users
+ * @desc    Get all users for Admin management
+ * @access  Private (System Admin only)
+ */
+router.get('/users', authenticateToken, requireSystemAdmin, async (req, res) => {
+  try {
+    const { search } = req.query;
+    let query = { isSystemAdmin: { $ne: true } };
+    if (search) {
+      query.$or = [
+        { fullName: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { studentId: { $regex: search, $options: 'i' } }
+      ];
+    }
+    const users = await User.find(query).select('-passwordHash -emailVerificationToken').sort({ createdAt: -1 }).lean();
+    
+    // Populate event roles for each user
+    const userIds = users.map(u => u._id);
+    const roles = await EventRole.find({ userId: { $in: userIds }, status: 'active' }).populate('eventId', 'name semester year').lean();
+    
+    const usersWithRoles = users.map(u => {
+      const userRoles = roles.filter(r => r.userId.toString() === u._id.toString());
+      return {
+        ...u,
+        roles: userRoles
+      };
+    });
+
+    res.json(usersWithRoles);
+  } catch (error) {
+    console.error('Get Users Error:', error.message);
+    res.status(500).json({ message: 'Server error retrieving users.' });
+  }
+});
+
+/**
+ * @route   POST /api/auth/users
+ * @desc    Admin create new user
+ * @access  Private (System Admin only)
+ */
+router.post('/users', authenticateToken, requireSystemAdmin, async (req, res) => {
+  const { email, password, fullName, studentId, university, isSystemAdmin, isActive } = req.body;
+  if (!email || !password || !fullName) {
+    return res.status(400).json({ message: 'Email, mật khẩu và họ tên là bắt buộc.' });
+  }
+  try {
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Tài khoản với email này đã tồn tại.' });
+    }
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+    const newUser = new User({
+      email: email.toLowerCase(),
+      passwordHash,
+      fullName,
+      studentId: studentId || '',
+      university: university || 'FPT University',
+      isSystemAdmin: !!isSystemAdmin,
+      isApproved: true,
+      isActive: isActive !== undefined ? !!isActive : true
+    });
+    await newUser.save();
+    res.status(201).json({ message: 'Tạo tài khoản người dùng thành công!', user: newUser });
+  } catch (error) {
+    console.error('Create User Error:', error.message);
+    res.status(500).json({ message: 'Server error creating user.' });
+  }
+});
+
+/**
+ * @route   PUT /api/auth/users/:id
+ * @desc    Admin update user details, permissions, or active status
+ * @access  Private (System Admin only)
+ */
+router.put('/users/:id', authenticateToken, requireSystemAdmin, async (req, res) => {
+  const { fullName, studentId, university, isSystemAdmin, isActive, password } = req.body;
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User không tồn tại.' });
+
+    if (fullName !== undefined) user.fullName = fullName;
+    if (studentId !== undefined) user.studentId = studentId;
+    if (university !== undefined) user.university = university;
+    if (isSystemAdmin !== undefined) user.isSystemAdmin = !!isSystemAdmin;
+    if (isActive !== undefined) user.isActive = !!isActive;
+
+    if (password && password.trim() !== '') {
+      const salt = await bcrypt.genSalt(10);
+      user.passwordHash = await bcrypt.hash(password.trim(), salt);
+    }
+
+    await user.save();
+    res.json({ message: 'Cập nhật tài khoản người dùng thành công!', user });
+  } catch (error) {
+    console.error('Update User Error:', error.message);
+    res.status(500).json({ message: 'Server error updating user.' });
+  }
+});
+
+/**
+ * @route   DELETE /api/auth/users/:id
+ * @desc    Admin delete user
+ * @access  Private (System Admin only)
+ */
+router.delete('/users/:id', authenticateToken, requireSystemAdmin, async (req, res) => {
+  try {
+    if (req.params.id === req.user._id.toString()) {
+      return res.status(400).json({ message: 'Không thể tự xóa tài khoản Admin đang đăng nhập!' });
+    }
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User không tồn tại.' });
+    res.json({ message: 'Đã xóa tài khoản người dùng thành công!' });
+  } catch (error) {
+    console.error('Delete User Error:', error.message);
+    res.status(500).json({ message: 'Server error deleting user.' });
+  }
+});
+
+/**
+ * @route   POST /api/auth/users/:id/toggle-coordinator
+ * @desc    Toggle global coordinator role for user
+ * @access  Private (System Admin only)
+ */
+router.post('/users/:id/toggle-coordinator', authenticateToken, requireSystemAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const existingRoles = await EventRole.find({ userId, role: 'coordinator', status: 'active' });
+    const isCurrentlyCoordinator = existingRoles.length > 0;
+
+    if (isCurrentlyCoordinator) {
+      await EventRole.deleteMany({ userId, role: 'coordinator' });
+      return res.json({ message: 'Đã thu hồi quyền Ban tổ chức (Coordinator)!', isCoordinator: false });
+    } else {
+      const Event = mongoose.model('Event');
+      const events = await Event.find({});
+      if (events.length > 0) {
+        for (const ev of events) {
+          await EventRole.updateOne(
+            { userId, eventId: ev._id, role: 'coordinator' },
+            { $set: { status: 'active', assignedBy: req.user._id } },
+            { upsert: true }
+          );
+        }
+      } else {
+        // Dummy placeholder eventRole if no events exist yet
+        await EventRole.create({
+          userId,
+          role: 'coordinator',
+          assignedBy: req.user._id,
+          status: 'active'
+        });
+      }
+      return res.json({ message: 'Đã cấp quyền Ban tổ chức (Coordinator) thành công!', isCoordinator: true });
+    }
+  } catch (error) {
+    console.error('Toggle Coordinator Error:', error.message);
+    res.status(500).json({ message: 'Server error toggling coordinator role.' });
+  }
+});
+
+router.post('/users/auto-provision', authenticateToken, requireSystemAdmin, async (req, res) => {
+  try {
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
+    const judgeEmail = `judge.auto_${randomSuffix}@seal.com`;
+    const mentorEmail = `mentor.auto_${randomSuffix}@seal.com`;
+    const defaultPassword = 'password123';
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(defaultPassword, salt);
+
+    // Create Judge User
+    const judgeUser = new User({
+      email: judgeEmail,
+      passwordHash,
+      fullName: `Auto Judge ${randomSuffix.toUpperCase()}`,
+      isApproved: true,
+      isActive: true
+    });
+    await judgeUser.save();
+
+    // Create Mentor User
+    const mentorUser = new User({
+      email: mentorEmail,
+      passwordHash,
+      fullName: `Auto Mentor ${randomSuffix.toUpperCase()}`,
+      isApproved: true,
+      isActive: true
+    });
+    await mentorUser.save();
+
+    // Assign roles for all events or a placeholder
+    const Event = mongoose.model('Event');
+    const events = await Event.find({});
+    if (events.length > 0) {
+      for (const ev of events) {
+        // Assign judge
+        await EventRole.updateOne(
+          { userId: judgeUser._id, eventId: ev._id, role: 'judge' },
+          { $set: { status: 'active', assignedBy: req.user._id } },
+          { upsert: true }
+        );
+        // Assign mentor
+        await EventRole.updateOne(
+          { userId: mentorUser._id, eventId: ev._id, role: 'mentor' },
+          { $set: { status: 'active', assignedBy: req.user._id } },
+          { upsert: true }
+        );
+      }
+    } else {
+      // Dummy placeholders
+      await EventRole.create({
+        userId: judgeUser._id,
+        role: 'judge',
+        assignedBy: req.user._id,
+        status: 'active'
+      });
+      await EventRole.create({
+        userId: mentorUser._id,
+        role: 'mentor',
+        assignedBy: req.user._id,
+        status: 'active'
+      });
+    }
+
+    res.status(201).json({
+      message: 'Tự động tạo tài khoản Judge & Mentor thành công!',
+      judge: { email: judgeEmail, password: defaultPassword, fullName: judgeUser.fullName },
+      mentor: { email: mentorEmail, password: defaultPassword, fullName: mentorUser.fullName }
+    });
+  } catch (error) {
+    console.error('Auto Provision Error:', error.message);
+    res.status(500).json({ message: 'Server error during auto-provisioning.' });
+  }
+});
+
+router.post('/users/:id/toggle-judge', authenticateToken, requireSystemAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const existingRoles = await EventRole.find({ userId, role: 'judge', status: 'active' });
+    const isCurrentlyJudge = existingRoles.length > 0;
+
+    if (isCurrentlyJudge) {
+      await EventRole.deleteMany({ userId, role: 'judge' });
+      return res.json({ message: 'Đã thu hồi quyền Giám khảo (Judge)!', isJudge: false });
+    } else {
+      const Event = mongoose.model('Event');
+      const events = await Event.find({});
+      if (events.length > 0) {
+        for (const ev of events) {
+          await EventRole.updateOne(
+            { userId, eventId: ev._id, role: 'judge' },
+            { $set: { status: 'active', assignedBy: req.user._id } },
+            { upsert: true }
+          );
+        }
+      } else {
+        await EventRole.create({
+          userId,
+          role: 'judge',
+          assignedBy: req.user._id,
+          status: 'active'
+        });
+      }
+      return res.json({ message: 'Đã cấp quyền Giám khảo (Judge) thành công!', isJudge: true });
+    }
+  } catch (error) {
+    console.error('Toggle Judge Error:', error.message);
+    res.status(500).json({ message: 'Server error toggling judge role.' });
+  }
+});
+
+router.post('/users/:id/toggle-mentor', authenticateToken, requireSystemAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const existingRoles = await EventRole.find({ userId, role: 'mentor', status: 'active' });
+    const isCurrentlyMentor = existingRoles.length > 0;
+
+    if (isCurrentlyMentor) {
+      await EventRole.deleteMany({ userId, role: 'mentor' });
+      return res.json({ message: 'Đã thu hồi quyền Mentor!', isMentor: false });
+    } else {
+      const Event = mongoose.model('Event');
+      const events = await Event.find({});
+      if (events.length > 0) {
+        for (const ev of events) {
+          await EventRole.updateOne(
+            { userId, eventId: ev._id, role: 'mentor' },
+            { $set: { status: 'active', assignedBy: req.user._id } },
+            { upsert: true }
+          );
+        }
+      } else {
+        await EventRole.create({
+          userId,
+          role: 'mentor',
+          assignedBy: req.user._id,
+          status: 'active'
+        });
+      }
+      return res.json({ message: 'Đã cấp quyền Mentor thành công!', isMentor: true });
+    }
+  } catch (error) {
+    console.error('Toggle Mentor Error:', error.message);
+    res.status(500).json({ message: 'Server error toggling mentor role.' });
   }
 });
 

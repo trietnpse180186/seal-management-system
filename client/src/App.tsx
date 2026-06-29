@@ -19,6 +19,7 @@ import JudgeProjects from './features/judge/JudgeProjects';
 import JudgeScoring from './features/judge/JudgeScoring';
 import JudgeTeamActivity from './features/judge/JudgeTeamActivity';
 import AdminGradesView from './features/admin/AdminGradesView';
+import AdminUsersView from './features/admin/AdminUsersView';
 import AdminLayout from './features/admin/AdminLayout';
 import MentorDashboard from './features/mentor/MentorDashboard';
 import MentorTeamDetail from './features/mentor/MentorTeamDetail';
@@ -30,6 +31,8 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
   const location = useLocation();
   const isJudgeRoute = location.pathname.startsWith('/judge');
   const isAdminRoute = location.pathname.startsWith('/admin');
+  const isCoordinator = user?.isSystemAdmin || roles?.some((r: any) => r.role === 'coordinator');
+  const showChatWidget = user && !isJudgeRoute && (!isAdminRoute || isCoordinator);
 
   return (
     <div className="min-h-screen bg-gradient-dark flex flex-col">
@@ -82,6 +85,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
           }>
             <Route index element={<AdminDashboard />} />
             <Route path="events" element={<AdminEvents />} />
+            <Route path="users" element={<AdminUsersView />} />
             <Route path="live" element={<AdminLiveInteraction />} />
             <Route path="grades" element={<AdminGradesView />} />
             <Route path="leaderboard" element={<Leaderboard user={user} roles={roles} />} />
@@ -119,7 +123,9 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
 
       {!isJudgeRoute && !isAdminRoute && <Footer />}
       
-      {user && !isJudgeRoute && !isAdminRoute && <MentorChat />}
+      {showChatWidget && (
+        <MentorChat roles={roles} isSystemAdmin={!!user?.isSystemAdmin} />
+      )}
     </div>
   );
 }
@@ -246,6 +252,12 @@ export default function App() {
           setUser(null);
           setRoles([]);
           window.location.href = '/login?expired=true';
+        } else if (error.response && error.response.status === 403 && (error.response.data?.isDeactivated || error.response.data?.message?.includes('khóa'))) {
+          // Locked user auto logout
+          localStorage.removeItem('token');
+          setUser(null);
+          setRoles([]);
+          window.location.href = '/login?locked=true';
         }
         return Promise.reject(error);
       }

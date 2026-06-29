@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { ArrowLeft, Users, FileText, MessageSquare, GitCommit, ListChecks, Download } from "lucide-react";
+import { ArrowLeft, Users, FileText, MessageSquare, GitCommit, ListChecks } from "lucide-react";
 
 export default function MentorTeamDetail() {
   const { teamId } = useParams();
@@ -24,7 +24,8 @@ export default function MentorTeamDetail() {
         const teamRes = await axios.get(`http://localhost:5000/api/teams/${teamId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        setTeam(teamRes.data);
+        const payload = teamRes.data;
+        setTeam({ ...payload.team, members: payload.members });
 
         // 3. Fetch commits
         try {
@@ -37,9 +38,12 @@ export default function MentorTeamDetail() {
         }
 
         // 4. Fetch rubric for this track's round
-        if (teamRes.data.trackId && teamRes.data.trackId.roundId) {
+        if (payload.team?.trackId?.roundId) {
+          const roundId = typeof payload.team.trackId.roundId === 'object'
+            ? payload.team.trackId.roundId._id
+            : payload.team.trackId.roundId;
           try {
-            const rubricRes = await axios.get(`http://localhost:5000/api/rubrics/round/${teamRes.data.trackId.roundId}`, {
+            const rubricRes = await axios.get(`http://localhost:5000/api/rubrics/round/${roundId}`, {
               headers: { Authorization: `Bearer ${token}` }
             });
             setRubrics(rubricRes.data);
@@ -121,33 +125,19 @@ export default function MentorTeamDetail() {
             </div>
 
             <div className="border-t border-slate-800 pt-8">
-              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><FileText className="text-cyan-400"/> Đề thi / Tài liệu tham khảo của Bảng</h3>
-              {team.trackId?.attachments && team.trackId.attachments.length > 0 ? (
-                <div className="flex flex-col gap-3">
-                  {team.trackId.attachments.map((file: any, idx: number) => (
-                    <a 
-                      key={idx} 
-                      href={file.fileUrl} 
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-3 bg-slate-900/80 p-3 rounded-xl border border-slate-700 hover:border-cyan-500/50 transition-colors"
-                    >
-                      <Download size={18} className="text-cyan-400" />
-                      <div>
-                        <p className="text-sm font-bold text-white">{file.fileName || `Tài liệu đính kèm ${idx + 1}`}</p>
-                        <p className="text-[10px] text-slate-500">Bấm để tải xuống/xem</p>
-                      </div>
-                    </a>
-                  ))}
+              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><FileText className="text-cyan-400"/> Đề thi vòng thi</h3>
+              {team.trackId?.roundId?.hasExamMaterial ? (
+                <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-700 text-sm text-slate-400">
+                  <p className="text-white font-bold">{team.trackId.roundId.driveFileName || team.trackId.roundId.name}</p>
+                  <p className="text-xs mt-2">Đề được quản lý theo vòng — chỉ thí sinh đội confirmed truy cập qua Khu vực đội.</p>
                 </div>
               ) : (
-                <p className="text-sm text-slate-500 italic bg-slate-900/30 p-4 rounded-xl">Bảng đấu này không có file đề thi nào được đính kèm.</p>
+                <p className="text-sm text-slate-500 italic bg-slate-900/30 p-4 rounded-xl">Chưa có đề cho vòng thi này.</p>
               )}
             </div>
           </div>
         )}
 
-        {/* Chat Tab */}
         {activeTab === "chat" && (
           team.eventId?.status === 'ongoing' ? (
             <div className="py-12 text-center flex flex-col items-center justify-center max-w-md mx-auto animate-fadeIn">
@@ -170,8 +160,16 @@ export default function MentorTeamDetail() {
               <div className="w-16 h-16 rounded-full bg-slate-800 text-slate-500 flex items-center justify-center mb-4">
                 <MessageSquare size={28} />
               </div>
-              <h3 className="text-slate-400 font-bold text-lg mb-2">Hộp thoại chat chưa khả dụng</h3>
-              <p className="text-slate-500 text-xs leading-relaxed">Kênh chat sẽ được mở khi cuộc thi chính thức bước vào giai đoạn thi đấu.</p>
+              <h3 className="text-slate-400 font-bold text-lg mb-2">
+                {team.eventId?.status === 'completed' || team.eventId?.status === 'cancelled'
+                  ? 'Kênh chat đã đóng'
+                  : 'Hộp thoại chat chưa khả dụng'}
+              </h3>
+              <p className="text-slate-500 text-xs leading-relaxed">
+                {team.eventId?.status === 'completed' || team.eventId?.status === 'cancelled'
+                  ? 'Cuộc thi đã kết thúc. Lịch sử chat chỉ còn hiển thị với Ban tổ chức (Coordinator).'
+                  : 'Kênh chat sẽ được mở khi cuộc thi chính thức bước vào giai đoạn thi đấu.'}
+              </p>
             </div>
           )
         )}

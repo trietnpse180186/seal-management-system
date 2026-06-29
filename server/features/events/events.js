@@ -15,6 +15,11 @@ const EventLog = mongoose.model('EventLog');
 const emailService = require('../notifications/emailService');
 const githubService = require('../github-ai/githubService');
 const { ensureChatRoomForTeam, ensureChatRoomsForMentorTrack } = require('../chat/chatRoomService');
+const {
+  extractDriveFileId,
+  sanitizeRoundForAdmin
+} = require('./examAccessService');
+const { syncDriveAccessForRound, getDriveStatus } = require('./driveAccessService');
 const { authenticateToken, requireSystemAdmin, requireEventRole } = require('../auth/authMiddleware');
 const { addEmailJob, isQueueAvailable } = require('../notifications/notificationQueue');
 
@@ -288,7 +293,8 @@ router.get('/:id', async (req, res) => {
     res.json({
       event,
       tracks,
-      rounds
+      rounds: rounds.map((r) => sanitizeRoundForAdmin(r)),
+      driveIntegration: getDriveStatus()
     });
   } catch (error) {
     console.error('Fetch Event Details Error:', error.message);
@@ -303,7 +309,7 @@ router.get('/:id', async (req, res) => {
  */
 router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
   const { eventId } = req.params;
-  const { name, description, maxTeams, roundId, startTime, endTime, gradingEndTime } = req.body;
+  const { name, description, maxTeams, roundId, startTime, endTime, gradingEndTime, advanceTopN, topicName, topicLink } = req.body;
 
   if (!name || !roundId) {
     return res.status(400).json({ message: 'Track name and roundId are required.' });
@@ -356,19 +362,20 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
       topicSubmissionOpen: true,
       startTime: startTime ? new Date(startTime) : undefined,
       endTime: endTime ? new Date(endTime) : undefined,
-      gradingEndTime: gradingEndTime ? new Date(gradingEndTime) : undefined
+      gradingEndTime: gradingEndTime ? new Date(gradingEndTime) : undefined,
+      advanceTopN: advanceTopN ? parseInt(advanceTopN) : undefined,
+      topicName,
+      topicLink
     });
 
     await newTrack.save();
 
-    // Create EventLog
-    const roundName = round ? round.name : roundId;
     const newLog = new EventLog({
       eventId,
       actorId: req.user._id,
       action: 'create_track',
       type: 'operation',
-      details: `Tạo bảng đấu mới: "${newTrack.name}" trong vòng thi: "${roundName}" (Số lượng đội tối đa: ${newTrack.maxTeams || 'Không giới hạn'})`
+      details: `Tạo bảng đấu mới: "${newTrack.name}" trong vòng thi: "${roundName}" (Số lượng đội tối đa: ${newTrack.maxTeams || 'Không giới hạn'}, Đội đi tiếp: ${newTrack.advanceTopN || 'Không giới hạn'})`
     });
     await newLog.save();
 
@@ -387,7 +394,7 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
  */
 router.put('/:eventId/tracks/:trackId', authenticateToken, async (req, res) => {
   const { eventId, trackId } = req.params;
-  const { name, description, maxTeams, roundId, startTime, endTime, gradingEndTime } = req.body;
+  const { name, description, maxTeams, roundId, startTime, endTime, gradingEndTime, advanceTopN, topicName, topicLink } = req.body;
 
   try {
     const event = await Event.findById(eventId);
@@ -490,6 +497,22 @@ router.put('/:eventId/tracks/:trackId', authenticateToken, async (req, res) => {
         logDetails.push(`Thời gian kết thúc chấm thi: ${oldGradingEnd ? oldGradingEnd.toLocaleString('vi-VN') : 'Trống'} -> ${newGradingEnd ? newGradingEnd.toLocaleString('vi-VN') : 'Trống'}`);
         track.gradingEndTime = newGradingEnd || undefined;
       }
+    }
+
+    if (advanceTopN !== undefined) {
+      const updatedAdvanceTopN = advanceTopN ? parseInt(advanceTopN) : undefined;
+      if (track.advanceTopN !== updatedAdvanceTopN) {
+        logDetails.push(`Số lượng đội đi tiếp: ${track.advanceTopN || 'Không giới hạn'} -> ${updatedAdvanceTopN || 'Không giới hạn'}`);
+        track.advanceTopN = updatedAdvanceTopN;
+      }
+    }
+    if (topicName !== undefined && topicName !== track.topicName) {
+      logDetails.push(`Tên đề tài: "${track.topicName || 'Trống'}" -> "${topicName}"`);
+      track.topicName = topicName;
+    }
+    if (topicLink !== undefined && topicLink !== track.topicLink) {
+      logDetails.push(`Link đề tài: "${track.topicLink || 'Trống'}" -> "${topicLink}"`);
+      track.topicLink = topicLink;
     }
 
     await track.save();
@@ -637,8 +660,98 @@ router.post('/:eventId/rounds', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @route   PUT /api/events/:eventId/rounds/:roundId
+ * @desc    Update a Round in an event
+ * @access  Private (System Admin or Coordinator)
+ */
+router.put('/:eventId/rounds/:roundId', authenticateToken, async (req, res) => {
+  const { eventId, roundId } = req.params;
+  const { name, order, submissionDeadline, advanceTopN, startTime, endTime, gradingEndTime } = req.body;
+
+  try {
+    if (!req.user.isSystemAdmin) {
+      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator', status: 'active' });
+      if (!isCoord) return res.status(403).json({ message: 'Unauthorized to edit round.' });
+    }
+
+    const round = await Round.findById(roundId);
+    if (!round) return res.status(404).json({ message: 'Round not found.' });
+
+    if (name !== undefined) round.name = name;
+    if (order !== undefined) round.order = parseInt(order);
+    if (submissionDeadline !== undefined) round.submissionDeadline = submissionDeadline ? new Date(submissionDeadline) : undefined;
+    if (advanceTopN !== undefined) round.advanceTopN = advanceTopN ? parseInt(advanceTopN) : undefined;
+    if (startTime !== undefined) round.startTime = startTime ? new Date(startTime) : null;
+    if (endTime !== undefined) round.endTime = endTime ? new Date(endTime) : null;
+    if (gradingEndTime !== undefined) round.gradingEndTime = gradingEndTime ? new Date(gradingEndTime) : null;
+
+    // Mirror schedule to tracks in this round for backward compatibility
+    if (startTime !== undefined || endTime !== undefined || gradingEndTime !== undefined) {
+      const trackUpdate = {};
+      if (startTime !== undefined) trackUpdate.startTime = startTime ? new Date(startTime) : null;
+      if (endTime !== undefined) trackUpdate.endTime = endTime ? new Date(endTime) : null;
+      if (gradingEndTime !== undefined) trackUpdate.gradingEndTime = gradingEndTime ? new Date(gradingEndTime) : null;
+      if (Object.keys(trackUpdate).length > 0) {
+        await Track.updateMany({ roundId: round._id }, trackUpdate);
+      }
+    }
+
+    await round.save();
+
+    const newLog = new EventLog({
+      eventId,
+      actorId: req.user._id,
+      action: 'update_round',
+      details: `Cập nhật thông tin vòng thi: "${round.name}" (Thứ tự: ${round.order})`
+    });
+    await newLog.save();
+
+    res.json(sanitizeRoundForAdmin(round));
+  } catch (error) {
+    console.error('Update Round Error:', error.message);
+    res.status(500).json({ message: 'Server error updating round.' });
+  }
+});
+
+/**
+ * @route   POST /api/events/:eventId/rounds/:roundId/sync-drive-access
+ * @desc    Share round exam Drive folder with all eligible registered emails
+ * @access  Private (Coordinator or Admin)
+ */
+router.post('/:eventId/rounds/:roundId/sync-drive-access', authenticateToken, async (req, res) => {
+  const { eventId, roundId } = req.params;
+
+  try {
+    if (!req.user.isSystemAdmin) {
+      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator', status: 'active' });
+      if (!isCoord) return res.status(403).json({ message: 'Unauthorized.' });
+    }
+
+    const round = await Round.findById(roundId);
+    if (!round) return res.status(404).json({ message: 'Round not found.' });
+    if (!round.driveFileId) {
+      return res.status(400).json({ message: 'Vòng thi chưa có link Google Drive. Hãy upload đề trước.' });
+    }
+
+    const result = await syncDriveAccessForRound(roundId);
+    const updatedRound = await Round.findById(roundId);
+
+    res.json({
+      message: `Đồng bộ quyền Drive: ${result.synced}/${result.total} email thành công.`,
+      sync: result,
+      round: sanitizeRoundForAdmin(updatedRound),
+      driveIntegration: getDriveStatus()
+    });
+  } catch (error) {
+    console.error('Sync Drive Access Error:', error.message);
+    const status = /chưa cấu hình|Không tìm thấy file service account/i.test(error.message) ? 503 : 500;
+    res.status(status).json({ message: error.message || 'Lỗi đồng bộ quyền Google Drive.', detail: error.message });
+  }
+});
+
+/**
  * @route   POST /api/events/:eventId/upload-exam
- * @desc    Simulate exam attachment file upload
+ * @desc    Save exam material — prefer roundId (one Drive link per round)
  * @access  Private (Coordinator or Admin)
  */
 router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
@@ -653,17 +766,49 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
     const event = await Event.findById(eventId);
     if (!event) return res.status(404).json({ message: 'Event not found.' });
 
-    // Auth check
     if (!req.user.isSystemAdmin) {
       const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator' });
       if (!isCoord) return res.status(403).json({ message: 'Unauthorized.' });
     }
 
+    const driveFileId = extractDriveFileId(fileUrl);
+    if (!driveFileId) {
+      return res.status(400).json({ message: 'Không parse được ID từ link Google Drive. Kiểm tra lại URL.' });
+    }
+
+    if (roundId) {
+      const round = await Round.findById(roundId);
+      if (!round || round.eventId.toString() !== eventId) {
+        return res.status(404).json({ message: 'Round not found for this event.' });
+      }
+
+      round.driveFileId = driveFileId;
+      round.driveFileName = fileName;
+      round.driveFileUrl = fileUrl;
+      round.isDriveAccessSynced = false;
+      round.driveSyncedEmailCount = 0;
+      round.driveSyncErrors = [];
+      await round.save();
+
+      const newLog = new EventLog({
+        eventId,
+        actorId: req.user._id,
+        action: 'upload_round_exam',
+        details: `Gắn đề Google Drive cho vòng "${round.name}" (${fileName})`
+      });
+      await newLog.save();
+
+      return res.json({
+        message: 'Đã lưu đề bài cho vòng thi. Nhớ đồng bộ quyền Drive trước/sau giờ mở đề.',
+        round: sanitizeRoundForAdmin(round)
+      });
+    }
+
+    // Legacy: track-level attachment (deprecated)
     const fileMeta = {
       id: `file-${Date.now()}`,
       fileName,
       fileUrl,
-      roundId: roundId || null,
       trackId: trackId || null,
       uploadedAt: new Date(),
       uploadedBy: req.user.fullName
@@ -681,7 +826,7 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
     }
 
     res.json({
-      message: 'Exam file details successfully saved to track/event schema!',
+      message: 'Lưu tài liệu legacy (theo track). Nên dùng roundId để gắn 1 link / vòng.',
       attachment: fileMeta
     });
 
@@ -933,44 +1078,49 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     // Validation for event status change
     if (status && status !== oldStatus) {
-      // 1. If there is any event currently ongoing, a draft event cannot change its status
-      if (oldStatus === 'draft') {
-        const ongoingEvent = await Event.findOne({ status: 'ongoing' });
-        if (ongoingEvent) {
+      const isForceOverride = req.body.isForceOverride === true || req.user.isSystemAdmin;
+      if (!isForceOverride) {
+        // 1. If there is any event currently ongoing, a draft event cannot change its status
+        if (oldStatus === 'draft') {
+          const ongoingEvent = await Event.findOne({ status: 'ongoing' });
+          if (ongoingEvent) {
+            return res.status(400).json({
+              message: `Không thể thay đổi trạng thái của sự kiện đang ở trạng thái draft vì đang có sự kiện khác đang diễn ra (ongoing): "${ongoingEvent.name}".`
+            });
+          }
+        }
+
+        // 2. Define valid transitions mapping (supports legacy 'prepare' to 'ongoing' transition)
+        const validTransitions = {
+          draft: ['registration', 'cancelled'],
+          registration: ['ongoing', 'cancelled'],
+          prepare: ['ongoing'],
+          ongoing: ['completed'],
+          completed: [],
+          cancelled: []
+        };
+
+        const allowedNext = validTransitions[oldStatus];
+        if (!allowedNext || !allowedNext.includes(status)) {
           return res.status(400).json({
-            message: `Không thể thay đổi trạng thái của sự kiện đang ở trạng thái draft vì đang có sự kiện khác đang diễn ra (ongoing): "${ongoingEvent.name}".`
+            message: `Không thể chuyển trạng thái từ "${oldStatus}" sang "${status}". Trạng thái sự kiện phải được nâng theo từng bậc và không thể nhảy vọt.`
           });
         }
-      }
 
-      // 2. Define valid transitions mapping (supports legacy 'prepare' to 'ongoing' transition)
-      const validTransitions = {
-        draft: ['registration', 'cancelled'],
-        registration: ['ongoing', 'cancelled'],
-        prepare: ['ongoing'],
-        ongoing: ['completed'],
-        completed: [],
-        cancelled: []
-      };
-
-      const allowedNext = validTransitions[oldStatus];
-      if (!allowedNext || !allowedNext.includes(status)) {
-        return res.status(400).json({
-          message: `Không thể chuyển trạng thái từ "${oldStatus}" sang "${status}". Trạng thái sự kiện phải được nâng theo từng bậc và không thể nhảy vọt.`
-        });
-      }
-
-      // 3. Keep safety check to ensure only one active event (registration or ongoing) exists
-      if (status === 'registration') {
-        const activeEvent = await Event.findOne({
-          _id: { $ne: event._id },
-          status: { $in: ['registration', 'ongoing'] }
-        });
-        if (activeEvent) {
-          return res.status(400).json({
-            message: `Không thể chuyển sự kiện từ draft lên registration vì đang có sự kiện khác đang hoạt động: "${activeEvent.name}" (Trạng thái: ${activeEvent.status}). Chỉ khi sự kiện đó được chuyển thành completed hoặc cancelled thì mới có thể đăng ký sự kiện khác.`
+        // 3. Keep safety check to ensure only one active event (registration or ongoing) exists
+        if (status === 'registration') {
+          const activeEvent = await Event.findOne({
+            _id: { $ne: event._id },
+            status: { $in: ['registration', 'ongoing'] }
           });
+          if (activeEvent) {
+            return res.status(400).json({
+              message: `Không thể chuyển sự kiện từ draft lên registration vì đang có sự kiện khác đang hoạt động: "${activeEvent.name}" (Trạng thái: ${activeEvent.status}). Chỉ khi sự kiện đó được chuyển thành completed hoặc cancelled thì mới có thể đăng ký sự kiện khác.`
+            });
+          }
         }
+      } else {
+        logDetails.push(`[SUPER-ADMIN OVERRIDE] Ép chuyển trạng thái: "${oldStatus}" -> "${status}"`);
       }
     }
 
@@ -1160,37 +1310,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 /**
  * @route   GET /api/events/:eventId/logs
  * @desc    Get all activity logs for a specific event
- * @access  Private (Coordinator or Admin)
- */
-router.get('/:eventId/logs', authenticateToken, async (req, res) => {
-  const { eventId } = req.params;
-
-  try {
-    // Auth Check
-    if (!req.user.isSystemAdmin) {
-      const coordinatorRole = await EventRole.findOne({
-        userId: req.user._id,
-        eventId,
-        role: 'coordinator',
-        status: 'active'
-      });
-      if (!coordinatorRole) {
-        return res.status(403).json({ message: 'Unauthorized. Only coordinators or system administrators can view event logs.' });
-      }
-    }
-
-    const logs = await EventLog.find({ eventId })
-      .populate('actorId', 'fullName email')
-      .sort({ createdAt: -1 });
-
-    res.json(logs);
-  } catch (error) {
-    console.error('Fetch Event Logs Error:', error.message);
-    res.status(500).json({ message: 'Server error retrieving event logs.' });
-  }
-});
-
-/**
+ * @access/**
  * @route   DELETE /api/events/:id
  * @desc    Soft-delete / Archive an event by setting isArchived to true
  *          (All information remains in DB, but hidden from everyone except admin/coordinators)
@@ -1226,6 +1346,197 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Archive Event Error:', error.message);
     res.status(500).json({ message: 'Lỗi hệ thống khi ẩn sự kiện.' });
+  }
+});
+
+/**
+ * @route   DELETE /api/events/:eventId/rounds/:roundId
+ * @desc    Delete a Round in an Event
+ * @access  Private (System Admin or Event Coordinator)
+ */
+router.delete('/:eventId/rounds/:roundId', authenticateToken, async (req, res) => {
+  const { eventId, roundId } = req.params;
+  try {
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: 'Event not found.' });
+
+    if (!req.user.isSystemAdmin) {
+      return res.status(403).json({ message: 'Quyền truy cập bị từ chối. Chỉ System Admin mới có quyền xóa vòng thi.' });
+    }
+
+    const round = await Round.findById(roundId);
+    if (!round) return res.status(404).json({ message: 'Round not found.' });
+
+    const Rubric = mongoose.model('Rubric');
+    await Round.findByIdAndDelete(roundId);
+    await Rubric.deleteMany({ roundId });
+    await Track.updateMany({ roundId }, { $unset: { roundId: "" } });
+
+    const newLog = new EventLog({
+      eventId,
+      actorId: req.user._id,
+      action: 'delete_round',
+      type: 'operation',
+      details: `Xóa vòng thi: "${round.name}" (Vòng ${round.order})`
+    });
+    await newLog.save();
+
+    res.json({ message: 'Đã xóa vòng thi thành công!' });
+  } catch (error) {
+    console.error('Delete Round Error:', error.message);
+    res.status(500).json({ message: 'Server error deleting round.' });
+  }
+});
+
+/**
+ * @route   PUT /api/events/:id/seminar
+ * @desc    Configure Seminar schedule and meet link for an event
+ * @access  Private (Coordinator or Admin)
+ */
+router.put('/:id/seminar', authenticateToken, async (req, res) => {
+  const eventId = req.params.id;
+  const { scheduledAt, scheduledEnd, meetUrl, title, description, attendanceFormUrl, attendanceSpreadsheetUrl } = req.body;
+
+  try {
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: 'Event not found.' });
+
+    if (!req.user.isSystemAdmin) {
+      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator', status: 'active' });
+      if (!isCoord) return res.status(403).json({ message: 'Access denied. Only coordinators or system admins can configure seminar.' });
+    }
+
+    if (scheduledAt) {
+      const semDate = new Date(scheduledAt);
+      if (isNaN(semDate.getTime())) {
+        return res.status(400).json({ message: 'Thời gian bắt đầu Seminar không hợp lệ.' });
+      }
+      if (event.registrationClose && semDate < new Date(event.registrationClose)) {
+        return res.status(400).json({ 
+          message: `Thời gian bắt đầu Seminar phải diễn ra SAU KHI đóng cổng đăng ký (${new Date(event.registrationClose).toLocaleString('vi-VN')}).` 
+        });
+      }
+      if (event.contestStart && semDate >= new Date(event.contestStart)) {
+        return res.status(400).json({ 
+          message: `Thời gian bắt đầu Seminar phải diễn ra TRƯỚC KHI cuộc thi bắt đầu (${new Date(event.contestStart).toLocaleString('vi-VN')}).` 
+        });
+      }
+    }
+
+    if (scheduledEnd) {
+      const semEndDate = new Date(scheduledEnd);
+      if (isNaN(semEndDate.getTime())) {
+        return res.status(400).json({ message: 'Thời gian kết thúc Seminar không hợp lệ.' });
+      }
+      if (scheduledAt && semEndDate <= new Date(scheduledAt)) {
+        return res.status(400).json({ message: 'Thời gian kết thúc Seminar phải diễn ra SAU thời gian bắt đầu.' });
+      }
+      if (event.contestStart && semEndDate > new Date(event.contestStart)) {
+        return res.status(400).json({ 
+          message: `Thời gian kết thúc Seminar phải diễn ra TRƯỚC KHI cuộc thi bắt đầu (${new Date(event.contestStart).toLocaleString('vi-VN')}).` 
+        });
+      }
+    }
+
+    if (!event.seminar) event.seminar = {};
+
+    if (scheduledAt !== undefined) event.seminar.scheduledAt = scheduledAt ? new Date(scheduledAt) : undefined;
+    if (scheduledEnd !== undefined) event.seminar.scheduledEnd = scheduledEnd ? new Date(scheduledEnd) : undefined;
+    if (meetUrl !== undefined) event.seminar.meetUrl = meetUrl;
+    if (title !== undefined) event.seminar.title = title;
+    if (description !== undefined) event.seminar.description = description;
+    if (attendanceFormUrl !== undefined) event.seminar.attendanceFormUrl = attendanceFormUrl;
+    if (attendanceSpreadsheetUrl !== undefined) event.seminar.attendanceSpreadsheetUrl = attendanceSpreadsheetUrl;
+
+    await event.save();
+
+    const newLog = new EventLog({
+      eventId,
+      actorId: req.user._id,
+      action: 'update_seminar',
+      type: 'operation',
+      details: `Cập nhật thông tin Seminar: "${event.seminar.title}" (Link Meet: ${meetUrl || 'Chưa có'})`
+    });
+    await newLog.save();
+
+    res.json({ message: 'Cập nhật cấu hình Seminar thành công!', seminar: event.seminar, event });
+  } catch (error) {
+    console.error('Update Seminar Error:', error.message);
+    res.status(500).json({ message: 'Server error updating seminar.' });
+  }
+});
+
+/**
+ * @route   POST /api/events/:id/seminar/send-email
+ * @desc    Send Seminar Google Meet invitation emails to all registered contestants
+ * @access  Private (Coordinator or Admin)
+ */
+router.post('/:id/seminar/send-email', authenticateToken, async (req, res) => {
+  const eventId = req.params.id;
+
+  try {
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: 'Event not found.' });
+
+    if (!req.user.isSystemAdmin) {
+      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator', status: 'active' });
+      if (!isCoord) return res.status(403).json({ message: 'Access denied. Only coordinators or system admins can send seminar emails.' });
+    }
+
+    if (!event.seminar || !event.seminar.meetUrl) {
+      return res.status(400).json({ message: 'Vui lòng nhập Link phòng họp (Google Meet) trước khi gửi mail thông báo!' });
+    }
+
+    // Fetch all registered team members for this event
+    const members = await TeamMember.find({ eventId }).populate('userId', 'email fullName');
+    
+    // Extract unique contestant emails & names
+    const recipientMap = new Map();
+    members.forEach(m => {
+      if (m.userId && m.userId.email) {
+        recipientMap.set(m.userId.email.toLowerCase(), {
+          email: m.userId.email,
+          name: m.userId.fullName || 'Thí sinh'
+        });
+      }
+    });
+
+    const recipients = Array.from(recipientMap.values());
+
+    if (recipients.length === 0) {
+      return res.status(400).json({ message: 'Chưa có thí sinh/đội thi nào đăng ký tham gia sự kiện này để gửi mail.' });
+    }
+
+    // Send emails
+    let successCount = 0;
+    for (const rec of recipients) {
+      try {
+        await emailService.sendSeminarInvitation(rec.email, rec.name, event.name, event.seminar);
+        successCount++;
+      } catch (err) {
+        console.error(`Failed to send seminar email to ${rec.email}:`, err.message);
+      }
+    }
+
+    event.seminar.isEmailSent = true;
+    event.seminar.emailSentAt = new Date();
+    await event.save();
+
+    const newLog = new EventLog({
+      eventId,
+      actorId: req.user._id,
+      action: 'send_seminar_email',
+      type: 'system',
+      details: `Đã gửi email mời Seminar cho ${successCount}/${recipients.length} thí sinh.`
+    });
+    await newLog.save();
+
+    res.json({ 
+      message: `Đã phát email thông báo Seminar thành công cho ${successCount} thí sinh!`,
+      sentCount: successCount,
+      totalCount: recipients.length,
+      emailSentAt: event.seminar.emailSentAt
+    });
   }
 });
 

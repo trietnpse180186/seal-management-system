@@ -14,6 +14,13 @@ const EventRole = mongoose.model('EventRole');
 const emailService = require('../notifications/emailService');
 const githubService = require('../github-ai/githubService');
 const { ensureChatRoomForTeam } = require('../chat/chatRoomService');
+const {
+  canUserAccessRoundExam,
+  sanitizeRoundForParticipant,
+  buildDriveUrl
+} = require('../events/examAccessService');
+const { ensureUserDriveAccess } = require('../events/driveAccessService');
+const Round = mongoose.model('Round');
 const { authenticateToken } = require('../auth/authMiddleware');
 const { addEmailJob, addInAppJob, isQueueAvailable } = require('../notifications/notificationQueue');
 
@@ -67,7 +74,39 @@ router.post('/register', authenticateToken, async (req, res) => {
       }
     }
 
-    // 2. Validate that team name is unique inside the event
+    // 2. Validate that none of the members or the leader are already in another team in this event
+    const activeTeams = await Team.find({ eventId, status: { $in: ['confirmed', 'pending_confirm'] } });
+    const activeTeamIds = activeTeams.map(t => t._id);
+
+    // Check leader
+    const leaderHasTeam = await TeamMember.findOne({
+      teamId: { $in: activeTeamIds },
+      userId: req.user._id
+    });
+    if (leaderHasTeam) {
+      return res.status(400).json({ message: 'Tài khoản của bạn đã đăng ký tham gia một nhóm khác trong cuộc thi này.' });
+    }
+
+    // Check members
+    for (const memberData of membersList) {
+      const { email } = memberData;
+      if (!email) continue;
+
+      const existingUser = await User.findOne({ email: email.toLowerCase() });
+      if (existingUser) {
+        const memberHasTeam = await TeamMember.findOne({
+          teamId: { $in: activeTeamIds },
+          userId: existingUser._id
+        });
+        if (memberHasTeam) {
+          return res.status(400).json({
+            message: `Thành viên với email "${email}" đã đăng ký tham gia một nhóm khác trong cuộc thi này.`
+          });
+        }
+      }
+    }
+
+    // 3. Validate that team name is unique inside the event
     const nameFilter = { eventId, name: teamName };
     if (trackId) nameFilter.trackId = trackId;
     const existingTeam = await Team.findOne(nameFilter);
@@ -89,6 +128,7 @@ router.post('/register', authenticateToken, async (req, res) => {
     // 4. Register/Handle Leader as TeamMember
     const leaderMember = new TeamMember({
       teamId: team._id,
+      eventId: team.eventId,
       userId: req.user._id,
       role: 'leader',
       confirmStatus: 'confirmed',
@@ -154,6 +194,7 @@ router.post('/register', authenticateToken, async (req, res) => {
 
       const teamMember = new TeamMember({
         teamId: team._id,
+        eventId: team.eventId,
         userId: memberUser._id,
         role: 'member',
         confirmStatus: 'pending',
@@ -261,6 +302,14 @@ router.post('/register', authenticateToken, async (req, res) => {
         console.error('[ROLLBACK ERROR] Failed to clean up team registration:', rollbackError.message);
       }
     }
+    
+    // Xử lý lỗi trùng lặp duy nhất (Race condition / Concurrent registration)
+    if (error.code === 11000) {
+      return res.status(400).json({ 
+        message: 'Một hoặc nhiều thành viên (hoặc chính bạn) đã được đăng ký vào một đội khác trong cuộc thi này.' 
+      });
+    }
+    
     res.status(500).json({ message: 'Đăng ký đội thất bại.' });
   }
 });
@@ -467,6 +516,22 @@ router.get('/confirm-invite', async (req, res) => {
 
     // Notify Leader that a member confirmed
     const user = await User.findById(member.userId);
+
+    // Re-share Drive if exam already open for this round
+    if (user?.email && team?.trackId) {
+      try {
+        const track = await Track.findById(team.trackId);
+        if (track?.roundId) {
+          const round = await Round.findById(track.roundId);
+          if (round?.driveFileId && round.startTime && new Date() >= new Date(round.startTime)) {
+            await ensureUserDriveAccess(round.driveFileId, user.email);
+          }
+        }
+      } catch (driveErr) {
+        console.error('[DRIVE] Re-sync on member confirm failed:', driveErr.message);
+      }
+    }
+
     if (member.userId.toString() !== team.leaderId.toString()) {
       if (isQueueAvailable()) {
         await addInAppJob({
@@ -714,7 +779,14 @@ router.get('/my-team', authenticateToken, async (req, res) => {
     for (const record of memberRecords) {
       const foundTeam = await Team.findById(record.teamId)
         .populate('eventId', 'name semester year status contestEnd registrationClose')
-        .populate('trackId', 'name description attachments startTime endTime');
+        .populate({
+          path: 'trackId',
+          select: 'name description startTime endTime roundId',
+          populate: {
+            path: 'roundId',
+            model: 'Round'
+          }
+        });
       if (foundTeam) {
         team = foundTeam;
         activeMemberRecord = record;
@@ -731,6 +803,16 @@ router.get('/my-team', authenticateToken, async (req, res) => {
 
     const repo = await GithubRepository.findOne({ teamId: team._id });
 
+    const trackPlain = team.trackId?.toObject ? team.trackId.toObject() : team.trackId;
+    if (trackPlain?.roundId) {
+      trackPlain.roundId = sanitizeRoundForParticipant(trackPlain.roundId);
+      delete trackPlain.attachments;
+      team.trackId = trackPlain;
+    } else if (trackPlain) {
+      delete trackPlain.attachments;
+      team.trackId = trackPlain;
+    }
+
     res.json({
       team,
       members,
@@ -740,6 +822,60 @@ router.get('/my-team', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Fetch My Team Error:', error.message);
     res.status(500).json({ message: 'Lỗi hệ thống khi tải thông tin nhóm.' });
+  }
+});
+
+/**
+ * @route   GET /api/teams/my-team/exam-access
+ * @desc    Gated access to round exam Google Drive (registered confirmed members only)
+ * @access  Private (Confirmed team member)
+ */
+router.get('/my-team/exam-access', authenticateToken, async (req, res) => {
+  try {
+    const memberRecord = await TeamMember.findOne({
+      userId: req.user._id,
+      confirmStatus: 'confirmed'
+    });
+
+    if (!memberRecord) {
+      return res.status(403).json({ message: 'Bạn cần là thành viên đã xác nhận của đội để truy cập đề bài.' });
+    }
+
+    const team = await Team.findById(memberRecord.teamId).populate('trackId', 'roundId name');
+    if (!team || team.status !== 'confirmed') {
+      return res.status(403).json({ message: 'Đội của bạn chưa được xác nhận hoàn tất.' });
+    }
+
+    const roundId = team.trackId?.roundId;
+    if (!roundId) {
+      return res.status(404).json({ message: 'Đội chưa được gán vòng thi / bảng đấu.' });
+    }
+
+    const access = await canUserAccessRoundExam(req.user._id, roundId);
+    if (!access.ok) {
+      return res.status(403).json({ message: access.message, reason: access.reason });
+    }
+
+    const round = access.round;
+    const shareResult = await ensureUserDriveAccess(round.driveFileId, access.user.email);
+    if (!shareResult.success) {
+      return res.status(502).json({
+        message: 'Không thể cấp quyền Google Drive cho email của bạn. Liên hệ BTC.',
+        detail: shareResult.error
+      });
+    }
+
+    const accessUrl = buildDriveUrl(round.driveFileId);
+
+    res.json({
+      fileName: round.driveFileName,
+      accessUrl,
+      roundName: round.name,
+      message: 'Truy cập thành công. Hãy đăng nhập Google bằng cùng email đã đăng ký trên hệ thống.'
+    });
+  } catch (error) {
+    console.error('Exam Access Error:', error.message);
+    res.status(500).json({ message: 'Lỗi khi mở đề bài.', detail: error.message });
   }
 });
 
@@ -982,7 +1118,10 @@ router.put('/:teamId/assign-track', authenticateToken, async (req, res) => {
 
     // Check if repo already exists for this team
     const existingRepo = await GithubRepository.findOne({ teamId: team._id });
-    if (!existingRepo) {
+    if (existingRepo) {
+      existingRepo.trackId = track._id;
+      await existingRepo.save();
+    } else {
       githubService.createTeamRepository(slugRepoName, 'private', orgName)
         .then(async (gitResult) => {
           const actualOrgName = gitResult.owner || orgName;
@@ -1046,7 +1185,14 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
   try {
     const team = await Team.findById(req.params.teamId)
       .populate('eventId', 'name semester year status contestEnd registrationClose')
-      .populate('trackId', 'name description')
+      .populate({
+        path: 'trackId',
+        select: 'name description roundId',
+        populate: {
+          path: 'roundId',
+          select: 'name driveFileName driveFileId startTime'
+        }
+      })
       .populate('mentorId', 'fullName email');
 
     if (!team) {
@@ -1058,8 +1204,20 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
 
     const repo = await GithubRepository.findOne({ teamId: team._id });
 
+    const teamObj = team.toObject();
+    if (teamObj.trackId?.roundId) {
+      const r = teamObj.trackId.roundId;
+      teamObj.trackId.roundId = {
+        _id: r._id,
+        name: r.name,
+        driveFileName: r.driveFileName,
+        hasExamMaterial: !!r.driveFileId,
+        startTime: r.startTime
+      };
+    }
+
     res.json({
-      team,
+      team: teamObj,
       members,
       repository: repo
     });

@@ -12,10 +12,12 @@ import {
   User,
   Activity,
   ChevronDown,
+  Trash2,
 } from "lucide-react";
 import TeamsTab from "./TeamsTab";
 import TracksTab from "./TracksTab";
 import RoundsTab from "./RoundsTab";
+import SeminarTab from "./SeminarTab";
 import GithubTab from "../teams/GithubTab";
 import { toast } from "sonner";
 import { useConfirm } from "../shared/ConfirmDialog";
@@ -55,6 +57,16 @@ export default function AdminEvents({
   defaultTab = "events",
 }: AdminEventsProps) {
   const token = localStorage.getItem("token");
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    if (token) {
+      axios.get("http://localhost:5000/api/auth/me", {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(res => setCurrentUser(res.data.user)).catch(() => {});
+    }
+  }, [token]);
+
   const [searchParams, setSearchParams] = useSearchParams();
   const confirm = useConfirm();
 
@@ -73,6 +85,7 @@ export default function AdminEvents({
   const [trackDesc, setTrackDesc] = useState("");
   const [trackMax, setTrackMax] = useState("5");
   const [trackRoundId, setTrackRoundId] = useState("");
+  const [trackAdvanceTopN, setTrackAdvanceTopN] = useState("3");
   const [selectedTrack, setSelectedTrack] = useState<any>(null);
   const [editingTrack, setEditingTrack] = useState<any>(null);
 
@@ -116,10 +129,10 @@ export default function AdminEvents({
 
   // Tab management state
   const [activeTab, setActiveTabState] = useState<
-    "admin" | "events" | "teams" | "rounds" | "tracks" | "github" | "logs" | "schedule" | "portal"
+    "admin" | "events" | "teams" | "rounds" | "tracks" | "github" | "logs" | "schedule" | "portal" | "seminar"
   >(() => (sessionStorage.getItem("activeTab") as any) || defaultTab);
 
-  const setActiveTab = (tab: "admin" | "events" | "teams" | "rounds" | "tracks" | "github" | "logs" | "schedule" | "portal") => {
+  const setActiveTab = (tab: "admin" | "events" | "teams" | "rounds" | "tracks" | "github" | "logs" | "schedule" | "portal" | "seminar") => {
     setActiveTabState(tab);
     sessionStorage.setItem("activeTab", tab);
   };
@@ -248,17 +261,9 @@ export default function AdminEvents({
   const handleSelectRoundForSchedule = (roundObj: any) => {
     setSelectedRoundForSchedule(roundObj);
     if (roundObj) {
-      const roundTracks = tracks.filter((t: any) => t.roundId === roundObj._id);
-      if (roundTracks.length > 0) {
-        const firstTrack = roundTracks[0];
-        setTrackStartTime(formatForDateTimeLocal(firstTrack.startTime));
-        setTrackEndTime(formatForDateTimeLocal(firstTrack.endTime));
-        setTrackGradingEndTime(formatForDateTimeLocal(firstTrack.gradingEndTime));
-      } else {
-        setTrackStartTime("");
-        setTrackEndTime("");
-        setTrackGradingEndTime("");
-      }
+      setTrackStartTime(formatForDateTimeLocal(roundObj.startTime));
+      setTrackEndTime(formatForDateTimeLocal(roundObj.endTime));
+      setTrackGradingEndTime(formatForDateTimeLocal(roundObj.gradingEndTime));
     } else {
       setTrackStartTime("");
       setTrackEndTime("");
@@ -363,27 +368,26 @@ export default function AdminEvents({
     setMessage({ type: "", text: "" });
 
     try {
-      const updatePromises = roundTracks.map((track: any) =>
-        axios.put(
-          `http://localhost:5000/api/events/${selectedEvent._id}/tracks/${track._id}`,
-          {
-            startTime: trackStartTime ? new Date(trackStartTime).toISOString() : null,
-            endTime: trackEndTime ? new Date(trackEndTime).toISOString() : null,
-            gradingEndTime: trackGradingEndTime ? new Date(trackGradingEndTime).toISOString() : null,
-          },
-          { headers: { Authorization: `Bearer ${token}` } }
-        )
+      const res = await axios.put(
+        `http://localhost:5000/api/events/${selectedEvent._id}/rounds/${selectedRoundForSchedule._id}`,
+        {
+          startTime: trackStartTime ? new Date(trackStartTime).toISOString() : null,
+          endTime: trackEndTime ? new Date(trackEndTime).toISOString() : null,
+          gradingEndTime: trackGradingEndTime ? new Date(trackGradingEndTime).toISOString() : null,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      const results = await Promise.all(updatePromises);
+      setRounds((prev) =>
+        prev.map((r: any) => (r._id === res.data._id ? res.data : r))
+      );
+      setSelectedRoundForSchedule(res.data);
 
-      setTracks((prev) => {
-        let updated = [...prev];
-        results.forEach((res) => {
-          updated = updated.map((t) => (t._id === res.data._id ? res.data : t));
-        });
-        return updated;
-      });
+      // Refresh tracks (mirrored schedule on backend)
+      const detailsRes = await axios.get(
+        `http://localhost:5000/api/events/${selectedEvent._id}`
+      );
+      setTracks(detailsRes.data.tracks || []);
 
       toast.success("Đã cập nhật lịch trình vòng thi thành công!");
       setMessage({ type: "success", text: "Đã cập nhật lịch trình vòng thi thành công!" });
@@ -871,9 +875,10 @@ export default function AdminEvents({
     }
   };
 
-  const handleUpdateEventStatus = async (newStatus: string) => {
+  const handleUpdateEventStatus = async (newStatus: string, isForce: boolean = false) => {
     if (!selectedEvent) return;
-    if (newStatus !== "cancelled" && newStatus !== selectedEvent.status) {
+    const forceFlag = isForce || !!currentUser?.isSystemAdmin;
+    if (!forceFlag && newStatus !== "cancelled" && newStatus !== selectedEvent.status) {
       toast.error("Trạng thái cuộc thi được tự động chuyển đổi theo thời gian. Bạn chỉ có thể chuyển thủ công sang Hủy (Cancelled)!");
       return;
     }
@@ -883,12 +888,12 @@ export default function AdminEvents({
     try {
       const res = await axios.put(
         `http://localhost:5000/api/events/${selectedEvent._id}`,
-        { status: newStatus },
+        { status: newStatus, isForceOverride: forceFlag },
         { headers: { Authorization: `Bearer ${token}` } },
       );
       setMessage({
         type: "success",
-        text: "Cập nhật trạng thái cuộc thi thành công!",
+        text: forceFlag ? "Ép chuyển trạng thái cuộc thi thành công!" : "Cập nhật trạng thái cuộc thi thành công!",
       });
       setSelectedEvent(res.data.event);
       fetchEvents();
@@ -901,6 +906,48 @@ export default function AdminEvents({
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteEvent = async () => {
+    if (!selectedEvent) return;
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa cuộc thi "${selectedEvent.name}"? Tất cả dữ liệu vòng thi, tiêu chí và đội thi sẽ bị xóa vĩnh viễn!`)) return;
+    try {
+      await axios.delete(`http://localhost:5000/api/events/${selectedEvent._id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("Đã xóa cuộc thi thành công!");
+      setSelectedEvent(null);
+      fetchEvents();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Lỗi khi xóa cuộc thi.");
+    }
+  };
+
+  const handleDeleteRound = async (roundId: string) => {
+    if (!selectedEvent || !roundId) return;
+    if (!window.confirm("Bạn có chắc chắn muốn xóa vòng thi này? Các tiêu chí và rubric thuộc vòng thi sẽ bị xóa!")) return;
+    try {
+      await axios.delete(`http://localhost:5000/api/events/${selectedEvent._id}/rounds/${roundId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("Đã xóa vòng thi thành công!");
+      fetchEventDetails();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Lỗi khi xóa vòng thi.");
+    }
+  };
+
+  const handleUpdateRound = async (roundId: string, updatedData: any) => {
+    if (!selectedEvent || !roundId) return;
+    try {
+      await axios.put(`http://localhost:5000/api/events/${selectedEvent._id}/rounds/${roundId}`, updatedData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("Cập nhật thông tin vòng thi thành công!");
+      fetchEventDetails();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Lỗi khi cập nhật vòng thi.");
     }
   };
 
@@ -992,6 +1039,7 @@ export default function AdminEvents({
           description: trackDesc,
           maxTeams: newMaxTeamsNum,
           roundId: trackRoundId,
+          advanceTopN: parseInt(trackAdvanceTopN) || 3,
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -1001,6 +1049,7 @@ export default function AdminEvents({
       setTrackDesc("");
       setTrackRoundId("");
       setTrackMax("");
+      setTrackAdvanceTopN("3");
 
       // Update local tracks state
       const updatedTracks = [...tracks, newTrack];
@@ -1063,6 +1112,7 @@ export default function AdminEvents({
           description: trackDesc,
           maxTeams: updatedMaxTeamsNum,
           roundId: trackRoundId,
+          advanceTopN: parseInt(trackAdvanceTopN) || 3,
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -1072,6 +1122,7 @@ export default function AdminEvents({
       setTrackDesc("");
       setTrackRoundId("");
       setTrackMax("");
+      setTrackAdvanceTopN("3");
       setEditingTrack(null);
 
       // Update local tracks state
@@ -1533,6 +1584,33 @@ export default function AdminEvents({
     }
   };
 
+  const handleUnlockRubric = async () => {
+    if (!rubric) return;
+    setMessage({ type: "", text: "" });
+    setLoading(true);
+
+    try {
+      const res = await axios.post(
+        `http://localhost:5000/api/rubrics/${rubric._id}/unlock`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      setRubric(res.data.rubric);
+      setMessage({
+        type: "success",
+        text: "Đã bẻ khóa (Force Unlock) Rubric thành công! Bạn có thể chỉnh sửa lại tiêu chí.",
+      });
+      fetchRoundsAndRubric();
+    } catch (err: any) {
+      setMessage({
+        type: "error",
+        text: err.response?.data?.message || "Lỗi mở khóa Rubric.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAdvanceRound = async (roundId: string) => {
     if (!selectedEvent || !roundId) return;
 
@@ -1671,7 +1749,10 @@ export default function AdminEvents({
 
   const handleUploadExam = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedEvent) return;
+    if (!selectedEvent || !selectedRoundForSchedule) {
+      toast.error("Chọn vòng thi trước khi gắn link Drive.");
+      return;
+    }
     setMessage({ type: "", text: "" });
     setLoading(true);
 
@@ -1681,19 +1762,44 @@ export default function AdminEvents({
         {
           fileName: attachmentName,
           fileUrl: attachmentUrl,
-          trackId: selectedTrack?._id || undefined,
+          roundId: selectedRoundForSchedule._id,
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
       setAttachmentName("");
       setAttachmentUrl("");
-      setMessage({ type: "success", text: "Lưu tài liệu đề thi thành công!" });
+      setMessage({ type: "success", text: "Lưu đề vòng thi thành công! Hãy đồng bộ quyền Drive." });
+      toast.success("Lưu đề vòng thi thành công!");
       fetchEventDetails();
     } catch (err: any) {
       setMessage({
         type: "error",
         text: err.response?.data?.message || "Lỗi tải tài liệu.",
       });
+      toast.error(err.response?.data?.message || "Lỗi tải tài liệu.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSyncDriveAccess = async () => {
+    if (!selectedEvent || !selectedRoundForSchedule) return;
+    setLoading(true);
+    try {
+      const res = await axios.post(
+        `http://localhost:5000/api/events/${selectedEvent._id}/rounds/${selectedRoundForSchedule._id}/sync-drive-access`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success(res.data.message || "Đồng bộ Drive thành công!");
+      if (res.data.round) {
+        setSelectedRoundForSchedule(res.data.round);
+        setRounds((prev) =>
+          prev.map((r: any) => (r._id === res.data.round._id ? res.data.round : r))
+        );
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Lỗi đồng bộ Google Drive.");
     } finally {
       setLoading(false);
     }
@@ -1820,21 +1926,21 @@ export default function AdminEvents({
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl">
-                <label className="text-[10px] font-bold text-slate-400 uppercase font-mono">
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border ${currentUser?.isSystemAdmin ? 'bg-amber-950/20 border-amber-500/40' : 'bg-slate-950 border-slate-800'}`}>
+                <label className={`text-[10px] font-bold uppercase font-mono ${currentUser?.isSystemAdmin ? 'text-amber-400' : 'text-slate-400'}`}>
                   Trạng thái:
                 </label>
                 <CustomSelect
                   value={selectedEvent.status}
-                  onChange={(val) => handleUpdateEventStatus(val)}
+                  onChange={(val) => handleUpdateEventStatus(val, currentUser?.isSystemAdmin)}
                   options={[
-                    { value: "draft", label: "Draft", disabled: selectedEvent.status !== "draft" },
-                    { value: "registration", label: "Registration", disabled: selectedEvent.status !== "registration" },
-                    { value: "ongoing", label: "Ongoing", disabled: selectedEvent.status !== "ongoing" },
-                    { value: "completed", label: "Completed", disabled: selectedEvent.status !== "completed" },
-                    { value: "cancelled", label: "Cancelled (Hủy cuộc thi)" },
+                    { value: "draft", label: "Draft", disabled: !currentUser?.isSystemAdmin && selectedEvent.status !== "draft" },
+                    { value: "registration", label: "Registration", disabled: !currentUser?.isSystemAdmin && selectedEvent.status !== "registration" },
+                    { value: "ongoing", label: "Ongoing", disabled: !currentUser?.isSystemAdmin && selectedEvent.status !== "ongoing" },
+                    { value: "completed", label: "Completed", disabled: !currentUser?.isSystemAdmin && selectedEvent.status !== "completed" },
+                    { value: "cancelled", label: "Cancelled" },
                   ]}
-                  className="w-44 font-semibold"
+                  className="w-48 font-semibold"
                 />
               </div>
               <button
@@ -1850,13 +1956,18 @@ export default function AdminEvents({
                 <CalendarPlus size={14} />
                 Tạo cuộc thi mới
               </button>
+              {currentUser?.isSystemAdmin && (
+                <button
+                  onClick={handleDeleteEvent}
+                  className="bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 hover:text-rose-200 px-3.5 py-2 rounded-xl border border-rose-800/40 text-xs font-mono flex items-center gap-1.5 cursor-pointer shrink-0 transition-all shadow-md active:scale-95 z-20"
+                  title="Quyền Super-Admin: Xóa vĩnh viễn cuộc thi này"
+                >
+                  <Trash2 size={14} />
+                  Xóa cuộc thi
+                </button>
+              )}
             </div>
           </div>
-          {selectedEvent.description && (
-            <p className="text-xs text-slate-400 mt-4 leading-relaxed bg-slate-950/30 p-3 rounded-xl border border-slate-800/40">
-              {selectedEvent.description}
-            </p>
-          )}
         </div>
       )}
       {/* TAB NAVIGATION BAR */}
@@ -1930,6 +2041,33 @@ export default function AdminEvents({
               >
                 4. Thiết lập thời gian
               </button>
+              <button
+                onClick={() => {
+                  if (!selectedEvent) {
+                    toast.error("Vui lòng khởi tạo thông tin sự kiện ở Bước 1 trước!");
+                    return;
+                  }
+                  if (rounds.length === 0) {
+                    toast.error("Vui lòng tạo ít nhất 1 vòng thi ở Bước 2 trước!");
+                    return;
+                  }
+                  if (tracks.length === 0) {
+                    toast.error("Vui lòng tạo ít nhất 1 bảng đấu ở Bước 3 trước!");
+                    return;
+                  }
+                  if (!selectedEvent.registrationClose || !selectedEvent.contestStart) {
+                    toast.error("Vui lòng hoàn tất Thiết lập thời gian ở Bước 4 trước khi sang Seminar & Thông báo!");
+                    return;
+                  }
+                  setActiveTab("seminar");
+                }}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${(!selectedEvent || tracks.length === 0 || !selectedEvent.registrationClose) ? "opacity-40 cursor-not-allowed" : ""} ${activeTab === "seminar"
+                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  }`}
+              >
+                5. Seminar & Thông báo
+              </button>
             </>
           ) : (
             <>
@@ -1977,6 +2115,15 @@ export default function AdminEvents({
                   }`}
               >
                 Bảng đấu
+              </button>
+              <button
+                onClick={() => setActiveTab("seminar")}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "seminar"
+                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  }`}
+              >
+                Seminar & Thông báo
               </button>
               <button
                 onClick={() => setActiveTab("github")}
@@ -2280,6 +2427,8 @@ export default function AdminEvents({
               setTrackDesc={setTrackDesc}
               trackMax={trackMax}
               setTrackMax={setTrackMax}
+              trackAdvanceTopN={trackAdvanceTopN}
+              setTrackAdvanceTopN={setTrackAdvanceTopN}
               trackRoundId={trackRoundId}
               setTrackRoundId={setTrackRoundId}
               handleCreateTrack={handleCreateTrack}
@@ -2293,16 +2442,12 @@ export default function AdminEvents({
               setSelectedRubricRoundId={setSelectedRubricRoundId}
               setRubric={setRubric}
               setCriteria={setCriteria}
-              attachmentName={attachmentName}
-              setAttachmentName={setAttachmentName}
-              attachmentUrl={attachmentUrl}
-              setAttachmentUrl={setAttachmentUrl}
-              handleUploadExam={handleUploadExam}
               loading={loading}
               eventRoles={eventRoles}
               handleAssignRoleForTrack={handleAssignRoleForTrack}
               handleRemoveRole={handleRemoveRole}
               teamsList={teamsList}
+              token={token}
             />
             {isWizardMode && (
               <div className="mt-8 p-4 glass rounded-2xl flex justify-between items-center">
@@ -2345,6 +2490,7 @@ export default function AdminEvents({
               selectedEvent={selectedEvent}
               tracks={tracks}
               rounds={rounds}
+              isSystemAdmin={currentUser?.isSystemAdmin}
               selectedTrack={selectedTrack}
               setSelectedTrack={setSelectedTrack}
               selectedRubricRoundId={selectedRubricRoundId}
@@ -2382,8 +2528,11 @@ export default function AdminEvents({
               handleUpdateRubric={handleUpdateRubric}
               handleDeleteRubric={handleDeleteRubric}
               handleLockRubric={handleLockRubric}
+              handleUnlockRubric={handleUnlockRubric}
               handleAdvanceRound={handleAdvanceRound}
               handleLockRound={handleLockRound}
+              handleDeleteRound={handleDeleteRound}
+              handleUpdateRound={handleUpdateRound}
               critCode={critCode}
               setCritCode={setCritCode}
               critName={critName}
@@ -2715,6 +2864,66 @@ export default function AdminEvents({
                             {loading ? "Đang lưu..." : "Lưu lịch trình vòng thi"}
                           </button>
                         </div>
+
+                        <div className="border-t border-slate-800 pt-6 mt-6 space-y-4">
+                          <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-wider font-mono">
+                            Đề bài Google Drive (1 link / vòng)
+                          </h4>
+                          <p className="text-[10px] text-slate-500 font-sans leading-relaxed">
+                            Folder Drive phải <strong className="text-slate-300">Restricted</strong>. Hệ thống tự share reader cho email thành viên đội đã xác nhận.
+                          </p>
+                          {selectedRoundForSchedule.hasExamMaterial && (
+                            <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs">
+                              <p className="text-slate-300 font-bold">{selectedRoundForSchedule.driveFileName}</p>
+                              <p className="text-[10px] text-slate-500 mt-1 font-mono truncate">
+                                {selectedRoundForSchedule.driveFileUrl}
+                              </p>
+                              <p className="text-[10px] mt-2">
+                                Drive sync:{" "}
+                                <span className={selectedRoundForSchedule.isDriveAccessSynced ? "text-emerald-400" : "text-amber-400"}>
+                                  {selectedRoundForSchedule.driveSyncedEmailCount || 0} email
+                                  {selectedRoundForSchedule.isDriveAccessSynced ? " ✓" : " (chưa đồng bộ)"}
+                                </span>
+                              </p>
+                            </div>
+                          )}
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Tên tài liệu</label>
+                            <input
+                              type="text"
+                              placeholder="VD: Đề R1 SU26"
+                              value={attachmentName}
+                              onChange={(e) => setAttachmentName(e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl text-xs bg-slate-950 border border-slate-850 text-slate-200"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Link Google Drive</label>
+                            <input
+                              type="text"
+                              placeholder="https://drive.google.com/drive/folders/..."
+                              value={attachmentUrl}
+                              onChange={(e) => setAttachmentUrl(e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl text-xs bg-slate-950 border border-slate-850 text-slate-200"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            disabled={loading || !attachmentName || !attachmentUrl}
+                            onClick={(e) => handleUploadExam(e as unknown as React.FormEvent)}
+                            className="w-full bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white font-bold text-xs py-2.5 rounded-xl uppercase tracking-wider"
+                          >
+                            Lưu link Drive cho vòng này
+                          </button>
+                          <button
+                            type="button"
+                            disabled={loading || !selectedRoundForSchedule.hasExamMaterial}
+                            onClick={handleSyncDriveAccess}
+                            className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs py-2.5 rounded-xl uppercase tracking-wider"
+                          >
+                            Đồng bộ quyền Drive (email đã đăng ký)
+                          </button>
+                        </div>
                       </>
                     )}
                   </form>
@@ -2947,6 +3156,11 @@ export default function AdminEvents({
             Vui lòng chọn cuộc thi từ thanh tiêu đề hoặc trang Quản trị viên để thiết lập nội dung Portal.
           </div>
         ))}
+
+      {/* 10. SEMINAR TAB */}
+      {activeTab === "seminar" && (
+        <SeminarTab selectedEvent={selectedEvent} fetchEventDetails={fetchEventDetails} />
+      )}
 
       {/* DETAIL EVENT LOG MODAL */}
       {selectedLog && (

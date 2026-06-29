@@ -15,6 +15,11 @@ const EventLog = mongoose.model('EventLog');
 const emailService = require('../notifications/emailService');
 const githubService = require('../github-ai/githubService');
 const { ensureChatRoomForTeam, ensureChatRoomsForMentorTrack } = require('../chat/chatRoomService');
+const {
+  extractDriveFileId,
+  sanitizeRoundForAdmin
+} = require('./examAccessService');
+const { syncDriveAccessForRound, getDriveStatus } = require('./driveAccessService');
 const { authenticateToken, requireSystemAdmin, requireEventRole } = require('../auth/authMiddleware');
 const { addEmailJob, isQueueAvailable } = require('../notifications/notificationQueue');
 
@@ -214,7 +219,8 @@ router.get('/:id', async (req, res) => {
     res.json({
       event,
       tracks,
-      rounds
+      rounds: rounds.map((r) => sanitizeRoundForAdmin(r)),
+      driveIntegration: getDriveStatus()
     });
   } catch (error) {
     console.error('Fetch Event Details Error:', error.message);
@@ -584,7 +590,7 @@ router.post('/:eventId/rounds', authenticateToken, async (req, res) => {
  */
 router.put('/:eventId/rounds/:roundId', authenticateToken, async (req, res) => {
   const { eventId, roundId } = req.params;
-  const { name, order, submissionDeadline, advanceTopN } = req.body;
+  const { name, order, submissionDeadline, advanceTopN, startTime, endTime, gradingEndTime } = req.body;
 
   try {
     if (!req.user.isSystemAdmin) {
@@ -599,6 +605,20 @@ router.put('/:eventId/rounds/:roundId', authenticateToken, async (req, res) => {
     if (order !== undefined) round.order = parseInt(order);
     if (submissionDeadline !== undefined) round.submissionDeadline = submissionDeadline ? new Date(submissionDeadline) : undefined;
     if (advanceTopN !== undefined) round.advanceTopN = advanceTopN ? parseInt(advanceTopN) : undefined;
+    if (startTime !== undefined) round.startTime = startTime ? new Date(startTime) : null;
+    if (endTime !== undefined) round.endTime = endTime ? new Date(endTime) : null;
+    if (gradingEndTime !== undefined) round.gradingEndTime = gradingEndTime ? new Date(gradingEndTime) : null;
+
+    // Mirror schedule to tracks in this round for backward compatibility
+    if (startTime !== undefined || endTime !== undefined || gradingEndTime !== undefined) {
+      const trackUpdate = {};
+      if (startTime !== undefined) trackUpdate.startTime = startTime ? new Date(startTime) : null;
+      if (endTime !== undefined) trackUpdate.endTime = endTime ? new Date(endTime) : null;
+      if (gradingEndTime !== undefined) trackUpdate.gradingEndTime = gradingEndTime ? new Date(gradingEndTime) : null;
+      if (Object.keys(trackUpdate).length > 0) {
+        await Track.updateMany({ roundId: round._id }, trackUpdate);
+      }
+    }
 
     await round.save();
 
@@ -610,7 +630,7 @@ router.put('/:eventId/rounds/:roundId', authenticateToken, async (req, res) => {
     });
     await newLog.save();
 
-    res.json(round);
+    res.json(sanitizeRoundForAdmin(round));
   } catch (error) {
     console.error('Update Round Error:', error.message);
     res.status(500).json({ message: 'Server error updating round.' });
@@ -618,8 +638,44 @@ router.put('/:eventId/rounds/:roundId', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @route   POST /api/events/:eventId/rounds/:roundId/sync-drive-access
+ * @desc    Share round exam Drive folder with all eligible registered emails
+ * @access  Private (Coordinator or Admin)
+ */
+router.post('/:eventId/rounds/:roundId/sync-drive-access', authenticateToken, async (req, res) => {
+  const { eventId, roundId } = req.params;
+
+  try {
+    if (!req.user.isSystemAdmin) {
+      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator', status: 'active' });
+      if (!isCoord) return res.status(403).json({ message: 'Unauthorized.' });
+    }
+
+    const round = await Round.findById(roundId);
+    if (!round) return res.status(404).json({ message: 'Round not found.' });
+    if (!round.driveFileId) {
+      return res.status(400).json({ message: 'Vòng thi chưa có link Google Drive. Hãy upload đề trước.' });
+    }
+
+    const result = await syncDriveAccessForRound(roundId);
+    const updatedRound = await Round.findById(roundId);
+
+    res.json({
+      message: `Đồng bộ quyền Drive: ${result.synced}/${result.total} email thành công.`,
+      sync: result,
+      round: sanitizeRoundForAdmin(updatedRound),
+      driveIntegration: getDriveStatus()
+    });
+  } catch (error) {
+    console.error('Sync Drive Access Error:', error.message);
+    const status = /chưa cấu hình|Không tìm thấy file service account/i.test(error.message) ? 503 : 500;
+    res.status(status).json({ message: error.message || 'Lỗi đồng bộ quyền Google Drive.', detail: error.message });
+  }
+});
+
+/**
  * @route   POST /api/events/:eventId/upload-exam
- * @desc    Simulate exam attachment file upload
+ * @desc    Save exam material — prefer roundId (one Drive link per round)
  * @access  Private (Coordinator or Admin)
  */
 router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
@@ -634,17 +690,49 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
     const event = await Event.findById(eventId);
     if (!event) return res.status(404).json({ message: 'Event not found.' });
 
-    // Auth check
     if (!req.user.isSystemAdmin) {
       const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator' });
       if (!isCoord) return res.status(403).json({ message: 'Unauthorized.' });
     }
 
+    const driveFileId = extractDriveFileId(fileUrl);
+    if (!driveFileId) {
+      return res.status(400).json({ message: 'Không parse được ID từ link Google Drive. Kiểm tra lại URL.' });
+    }
+
+    if (roundId) {
+      const round = await Round.findById(roundId);
+      if (!round || round.eventId.toString() !== eventId) {
+        return res.status(404).json({ message: 'Round not found for this event.' });
+      }
+
+      round.driveFileId = driveFileId;
+      round.driveFileName = fileName;
+      round.driveFileUrl = fileUrl;
+      round.isDriveAccessSynced = false;
+      round.driveSyncedEmailCount = 0;
+      round.driveSyncErrors = [];
+      await round.save();
+
+      const newLog = new EventLog({
+        eventId,
+        actorId: req.user._id,
+        action: 'upload_round_exam',
+        details: `Gắn đề Google Drive cho vòng "${round.name}" (${fileName})`
+      });
+      await newLog.save();
+
+      return res.json({
+        message: 'Đã lưu đề bài cho vòng thi. Nhớ đồng bộ quyền Drive trước/sau giờ mở đề.',
+        round: sanitizeRoundForAdmin(round)
+      });
+    }
+
+    // Legacy: track-level attachment (deprecated)
     const fileMeta = {
       id: `file-${Date.now()}`,
       fileName,
       fileUrl,
-      roundId: roundId || null,
       trackId: trackId || null,
       uploadedAt: new Date(),
       uploadedBy: req.user.fullName
@@ -662,7 +750,7 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
     }
 
     res.json({
-      message: 'Exam file details successfully saved to track/event schema!',
+      message: 'Lưu tài liệu legacy (theo track). Nên dùng roundId để gắn 1 link / vòng.',
       attachment: fileMeta
     });
 

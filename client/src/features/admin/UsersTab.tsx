@@ -230,7 +230,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token }) => {
   const handleDeleteUser = async (userId: string) => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa tài khoản người dùng này? Thao tác không thể hoàn tác!')) return;
     try {
-      await axios.delete(`http://localhost:5000/api/auth/users/${userId}`, {
+      const res = await axios.delete(`http://localhost:5000/api/auth/users/${userId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success(res.data.message || 'Đã xóa người dùng.');

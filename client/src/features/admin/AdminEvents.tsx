@@ -62,7 +62,7 @@ export default function AdminEvents({
     if (token) {
       axios.get("http://localhost:5000/api/auth/me", {
         headers: { Authorization: `Bearer ${token}` }
-      }).then(res => setCurrentUser(res.data.user)).catch(() => { });
+      }).then(res => setCurrentUser(res.data.user)).catch(() => {});
     }
   }, [token]);
 
@@ -83,8 +83,8 @@ export default function AdminEvents({
   const [trackName, setTrackName] = useState("");
   const [trackDesc, setTrackDesc] = useState("");
   const [trackMax, setTrackMax] = useState("5");
-  const [trackAdvanceTopN, setTrackAdvanceTopN] = useState("3");
   const [trackRoundId, setTrackRoundId] = useState("");
+  const [trackAdvanceTopN, setTrackAdvanceTopN] = useState("3");
   const [selectedTrack, setSelectedTrack] = useState<any>(null);
   const [editingTrack, setEditingTrack] = useState<any>(null);
 
@@ -178,7 +178,6 @@ export default function AdminEvents({
   const [editPhase2Description, setEditPhase2Description] = useState("");
   const [editPhase3Description, setEditPhase3Description] = useState("");
   const [editRules, setEditRules] = useState<any[]>([]);
-  const [allUsers, setAllUsers] = useState<any[]>([]);
 
   // Track Schedule States
   const [_selectedTrackForSchedule, _setSelectedTrackForSchedule] = useState<any>(null);
@@ -258,7 +257,7 @@ export default function AdminEvents({
     setEditCommitSyncInterval(String(eventObj.commitSyncInterval || 30));
   };
 
-  const handleSelectRoundForSchedule = (roundObj: any, tracksList = tracks) => {
+  const handleSelectRoundForSchedule = (roundObj: any) => {
     setSelectedRoundForSchedule(roundObj);
     if (roundObj) {
       setTrackStartTime(formatForDateTimeLocal(roundObj.startTime));
@@ -308,7 +307,7 @@ export default function AdminEvents({
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
+      
       setSelectedEvent(res.data.event);
       toast.success("Đã cập nhật lịch trình sự kiện thành công!");
       setMessage({ type: "success", text: "Đã cập nhật lịch trình sự kiện thành công!" });
@@ -521,34 +520,35 @@ export default function AdminEvents({
       const res = await axios.get(
         `http://localhost:5000/api/events/${selectedEvent._id}`,
       );
-      const fetchedTracks = res.data.tracks || [];
-      setTracks(fetchedTracks);
+      setTracks(res.data.tracks || []);
       const fetchedRounds = res.data.rounds || [];
       setRounds(fetchedRounds);
       setRoundOrder(String(fetchedRounds.length + 1));
 
-      if (fetchedTracks.length > 0 && !selectedTrack) {
-        setSelectedTrack(fetchedTracks[0]);
+      if (res.data.tracks && res.data.tracks.length > 0 && !selectedTrack) {
+        setSelectedTrack(res.data.tracks[0]);
+      }
+      if (res.data.tracks && res.data.tracks.length > 0 && !selectedTrack) {
+        setSelectedTrack(res.data.tracks[0]);
       }
 
       if (res.data.event) {
         populateEventSchedule(res.data.event);
       }
 
-      if (fetchedRounds.length > 0) {
+      if (res.data.rounds && res.data.rounds.length > 0) {
         if (selectedRoundForSchedule) {
-          const updatedRound = fetchedRounds.find((r: any) => r._id === selectedRoundForSchedule._id);
+          const updatedRound = res.data.rounds.find((r: any) => r._id === selectedRoundForSchedule._id);
           if (updatedRound) {
-            handleSelectRoundForSchedule(updatedRound, fetchedTracks);
+            setSelectedRoundForSchedule(updatedRound);
           }
         } else {
-          handleSelectRoundForSchedule(fetchedRounds[0], fetchedTracks);
+          handleSelectRoundForSchedule(res.data.rounds[0]);
         }
       }
 
       fetchEventRoles();
       fetchTeamsList();
-      fetchAllUsers();
       fetchRepositories(selectedEvent._id);
       fetchAllTeams(selectedEvent._id);
       fetchEventLogs();
@@ -599,17 +599,6 @@ export default function AdminEvents({
       setTeamsList(res.data || []);
     } catch (err) {
       console.error("Lỗi lấy danh sách đội thi:", err);
-    }
-  };
-
-  const fetchAllUsers = async () => {
-    try {
-      const res = await axios.get("http://localhost:5000/api/auth/users", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setAllUsers(res.data || []);
-    } catch (err) {
-      console.error("Lỗi lấy danh sách toàn bộ người dùng:", err);
     }
   };
 
@@ -903,7 +892,7 @@ export default function AdminEvents({
       );
       setMessage({
         type: "success",
-        text: forceFlag ? "Ép chuyển trạng thái cuộc thi thành công!" : "Cập nhật trạng thái cuộc thi thành công!",
+        text: forceFlag ? "⚡ Ép chuyển trạng thái cuộc thi thành công!" : "Cập nhật trạng thái cuộc thi thành công!",
       });
       setSelectedEvent(res.data.event);
       fetchEvents();
@@ -996,7 +985,7 @@ export default function AdminEvents({
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
+      
       setSelectedEvent(res.data.event);
       toast.success("Đã cập nhật nội dung Guest Portal thành công!");
       setMessage({ type: "success", text: "Đã cập nhật nội dung Guest Portal thành công!" });
@@ -1049,7 +1038,7 @@ export default function AdminEvents({
           description: trackDesc,
           maxTeams: newMaxTeamsNum,
           roundId: trackRoundId,
-          advanceTopN: trackAdvanceTopN ? parseInt(trackAdvanceTopN) : undefined,
+          advanceTopN: parseInt(trackAdvanceTopN) || 3,
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -1122,7 +1111,7 @@ export default function AdminEvents({
           description: trackDesc,
           maxTeams: updatedMaxTeamsNum,
           roundId: trackRoundId,
-          advanceTopN: trackAdvanceTopN ? parseInt(trackAdvanceTopN) : undefined,
+          advanceTopN: parseInt(trackAdvanceTopN) || 3,
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -1259,7 +1248,7 @@ export default function AdminEvents({
 
       setMessage({
         type: "success",
-        text: rubricCreated
+        text: rubricCreated 
           ? `Tạo vòng đấu "${newRound.name}" và Rubric thành công!`
           : `Tạo vòng đấu "${newRound.name}" thành công (chưa tạo được Rubric).`,
       });
@@ -1938,7 +1927,7 @@ export default function AdminEvents({
             <div className="flex flex-wrap items-center gap-3">
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border ${currentUser?.isSystemAdmin ? 'bg-amber-950/20 border-amber-500/40' : 'bg-slate-950 border-slate-800'}`}>
                 <label className={`text-[10px] font-bold uppercase font-mono ${currentUser?.isSystemAdmin ? 'text-amber-400' : 'text-slate-400'}`}>
-                  {currentUser?.isSystemAdmin ? 'Trạng thái:' : 'Trạng thái:'}
+                  {currentUser?.isSystemAdmin ? '⚡ Trạng thái:' : 'Trạng thái:'}
                 </label>
                 <CustomSelect
                   value={selectedEvent.status}
@@ -2121,8 +2110,8 @@ export default function AdminEvents({
               <button
                 onClick={() => setActiveTab("logs")}
                 className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "logs"
-                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
                   }`}
               >
                 Nhật ký hoạt động
@@ -2421,9 +2410,7 @@ export default function AdminEvents({
               handleAssignRoleForTrack={handleAssignRoleForTrack}
               handleRemoveRole={handleRemoveRole}
               teamsList={teamsList}
-              allUsers={allUsers}
               token={token}
-              fetchEventDetails={fetchEventDetails}
             />
             {isWizardMode && (
               <div className="mt-8 p-4 glass rounded-2xl flex justify-between items-center">
@@ -2634,7 +2621,7 @@ export default function AdminEvents({
                             aria-hidden="true"
                           />
                         ) : null}
-                        <div
+                        <div 
                           onClick={() => setSelectedLog(log)}
                           className="relative flex space-x-3 cursor-pointer group hover:bg-slate-800/30 p-3 -m-3 rounded-2xl transition-all"
                         >
@@ -2765,72 +2752,71 @@ export default function AdminEvents({
             </div>
 
             {/* Round Schedule Card */}
-            {selectedEvent?.contestStart && selectedEvent?.contestEnd ? (
-              <div className="glass p-6 rounded-2xl relative flex flex-col justify-between">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none"></div>
-                <div>
-                  <h3 className="text-md font-bold text-white mb-4 flex items-center gap-1.5 font-mono">
-                    <Clock size={16} className="text-cyan-400" />
-                    <span>Lịch trình vòng thi (Rounds)</span>
-                  </h3>
-                  <p className="text-slate-400 text-xs mb-6">
-                    Thiết lập thời gian làm bài (nộp bài) và thời gian chấm bài cho từng vòng thi. Lịch trình sẽ tự động áp dụng cho tất cả bảng đấu thuộc vòng đó.
-                  </p>
+            <div className="glass p-6 rounded-2xl relative flex flex-col justify-between">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none"></div>
+              <div>
+                <h3 className="text-md font-bold text-white mb-4 flex items-center gap-1.5 font-mono">
+                  <Clock size={16} className="text-cyan-400" />
+                  <span>Lịch trình vòng thi (Rounds)</span>
+                </h3>
+                <p className="text-slate-400 text-xs mb-6">
+                  Thiết lập thời gian làm bài (nộp bài) và thời gian chấm bài cho từng vòng thi. Lịch trình sẽ tự động áp dụng cho tất cả bảng đấu thuộc vòng đó.
+                </p>
 
-                  {rounds.length === 0 ? (
-                    <div className="text-center py-12 text-slate-500 text-xs font-mono">
-                      Chưa có vòng thi nào trong cuộc thi này.
+                {rounds.length === 0 ? (
+                  <div className="text-center py-12 text-slate-500 text-xs font-mono">
+                    Chưa có vòng thi nào trong cuộc thi này.
+                  </div>
+                ) : (
+                  <form onSubmit={handleSaveRoundSchedule} className="space-y-4">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
+                        Chọn vòng thi (Round)
+                      </label>
+                      <CustomSelect
+                        value={selectedRoundForSchedule?._id || ""}
+                        onChange={(val) => {
+                          const r = rounds.find((round: any) => round._id === val);
+                          handleSelectRoundForSchedule(r);
+                        }}
+                        options={rounds.map((r: any) => ({
+                          value: r._id,
+                          label: `${r.name}`,
+                        }))}
+                        className="w-full"
+                      />
                     </div>
-                  ) : (
-                    <form onSubmit={handleSaveRoundSchedule} className="space-y-4">
-                      <div>
-                        <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
-                          Chọn vòng thi (Round)
-                        </label>
-                        <CustomSelect
-                          value={selectedRoundForSchedule?._id || ""}
-                          onChange={(val) => {
-                            const r = rounds.find((round: any) => round._id === val);
-                            handleSelectRoundForSchedule(r);
-                          }}
-                          options={rounds.map((r: any) => ({
-                            value: r._id,
-                            label: `${r.name}`,
-                          }))}
-                          className="w-full"
-                        />
-                      </div>
 
-                      {selectedRoundForSchedule && (
-                        <>
-                          <div>
-                            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
-                              Thời gian làm bài (Bắt đầu làm bài → Hạn nộp bài)
-                            </label>
-                            <CustomDateRangePicker
-                              startValue={trackStartTime}
-                              endValue={trackEndTime}
-                              onStartChange={setTrackStartTime}
-                              onEndChange={setTrackEndTime}
-                              startLabel="Bắt đầu làm bài"
-                              endLabel="Hạn nộp bài"
-                              minDate={editEventContestStart}
-                              maxDate={editEventContestEnd}
-                            />
-                          </div>
+                    {selectedRoundForSchedule && (
+                      <>
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
+                            Thời gian làm bài (Bắt đầu làm bài → Hạn nộp bài)
+                          </label>
+                          <CustomDateRangePicker
+                            startValue={trackStartTime}
+                            endValue={trackEndTime}
+                            onStartChange={setTrackStartTime}
+                            onEndChange={setTrackEndTime}
+                            startLabel="Bắt đầu làm bài"
+                            endLabel="Hạn nộp bài"
+                            minDate={editEventContestStart}
+                            maxDate={editEventContestEnd}
+                          />
+                        </div>
 
-                          <div>
-                            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
-                              Thời gian chấm bài kết thúc
-                            </label>
-                            <CustomDateTimePicker
-                              value={trackGradingEndTime}
-                              onChange={setTrackGradingEndTime}
-                              placeholder="Chọn thời gian kết thúc chấm..."
-                              minDate={trackEndTime}
-                              maxDate={editEventContestEnd}
-                            />
-                          </div>
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
+                            Thời gian chấm bài kết thúc
+                          </label>
+                          <CustomDateTimePicker
+                            value={trackGradingEndTime}
+                            onChange={setTrackGradingEndTime}
+                            placeholder="Chọn thời gian kết thúc chấm..."
+                            minDate={trackEndTime}
+                            maxDate={editEventContestEnd}
+                          />
+                        </div>
 
                         <div className="pt-4">
                           <button
@@ -2906,53 +2892,30 @@ export default function AdminEvents({
                   </form>
                 )}
               </div>
-            ) : (
-              <div className="glass p-6 rounded-2xl flex flex-col justify-center items-center text-center py-12 text-slate-500 text-xs font-mono">
-                <Clock size={24} className="text-cyan-400/60 mb-2 animate-pulse" />
-                <span className="text-slate-300 font-semibold mb-1">Chưa thiết lập Lịch trình cuộc thi</span>
-                <span className="text-slate-500 text-[10px]">Vui lòng lưu lịch trình cuộc thi ở thẻ bên trái trước.</span>
+            </div>
+            {isWizardMode && (
+              <div className="mt-8 p-4 glass rounded-2xl flex justify-between items-center">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("tracks")}
+                  className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  ← Quay lại: Bảng đấu
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    sessionStorage.removeItem("creatingEventId");
+                    setIsWizardMode(false);
+                    toast.success("Chúc mừng! Bạn đã hoàn tất toàn bộ các bước khởi tạo cuộc thi mới!");
+                    setActiveTab("events");
+                  }}
+                  className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-mono text-xs font-bold shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  Hoàn tất khởi tạo cuộc thi ✓
+                </button>
               </div>
             )}
-            
-            {isWizardMode && (() => {
-              const hasContestSchedule = selectedEvent?.contestStart && selectedEvent?.contestEnd;
-              const hasRounds = rounds.length > 0;
-              const allRoundsScheduled = hasRounds && rounds.every(r => {
-                const roundTracks = tracks.filter(t => t.roundId === r._id);
-                return roundTracks.length > 0 && roundTracks.every(t => t.startTime && t.endTime);
-              });
-              const isScheduleCompleted = hasContestSchedule && allRoundsScheduled;
-
-              return (
-                <div className="mt-8 p-4 glass rounded-2xl flex justify-between items-center col-span-1 md:col-span-2">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("tracks")}
-                    className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
-                  >
-                    ← Quay lại: Bảng đấu
-                  </button>
-                  {isScheduleCompleted ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        sessionStorage.removeItem("creatingEventId");
-                        setIsWizardMode(false);
-                        toast.success("Chúc mừng! Bạn đã hoàn tất toàn bộ các bước khởi tạo cuộc thi mới!");
-                        setActiveTab("events");
-                      }}
-                      className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-mono text-xs font-bold shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 cursor-pointer"
-                    >
-                      Hoàn tất khởi tạo cuộc thi ✓
-                    </button>
-                  ) : (
-                    <span className="text-xs text-amber-500 font-mono italic">
-                      * Cần lưu đầy đủ lịch trình cuộc thi và lịch trình các vòng thi để hoàn tất khởi tạo.
-                    </span>
-                  )}
-                </div>
-              );
-            })()}
           </div>
         ) : (
           <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">
@@ -3163,7 +3126,7 @@ export default function AdminEvents({
           <div className="relative w-full max-w-lg border border-slate-800/80 bg-slate-950 p-6 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] space-y-6 font-sans text-slate-200 animate-in fade-in zoom-in-95 duration-200">
             {/* Top decorative line */}
             <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
-
+            
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
               <div className="flex items-center gap-2">
@@ -3185,13 +3148,14 @@ export default function AdminEvents({
               {/* Action Badge */}
               <div className="flex justify-between items-center bg-slate-900/50 p-3 rounded-xl border border-slate-800/50">
                 <span className="text-xs text-slate-400 font-mono">Loại hành động:</span>
-                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold font-mono tracking-wide ${selectedLog.action.includes('event') ? 'bg-blue-500/10 border border-blue-500/30 text-blue-400' :
-                    selectedLog.action.includes('role') ? 'bg-purple-500/10 border border-purple-500/30 text-purple-400' :
-                      selectedLog.action.includes('track') || selectedLog.action.includes('team') ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' :
-                        selectedLog.action.includes('rubric') || selectedLog.action.includes('criterion') ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400' :
-                          selectedLog.action.includes('results') ? 'bg-rose-500/10 border border-rose-500/30 text-rose-400' :
-                            'bg-slate-500/10 border border-slate-500/30 text-slate-400'
-                  }`}>
+                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold font-mono tracking-wide ${
+                  selectedLog.action.includes('event') ? 'bg-blue-500/10 border border-blue-500/30 text-blue-400' :
+                  selectedLog.action.includes('role') ? 'bg-purple-500/10 border border-purple-500/30 text-purple-400' :
+                  selectedLog.action.includes('track') || selectedLog.action.includes('team') ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' :
+                  selectedLog.action.includes('rubric') || selectedLog.action.includes('criterion') ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400' :
+                  selectedLog.action.includes('results') ? 'bg-rose-500/10 border border-rose-500/30 text-rose-400' :
+                  'bg-slate-500/10 border border-slate-500/30 text-slate-400'
+                }`}>
                   {selectedLog.action}
                 </span>
               </div>

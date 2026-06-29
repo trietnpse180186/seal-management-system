@@ -1,7 +1,5 @@
-import { useState, useEffect } from "react";
-import axios from "axios";
-import { toast } from "sonner";
-import { FolderKanban, ChevronRight, BookOpen, Users, Edit, Trash2, Link, Save, X } from "lucide-react";
+import { useState } from "react";
+import { FolderKanban, ChevronRight, BookOpen, Users, Edit, Trash2 } from "lucide-react";
 import { useConfirm } from "../shared/ConfirmDialog";
 import CustomSelect from "../shared/CustomSelect";
 
@@ -73,8 +71,8 @@ export default function TracksTab({
   handleRemoveRole,
   teamsList = [],
   allUsers = [],
-  token,
-  fetchEventDetails,
+  token: _token,
+  fetchEventDetails: _fetchEventDetails,
 }: TracksTabProps) {
   const [judgeEmail, setJudgeEmail] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);

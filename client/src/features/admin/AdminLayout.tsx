@@ -8,6 +8,7 @@ import {
   Trophy,
   LogOut,
   Bell,
+  Tv,
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -104,6 +105,11 @@ export default function AdminLayout({ user, onLogout }: AdminLayoutProps) {
       path: '/admin/grades',
       label: 'Xem chi tiết điểm',
       icon: Award
+    },
+    {
+      path: '/admin/live',
+      label: 'Live Control Center',
+      icon: Tv
     },
     {
       path: '/admin/leaderboard',

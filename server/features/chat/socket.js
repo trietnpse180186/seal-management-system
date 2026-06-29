@@ -170,6 +170,49 @@ module.exports = {
         }
       });
 
+      // --- Real-time Interaction (Admin & Judge Synchronization) ---
+      socket.on('join_live_room', (data) => {
+        const { eventId } = data;
+        if (eventId) {
+          socket.join(`live:${eventId}`);
+          console.log(`User ${userId} joined live room for event ${eventId}`);
+        }
+      });
+
+      socket.on('leave_live_room', (data) => {
+        const { eventId } = data;
+        if (eventId) {
+          socket.leave(`live:${eventId}`);
+          console.log(`User ${userId} left live room for event ${eventId}`);
+        }
+      });
+
+      socket.on('coordinator_select_team', async (data) => {
+        try {
+          const { eventId, teamId, roundId } = data;
+          if (!eventId || !teamId) return;
+
+          // Optional validation: check if user is coordinator or admin
+          const EventRole = mongoose.model('EventRole');
+          const isAllowed = socket.decoded.isSystemAdmin || await EventRole.findOne({
+            userId,
+            eventId,
+            role: 'coordinator',
+            status: 'active'
+          });
+
+          if (isAllowed) {
+            console.log(`Coordinator ${userId} highlighted team ${teamId} in event ${eventId}`);
+            // Broadcast to the entire live room (including the judges)
+            io.to(`live:${eventId}`).emit('team_highlighted', { teamId, roundId });
+          } else {
+            console.warn(`Unauthorized team selection by user ${userId} in event ${eventId}`);
+          }
+        } catch (err) {
+          console.error('Error in coordinator_select_team socket handler:', err);
+        }
+      });
+
       socket.on('disconnect', () => {
         console.log('User disconnected', userId);
       });

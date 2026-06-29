@@ -7,6 +7,7 @@ import Login from './features/auth/Login';
 import LandingPage from './features/landing/LandingPage';
 import AdminDashboard from './features/admin/AdminDashboard';
 import AdminEvents from './features/admin/AdminEvents';
+import AdminLiveInteraction from './features/admin/AdminLiveInteraction';
 import TeamArea from './features/teams/TeamArea';
 import MyAchievements from './features/teams/MyAchievements';
 import Leaderboard from './features/leaderboard/Leaderboard';
@@ -81,6 +82,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
           }>
             <Route index element={<AdminDashboard />} />
             <Route path="events" element={<AdminEvents />} />
+            <Route path="live" element={<AdminLiveInteraction />} />
             <Route path="grades" element={<AdminGradesView />} />
             <Route path="leaderboard" element={<Leaderboard user={user} roles={roles} />} />
           </Route>

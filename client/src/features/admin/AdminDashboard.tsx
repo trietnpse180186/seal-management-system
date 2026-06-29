@@ -12,6 +12,37 @@ export default function AdminDashboard() {
   const [logs, setLogs] = useState<any[]>([]);
   const socketRef = useRef<Socket | null>(null);
   const [selectedLog, setSelectedLog] = useState<any | null>(null);
+  const [logFilter, setLogFilter] = useState<'all' | 'operation' | 'login' | 'grading' | 'error' | 'system'>('all');
+
+  const getLogTypeBadge = (type: string) => {
+    switch (type) {
+      case 'error':
+        return <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded text-[9px] font-bold font-mono uppercase tracking-wider shadow-[0_0_8px_rgba(244,63,94,0.1)]">Lỗi</span>;
+      case 'login':
+        return <span className="bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded text-[9px] font-bold font-mono uppercase tracking-wider shadow-[0_0_8px_rgba(168,85,247,0.1)]">Đăng nhập</span>;
+      case 'grading':
+        return <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded text-[9px] font-bold font-mono uppercase tracking-wider shadow-[0_0_8px_rgba(245,158,11,0.1)]">Chấm điểm</span>;
+      case 'system':
+        return <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[9px] font-bold font-mono uppercase tracking-wider shadow-[0_0_8px_rgba(16,185,129,0.1)]">Hệ thống</span>;
+      case 'operation':
+      default:
+        return <span className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded text-[9px] font-bold font-mono uppercase tracking-wider shadow-[0_0_8px_rgba(6,182,212,0.1)]">Thao tác</span>;
+    }
+  };
+
+  const getLogDotColor = (type: string) => {
+    switch (type) {
+      case 'error': return 'bg-rose-500';
+      case 'login': return 'bg-purple-500';
+      case 'grading': return 'bg-amber-500';
+      case 'system': return 'bg-emerald-500';
+      case 'operation':
+      default:
+        return 'bg-cyan-400';
+    }
+  };
+
+  const filteredLogs = logs.filter(log => logFilter === 'all' || log.type === logFilter);
 
   useEffect(() => {
     fetchEvents();
@@ -134,27 +165,60 @@ export default function AdminDashboard() {
 
       {/* EVENT LOGS SECTION */}
       <div className="w-full space-y-4 pt-6 border-t border-slate-800/50">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <h3 className="text-md font-bold text-white flex items-center gap-2 font-mono">
             <Info size={18} className="text-cyan-400" />
             <span>NHẬT KÝ HOẠT ĐỘNG HỆ THỐNG</span>
           </h3>
-          <button
-            onClick={fetchAllLogs}
-            className="bg-slate-900 hover:bg-slate-850 text-slate-350 hover:text-white px-3 py-1.5 rounded-xl border border-slate-850 text-xs font-mono transition-all cursor-pointer"
-          >
-            Tải lại nhật ký
-          </button>
+          <div className="flex flex-wrap gap-3 items-center">
+            {/* Filter buttons */}
+            <div className="flex bg-slate-900/60 p-0.5 rounded-lg border border-white/5 shadow-inner shrink-0">
+              {[
+                { value: 'all', label: 'Tất cả' },
+                { value: 'operation', label: 'Thao tác' },
+                { value: 'login', label: 'Đăng nhập' },
+                { value: 'grading', label: 'Chấm điểm' },
+                { value: 'error', label: 'Lỗi' },
+                { value: 'system', label: 'Hệ thống' }
+              ].map((btn) => (
+                <button
+                  key={btn.value}
+                  onClick={() => setLogFilter(btn.value as any)}
+                  className={`px-3 py-1.5 text-[9px] font-bold rounded uppercase transition-all cursor-pointer ${
+                    logFilter === btn.value
+                      ? btn.value === 'error'
+                        ? 'bg-rose-500 text-white shadow-[0_0_10px_rgba(244,63,94,0.4)]'
+                        : btn.value === 'login'
+                        ? 'bg-purple-500 text-white shadow-[0_0_10px_rgba(168,85,247,0.4)]'
+                        : btn.value === 'grading'
+                        ? 'bg-amber-500 text-slate-900 shadow-[0_0_10px_rgba(245,158,11,0.4)]'
+                        : btn.value === 'system'
+                        ? 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.4)]'
+                        : 'bg-cyan-500 text-white shadow-[0_0_10px_rgba(6,182,212,0.4)]'
+                      : 'text-slate-500 hover:text-slate-350'
+                  }`}
+                >
+                  {btn.label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={fetchAllLogs}
+              className="bg-slate-900 hover:bg-slate-850 text-slate-350 hover:text-white px-3 py-1.5 rounded-xl border border-slate-850 text-xs font-mono transition-all cursor-pointer shrink-0"
+            >
+              Tải lại
+            </button>
+          </div>
         </div>
 
         <div className="glass p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 max-h-96 overflow-y-auto">
-          {logs.length > 0 ? (
+          {filteredLogs.length > 0 ? (
             <div className="flow-root">
               <ul className="-mb-8">
-                {logs.map((log: any, logIdx: number) => (
+                {filteredLogs.map((log: any, logIdx: number) => (
                   <li key={log._id}>
                     <div className="relative pb-8">
-                      {logIdx !== logs.length - 1 ? (
+                      {logIdx !== filteredLogs.length - 1 ? (
                         <span
                           className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-slate-800"
                           aria-hidden="true"
@@ -166,7 +230,7 @@ export default function AdminDashboard() {
                       >
                         <div>
                           <span className="h-8 w-8 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center ring-8 ring-slate-900/50">
-                            <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
+                            <span className={`h-2 w-2 rounded-full animate-pulse ${getLogDotColor(log.type)}`} />
                           </span>
                         </div>
                         <div className="flex-1 min-w-0 pt-1.5 flex justify-between space-x-4">
@@ -176,9 +240,10 @@ export default function AdminDashboard() {
                                 {log.eventId?.name || "HỆ THỐNG"}
                               </span>
                               {log.details}{" "}
-                              <span className="font-mono text-xs text-slate-500 font-medium">
+                              <span className="font-mono text-xs text-slate-500 font-medium mr-2">
                                 ({log.action})
                               </span>
+                              {getLogTypeBadge(log.type)}
                             </p>
                             <p className="text-xs text-slate-500 mt-1.5 flex items-center gap-2">
                               <span>Thực hiện bởi:</span>
@@ -206,7 +271,7 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <p className="text-center py-8 text-slate-500 font-mono text-sm">
-              Chưa có nhật ký hoạt động nào được ghi nhận.
+              Chưa có nhật ký hoạt động nào được ghi nhận cho danh mục này.
             </p>
           )}
         </div>

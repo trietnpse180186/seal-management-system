@@ -223,6 +223,7 @@ router.post("/", authenticateToken, async (req, res) => {
         eventId,
         actorId: req.user._id,
         action: 'create_rubric',
+        type: 'operation',
         details: rubricDetailsMsg
       });
       await newLog.save();
@@ -366,6 +367,7 @@ router.put("/:rubricId", authenticateToken, async (req, res) => {
       eventId: rubric.eventId,
       actorId: req.user._id,
       action: 'update_rubric',
+      type: 'operation',
       details
     });
     await newLog.save();
@@ -408,6 +410,7 @@ router.delete("/:rubricId", authenticateToken, async (req, res) => {
       eventId: rubric.eventId,
       actorId: req.user._id,
       action: 'delete_rubric',
+      type: 'operation',
       details: `Hủy kích hoạt Rubric: "${rubric.name}" khỏi vòng thi: "${roundName}"`
     });
     await newLog.save();
@@ -458,6 +461,7 @@ router.post("/:rubricId/lock", authenticateToken, async (req, res) => {
       eventId: rubric.eventId,
       actorId: req.user._id,
       action: 'lock_rubric',
+      type: 'operation',
       details: `Khóa Rubric: "${rubric.name}" của vòng thi: "${roundName}"`
     });
     await newLog.save();
@@ -730,6 +734,7 @@ router.get('/:rubricId/export', authenticateToken, async (req, res) => {
       eventId: rubric.eventId,
       actorId: req.user._id,
       action: 'export_rubric',
+      type: 'operation',
       details: `Xuất cấu hình Rubric: "${rubric.name}" của vòng thi: "${roundName}" thành file JSON`
     });
     await newLog.save();
@@ -929,6 +934,7 @@ router.post('/import', authenticateToken, async (req, res) => {
       eventId,
       actorId: req.user._id,
       action: 'import_rubric',
+      type: 'operation',
       details: `Nhập cấu hình Rubric mới từ file JSON: "${newRubric.name}" cho vòng thi: "${roundName}"`
     });
     await newLog.save();

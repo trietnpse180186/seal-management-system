@@ -122,6 +122,25 @@ router.get('/team/:teamId/achievements', authenticateToken, async (req, res) => 
     const team = await Team.findById(req.params.teamId);
     if (!team) return res.status(404).json({ message: 'Team not found.' });
 
+    // Block non-coordinators/non-admins if event is archived
+    const Event = mongoose.model('Event');
+    const parentEvent = await Event.findById(team.eventId);
+    if (parentEvent && parentEvent.isArchived) {
+      let isCoordinatorOrAdmin = req.user.isSystemAdmin;
+      if (!isCoordinatorOrAdmin) {
+        const coordRole = await EventRole.findOne({
+          userId: req.user._id,
+          eventId: team.eventId,
+          role: 'coordinator',
+          status: 'active'
+        });
+        isCoordinatorOrAdmin = !!coordRole;
+      }
+      if (!isCoordinatorOrAdmin) {
+        return res.status(403).json({ message: 'Sự kiện của đội thi này đã bị ẩn. Bạn không có quyền truy cập.' });
+      }
+    }
+
     // 1. Auth check
     let authorized = req.user.isSystemAdmin;
     
@@ -186,6 +205,25 @@ router.get('/team/:teamId/round/:roundId', authenticateToken, async (req, res) =
   try {
     const team = await Team.findById(req.params.teamId);
     if (!team) return res.status(404).json({ message: 'Team not found.' });
+
+    // Block non-coordinators/non-admins if event is archived
+    const Event = mongoose.model('Event');
+    const parentEvent = await Event.findById(team.eventId);
+    if (parentEvent && parentEvent.isArchived) {
+      let isCoordinatorOrAdmin = req.user.isSystemAdmin;
+      if (!isCoordinatorOrAdmin) {
+        const coordRole = await EventRole.findOne({
+          userId: req.user._id,
+          eventId: team.eventId,
+          role: 'coordinator',
+          status: 'active'
+        });
+        isCoordinatorOrAdmin = !!coordRole;
+      }
+      if (!isCoordinatorOrAdmin) {
+        return res.status(403).json({ message: 'Sự kiện của đội thi này đã bị ẩn. Bạn không có quyền truy cập.' });
+      }
+    }
 
     // Check if the user is a coordinator or system admin
     const coordinatorRole = await EventRole.findOne({
@@ -362,10 +400,16 @@ router.post('/submit', authenticateToken, async (req, res) => {
       });
     }
 
+    // Decide who is the judge
+    let targetJudgeId = req.user._id;
+    if (req.body.judgeId && (req.user.isSystemAdmin || (userRole && userRole.role === 'coordinator'))) {
+      targetJudgeId = req.body.judgeId;
+    }
+
     // Create or update Score
-    let score = await Score.findOne({ teamId, roundId, judgeId: req.user._id });
+    let score = await Score.findOne({ teamId, roundId, judgeId: targetJudgeId });
     if (score) {
-      if (score.status === 'locked') {
+      if (score.status === 'locked' && !req.user.isSystemAdmin && !(userRole && userRole.role === 'coordinator')) {
         return res.status(400).json({ message: 'Điểm số của bạn cho đội thi này trong vòng đấu này đã bị khoá.' });
       }
       score.totalRawScore = totalRawScore;
@@ -383,7 +427,7 @@ router.post('/submit', authenticateToken, async (req, res) => {
         trackId: team.trackId,
         roundId,
         rubricId,
-        judgeId: req.user._id,
+        judgeId: targetJudgeId,
         totalRawScore,
         totalWeightedScore: Math.round(totalWeightedScore * 100) / 100,
         overallComment,
@@ -401,6 +445,17 @@ router.post('/submit', authenticateToken, async (req, res) => {
       ...d
     }));
     await ScoreDetail.insertMany(preparedDetails);
+
+    // Create EventLog
+    const EventLog = mongoose.model('EventLog');
+    const scoreLog = new EventLog({
+      eventId: team.eventId,
+      actorId: req.user._id,
+      action: 'submit_score',
+      type: 'grading',
+      details: `Giám khảo ${req.user.fullName} đã nộp điểm cho đội thi: "${team.name}" (Điểm thô: ${totalRawScore}, Điểm quy đổi: ${score.totalWeightedScore})`
+    });
+    await scoreLog.save();
 
     res.json({
       message: 'Scores submitted successfully!',
@@ -572,6 +627,7 @@ router.post('/lock-round', authenticateToken, async (req, res) => {
       eventId,
       actorId: req.user._id,
       action: 'publish_results',
+      type: 'grading',
       details: `Khóa điểm và công bố xếp hạng vòng thi: ${round.name}`
     });
     await newLog.save();

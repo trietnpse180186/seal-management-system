@@ -258,6 +258,7 @@ router.post("/rubric/:rubricId", authenticateToken, async (req, res) => {
       eventId: rubric.eventId,
       actorId: req.user._id,
       action: 'create_criterion',
+      type: 'operation',
       details: `Tạo tiêu chí mới: ${criterion.name} (${criterion.code}, trọng số: ${criterion.weight}%) trong Rubric: ${rubric.name}`
     });
     await newLog.save();
@@ -407,6 +408,7 @@ router.put("/:criterionId", authenticateToken, async (req, res) => {
       eventId: rubric.eventId,
       actorId: req.user._id,
       action: 'update_criterion',
+      type: 'operation',
       details
     });
     await newLog.save();
@@ -450,6 +452,7 @@ router.delete("/:criterionId", authenticateToken, async (req, res) => {
       eventId: rubric.eventId,
       actorId: req.user._id,
       action: 'delete_criterion',
+      type: 'operation',
       details: `Xóa tiêu chí: ${criterion.name} (${criterion.code}) khỏi Rubric: ${rubric.name}`
     });
     await newLog.save();

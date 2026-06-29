@@ -156,6 +156,20 @@ app.use(function (err, req, res, next) {
 
   console.error("Express Error Handler:", err);
 
+  // Log error to EventLog
+  try {
+    const EventLog = mongoose.model('EventLog');
+    const errorLog = new EventLog({
+      action: 'system_error',
+      type: 'error',
+      details: `Lỗi hệ thống: ${err.message || err}. URL: ${req.originalUrl}. Method: ${req.method}`,
+      actorId: req.user ? req.user._id : undefined
+    });
+    errorLog.save();
+  } catch (logErr) {
+    console.error("Failed to log error to EventLog:", logErr);
+  }
+
   res.status(err.status || 500);
   res.json({
     message: err.message,

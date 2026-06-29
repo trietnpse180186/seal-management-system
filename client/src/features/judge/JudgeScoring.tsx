@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { io, Socket } from 'socket.io-client';
 import { 
   Sparkles, 
   Save, 
@@ -34,6 +35,40 @@ export default function JudgeScoring() {
   const [selectedEventId, setSelectedEventId] = useState('');
   const [rounds, setRounds] = useState<any[]>([]);
   const [selectedRoundId, setSelectedRoundId] = useState('');
+  const [isHighlighted, setIsHighlighted] = useState(false);
+  const socketRef = useRef<Socket | null>(null);
+
+  // Real-time synchronization for highlighted team
+  useEffect(() => {
+    if (!selectedEventId || !token || !teamId) return;
+
+    const socketUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    const socket = io(socketUrl, { query: { token } });
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      socket.emit("join_live_room", { eventId: selectedEventId });
+    });
+
+    socket.on("team_highlighted", (data: any) => {
+      console.log("Team highlighted event received on scoring board:", data);
+      if (data.teamId === teamId) {
+        setIsHighlighted(true);
+        toast.info("Đội thi này đang được chọn để trình bày / chấm điểm bởi Coordinator!", {
+          position: "top-center",
+          duration: 5000
+        });
+      } else {
+        setIsHighlighted(false);
+      }
+    });
+
+    return () => {
+      socket.emit("leave_live_room", { eventId: selectedEventId });
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [selectedEventId, teamId, token]);
   
   const [team, setTeam] = useState<any>(null);
   const [rubric, setRubric] = useState<any>(null);
@@ -330,6 +365,27 @@ export default function JudgeScoring() {
 
   return (
     <div className="space-y-6 animate-fadeIn">
+      {isHighlighted && (
+        <div className="bg-amber-500/15 border border-amber-500/40 rounded-xl p-4 flex items-center justify-between shadow-[0_0_20px_rgba(245,158,11,0.2)] animate-pulse">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400">
+              <Sparkles size={18} />
+            </div>
+            <div>
+              <p className="text-xs font-extrabold text-white uppercase tracking-wider font-mono">
+                ĐỘI THI ĐANG TRÌNH BÀY / ĐƯỢC CHỌN CHẤM
+              </p>
+              <p className="text-[11px] text-slate-350 mt-0.5">
+                Coordinator đang highlight đội thi này. Hãy tập trung theo dõi và chấm điểm.
+              </p>
+            </div>
+          </div>
+          <span className="bg-amber-500 text-slate-950 font-black text-[9px] uppercase px-2.5 py-1 rounded-md tracking-widest shadow-[0_0_8px_rgba(245,158,11,0.5)]">
+            LIVE FOCUS
+          </span>
+        </div>
+      )}
+
       {/* Sub-header/Breadcrumb Row */}
       <div className="flex justify-between items-center bg-slate-900/40 backdrop-blur-md border border-white/10 px-6 py-4 rounded-xl shadow-lg">
         <div className="flex items-center gap-2">
@@ -1141,6 +1197,48 @@ export default function JudgeScoring() {
                   Đề tài: <span className="text-cyan-300 font-semibold">{team.topicSubmission?.title || 'Chưa đăng ký'}</span>
                 </p>
                 
+                {team.topicSubmission?.description && (
+                  <div className="bg-slate-800/40 p-3.5 rounded-xl border border-white/5 shadow-inner">
+                    <p className="text-[9px] text-cyan-400 font-bold uppercase tracking-wider mb-1.5 font-mono">Mô tả giải pháp:</p>
+                    <p className="text-[10.5px] text-slate-400 leading-relaxed font-sans line-clamp-6">{team.topicSubmission.description}</p>
+                  </div>
+                )}
+
+                {team.members && team.members.length > 0 && (
+                  <div className="bg-slate-800/40 p-3.5 rounded-xl border border-white/5 shadow-inner mt-4">
+                    <p className="text-[9px] text-cyan-400 font-bold uppercase tracking-wider mb-2 font-mono">Thành viên nhóm:</p>
+                    <div className="space-y-3">
+                      {team.members.map((m: any) => (
+                        <div key={m._id} className="text-[11px] text-slate-300 border-b border-white/5 pb-2 last:border-none last:pb-0">
+                          <div className="flex justify-between items-center">
+                            <span className="font-semibold text-white">{m.userId?.fullName || 'Chưa cập nhật'}</span>
+                            <span className={`text-[8px] px-1.5 py-0.2 rounded font-mono font-bold uppercase ${
+                              m.role === 'leader' 
+                                ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' 
+                                : 'bg-slate-700/30 text-slate-400 border border-white/5'
+                            }`}>
+                              {m.role === 'leader' ? 'Trưởng nhóm' : 'Thành viên'}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-sans mt-0.5">
+                            {m.userId?.studentId && <span>MSSV: {m.userId.studentId} • </span>}
+                            {m.userId?.university && <span>Trường: {m.userId.university}</span>}
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-sans mt-0.5">
+                            Email: {m.userId?.email || 'N/A'}
+                          </div>
+                          {m.userId?.githubUsername && (
+                            <div className="text-[10px] text-cyan-400/80 font-mono mt-1 flex items-center gap-1">
+                              <span className="text-[8px] bg-cyan-900/30 px-1 py-0.2 rounded border border-cyan-500/20">GitHub</span>
+                              <span className="truncate">{m.userId.githubUsername}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {team.topicSubmission?.demoUrl && (
                   <a
                     href={team.topicSubmission.demoUrl}
@@ -1151,13 +1249,6 @@ export default function JudgeScoring() {
                     <ExternalLink size={12} />
                     <span>Xem Link Demo dự án</span>
                   </a>
-                )}
-
-                {team.topicSubmission?.description && (
-                  <div className="bg-slate-800/40 p-3.5 rounded-xl border border-white/5 shadow-inner">
-                    <p className="text-[9px] text-cyan-400 font-bold uppercase tracking-wider mb-1.5 font-mono">Mô tả giải pháp:</p>
-                    <p className="text-[10.5px] text-slate-400 leading-relaxed font-sans line-clamp-6">{team.topicSubmission.description}</p>
-                  </div>
                 )}
               </div>
 

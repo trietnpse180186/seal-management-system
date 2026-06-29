@@ -120,13 +120,27 @@ router.post('/login', async (req, res) => {
   }
 
   try {
+    const EventLog = mongoose.model('EventLog');
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
+      const loginFailLog = new EventLog({
+        action: 'login_failed',
+        type: 'login',
+        details: `Đăng nhập thất bại: Không tìm thấy tài khoản với email ${email}`
+      });
+      await loginFailLog.save();
       return res.status(400).json({ message: 'Thông tin đăng nhập không chính xác.' });
     }
 
     // Check if user is approved (email verified)
     if (!user.isApproved) {
+      const loginFailLog = new EventLog({
+        actorId: user._id,
+        action: 'login_failed',
+        type: 'login',
+        details: `Đăng nhập thất bại: Tài khoản chưa được kích hoạt cho email ${email}`
+      });
+      await loginFailLog.save();
       return res.status(403).json({ 
         message: 'Tài khoản chưa được kích hoạt. Vui lòng kiểm tra email của bạn để xác thực tài khoản.',
         requiresVerification: true 
@@ -136,11 +150,25 @@ router.post('/login', async (req, res) => {
     // Match password
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
+      const loginFailLog = new EventLog({
+        actorId: user._id,
+        action: 'login_failed',
+        type: 'login',
+        details: `Đăng nhập thất bại: Sai mật khẩu cho email ${email}`
+      });
+      await loginFailLog.save();
       return res.status(400).json({ message: 'Thông tin đăng nhập không chính xác.' });
     }
 
     // Check session concurrency: if user has active session and heartbeat is fresh (< 20 seconds)
     if (user.activeSessionId && user.lastActiveAt && (Date.now() - new Date(user.lastActiveAt).getTime() < 20000)) {
+      const loginFailLog = new EventLog({
+        actorId: user._id,
+        action: 'login_failed',
+        type: 'login',
+        details: `Đăng nhập thất bại: Trùng lặp phiên đăng nhập với thiết bị khác cho email ${email}`
+      });
+      await loginFailLog.save();
       return res.status(409).json({ 
         message: 'Tài khoản này đang được đăng nhập ở nơi khác. Vui lòng đăng xuất ở thiết bị cũ hoặc đợi 20 giây.' 
       });
@@ -157,6 +185,15 @@ router.post('/login', async (req, res) => {
 
     // Generate JWT (including sessionId)
     const token = jwt.sign({ id: user._id, sessionId: activeSessionId }, JWT_SECRET, { expiresIn: '24h' });
+
+    // Log successful login
+    const loginSuccessLog = new EventLog({
+      actorId: user._id,
+      action: 'login_success',
+      type: 'login',
+      details: `Đăng nhập thành công bởi người dùng: ${user.fullName || user.email}`
+    });
+    await loginSuccessLog.save();
 
     res.json({
       token,
@@ -333,6 +370,7 @@ router.post('/assign-role', authenticateToken, requireSystemAdmin, async (req, r
       eventId,
       actorId: req.user._id,
       action: 'assign_role',
+      type: 'operation',
       details: roleDetails
     });
     await newLog.save();

@@ -31,6 +31,43 @@ router.get('/', async (req, res) => {
   if (year) filter.year = parseInt(year);
   if (status) filter.status = status;
 
+  // Check optional auth to decide if archived events can be shown
+  const JWT_SECRET = process.env.JWT_SECRET || 'seal_hackathon_secret_key_2026';
+  const jwt = require('jsonwebtoken');
+  const User = mongoose.model('User');
+  const EventRole = mongoose.model('EventRole');
+  
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  let showArchived = false;
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      const user = await User.findById(decoded.id);
+      if (user) {
+        if (user.isSystemAdmin) {
+          showArchived = true;
+        } else {
+          const coordinatorRole = await EventRole.findOne({
+            userId: user._id,
+            role: 'coordinator',
+            status: 'active'
+          });
+          if (coordinatorRole) {
+            showArchived = true;
+          }
+        }
+      }
+    } catch (err) {
+      // Ignore invalid token, show non-archived events only
+    }
+  }
+
+  if (!showArchived) {
+    filter.isArchived = { $ne: true };
+  }
+
   try {
     const events = await Event.find(filter).sort({ year: -1, semester: 1 }).lean();
     
@@ -100,6 +137,7 @@ router.post('/', authenticateToken, requireSystemAdmin, async (req, res) => {
       eventId: newEvent._id,
       actorId: req.user._id,
       action: 'create_event',
+      type: 'operation',
       details: `Tạo sự kiện mới: "${newEvent.name}" (Học kỳ: ${newEvent.semester}, Năm: ${newEvent.year}, Số lượng đội tối đa: ${newEvent.maxTeams || 0})`
     });
     await newLog.save();
@@ -208,6 +246,42 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Event not found.' });
     }
 
+    if (event.isArchived) {
+      // Enforce auth check for archived events
+      const JWT_SECRET = process.env.JWT_SECRET || 'seal_hackathon_secret_key_2026';
+      const jwt = require('jsonwebtoken');
+      const User = mongoose.model('User');
+      const EventRole = mongoose.model('EventRole');
+
+      const authHeader = req.headers['authorization'];
+      const token = authHeader && authHeader.split(' ')[1];
+      let authorized = false;
+
+      if (token) {
+        try {
+          const decoded = jwt.verify(token, JWT_SECRET);
+          const user = await User.findById(decoded.id);
+          if (user) {
+            if (user.isSystemAdmin) {
+              authorized = true;
+            } else {
+              const coordinatorRole = await EventRole.findOne({
+                userId: user._id,
+                eventId: event._id,
+                role: 'coordinator',
+                status: 'active'
+              });
+              authorized = !!coordinatorRole;
+            }
+          }
+        } catch (err) {}
+      }
+
+      if (!authorized) {
+        return res.status(403).json({ message: 'Sự kiện này đã bị ẩn. Bạn không có quyền truy cập.' });
+      }
+    }
+
     const tracks = await Track.find({ eventId: event._id });
     const rounds = await Round.find({ eventId: event._id }).sort({ order: 1 });
 
@@ -293,6 +367,7 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
       eventId,
       actorId: req.user._id,
       action: 'create_track',
+      type: 'operation',
       details: `Tạo bảng đấu mới: "${newTrack.name}" trong vòng thi: "${roundName}" (Số lượng đội tối đa: ${newTrack.maxTeams || 'Không giới hạn'})`
     });
     await newLog.save();
@@ -424,6 +499,7 @@ router.put('/:eventId/tracks/:trackId', authenticateToken, async (req, res) => {
         eventId,
         actorId: req.user._id,
         action: 'update_track',
+        type: 'operation',
         details: `Cập nhật thông tin bảng đấu "${track.name}": ${logDetails.join(', ')}`
       });
       await newLog.save();
@@ -488,6 +564,7 @@ router.delete('/:eventId/tracks/:trackId', authenticateToken, async (req, res) =
       eventId,
       actorId: req.user._id,
       action: 'delete_track',
+      type: 'operation',
       details: `Xóa bảng đấu: "${track.name}"`
     });
     await newLog.save();
@@ -543,6 +620,7 @@ router.post('/:eventId/rounds', authenticateToken, async (req, res) => {
       eventId,
       actorId: req.user._id,
       action: 'create_round',
+      type: 'operation',
       details: `Tạo vòng thi mới: "${newRound.name}" (Thứ tự: ${newRound.order}, Đội đi tiếp: ${newRound.advanceTopN || 'Tất cả'})`
     });
     await newLog.save();
@@ -686,6 +764,7 @@ router.delete('/:eventId/roles/:roleId', authenticateToken, async (req, res) => 
       eventId,
       actorId: req.user._id,
       action: 'remove_role',
+      type: 'operation',
       details: roleDetails
     });
     await newLog.save();
@@ -808,6 +887,7 @@ router.post('/:eventId/distribute-teams', authenticateToken, async (req, res) =>
       eventId,
       actorId: req.user._id,
       action: 'distribute_teams',
+      type: 'operation',
       details: `Tự động phân bổ ${shuffledTeams.length} đội thi vào ${tracks.length} bảng đấu (${tracks.map(t => t.name).join(', ')})`
     });
     await newLog.save();
@@ -1037,6 +1117,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
       eventId: event._id,
       actorId: req.user._id,
       action,
+      type: 'operation',
       details
     });
     await newLog.save();
@@ -1106,6 +1187,45 @@ router.get('/:eventId/logs', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Fetch Event Logs Error:', error.message);
     res.status(500).json({ message: 'Server error retrieving event logs.' });
+  }
+});
+
+/**
+ * @route   DELETE /api/events/:id
+ * @desc    Soft-delete / Archive an event by setting isArchived to true
+ *          (All information remains in DB, but hidden from everyone except admin/coordinators)
+ * @access  Private (System Admin)
+ */
+router.delete('/:id', authenticateToken, async (req, res) => {
+  try {
+    // Only System Admin can archive/soft-delete events
+    if (!req.user.isSystemAdmin) {
+      return res.status(403).json({ message: 'Quyền hạn không đủ. Chỉ Admin hệ thống mới có thể ẩn sự kiện.' });
+    }
+
+    const event = await Event.findById(req.params.id);
+    if (!event) {
+      return res.status(404).json({ message: 'Không tìm thấy sự kiện.' });
+    }
+
+    event.isArchived = true;
+    await event.save();
+
+    // Create EventLog
+    const EventLog = mongoose.model('EventLog');
+    const newLog = new EventLog({
+      eventId: event._id,
+      actorId: req.user._id,
+      action: 'archive_event',
+      type: 'system',
+      details: `Ẩn sự kiện: "${event.name}" (${event.semester} ${event.year}) thành công.`
+    });
+    await newLog.save();
+
+    res.json({ message: 'Sự kiện đã được ẩn thành công đối với tất cả người dùng thông thường.', event });
+  } catch (error) {
+    console.error('Archive Event Error:', error.message);
+    res.status(500).json({ message: 'Lỗi hệ thống khi ẩn sự kiện.' });
   }
 });
 

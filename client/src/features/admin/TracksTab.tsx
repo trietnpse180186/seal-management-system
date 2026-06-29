@@ -25,14 +25,7 @@ interface TracksTabProps {
   setSelectedRubricRoundId: (id: string) => void;
   setRubric: (rubric: any) => void;
   setCriteria: (criteria: any[]) => void;
-  
-  // Attachments Props
-  attachmentName: string;
-  setAttachmentName: (val: string) => void;
-  attachmentUrl: string;
-  setAttachmentUrl: (val: string) => void;
-  handleUploadExam: (e: React.FormEvent) => Promise<void>;
-  
+
   loading: boolean;
   
   // Event roles and judge assignment props
@@ -65,12 +58,6 @@ export default function TracksTab({
   setSelectedRubricRoundId,
   setRubric,
   setCriteria,
-  
-  attachmentName,
-  setAttachmentName,
-  attachmentUrl,
-  setAttachmentUrl,
-  handleUploadExam,
   
   eventRoles = [],
   handleAssignRoleForTrack,
@@ -263,53 +250,17 @@ export default function TracksTab({
 
       {/* Column 2: Attachments & Judges list stack */}
       <div className="space-y-6">
-        {/* Exam Upload / Attachments */}
-        <div className="glass p-6 rounded-2xl">
-          <h3 className="text-md font-bold text-white mb-4 flex items-center gap-1.5 font-mono">
-            <BookOpen size={16} className="text-cyan-400" />
-            <span>Đề bài & Tài liệu đính kèm</span>
+        {/* Exam materials — moved to Round schedule tab */}
+        <div className="glass p-6 rounded-2xl border border-amber-500/20 bg-amber-500/5">
+          <h3 className="text-md font-bold text-white mb-2 flex items-center gap-1.5 font-mono">
+            <BookOpen size={16} className="text-amber-400" />
+            <span>Đề bài & Tài liệu</span>
           </h3>
-
-          <form onSubmit={handleUploadExam} className="space-y-4">
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-                Tên Tài liệu
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="E.g. Đề bài chung, Tài liệu API..."
-                value={attachmentName}
-                onChange={(e) => setAttachmentName(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
-                Đường dẫn Google Drive (Đề tài / Tài liệu)
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="E.g. https://drive.google.com/drive/folders/..."
-                value={attachmentUrl}
-                onChange={(e) => setAttachmentUrl(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
-              />
-            </div>
-
-            <div className="p-3 bg-slate-900/40 border border-slate-800/80 rounded-xl text-[10px] text-slate-400 font-sans">
-              Hãy dán link chia sẻ thư mục hoặc file Google Drive chứa đề tài. Thí sinh của bảng đấu này sẽ truy cập trực tiếp vào link này để tải đề bài và tài liệu.
-            </div>
-
-            <button
-              type="submit"
-              className="w-full bg-cyan-500 hover:bg-cyan-500 text-white text-xs font-bold py-2 rounded-lg cursor-pointer font-mono"
-            >
-              Tải Lên Tài Liệu
-            </button>
-          </form>
+          <p className="text-[11px] text-slate-400 font-sans leading-relaxed">
+            Gắn <strong>1 link Google Drive cho cả vòng thi</strong> tại tab{" "}
+            <strong className="text-cyan-400">Thiết lập thời gian → Lịch trình vòng thi (Rounds)</strong>.
+            Hệ thống chỉ share Drive cho email thành viên đội đã xác nhận.
+          </p>
         </div>
 
         {/* Judge Assignment Card */}

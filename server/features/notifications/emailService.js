@@ -400,9 +400,44 @@ async function sendTrackTopicDistribution(email, fullName, trackName, attachment
   }
 }
 
+async function sendRoundExamOpened(email, fullName, roundName) {
+  const clientUrl = process.env.CLIENT_URL || 'https://www.seal-hackathon.io.vn';
+  const mailOptions = {
+    from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
+    to: email,
+    subject: `[SEAL Hackathon] Đề thi vòng "${roundName}" đã chính thức được mở!`,
+    html: `
+      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #1e293b; border-radius: 12px; background-color: #0b1329; color: #f1f5f9;">
+        <h2 style="color: #00f0ff; text-align: center; font-family: 'JetBrains Mono', monospace;">ĐỀ THI ĐÃ MỞ</h2>
+        <p style="font-size: 15px; line-height: 1.6;">Xin chào <strong>${fullName}</strong>,</p>
+        <p style="font-size: 15px; line-height: 1.6;">Vòng thi <strong>"${roundName}"</strong> đã bắt đầu. Hãy đăng nhập hệ thống SEAL → <strong>Khu vực đội</strong> → bấm <strong>Mở đề & tài liệu</strong>.</p>
+        <p style="font-size: 13px; color: #94a3b8;">Bạn cần đăng nhập Google bằng <strong>cùng email đã đăng ký</strong> trên hệ thống để xem file trên Drive.</p>
+        <div style="text-align: center; margin: 35px 0;">
+          <a href="${clientUrl}/team-area" style="background-color: #00f0ff; color: #0b1329; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Vào Khu vực đội</a>
+        </div>
+      </div>
+    `
+  };
+
+  if (isMock) {
+    console.log(`\n--- [EMAIL MOCK: ROUND EXAM OPENED] To: ${email} ---\n`);
+    return true;
+  }
+
+  try {
+    const info = await sendMailHelper(mailOptions);
+    console.log(`Round exam email sent to ${email}: ${info.messageId}`);
+    return true;
+  } catch (error) {
+    console.error(`Error sending round exam email to ${email}:`, error);
+    throw error;
+  }
+}
+
 module.exports = {
   sendTeamInvitation,
   sendEmailVerification,
   sendEventCreationNotification,
-  sendTrackTopicDistribution
+  sendTrackTopicDistribution,
+  sendRoundExamOpened
 };

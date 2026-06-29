@@ -28,8 +28,12 @@ export default function TeamArea() {
 
   const [currentTime, setCurrentTime] = useState(new Date());
 
+  const [openingExam, setOpeningExam] = useState(false);
+
+  const round = data?.team?.trackId?.roundId;
+
   useEffect(() => {
-    const startTimeStr = data?.team?.trackId?.startTime;
+    const startTimeStr = round?.startTime;
     if (!startTimeStr) return;
 
     const startTime = new Date(startTimeStr);
@@ -44,7 +48,24 @@ export default function TeamArea() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [data?.team?.trackId?.startTime]);
+  }, [round?.startTime]);
+
+  const handleOpenExamAccess = async () => {
+    try {
+      setOpeningExam(true);
+      const res = await axios.get('http://localhost:5000/api/teams/my-team/exam-access', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data?.accessUrl) {
+        window.open(res.data.accessUrl, '_blank', 'noopener,noreferrer');
+        toast.success('Đã mở Google Drive. Dùng email đã đăng ký để đăng nhập Google.');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Không thể mở đề bài.');
+    } finally {
+      setOpeningExam(false);
+    }
+  };
 
   const getRemainingTimeText = (startTimeStr: string) => {
     const diff = new Date(startTimeStr).getTime() - currentTime.getTime();
@@ -293,39 +314,43 @@ export default function TeamArea() {
               <BookOpen size={18} className="text-cyan-400" />
               <span className="text-cyan-400">[ĐỀ_BÀI_&_TÀI_LIỆU_THI]</span>
             </h2>
-            {team?.trackId?.startTime && new Date(team.trackId.startTime) > currentTime ? (
+            {round?.startTime && new Date(round.startTime) > currentTime ? (
               <div className="text-center py-4 space-y-2">
                 <p className="text-xs text-amber-500 font-sans font-semibold">
-                  Đề bài sẽ được tự động mở sau:
+                  Đề bài vòng &quot;{round.name}&quot; sẽ được mở sau:
                 </p>
                 <p className="text-sm font-bold text-cyan-400 font-mono bg-slate-900/60 p-2.5 rounded-lg border border-slate-850 tracking-wider">
-                  {getRemainingTimeText(team.trackId.startTime)}
+                  {getRemainingTimeText(round.startTime)}
                 </p>
                 <p className="text-[10px] text-slate-500 font-mono">
-                  Thời gian mở đề: {new Date(team.trackId.startTime).toLocaleString('vi-VN')}
+                  Thời gian mở đề: {new Date(round.startTime).toLocaleString('vi-VN')}
                 </p>
               </div>
-            ) : team?.trackId?.attachments && team.trackId.attachments.length > 0 ? (
+            ) : round?.hasExamMaterial && round?.examOpened ? (
               <div className="space-y-3">
-                {team.trackId.attachments.map((file: any, idx: number) => (
-                  <a
-                    key={idx}
-                    href={file.fileUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-3 bg-slate-900/50 p-3 rounded-xl border border-slate-800 hover:border-cyan-500/50 transition-colors"
-                  >
-                    <BookOpen size={16} className="text-cyan-400 shrink-0" />
-                    <div className="truncate">
-                      <p className="text-xs font-bold text-white truncate">{file.fileName || `Tài liệu đính kèm ${idx + 1}`}</p>
-                      <p className="text-[9px] text-slate-500 font-sans">Bấm để mở link Google Drive lấy đề tài</p>
-                    </div>
-                  </a>
-                ))}
+                <div className="p-3 bg-slate-900/50 rounded-xl border border-slate-800">
+                  <p className="text-xs font-bold text-white">{round.driveFileName || `Đề vòng ${round.name}`}</p>
+                  <p className="text-[9px] text-slate-500 font-sans mt-1">
+                    Chỉ thành viên đội đã xác nhận — email Google phải trùng email đăng ký.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleOpenExamAccess}
+                  disabled={openingExam}
+                  className="w-full flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-60 text-white text-xs font-bold uppercase py-3 rounded-xl transition-colors"
+                >
+                  <BookOpen size={16} />
+                  {openingExam ? 'Đang mở...' : 'Mở đề & tài liệu (Google Drive)'}
+                </button>
               </div>
+            ) : round?.hasExamMaterial ? (
+              <p className="text-xs text-slate-500 italic py-2 text-center font-sans">
+                Đề đã được gắn nhưng chưa đến giờ mở hoặc chưa cấu hình thời gian.
+              </p>
             ) : (
               <p className="text-xs text-slate-500 italic py-2 text-center font-sans">
-                Chưa có đề bài hoặc tài liệu thi nào được đính kèm cho bảng đấu của bạn.
+                Chưa có đề bài cho vòng thi của bạn.
               </p>
             )}
           </div>

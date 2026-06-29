@@ -497,9 +497,12 @@ router.post('/lock-round', authenticateToken, async (req, res) => {
       return b.averageScore - a.averageScore;
     });
 
-    // Get event/round details to check advanceTopN
+    // Get event/round details and build tracksCache
     const round = await Round.findById(roundId);
-    const advanceLimit = round.advanceTopN || 999;
+    const tracksCache = {};
+    for (const t of tracks) {
+      tracksCache[t._id.toString()] = t;
+    }
 
     // Save rankings
     await Ranking.deleteMany({ roundId });
@@ -508,7 +511,9 @@ router.post('/lock-round', authenticateToken, async (req, res) => {
     for (let idx = 0; idx < rankingsData.length; idx++) {
       const item = rankingsData[idx];
       const rank = idx + 1;
-      const isAdvanced = rank <= advanceLimit;
+      const track = tracksCache[item.trackId.toString()];
+      const trackLimit = (track && typeof track.advanceTopN === 'number') ? track.advanceTopN : 999;
+      const isAdvanced = (item.trackRank || 999) <= trackLimit;
 
       const rankingRecord = new Ranking({
         eventId,
@@ -720,10 +725,15 @@ router.get('/live-ranking/:roundId', authenticateToken, async (req, res) => {
       return b.averageScore - a.averageScore;
     });
 
-    const advanceLimit = round.advanceTopN || 999;
+    const tracksCache = {};
+    for (const t of tracks) {
+      tracksCache[t._id.toString()] = t;
+    }
     rankingData.forEach((item, idx) => {
       item.rank = idx + 1;
-      item.isAdvanced = (idx + 1) <= advanceLimit;
+      const track = tracksCache[item.trackId.toString()];
+      const trackLimit = (track && typeof track.advanceTopN === 'number') ? track.advanceTopN : 999;
+      item.isAdvanced = (item.trackRank || 999) <= trackLimit;
     });
 
     res.json({ isLive: true, roundStatus: round.status, standings: rankingData });
@@ -745,6 +755,7 @@ router.get('/judge-ranking/:roundId', authenticateToken, async (req, res) => {
 
     // Verify user is a judge (or coordinator/admin) for this event
     let hasAccess = req.user.isSystemAdmin;
+    let assignedTrackId = null;
     if (!hasAccess) {
       const roleRecord = await EventRole.findOne({
         userId: req.user._id,
@@ -753,6 +764,9 @@ router.get('/judge-ranking/:roundId', authenticateToken, async (req, res) => {
         status: 'active'
       });
       hasAccess = !!roleRecord;
+      if (roleRecord && roleRecord.role === 'judge') {
+        assignedTrackId = roleRecord.trackId;
+      }
     }
 
     if (!hasAccess) {
@@ -760,8 +774,16 @@ router.get('/judge-ranking/:roundId', authenticateToken, async (req, res) => {
     }
 
     // Get all teams in this round's track
-    const teams = await Team.find({ eventId: round.eventId, trackId: round.trackId, status: 'confirmed' })
-      .populate('topicSubmission');
+    let teamsQuery = { eventId: round.eventId, status: 'confirmed' };
+    if (assignedTrackId) {
+      teamsQuery.trackId = assignedTrackId;
+    } else {
+      // Coordinator or SystemAdmin: get all tracks for this round
+      const tracksObj = await Track.find({ roundId: round._id });
+      const trackIds = tracksObj.map(t => t._id);
+      teamsQuery.trackId = { $in: trackIds };
+    }
+    const teams = await Team.find(teamsQuery).populate('topicSubmission');
 
     // Get all submitted/locked scores for this round
     const scores = await Score.find({
@@ -780,18 +802,55 @@ router.get('/judge-ranking/:roundId', authenticateToken, async (req, res) => {
       }
       return {
         teamId: { _id: team._id, name: team.name, topicSubmission: team.topicSubmission },
+        trackId: team.trackId,
         averageScore,
         judgeCount,
         isLive: true
       };
     });
 
-    // Sort and assign live rank
-    rankingData.sort((a, b) => b.averageScore - a.averageScore);
-    const advanceLimit = round.advanceTopN || 999;
+    // Load tracks configurations of this round to get advanceTopN
+    const tracks = await Track.find({ roundId: req.params.roundId });
+    const tracksCache = {};
+    for (const t of tracks) {
+      tracksCache[t._id.toString()] = t;
+    }
+
+    // Group by trackId and sort within each track to calculate trackRank
+    const tracksMap = {};
+    rankingData.forEach(item => {
+      if (item.trackId) {
+        const tId = item.trackId.toString();
+        if (!tracksMap[tId]) {
+          tracksMap[tId] = [];
+        }
+        tracksMap[tId].push(item);
+      }
+    });
+
+    for (const tId in tracksMap) {
+      const trackTeams = tracksMap[tId];
+      trackTeams.sort((a, b) => b.averageScore - a.averageScore);
+      trackTeams.forEach((item, idx) => {
+        item.trackRank = idx + 1;
+      });
+    }
+
+    // Sort overall by trackRank ascending, then averageScore descending
+    rankingData.sort((a, b) => {
+      const aTrackRank = a.trackRank || 999;
+      const bTrackRank = b.trackRank || 999;
+      if (aTrackRank !== bTrackRank) {
+        return aTrackRank - bTrackRank;
+      }
+      return b.averageScore - a.averageScore;
+    });
+
     rankingData.forEach((item, idx) => {
       item.rank = idx + 1;
-      item.isAdvanced = (idx + 1) <= advanceLimit;
+      const track = tracksCache[item.trackId ? item.trackId.toString() : ''];
+      const trackLimit = (track && typeof track.advanceTopN === 'number') ? track.advanceTopN : 999;
+      item.isAdvanced = (item.trackRank || 999) <= trackLimit;
     });
 
     res.json({ isLive: true, roundStatus: round.status, standings: rankingData });

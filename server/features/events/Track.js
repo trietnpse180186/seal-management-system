@@ -12,7 +12,10 @@ const TrackSchema = new Schema({
   endTime: { type: Date },
   gradingEndTime: { type: Date },
   attachments: { type: Schema.Types.Mixed, default: [] },
-  isAttachmentSent: { type: Boolean, default: false }
+  isAttachmentSent: { type: Boolean, default: false },
+  advanceTopN: { type: Number },
+  topicName: { type: String },
+  topicLink: { type: String }
 }, {
   timestamps: true
 });

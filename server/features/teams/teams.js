@@ -988,7 +988,10 @@ router.put('/:teamId/assign-track', authenticateToken, async (req, res) => {
 
     // Check if repo already exists for this team
     const existingRepo = await GithubRepository.findOne({ teamId: team._id });
-    if (!existingRepo) {
+    if (existingRepo) {
+      existingRepo.trackId = track._id;
+      await existingRepo.save();
+    } else {
       githubService.createTeamRepository(slugRepoName, 'private', orgName)
         .then(async (gitResult) => {
           const actualOrgName = gitResult.owner || orgName;

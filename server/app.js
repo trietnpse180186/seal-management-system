@@ -16,6 +16,7 @@ const { startNotificationWorker } = require('./features/notifications/notificati
 // GitHub AI job queue & worker (BullMQ + Redis)
 const githubAiQueue = require('./features/github-ai/githubAiQueue');
 const githubAiWorker = require('./features/github-ai/githubAiWorker');
+const { startSeminarScheduler } = require('./features/events/seminarScheduler');
 
 // Initialize Redis queue connection at startup
 initQueue();
@@ -90,6 +91,9 @@ mongoose
 
     // Start GitHub AI worker after MongoDB is ready
     githubAiWorker.startWorker();
+
+    // Start Seminar Background Scheduler
+    startSeminarScheduler();
   })
   .catch((err) => {
     console.error("Failed to connect to MongoDB:", err.message);

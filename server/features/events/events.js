@@ -1332,4 +1332,157 @@ router.delete('/:eventId/rounds/:roundId', authenticateToken, async (req, res) =
   }
 });
 
+/**
+ * @route   PUT /api/events/:id/seminar
+ * @desc    Configure Seminar schedule and meet link for an event
+ * @access  Private (Coordinator or Admin)
+ */
+router.put('/:id/seminar', authenticateToken, async (req, res) => {
+  const eventId = req.params.id;
+  const { scheduledAt, scheduledEnd, meetUrl, title, description, attendanceFormUrl, attendanceSpreadsheetUrl } = req.body;
+
+  try {
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: 'Event not found.' });
+
+    if (!req.user.isSystemAdmin) {
+      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator', status: 'active' });
+      if (!isCoord) return res.status(403).json({ message: 'Access denied. Only coordinators or system admins can configure seminar.' });
+    }
+
+    if (scheduledAt) {
+      const semDate = new Date(scheduledAt);
+      if (isNaN(semDate.getTime())) {
+        return res.status(400).json({ message: 'Thời gian bắt đầu Seminar không hợp lệ.' });
+      }
+      if (event.registrationClose && semDate < new Date(event.registrationClose)) {
+        return res.status(400).json({ 
+          message: `Thời gian bắt đầu Seminar phải diễn ra SAU KHI đóng cổng đăng ký (${new Date(event.registrationClose).toLocaleString('vi-VN')}).` 
+        });
+      }
+      if (event.contestStart && semDate >= new Date(event.contestStart)) {
+        return res.status(400).json({ 
+          message: `Thời gian bắt đầu Seminar phải diễn ra TRƯỚC KHI cuộc thi bắt đầu (${new Date(event.contestStart).toLocaleString('vi-VN')}).` 
+        });
+      }
+    }
+
+    if (scheduledEnd) {
+      const semEndDate = new Date(scheduledEnd);
+      if (isNaN(semEndDate.getTime())) {
+        return res.status(400).json({ message: 'Thời gian kết thúc Seminar không hợp lệ.' });
+      }
+      if (scheduledAt && semEndDate <= new Date(scheduledAt)) {
+        return res.status(400).json({ message: 'Thời gian kết thúc Seminar phải diễn ra SAU thời gian bắt đầu.' });
+      }
+      if (event.contestStart && semEndDate > new Date(event.contestStart)) {
+        return res.status(400).json({ 
+          message: `Thời gian kết thúc Seminar phải diễn ra TRƯỚC KHI cuộc thi bắt đầu (${new Date(event.contestStart).toLocaleString('vi-VN')}).` 
+        });
+      }
+    }
+
+    if (!event.seminar) event.seminar = {};
+
+    if (scheduledAt !== undefined) event.seminar.scheduledAt = scheduledAt ? new Date(scheduledAt) : undefined;
+    if (scheduledEnd !== undefined) event.seminar.scheduledEnd = scheduledEnd ? new Date(scheduledEnd) : undefined;
+    if (meetUrl !== undefined) event.seminar.meetUrl = meetUrl;
+    if (title !== undefined) event.seminar.title = title;
+    if (description !== undefined) event.seminar.description = description;
+    if (attendanceFormUrl !== undefined) event.seminar.attendanceFormUrl = attendanceFormUrl;
+    if (attendanceSpreadsheetUrl !== undefined) event.seminar.attendanceSpreadsheetUrl = attendanceSpreadsheetUrl;
+
+    await event.save();
+
+    const newLog = new EventLog({
+      eventId,
+      actorId: req.user._id,
+      action: 'update_seminar',
+      details: `Cập nhật thông tin Seminar: "${event.seminar.title}" (Link Meet: ${meetUrl || 'Chưa có'})`
+    });
+    await newLog.save();
+
+    res.json({ message: 'Cập nhật cấu hình Seminar thành công!', seminar: event.seminar, event });
+  } catch (error) {
+    console.error('Update Seminar Error:', error.message);
+    res.status(500).json({ message: 'Server error updating seminar.' });
+  }
+});
+
+/**
+ * @route   POST /api/events/:id/seminar/send-email
+ * @desc    Send Seminar Google Meet invitation emails to all registered contestants
+ * @access  Private (Coordinator or Admin)
+ */
+router.post('/:id/seminar/send-email', authenticateToken, async (req, res) => {
+  const eventId = req.params.id;
+
+  try {
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: 'Event not found.' });
+
+    if (!req.user.isSystemAdmin) {
+      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator', status: 'active' });
+      if (!isCoord) return res.status(403).json({ message: 'Access denied. Only coordinators or system admins can send seminar emails.' });
+    }
+
+    if (!event.seminar || !event.seminar.meetUrl) {
+      return res.status(400).json({ message: 'Vui lòng nhập Link phòng họp (Google Meet) trước khi gửi mail thông báo!' });
+    }
+
+    // Fetch all registered team members for this event
+    const members = await TeamMember.find({ eventId }).populate('userId', 'email fullName');
+    
+    // Extract unique contestant emails & names
+    const recipientMap = new Map();
+    members.forEach(m => {
+      if (m.userId && m.userId.email) {
+        recipientMap.set(m.userId.email.toLowerCase(), {
+          email: m.userId.email,
+          name: m.userId.fullName || 'Thí sinh'
+        });
+      }
+    });
+
+    const recipients = Array.from(recipientMap.values());
+
+    if (recipients.length === 0) {
+      return res.status(400).json({ message: 'Chưa có thí sinh/đội thi nào đăng ký tham gia sự kiện này để gửi mail.' });
+    }
+
+    // Send emails
+    let successCount = 0;
+    for (const rec of recipients) {
+      try {
+        await emailService.sendSeminarInvitation(rec.email, rec.name, event.name, event.seminar);
+        successCount++;
+      } catch (err) {
+        console.error(`Failed to send seminar email to ${rec.email}:`, err.message);
+      }
+    }
+
+    event.seminar.isEmailSent = true;
+    event.seminar.emailSentAt = new Date();
+    await event.save();
+
+    const newLog = new EventLog({
+      eventId,
+      actorId: req.user._id,
+      action: 'send_seminar_email',
+      details: `Đã gửi email mời Seminar cho ${successCount}/${recipients.length} thí sinh.`
+    });
+    await newLog.save();
+
+    res.json({ 
+      message: `Đã phát email thông báo Seminar thành công cho ${successCount} thí sinh!`,
+      sentCount: successCount,
+      totalCount: recipients.length,
+      emailSentAt: event.seminar.emailSentAt
+    });
+  } catch (error) {
+    console.error('Send Seminar Email Error:', error.message);
+    res.status(500).json({ message: 'Server error sending seminar email.' });
+  }
+});
+
 module.exports = router;

@@ -148,9 +148,10 @@ function startCronJobs() {
     }
 
     try {
+      await distributeRoundExamMaterials();
       await distributeTrackTopics();
     } catch (error) {
-      console.error('[CRON ERROR] Failed to automatically distribute track topics:', error.message);
+      console.error('[CRON ERROR] Failed to distribute exam materials:', error.message);
     }
   });
 
@@ -518,8 +519,83 @@ ${aiResult.assessment?.improvement_areas || 'Không có thông tin.'}
 }
 
 /**
- * Automatically sends track exam/topics/attachments to team members when startTime starts.
- * Runs every minute.
+ * When round startTime is reached: sync Drive permissions + notify participants.
+ */
+async function distributeRoundExamMaterials() {
+  const now = new Date();
+  const Round = mongoose.model('Round');
+  const Notification = mongoose.model('Notification');
+  const emailService = require('../notifications/emailService');
+  const { syncDriveAccessForRound } = require('./driveAccessService');
+  const { getEligibleUserIdsForRound } = require('./examAccessService');
+  const { addInAppJob, isQueueAvailable } = require('../notifications/notificationQueue');
+
+  const pendingRounds = await Round.find({
+    driveFileId: { $ne: null },
+    startTime: { $ne: null, $lte: now },
+    isNotificationSent: { $ne: true }
+  });
+
+  for (const round of pendingRounds) {
+    console.log(`[CRON] Round "${round.name}" startTime reached. Syncing Drive + notifying participants...`);
+
+    let syncResult;
+    try {
+      syncResult = await syncDriveAccessForRound(round._id);
+    } catch (syncErr) {
+      console.error(`[CRON ERROR] Drive sync for round ${round._id}:`, syncErr.message);
+      continue;
+    }
+
+    if (syncResult.failed?.length > 0) {
+      console.warn(`[CRON] Round "${round.name}": ${syncResult.failed.length} email(s) failed Drive share — will retry next cron cycle.`);
+      continue;
+    }
+
+    const userIds = await getEligibleUserIdsForRound(round._id);
+    const users = await mongoose.model('User').find({ _id: { $in: userIds } }).select('email fullName');
+
+    for (const user of users) {
+      const notifTitle = `Đề thi vòng "${round.name}" đã được mở!`;
+      const notifBody = `Vòng "${round.name}" đã bắt đầu. Vào Khu vực đội → Mở đề & tài liệu (cần email Google trùng email đăng ký).`;
+
+      try {
+        if (isQueueAvailable()) {
+          await addInAppJob({
+            userId: user._id.toString(),
+            type: 'round_exam_opened',
+            title: notifTitle,
+            body: notifBody
+          });
+        } else {
+          await new Notification({
+            userId: user._id,
+            type: 'round_exam_opened',
+            title: notifTitle,
+            body: notifBody,
+            channel: 'in_app',
+            status: 'sent'
+          }).save();
+        }
+      } catch (notifErr) {
+        console.error(`[CRON ERROR] Notification to ${user._id}:`, notifErr.message);
+      }
+
+      try {
+        await emailService.sendRoundExamOpened(user.email, user.fullName, round.name);
+      } catch (emailErr) {
+        console.error(`[CRON ERROR] Email to ${user.email}:`, emailErr.message);
+      }
+    }
+
+    round.isNotificationSent = true;
+    await round.save();
+    console.log(`[CRON] Round "${round.name}" exam distribution completed (${users.length} users).`);
+  }
+}
+
+/**
+ * Legacy track-level distribution (deprecated — kept for old data).
  */
 async function distributeTrackTopics() {
   const now = new Date();
@@ -598,5 +674,6 @@ module.exports = {
   startCronJobs,
   syncRepo,
   syncAllRepositories,
+  distributeRoundExamMaterials,
   distributeTrackTopics
 };

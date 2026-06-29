@@ -17,6 +17,7 @@ import {
 import TeamsTab from "./TeamsTab";
 import TracksTab from "./TracksTab";
 import RoundsTab from "./RoundsTab";
+import SeminarTab from "./SeminarTab";
 import GithubTab from "../teams/GithubTab";
 import { toast } from "sonner";
 import { useConfirm } from "../shared/ConfirmDialog";
@@ -128,10 +129,10 @@ export default function AdminEvents({
 
   // Tab management state
   const [activeTab, setActiveTabState] = useState<
-    "admin" | "events" | "teams" | "rounds" | "tracks" | "github" | "logs" | "schedule" | "portal"
+    "admin" | "events" | "teams" | "rounds" | "tracks" | "github" | "logs" | "schedule" | "portal" | "seminar"
   >(() => (sessionStorage.getItem("activeTab") as any) || defaultTab);
 
-  const setActiveTab = (tab: "admin" | "events" | "teams" | "rounds" | "tracks" | "github" | "logs" | "schedule" | "portal") => {
+  const setActiveTab = (tab: "admin" | "events" | "teams" | "rounds" | "tracks" | "github" | "logs" | "schedule" | "portal" | "seminar") => {
     setActiveTabState(tab);
     sessionStorage.setItem("activeTab", tab);
   };
@@ -892,7 +893,7 @@ export default function AdminEvents({
       );
       setMessage({
         type: "success",
-        text: forceFlag ? "⚡ Ép chuyển trạng thái cuộc thi thành công!" : "Cập nhật trạng thái cuộc thi thành công!",
+        text: forceFlag ? "Ép chuyển trạng thái cuộc thi thành công!" : "Cập nhật trạng thái cuộc thi thành công!",
       });
       setSelectedEvent(res.data.event);
       fetchEvents();
@@ -1927,7 +1928,7 @@ export default function AdminEvents({
             <div className="flex flex-wrap items-center gap-3">
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border ${currentUser?.isSystemAdmin ? 'bg-amber-950/20 border-amber-500/40' : 'bg-slate-950 border-slate-800'}`}>
                 <label className={`text-[10px] font-bold uppercase font-mono ${currentUser?.isSystemAdmin ? 'text-amber-400' : 'text-slate-400'}`}>
-                  {currentUser?.isSystemAdmin ? '⚡ Trạng thái:' : 'Trạng thái:'}
+                  Trạng thái:
                 </label>
                 <CustomSelect
                   value={selectedEvent.status}
@@ -2040,6 +2041,33 @@ export default function AdminEvents({
               >
                 4. Thiết lập thời gian
               </button>
+              <button
+                onClick={() => {
+                  if (!selectedEvent) {
+                    toast.error("Vui lòng khởi tạo thông tin sự kiện ở Bước 1 trước!");
+                    return;
+                  }
+                  if (rounds.length === 0) {
+                    toast.error("Vui lòng tạo ít nhất 1 vòng thi ở Bước 2 trước!");
+                    return;
+                  }
+                  if (tracks.length === 0) {
+                    toast.error("Vui lòng tạo ít nhất 1 bảng đấu ở Bước 3 trước!");
+                    return;
+                  }
+                  if (!selectedEvent.registrationClose || !selectedEvent.contestStart) {
+                    toast.error("Vui lòng hoàn tất Thiết lập thời gian ở Bước 4 trước khi sang Seminar & Thông báo!");
+                    return;
+                  }
+                  setActiveTab("seminar");
+                }}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${(!selectedEvent || tracks.length === 0 || !selectedEvent.registrationClose) ? "opacity-40 cursor-not-allowed" : ""} ${activeTab === "seminar"
+                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  }`}
+              >
+                5. Seminar & Thông báo
+              </button>
             </>
           ) : (
             <>
@@ -2087,6 +2115,15 @@ export default function AdminEvents({
                   }`}
               >
                 Bảng đấu
+              </button>
+              <button
+                onClick={() => setActiveTab("seminar")}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "seminar"
+                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  }`}
+              >
+                Seminar & Thông báo
               </button>
               <button
                 onClick={() => setActiveTab("github")}
@@ -3119,6 +3156,11 @@ export default function AdminEvents({
             Vui lòng chọn cuộc thi từ thanh tiêu đề hoặc trang Quản trị viên để thiết lập nội dung Portal.
           </div>
         ))}
+
+      {/* 10. SEMINAR TAB */}
+      {activeTab === "seminar" && (
+        <SeminarTab selectedEvent={selectedEvent} fetchEventDetails={fetchEventDetails} />
+      )}
 
       {/* DETAIL EVENT LOG MODAL */}
       {selectedLog && (

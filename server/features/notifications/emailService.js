@@ -434,10 +434,71 @@ async function sendRoundExamOpened(email, fullName, roundName) {
   }
 }
 
+/**
+ * Send Seminar Invitation with Google Meet Link to contestant
+ */
+async function sendSeminarInvitation(email, recipientName, eventName, seminarData) {
+  const startTimeStr = seminarData.scheduledAt ? new Date(seminarData.scheduledAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Chưa xác định';
+  const endTimeStr = seminarData.scheduledEnd ? new Date(seminarData.scheduledEnd).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '';
+  const formattedTime = endTimeStr ? `${startTimeStr} - ${endTimeStr}` : startTimeStr;
+  const mailOptions = {
+    from: `"SEAL Hackathon Platform" <${process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@seal-hackathon.com'}>`,
+    to: email,
+    subject: `[SEAL HACKATHON] Thư Mời Tham Gia Buổi Seminar: ${eventName}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0b1329; color: #e2e8f0; border-radius: 12px; border: 1px solid #1e293b;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h1 style="color: #00f0ff; font-size: 24px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px;">THƯ MỜI THAM GIA SEMINAR</h1>
+          <p style="color: #94a3b8; font-size: 14px;">Cuộc Thi: <strong style="color: #ffffff;">${eventName}</strong></p>
+        </div>
+
+        <div style="background-color: #131c35; padding: 20px; border-radius: 8px; border-left: 4px solid #00f0ff; margin-bottom: 20px;">
+          <p style="font-size: 15px; margin-top: 0;">Xin chào <strong style="color: #00f0ff;">${recipientName || 'Thí sinh'}</strong>,</p>
+          <p style="line-height: 1.6; color: #cbd5e1;">
+            Ban tổ chức cuộc thi <strong>${eventName}</strong> trân trọng kính mời bạn tham gia buổi Seminar hướng dẫn, giải đáp thắc mắc và phổ biến thể lệ chi tiết.
+          </p>
+        </div>
+
+        <div style="background-color: #0f172a; padding: 18px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 25px;">
+          <h3 style="margin-top: 0; color: #38bdf8; font-size: 16px;">📌 Thông Tin Buổi Seminar:</h3>
+          <ul style="list-style: none; padding-left: 0; margin-bottom: 0; line-height: 1.8; font-size: 14px;">
+            <li>⏰ <strong>Thời gian:</strong> <span style="color: #f59e0b; font-weight: bold;">${formattedTime}</span></li>
+            <li>📋 <strong>Chủ đề:</strong> ${seminarData.title || 'Seminar Hướng Dẫn & Giải Đáp Thắc Mắc'}</li>
+            ${seminarData.description ? `<li>📝 <strong>Mô tả:</strong> ${seminarData.description}</li>` : ''}
+          </ul>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0 10px 0;">
+          <a href="${seminarData.meetUrl || '#'}" target="_blank" style="background-color: #22c55e; color: #ffffff; padding: 15px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 0 20px rgba(34, 197, 94, 0.4); text-transform: uppercase; font-size: 14px; letter-spacing: 1px;">👉 Tham Gia Google Meet Ngay</a>
+        </div>
+      </div>
+    `
+  };
+
+  if (isMock) {
+    console.log('\n--- [EMAIL MOCK SERVICE: SEMINAR INVITATION] ---');
+    console.log(`To: ${email}`);
+    console.log(`Subject: ${mailOptions.subject}`);
+    console.log(`Meet URL: ${seminarData.meetUrl}`);
+    console.log('----------------------------------------------\n');
+    return true;
+  }
+
+  try {
+    const info = await sendMailHelper(mailOptions);
+    console.log(`Seminar email sent to ${email}: ${info.messageId}`);
+    return true;
+  } catch (error) {
+    console.error(`Error sending seminar email to ${email}:`, error);
+    throw error;
+  }
+}
+
 module.exports = {
   sendTeamInvitation,
   sendEmailVerification,
   sendEventCreationNotification,
   sendTrackTopicDistribution,
-  sendRoundExamOpened
+  sendRoundExamOpened,
+  sendSeminarInvitation
 };

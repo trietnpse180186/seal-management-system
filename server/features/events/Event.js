@@ -52,6 +52,17 @@ const EventSchema = new Schema({
       { title: 'Giới hạn đội thi', description: 'Mỗi đội phải có từ 2 đến 4 thành viên. Không cho phép tham gia cá nhân hoặc đội thi có số lượng vượt mức quy định.' },
       { title: 'Ranh giới Đạo đức', description: 'Bất kỳ hành vi gian lận hoặc tấn công phá hoại hạ tầng bên ngoài phạm vi quy định sẽ dẫn đến việc truất quyền thi đấu ngay lập tức.' }
     ]
+  },
+  seminar: {
+    scheduledAt: { type: Date },
+    scheduledEnd: { type: Date },
+    meetUrl: { type: String },
+    title: { type: String, default: 'Buổi Seminar Hướng Dẫn & Giải Đáp Thắc Mắc Cuộc Thi' },
+    description: { type: String },
+    isEmailSent: { type: Boolean, default: false },
+    emailSentAt: { type: Date },
+    attendanceFormUrl: { type: String },
+    attendanceSpreadsheetUrl: { type: String }
   }
 }, {
   timestamps: true

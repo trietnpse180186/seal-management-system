@@ -136,7 +136,7 @@ export default function AdminLayout({ user, onLogout }: AdminLayoutProps) {
           <div className="overflow-hidden">
             <h4 className="text-xs font-bold text-white truncate">{user?.fullName || 'Admin Name'}</h4>
             <p className="text-[9px] text-cyan-400 font-mono uppercase tracking-wider">
-              {user?.isSystemAdmin ? '⚡ System Admin' : 'Ban tổ chức (Coordinator)'}
+              {user?.isSystemAdmin ? 'System Admin' : 'Ban tổ chức (Coordinator)'}
             </p>
           </div>
         </div>
@@ -146,25 +146,25 @@ export default function AdminLayout({ user, onLogout }: AdminLayoutProps) {
           {navItems
             .filter((item) => item.path !== '/admin/users' || user?.isSystemAdmin)
             .map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.path);
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 relative overflow-hidden ${active
-                  ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 shadow-[inset_0_0_20px_rgba(6,182,212,0.1)]'
-                  : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/30 border border-transparent hover:border-white/5'
-                  }`}
-              >
-                {active && (
-                  <div className="absolute left-0 top-0 h-full w-[3px] bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)]"></div>
-                )}
-                <Icon size={16} className={active ? 'text-cyan-400' : 'text-slate-500'} />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
+              const Icon = item.icon;
+              const active = isActive(item.path);
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 relative overflow-hidden ${active
+                    ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 shadow-[inset_0_0_20px_rgba(6,182,212,0.1)]'
+                    : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/30 border border-transparent hover:border-white/5'
+                    }`}
+                >
+                  {active && (
+                    <div className="absolute left-0 top-0 h-full w-[3px] bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)]"></div>
+                  )}
+                  <Icon size={16} className={active ? 'text-cyan-400' : 'text-slate-500'} />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
         </nav>
 
         {/* Sidebar Footer */}

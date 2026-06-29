@@ -176,47 +176,45 @@ export default function TeamsTab({
                   </div>
 
                   {/* Assign Track controls */}
-                  {!team.trackId && (
-                    <div className="border-t border-slate-800/80 pt-2 flex flex-col gap-1.5">
-                      <p className="text-[9px] font-bold text-cyan-400 uppercase tracking-wider font-mono">
-                        Phân chia vào bảng đấu:
-                      </p>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() =>
-                            handleAssignTrack(team._id, "random")
-                          }
-                          disabled={loading || tracks.length === 0}
-                          className="flex-1 bg-cyan-500 hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-slate-500 text-[10px] text-white font-bold py-1.5 px-2 rounded-lg font-mono transition-all flex items-center justify-center gap-1 cursor-pointer disabled:cursor-not-allowed border border-cyan-500/20"
-                        >
-                          🎲 Phân ngẫu nhiên
-                        </button>
+                  <div className="border-t border-slate-800/80 pt-2 flex flex-col gap-1.5">
+                    <p className="text-[9px] font-bold text-cyan-400 uppercase tracking-wider font-mono">
+                      Phân chia / Thay đổi bảng đấu:
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() =>
+                          handleAssignTrack(team._id, "random")
+                        }
+                        disabled={loading || tracks.length === 0}
+                        className="flex-1 bg-cyan-500 hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-slate-500 text-[10px] text-white font-bold py-1.5 px-2 rounded-lg font-mono transition-all flex items-center justify-center gap-1 cursor-pointer disabled:cursor-not-allowed border border-cyan-500/20"
+                      >
+                        🎲 Phân ngẫu nhiên
+                      </button>
 
-                        {tracks.length > 0 && (
-                          <CustomSelect
-                            value={team.trackId || ""}
-                            onChange={(val) => {
-                              if (val) {
-                                handleAssignTrack(team._id, val);
-                              }
-                            }}
-                            disabled={loading}
-                            options={tracks.map((track: any) => ({
-                              value: track._id,
-                              label: track.name,
-                            }))}
-                            placeholder="-- Chọn Bảng đấu --"
-                            className="flex-1"
-                          />
-                        )}
-                      </div>
-                      {tracks.length === 0 && (
-                        <p className="text-[8px] text-rose-400 font-mono italic">
-                          * Cần tạo Bảng đấu (Track) trước
-                        </p>
+                      {tracks.length > 0 && (
+                        <CustomSelect
+                          value={team.trackId?._id || team.trackId || ""}
+                          onChange={(val) => {
+                            if (val) {
+                              handleAssignTrack(team._id, val);
+                            }
+                          }}
+                          disabled={loading}
+                          options={tracks.map((track: any) => ({
+                            value: track._id,
+                            label: track.name,
+                          }))}
+                          placeholder="-- Chọn Bảng đấu --"
+                          className="flex-1"
+                        />
                       )}
                     </div>
-                  )}
+                    {tracks.length === 0 && (
+                      <p className="text-[8px] text-rose-400 font-mono italic">
+                        * Cần tạo Bảng đấu (Track) trước
+                      </p>
+                    )}
+                  </div>
                 </div>
               ))}
             {teamsList.filter((t) => t.status === "confirmed")

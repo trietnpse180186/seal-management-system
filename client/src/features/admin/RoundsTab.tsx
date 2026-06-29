@@ -557,11 +557,10 @@ export default function RoundsTab({
                 onClick={() => {
                   setSelectedRubricRoundId(r._id);
                 }}
-                className={`w-full text-left p-3 rounded-xl border text-xs flex justify-between items-center transition-all ${
-                  selectedRubricRoundId === r._id
-                    ? "bg-cyan-500/10 border-cyan-500/50 text-white font-bold"
-                    : "border-slate-800/80 bg-slate-900/10 hover:border-slate-700 text-slate-400"
-                }`}
+                className={`w-full text-left p-3 rounded-xl border text-xs flex justify-between items-center transition-all ${selectedRubricRoundId === r._id
+                  ? "bg-cyan-500/10 border-cyan-500/50 text-white font-bold"
+                  : "border-slate-800/80 bg-slate-900/10 hover:border-slate-700 text-slate-400"
+                  }`}
               >
                 <div>
                   <p>{r.name}</p>
@@ -847,12 +846,11 @@ export default function RoundsTab({
                     {selectedRound && (
                       <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
                         Trạng thái vòng:{" "}
-                        <span className={`font-bold uppercase ${
-                          selectedRound.status === 'completed' ? 'text-emerald-400' :
+                        <span className={`font-bold uppercase ${selectedRound.status === 'completed' ? 'text-emerald-400' :
                           selectedRound.status === 'scoring' ? 'text-amber-400' : 'text-cyan-400'
-                        }`}>
+                          }`}>
                           {selectedRound.status === 'completed' ? 'Đã hoàn thành' :
-                           selectedRound.status === 'scoring' ? 'Đang chấm điểm' : 'Đang chuẩn bị'}
+                            selectedRound.status === 'scoring' ? 'Đang chấm điểm' : 'Đang chuẩn bị'}
                         </span>
                       </p>
                     )}
@@ -877,7 +875,7 @@ export default function RoundsTab({
                           const currentOrder = selectedRound.order;
                           const nextRoundObj = rounds.find((r: any) => r.order === currentOrder + 1);
                           const canAdvance = nextRoundObj && nextRoundObj.status === 'pending';
-                          
+
                           if (canAdvance) {
                             return (
                               <button
@@ -932,9 +930,9 @@ export default function RoundsTab({
                       <button
                         onClick={handleUnlockRubric}
                         className="bg-amber-600 hover:bg-amber-500 text-[9px] font-bold px-2.5 py-1 rounded text-white cursor-pointer transition-all shadow-md shadow-amber-600/20"
-                        title="Quyền Super-Admin: Bẻ khóa Rubric để mở lại luồng chỉnh sửa tiêu chí"
+                        title="Quyền Super-Admin: Mở khóa Rubric để mở lại luồng chỉnh sửa tiêu chí"
                       >
-                        🔓 BẺ KHÓA (UNLOCK)
+                        MỞ KHÓA (UNLOCK)
                       </button>
                     ) : null}
                     <button
@@ -973,9 +971,8 @@ export default function RoundsTab({
                       </div>
                       <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-900">
                         <div
-                          className={`h-full transition-all duration-300 ${
-                            isFullyWeighted ? "bg-emerald-500" : "bg-cyan-500"
-                          }`}
+                          className={`h-full transition-all duration-300 ${isFullyWeighted ? "bg-emerald-500" : "bg-cyan-500"
+                            }`}
                           style={{
                             width: `${Math.min(
                               100,
@@ -1174,26 +1171,22 @@ export default function RoundsTab({
                               return (
                                 <tr
                                   key={idx}
-                                  className={`border-b border-slate-900/60 ${
-                                    item.issues.length > 0
-                                      ? "bg-rose-500/5"
-                                      : isDelete
+                                  className={`border-b border-slate-900/60 ${item.issues.length > 0
+                                    ? "bg-rose-500/5"
+                                    : isDelete
                                       ? "bg-rose-500/10 opacity-75"
                                       : isCreate
-                                      ? "bg-emerald-500/5"
-                                      : "bg-amber-500/5"
-                                  }`}
+                                        ? "bg-emerald-500/5"
+                                        : "bg-amber-500/5"
+                                    }`}
                                 >
                                   <td className="py-1.5 pr-2 text-slate-500">{item.rowNum}</td>
-                                  <td className={`py-1.5 pr-2 font-bold font-mono ${
-                                    isDelete ? "text-rose-450 line-through" : "text-slate-200"
-                                  }`}>{item.code || "—"}</td>
-                                  <td className={`py-1.5 pr-2 ${
-                                    isDelete ? "text-rose-450 line-through" : "text-slate-300"
-                                  }`}>{item.name || "—"}</td>
-                                  <td className={`py-1.5 pr-2 font-mono ${
-                                    isDelete ? "text-rose-450 line-through" : "text-cyan-400"
-                                  }`}>{item.weight}%</td>
+                                  <td className={`py-1.5 pr-2 font-bold font-mono ${isDelete ? "text-rose-450 line-through" : "text-slate-200"
+                                    }`}>{item.code || "—"}</td>
+                                  <td className={`py-1.5 pr-2 ${isDelete ? "text-rose-450 line-through" : "text-slate-300"
+                                    }`}>{item.name || "—"}</td>
+                                  <td className={`py-1.5 pr-2 font-mono ${isDelete ? "text-rose-450 line-through" : "text-cyan-400"
+                                    }`}>{item.weight}%</td>
                                   <td className="py-1.5">
                                     {item.issues.length > 0 ? (
                                       <span className="text-[9px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-1.5 py-0.5 rounded">
@@ -1221,11 +1214,10 @@ export default function RoundsTab({
                       </div>
 
                       {/* Weight summary */}
-                      <div className={`text-[10px] font-mono p-2 rounded-lg border ${
-                        exceeds
-                          ? "bg-rose-500/10 border-rose-500/20 text-rose-450"
-                          : "bg-slate-900/60 border-slate-800 text-slate-400"
-                      }`}>
+                      <div className={`text-[10px] font-mono p-2 rounded-lg border ${exceeds
+                        ? "bg-rose-500/10 border-rose-500/20 text-rose-450"
+                        : "bg-slate-900/60 border-slate-800 text-slate-400"
+                        }`}>
                         Trọng số hiện tại: {currentSum}% | Trọng số sau đồng bộ: <strong className={exceeds ? "text-rose-300" : "text-emerald-400"}>{totalAfter}%</strong> / {rubric?.totalWeight || 100}%
                         {exceeds && " ⚠️ Vượt quá giới hạn!"}
                         {hasIssues && " ⚠️ Có lỗi trong dữ liệu!"}
@@ -1256,15 +1248,13 @@ export default function RoundsTab({
 
                 {/* Import Result */}
                 {importResult && (
-                  <div className={`rounded-xl p-3 space-y-2 border ${
-                    (importResult.imported > 0 || importResult.updated > 0 || importResult.deleted > 0)
-                      ? "bg-emerald-500/10 border-emerald-500/20"
-                      : "bg-rose-500/10 border-rose-500/20"
-                  }`}>
+                  <div className={`rounded-xl p-3 space-y-2 border ${(importResult.imported > 0 || importResult.updated > 0 || importResult.deleted > 0)
+                    ? "bg-emerald-500/10 border-emerald-500/20"
+                    : "bg-rose-500/10 border-rose-500/20"
+                    }`}>
                     <div className="flex items-center justify-between">
-                      <p className={`text-[11px] font-bold ${
-                        (importResult.imported > 0 || importResult.updated > 0 || importResult.deleted > 0) ? "text-emerald-400" : "text-rose-400"
-                      }`}>
+                      <p className={`text-[11px] font-bold ${(importResult.imported > 0 || importResult.updated > 0 || importResult.deleted > 0) ? "text-emerald-400" : "text-rose-400"
+                        }`}>
                         {importResult.message}
                       </p>
                       <button

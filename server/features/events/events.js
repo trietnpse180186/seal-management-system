@@ -235,7 +235,7 @@ router.get('/:id', async (req, res) => {
  */
 router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
   const { eventId } = req.params;
-  const { name, description, maxTeams, roundId, startTime, endTime, gradingEndTime } = req.body;
+  const { name, description, maxTeams, roundId, startTime, endTime, gradingEndTime, advanceTopN, topicName, topicLink } = req.body;
 
   if (!name || !roundId) {
     return res.status(400).json({ message: 'Track name and roundId are required.' });
@@ -288,7 +288,10 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
       topicSubmissionOpen: true,
       startTime: startTime ? new Date(startTime) : undefined,
       endTime: endTime ? new Date(endTime) : undefined,
-      gradingEndTime: gradingEndTime ? new Date(gradingEndTime) : undefined
+      gradingEndTime: gradingEndTime ? new Date(gradingEndTime) : undefined,
+      advanceTopN: advanceTopN ? parseInt(advanceTopN) : undefined,
+      topicName,
+      topicLink
     });
 
     await newTrack.save();
@@ -299,7 +302,7 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
       eventId,
       actorId: req.user._id,
       action: 'create_track',
-      details: `Tạo bảng đấu mới: "${newTrack.name}" trong vòng thi: "${roundName}" (Số lượng đội tối đa: ${newTrack.maxTeams || 'Không giới hạn'})`
+      details: `Tạo bảng đấu mới: "${newTrack.name}" trong vòng thi: "${roundName}" (Số lượng đội tối đa: ${newTrack.maxTeams || 'Không giới hạn'}, Đội đi tiếp: ${newTrack.advanceTopN || 'Không giới hạn'})`
     });
     await newLog.save();
 
@@ -318,7 +321,7 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
  */
 router.put('/:eventId/tracks/:trackId', authenticateToken, async (req, res) => {
   const { eventId, trackId } = req.params;
-  const { name, description, maxTeams, roundId, startTime, endTime, gradingEndTime } = req.body;
+  const { name, description, maxTeams, roundId, startTime, endTime, gradingEndTime, advanceTopN, topicName, topicLink } = req.body;
 
   try {
     const event = await Event.findById(eventId);
@@ -421,6 +424,22 @@ router.put('/:eventId/tracks/:trackId', authenticateToken, async (req, res) => {
         logDetails.push(`Thời gian kết thúc chấm thi: ${oldGradingEnd ? oldGradingEnd.toLocaleString('vi-VN') : 'Trống'} -> ${newGradingEnd ? newGradingEnd.toLocaleString('vi-VN') : 'Trống'}`);
         track.gradingEndTime = newGradingEnd || undefined;
       }
+    }
+
+    if (advanceTopN !== undefined) {
+      const updatedAdvanceTopN = advanceTopN ? parseInt(advanceTopN) : undefined;
+      if (track.advanceTopN !== updatedAdvanceTopN) {
+        logDetails.push(`Số lượng đội đi tiếp: ${track.advanceTopN || 'Không giới hạn'} -> ${updatedAdvanceTopN || 'Không giới hạn'}`);
+        track.advanceTopN = updatedAdvanceTopN;
+      }
+    }
+    if (topicName !== undefined && topicName !== track.topicName) {
+      logDetails.push(`Tên đề tài: "${track.topicName || 'Trống'}" -> "${topicName}"`);
+      track.topicName = topicName;
+    }
+    if (topicLink !== undefined && topicLink !== track.topicLink) {
+      logDetails.push(`Link đề tài: "${track.topicLink || 'Trống'}" -> "${topicLink}"`);
+      track.topicLink = topicLink;
     }
 
     await track.save();

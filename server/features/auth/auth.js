@@ -1100,4 +1100,151 @@ router.post('/users/:id/toggle-coordinator', authenticateToken, requireSystemAdm
   }
 });
 
+router.post('/users/auto-provision', authenticateToken, requireSystemAdmin, async (req, res) => {
+  try {
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
+    const judgeEmail = `judge.auto_${randomSuffix}@seal.com`;
+    const mentorEmail = `mentor.auto_${randomSuffix}@seal.com`;
+    const defaultPassword = 'password123';
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(defaultPassword, salt);
+
+    // Create Judge User
+    const judgeUser = new User({
+      email: judgeEmail,
+      passwordHash,
+      fullName: `Auto Judge ${randomSuffix.toUpperCase()}`,
+      isApproved: true,
+      isActive: true
+    });
+    await judgeUser.save();
+
+    // Create Mentor User
+    const mentorUser = new User({
+      email: mentorEmail,
+      passwordHash,
+      fullName: `Auto Mentor ${randomSuffix.toUpperCase()}`,
+      isApproved: true,
+      isActive: true
+    });
+    await mentorUser.save();
+
+    // Assign roles for all events or a placeholder
+    const Event = mongoose.model('Event');
+    const events = await Event.find({});
+    if (events.length > 0) {
+      for (const ev of events) {
+        // Assign judge
+        await EventRole.updateOne(
+          { userId: judgeUser._id, eventId: ev._id, role: 'judge' },
+          { $set: { status: 'active', assignedBy: req.user._id } },
+          { upsert: true }
+        );
+        // Assign mentor
+        await EventRole.updateOne(
+          { userId: mentorUser._id, eventId: ev._id, role: 'mentor' },
+          { $set: { status: 'active', assignedBy: req.user._id } },
+          { upsert: true }
+        );
+      }
+    } else {
+      // Dummy placeholders
+      await EventRole.create({
+        userId: judgeUser._id,
+        role: 'judge',
+        assignedBy: req.user._id,
+        status: 'active'
+      });
+      await EventRole.create({
+        userId: mentorUser._id,
+        role: 'mentor',
+        assignedBy: req.user._id,
+        status: 'active'
+      });
+    }
+
+    res.status(201).json({
+      message: 'Tự động tạo tài khoản Judge & Mentor thành công!',
+      judge: { email: judgeEmail, password: defaultPassword, fullName: judgeUser.fullName },
+      mentor: { email: mentorEmail, password: defaultPassword, fullName: mentorUser.fullName }
+    });
+  } catch (error) {
+    console.error('Auto Provision Error:', error.message);
+    res.status(500).json({ message: 'Server error during auto-provisioning.' });
+  }
+});
+
+router.post('/users/:id/toggle-judge', authenticateToken, requireSystemAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const existingRoles = await EventRole.find({ userId, role: 'judge', status: 'active' });
+    const isCurrentlyJudge = existingRoles.length > 0;
+
+    if (isCurrentlyJudge) {
+      await EventRole.deleteMany({ userId, role: 'judge' });
+      return res.json({ message: 'Đã thu hồi quyền Giám khảo (Judge)!', isJudge: false });
+    } else {
+      const Event = mongoose.model('Event');
+      const events = await Event.find({});
+      if (events.length > 0) {
+        for (const ev of events) {
+          await EventRole.updateOne(
+            { userId, eventId: ev._id, role: 'judge' },
+            { $set: { status: 'active', assignedBy: req.user._id } },
+            { upsert: true }
+          );
+        }
+      } else {
+        await EventRole.create({
+          userId,
+          role: 'judge',
+          assignedBy: req.user._id,
+          status: 'active'
+        });
+      }
+      return res.json({ message: 'Đã cấp quyền Giám khảo (Judge) thành công!', isJudge: true });
+    }
+  } catch (error) {
+    console.error('Toggle Judge Error:', error.message);
+    res.status(500).json({ message: 'Server error toggling judge role.' });
+  }
+});
+
+router.post('/users/:id/toggle-mentor', authenticateToken, requireSystemAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const existingRoles = await EventRole.find({ userId, role: 'mentor', status: 'active' });
+    const isCurrentlyMentor = existingRoles.length > 0;
+
+    if (isCurrentlyMentor) {
+      await EventRole.deleteMany({ userId, role: 'mentor' });
+      return res.json({ message: 'Đã thu hồi quyền Mentor!', isMentor: false });
+    } else {
+      const Event = mongoose.model('Event');
+      const events = await Event.find({});
+      if (events.length > 0) {
+        for (const ev of events) {
+          await EventRole.updateOne(
+            { userId, eventId: ev._id, role: 'mentor' },
+            { $set: { status: 'active', assignedBy: req.user._id } },
+            { upsert: true }
+          );
+        }
+      } else {
+        await EventRole.create({
+          userId,
+          role: 'mentor',
+          assignedBy: req.user._id,
+          status: 'active'
+        });
+      }
+      return res.json({ message: 'Đã cấp quyền Mentor thành công!', isMentor: true });
+    }
+  } catch (error) {
+    console.error('Toggle Mentor Error:', error.message);
+    res.status(500).json({ message: 'Server error toggling mentor role.' });
+  }
+});
+
 module.exports = router;

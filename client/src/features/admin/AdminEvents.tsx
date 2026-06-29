@@ -84,6 +84,7 @@ export default function AdminEvents({
   const [trackDesc, setTrackDesc] = useState("");
   const [trackMax, setTrackMax] = useState("5");
   const [trackRoundId, setTrackRoundId] = useState("");
+  const [trackAdvanceTopN, setTrackAdvanceTopN] = useState("3");
   const [selectedTrack, setSelectedTrack] = useState<any>(null);
   const [editingTrack, setEditingTrack] = useState<any>(null);
 
@@ -1037,6 +1038,7 @@ export default function AdminEvents({
           description: trackDesc,
           maxTeams: newMaxTeamsNum,
           roundId: trackRoundId,
+          advanceTopN: parseInt(trackAdvanceTopN) || 3,
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -1046,6 +1048,7 @@ export default function AdminEvents({
       setTrackDesc("");
       setTrackRoundId("");
       setTrackMax("");
+      setTrackAdvanceTopN("3");
 
       // Update local tracks state
       const updatedTracks = [...tracks, newTrack];
@@ -1108,6 +1111,7 @@ export default function AdminEvents({
           description: trackDesc,
           maxTeams: updatedMaxTeamsNum,
           roundId: trackRoundId,
+          advanceTopN: parseInt(trackAdvanceTopN) || 3,
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -1117,6 +1121,7 @@ export default function AdminEvents({
       setTrackDesc("");
       setTrackRoundId("");
       setTrackMax("");
+      setTrackAdvanceTopN("3");
       setEditingTrack(null);
 
       // Update local tracks state
@@ -2385,6 +2390,8 @@ export default function AdminEvents({
               setTrackDesc={setTrackDesc}
               trackMax={trackMax}
               setTrackMax={setTrackMax}
+              trackAdvanceTopN={trackAdvanceTopN}
+              setTrackAdvanceTopN={setTrackAdvanceTopN}
               trackRoundId={trackRoundId}
               setTrackRoundId={setTrackRoundId}
               handleCreateTrack={handleCreateTrack}
@@ -2403,6 +2410,7 @@ export default function AdminEvents({
               handleAssignRoleForTrack={handleAssignRoleForTrack}
               handleRemoveRole={handleRemoveRole}
               teamsList={teamsList}
+              token={token}
             />
             {isWizardMode && (
               <div className="mt-8 p-4 glass rounded-2xl flex justify-between items-center">

@@ -15,6 +15,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token }) => {
   // Form state for creation / editing
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [provisionResult, setProvisionResult] = useState<any | null>(null);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -22,6 +23,8 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token }) => {
     studentId: '',
     university: 'FPT University',
     isCoordinator: false,
+    isJudge: false,
+    isMentor: false,
     isActive: true,
   });
 
@@ -55,6 +58,8 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token }) => {
       studentId: '',
       university: 'FPT University',
       isCoordinator: false,
+      isJudge: false,
+      isMentor: false,
       isActive: true,
     });
     setIsModalOpen(true);
@@ -62,6 +67,8 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token }) => {
 
   const handleOpenEditModal = (user: any) => {
     const isCoord = user.roles?.some((r: any) => r.role === 'coordinator');
+    const isJudge = user.roles?.some((r: any) => r.role === 'judge');
+    const isMentor = user.roles?.some((r: any) => r.role === 'mentor');
     setEditingUser(user);
     setFormData({
       email: user.email,
@@ -70,6 +77,8 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token }) => {
       studentId: user.studentId || '',
       university: user.university || 'FPT University',
       isCoordinator: !!isCoord,
+      isJudge: !!isJudge,
+      isMentor: !!isMentor,
       isActive: user.isActive !== undefined ? !!user.isActive : true,
     });
     setIsModalOpen(true);
@@ -97,6 +106,20 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token }) => {
           });
         }
 
+        const isCurrentlyJudge = editingUser.roles?.some((r: any) => r.role === 'judge');
+        if (formData.isJudge !== isCurrentlyJudge) {
+          await axios.post(`http://localhost:5000/api/auth/users/${editingUser._id}/toggle-judge`, {}, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+        }
+
+        const isCurrentlyMentor = editingUser.roles?.some((r: any) => r.role === 'mentor');
+        if (formData.isMentor !== isCurrentlyMentor) {
+          await axios.post(`http://localhost:5000/api/auth/users/${editingUser._id}/toggle-mentor`, {}, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+        }
+
         toast.success('Cập nhật thông tin tài khoản thành công!');
       } else {
         // Create User
@@ -112,10 +135,22 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token }) => {
         });
 
         const newUserId = res.data.user?._id || res.data._id;
-        if (formData.isCoordinator && newUserId) {
-          await axios.post(`http://localhost:5000/api/auth/users/${newUserId}/toggle-coordinator`, {}, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+        if (newUserId) {
+          if (formData.isCoordinator) {
+            await axios.post(`http://localhost:5000/api/auth/users/${newUserId}/toggle-coordinator`, {}, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+          }
+          if (formData.isJudge) {
+            await axios.post(`http://localhost:5000/api/auth/users/${newUserId}/toggle-judge`, {}, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+          }
+          if (formData.isMentor) {
+            await axios.post(`http://localhost:5000/api/auth/users/${newUserId}/toggle-mentor`, {}, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+          }
         }
 
         toast.success('Tạo tài khoản thành công!');
@@ -136,6 +171,45 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token }) => {
       fetchUsers();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Lỗi khi cập nhật quyền Ban tổ chức.');
+    }
+  };
+
+  const handleToggleJudge = async (user: any) => {
+    try {
+      const res = await axios.post(`http://localhost:5000/api/auth/users/${user._id}/toggle-judge`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success(res.data.message);
+      fetchUsers();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Lỗi khi cập nhật quyền Giám khảo.');
+    }
+  };
+
+  const handleToggleMentor = async (user: any) => {
+    try {
+      const res = await axios.post(`http://localhost:5000/api/auth/users/${user._id}/toggle-mentor`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success(res.data.message);
+      fetchUsers();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Lỗi khi cập nhật quyền Mentor.');
+    }
+  };
+
+  const handleAutoProvision = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.post(`http://localhost:5000/api/auth/users/auto-provision`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setProvisionResult(res.data);
+      fetchUsers();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Lỗi khi cấp tài khoản tự động.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -173,14 +247,14 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token }) => {
         <div>
           <h2 className="text-xl font-bold text-white flex items-center gap-2 font-mono">
             <Users className="text-cyan-400" size={24} />
-            <span>Quản lý Tài khoản & Phân quyền Ban Tổ Chức</span>
+            <span>Quản lý Tài khoản & Phân Quyền Vai Trò</span>
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            Quản lý danh sách thành viên và cấp quyền Ban tổ chức (Coordinator) cho hệ thống.
+            Quản lý danh sách người dùng, cấp nhanh hoặc tùy chỉnh vai trò Ban tổ chức, Giám khảo và Mentor.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
             <input
@@ -188,9 +262,19 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token }) => {
               placeholder="Tìm theo tên, email, MSSV..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 w-64 transition-all font-mono"
+              className="bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 w-56 transition-all font-mono"
             />
           </div>
+
+          <button
+            onClick={handleAutoProvision}
+            disabled={loading}
+            className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold font-mono flex items-center gap-2 shadow-lg shadow-indigo-500/20 transition-all cursor-pointer shrink-0"
+            title="Tự động cấp nhanh 1 tài khoản Judge và 1 tài khoản Mentor"
+          >
+            <UserCheck size={16} />
+            Cấp Nhanh Judge & Mentor
+          </button>
 
           <button
             onClick={handleOpenCreateModal}
@@ -202,6 +286,36 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token }) => {
         </div>
       </div>
 
+      {/* Auto-provision Result Banner */}
+      {provisionResult && (
+        <div className="bg-indigo-500/10 border border-indigo-500/30 p-5 rounded-2xl relative overflow-hidden backdrop-blur-md">
+          <div className="flex justify-between items-start mb-3">
+            <h3 className="text-sm font-bold text-white font-mono flex items-center gap-2">
+              <UserCheck size={18} className="text-indigo-400 animate-bounce" />
+              <span>Đã cấp tài khoản Judge & Mentor thành công!</span>
+            </h3>
+            <button
+              onClick={() => setProvisionResult(null)}
+              className="text-slate-400 hover:text-slate-200 text-xs font-bold font-mono border border-slate-700 px-2 py-0.5 rounded hover:bg-slate-800 transition-all cursor-pointer"
+            >
+              Đóng [X]
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+            <div className="p-3 bg-slate-950/60 border border-slate-850 rounded-xl space-y-1">
+              <p className="font-bold text-indigo-400 uppercase tracking-wider text-[10px]">Tài khoản Giám khảo (Judge)</p>
+              <p><span className="text-slate-500">Email:</span> <span className="text-slate-200 select-all font-semibold">{provisionResult.judge?.email}</span></p>
+              <p><span className="text-slate-500">Mật khẩu:</span> <span className="text-slate-200 select-all font-semibold">{provisionResult.judge?.password}</span></p>
+            </div>
+            <div className="p-3 bg-slate-950/60 border border-slate-850 rounded-xl space-y-1">
+              <p className="font-bold text-emerald-400 uppercase tracking-wider text-[10px]">Tài khoản Mentor</p>
+              <p><span className="text-slate-500">Email:</span> <span className="text-slate-200 select-all font-semibold">{provisionResult.mentor?.email}</span></p>
+              <p><span className="text-slate-500">Mật khẩu:</span> <span className="text-slate-200 select-all font-semibold">{provisionResult.mentor?.password}</span></p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Users Table */}
       <div className="glass rounded-2xl border border-slate-800/80 overflow-hidden">
         <div className="overflow-x-auto">
@@ -210,7 +324,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token }) => {
               <tr>
                 <th className="p-4">Người Dùng</th>
                 <th className="p-4">MSSV / Trường</th>
-                <th className="p-4">Quyền Ban Tổ Chức (Coordinator)</th>
+                <th className="p-4">Vai Trò & Quyền Hạn</th>
                 <th className="p-4">Trạng Thái Tài Khoản</th>
                 <th className="p-4 text-right">Thao Tác</th>
               </tr>
@@ -231,6 +345,8 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token }) => {
               ) : (
                 users.map((u) => {
                   const isCoord = u.roles?.some((r: any) => r.role === 'coordinator');
+                  const isJudge = u.roles?.some((r: any) => r.role === 'judge');
+                  const isMentor = u.roles?.some((r: any) => r.role === 'mentor');
 
                   return (
                     <tr key={u._id} className="hover:bg-slate-900/40 transition-colors">
@@ -252,18 +368,46 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token }) => {
                         <div className="text-[10px] text-slate-400">{u.university || 'FPT University'}</div>
                       </td>
                       <td className="p-4">
-                        <button
-                          onClick={() => handleToggleCoordinator(u)}
-                          className={`text-[11px] font-mono font-bold px-3.5 py-1.5 rounded-xl border flex items-center gap-2 transition-all cursor-pointer shadow-sm ${
-                            isCoord
-                              ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/25 shadow-cyan-500/10'
-                              : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
-                          }`}
-                          title="Click để bật/tắt quyền Ban tổ chức (Coordinator)"
-                        >
-                          {isCoord ? <Briefcase className="text-cyan-400" size={14} /> : <UserCheck size={14} />}
-                          <span>{isCoord ? 'Ban Tổ Chức (Coordinator)' : 'Người Dùng Thông Thường'}</span>
-                        </button>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={() => handleToggleCoordinator(u)}
+                            className={`text-[10px] font-mono font-bold px-2.5 py-1.5 rounded-xl border flex items-center gap-1 transition-all cursor-pointer shadow-sm ${
+                              isCoord
+                                ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/25 shadow-cyan-500/10'
+                                : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-300 hover:border-slate-700'
+                            }`}
+                            title="Bật/tắt vai trò Ban tổ chức (Coordinator)"
+                          >
+                            <Briefcase size={12} />
+                            <span>BTC</span>
+                          </button>
+                          
+                          <button
+                            onClick={() => handleToggleJudge(u)}
+                            className={`text-[10px] font-mono font-bold px-2.5 py-1.5 rounded-xl border flex items-center gap-1 transition-all cursor-pointer shadow-sm ${
+                              isJudge
+                                ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300 hover:bg-indigo-500/25 shadow-indigo-500/10'
+                                : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-300 hover:border-slate-700'
+                            }`}
+                            title="Bật/tắt vai trò Giám khảo (Judge)"
+                          >
+                            <UserCheck size={12} />
+                            <span>Giám khảo</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleToggleMentor(u)}
+                            className={`text-[10px] font-mono font-bold px-2.5 py-1.5 rounded-xl border flex items-center gap-1 transition-all cursor-pointer shadow-sm ${
+                              isMentor
+                                ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25 shadow-emerald-500/10'
+                                : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-300 hover:border-slate-700'
+                            }`}
+                            title="Bật/tắt vai trò Mentor"
+                          >
+                            <Users size={12} />
+                            <span>Mentor</span>
+                          </button>
+                        </div>
                       </td>
                       <td className="p-4">
                         <button
@@ -399,11 +543,31 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token }) => {
                 <label className="flex items-center gap-2 cursor-pointer text-slate-300">
                   <input
                     type="checkbox"
+                    checked={formData.isJudge}
+                    onChange={(e) => setFormData({ ...formData, isJudge: e.target.checked })}
+                    className="rounded bg-slate-950 border-slate-800 text-cyan-500 focus:ring-0"
+                  />
+                  <span>Vai trò <strong className="text-indigo-400 font-bold">Giám khảo (Judge)</strong></span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={formData.isMentor}
+                    onChange={(e) => setFormData({ ...formData, isMentor: e.target.checked })}
+                    className="rounded bg-slate-950 border-slate-800 text-cyan-500 focus:ring-0"
+                  />
+                  <span>Vai trò <strong className="text-emerald-400 font-bold">Mentor</strong></span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer text-slate-300">
+                  <input
+                    type="checkbox"
                     checked={formData.isActive}
                     onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
                     className="rounded bg-slate-950 border-slate-800 text-cyan-500 focus:ring-0"
                   />
-                  <span>Tài khoản <strong className="text-emerald-400 font-bold">Hoạt động (Active)</strong></span>
+                  <span>Tài khoản <strong className="text-slate-400 font-bold">Hoạt động (Active)</strong></span>
                 </label>
               </div>
 

@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { io, Socket } from "socket.io-client";
 import { 
@@ -7,20 +6,14 @@ import {
   Tv, 
   ListFilter, 
   UserCheck, 
-  AlertCircle, 
   Edit3, 
-  HelpCircle, 
   Save, 
-  Play, 
-  Clock, 
   Activity, 
-  ArrowLeft,
   ChevronRight
 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AdminLiveInteraction() {
-  const navigate = useNavigate();
   const token = localStorage.getItem("token");
   const socketRef = useRef<Socket | null>(null);
 

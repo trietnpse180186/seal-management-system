@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import errorMessages from './utils/errorMessages';
 import Navbar from './features/landing/Navbar';
 import Footer from './features/landing/Footer';
 import Login from './features/auth/Login';
@@ -241,24 +242,50 @@ export default function App() {
     }
   }, []);
 
-  // 3. Axios Interceptor for Session Expiration (Multi-device login)
+  // 3. Axios Interceptor for Session Expiration & Centralized Error Handling
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
       (response) => response,
-      (error) => {
+      async (error) => {
+        // A. Handle Session Expiry (401) or Account Deactivation (403)
         if (error.response && error.response.status === 401 && error.response.data?.isSessionExpired) {
-          // Local logout
           localStorage.removeItem('token');
           setUser(null);
           setRoles([]);
           window.location.href = '/login?expired=true';
+          return Promise.reject(error);
         } else if (error.response && error.response.status === 403 && (error.response.data?.isDeactivated || error.response.data?.message?.includes('khóa'))) {
-          // Locked user auto logout
           localStorage.removeItem('token');
           setUser(null);
           setRoles([]);
           window.location.href = '/login?locked=true';
+          return Promise.reject(error);
         }
+
+        // B. Centralized Error Message Localization
+        let friendlyMessage = '';
+        if (!error.response) {
+          friendlyMessage = errorMessages.NETWORK_ERROR;
+        } else {
+          const statusCode = error.response.status;
+          const responseData = error.response.data;
+
+          // Priority 1: Backend detailed message
+          if (responseData && typeof responseData.message === 'string') {
+            friendlyMessage = responseData.message;
+          } 
+          // Priority 2: Dictionary lookup by status code
+          else {
+            friendlyMessage = errorMessages[statusCode] || errorMessages.DEFAULT_ERROR;
+          }
+        }
+
+        // Inject friendly message into the error object so all catches benefit automatically
+        error.message = friendlyMessage;
+        if (error.response && error.response.data) {
+          error.response.data.message = friendlyMessage;
+        }
+
         return Promise.reject(error);
       }
     );

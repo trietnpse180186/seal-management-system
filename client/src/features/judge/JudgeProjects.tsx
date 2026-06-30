@@ -25,6 +25,7 @@ export default function JudgeProjects() {
   >("all");
   const [loading, setLoading] = useState(false);
   const [highlightedTeamId, setHighlightedTeamId] = useState<string | null>(null);
+  const [rubric, setRubric] = useState<any>(null);
   const socketRef = useRef<Socket | null>(null);
 
   // Real-time synchronization
@@ -128,6 +129,24 @@ export default function JudgeProjects() {
         setLoading(false);
       });
   }, [selectedRoundId, selectedEventId, token]);
+
+  // Fetch rubric for round to know max score
+  useEffect(() => {
+    if (!selectedRoundId) {
+      setRubric(null);
+      return;
+    }
+    axiosInstance
+      .get(`http://localhost:5000/api/rubrics/round/${selectedRoundId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res: any) => {
+        if (res.data && res.data.rubric) {
+          setRubric(res.data.rubric);
+        }
+      })
+      .catch((err: any) => console.error("Error fetching rubric:", err));
+  }, [selectedRoundId, token]);
 
   const filteredTeams = teams.filter((t) => {
     const matchSearch =
@@ -313,7 +332,7 @@ export default function JudgeProjects() {
                         {isGraded ? (
                           <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider shadow-[0_0_10px_rgba(16,185,129,0.1)]">
                             <Check size={10} /> Đã chấm (
-                            {scoreObj?.totalWeightedScore}/10)
+                            {scoreObj?.totalWeightedScore}/{rubric ? rubric.maxCriterionScore : 10})
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider shadow-[0_0_10px_rgba(6,182,212,0.1)]">

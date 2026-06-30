@@ -92,7 +92,6 @@ export default function AdminEvents({
   const [rounds, setRounds] = useState<any[]>([]);
   const [roundName, setRoundName] = useState("");
   const [roundDeadline, setRoundDeadline] = useState("");
-  const [roundLimit, setRoundLimit] = useState("3");
 
   const [rubricTypeOption, setRubricTypeOption] = useState<"new" | "existing">(
     "new",
@@ -1207,7 +1206,6 @@ export default function AdminEvents({
           name: roundName,
           order: autoNewRoundOrder,
           submissionDeadline: roundDeadline ? new Date(roundDeadline).toISOString() : undefined,
-          advanceTopN: parseInt(roundLimit),
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -1254,7 +1252,6 @@ export default function AdminEvents({
       });
 
       setRoundName("");
-      setRoundLimit("3");
       setRoundDeadline("");
       setRubricName("");
       setSelectedSourceRubricId("");
@@ -1467,6 +1464,7 @@ export default function AdminEvents({
       setCritGradingLevels([]);
       setEditingCriterion(null);
       fetchRoundsAndRubric();
+      fetchEventDetails();
     } catch (err: any) {
       setMessage({
         type: "error",
@@ -1488,6 +1486,7 @@ export default function AdminEvents({
       });
       setMessage({ type: "success", text: "Đã xóa tiêu chí thành công." });
       fetchRoundsAndRubric();
+      fetchEventDetails();
     } catch (err: any) {
       setMessage({
         type: "error",
@@ -1573,6 +1572,7 @@ export default function AdminEvents({
         text: "Đã khóa Rubric thành công! Bảng điểm đã sẵn sàng sử dụng.",
       });
       fetchRoundsAndRubric();
+      fetchEventDetails();
     } catch (err: any) {
       setMessage({
         type: "error",
@@ -1600,6 +1600,7 @@ export default function AdminEvents({
         text: "Đã bẻ khóa (Force Unlock) Rubric thành công! Bạn có thể chỉnh sửa lại tiêu chí.",
       });
       fetchRoundsAndRubric();
+      fetchEventDetails();
     } catch (err: any) {
       setMessage({
         type: "error",
@@ -2433,8 +2434,6 @@ export default function AdminEvents({
               setRoundName={setRoundName}
               roundDeadline={roundDeadline}
               setRoundDeadline={setRoundDeadline}
-              roundLimit={roundLimit}
-              setRoundLimit={setRoundLimit}
               rubricTypeOption={rubricTypeOption}
               setRubricTypeOption={setRubricTypeOption}
               existingRubrics={existingRubrics}
@@ -2465,6 +2464,7 @@ export default function AdminEvents({
               handleLockRound={handleLockRound}
               handleDeleteRound={handleDeleteRound}
               handleUpdateRound={handleUpdateRound}
+              fetchEventDetails={fetchEventDetails}
               critCode={critCode}
               setCritCode={setCritCode}
               critName={critName}

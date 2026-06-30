@@ -13,6 +13,7 @@ interface RoundsTabProps {
   setSelectedTrack: (track: any) => void;
   selectedRubricRoundId: string;
   setSelectedRubricRoundId: (id: string) => void;
+  fetchEventDetails: () => Promise<void>;
   handleAdvanceRound: (roundId: string) => Promise<void>;
   handleLockRound: (roundId: string) => Promise<void>;
   handleDeleteRound?: (roundId: string) => void;
@@ -23,8 +24,6 @@ interface RoundsTabProps {
   setRoundName: (val: string) => void;
   roundDeadline: string;
   setRoundDeadline: (val: string) => void;
-  roundLimit: string;
-  setRoundLimit: (val: string) => void;
   rubricTypeOption: "new" | "existing";
   setRubricTypeOption: (val: "new" | "existing") => void;
   existingRubrics: any[];
@@ -113,8 +112,6 @@ export default function RoundsTab({
   setRoundName,
   roundDeadline,
   setRoundDeadline,
-  roundLimit,
-  setRoundLimit,
   rubricTypeOption,
   setRubricTypeOption,
   existingRubrics,
@@ -185,23 +182,29 @@ export default function RoundsTab({
   const [editingRound, setEditingRound] = useState<any | null>(null);
   const [editRoundNameInput, setEditRoundNameInput] = useState("");
   const [editRoundOrderInput, setEditRoundOrderInput] = useState("1");
-  const [editRoundTopNInput, setEditRoundTopNInput] = useState("3");
 
   const handleOpenEditRound = (e: React.MouseEvent, r: any) => {
     e.stopPropagation();
     setEditingRound(r);
     setEditRoundNameInput(r.name || "");
     setEditRoundOrderInput(String(r.order || 1));
-    setEditRoundTopNInput(String(r.advanceTopN || 3));
   };
 
   const handleSaveEditRound = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingRound || !handleUpdateRound) return;
+
+    if (editingRound.advanceTopN !== 0) {
+      const finalRound = rounds.find((r: any) => r.advanceTopN === 0);
+      if (finalRound && parseInt(editRoundOrderInput) >= finalRound.order) {
+        alert("Thứ tự của vòng thi này phải nhỏ hơn thứ tự của Vòng Chung Kết!");
+        return;
+      }
+    }
+
     await handleUpdateRound(editingRound._id, {
       name: editRoundNameInput,
       order: parseInt(editRoundOrderInput),
-      advanceTopN: parseInt(editRoundTopNInput),
     });
     setEditingRound(null);
   };
@@ -609,7 +612,7 @@ export default function RoundsTab({
             <ListOrdered size={16} className="text-cyan-400" />
             <span>Các Vòng thi (Sự kiện)</span>
           </h3>
-          <div className="space-y-2 mb-6 max-h-48 overflow-y-auto pr-1">
+          <div className="space-y-2 mb-6 pr-1">
             {rounds.map((r: any) => (
               <button
                 key={r._id}
@@ -635,7 +638,7 @@ export default function RoundsTab({
                     )}
                   </div>
                   <p className="text-[9px] text-slate-500 mt-0.5">
-                    Thứ tự: {r.order} | Lấy Top: {r.advanceTopN}
+                    Thứ tự: {r.order}{r.advanceTopN === 0 ? " (Chung kết)" : ""}
                   </p>
                   <div className="flex flex-wrap gap-1 mt-1.5">
                     {tracks
@@ -711,31 +714,16 @@ export default function RoundsTab({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
-                Thứ tự vòng
-              </label>
-              <input
-                type="text"
-                disabled
-                value={rounds.length > 0 ? rounds[rounds.length - 1].order : 1}
-                className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-900 border border-slate-850 text-slate-550 cursor-not-allowed font-bold"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
-                Lấy Top N đội đi tiếp
-              </label>
-              <input
-                type="number"
-                required
-                placeholder="Lấy Top N (e.g. 5)"
-                value={roundLimit}
-                onChange={(e) => setRoundLimit(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
-              />
-            </div>
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
+              Thứ tự vòng
+            </label>
+            <input
+              type="text"
+              disabled
+              value={rounds.length > 0 ? rounds[rounds.length - 1].order : 1}
+              className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-900 border border-slate-850 text-slate-500 cursor-not-allowed font-bold"
+            />
           </div>
 
           {/* Rubric Configuration */}
@@ -1669,9 +1657,16 @@ export default function RoundsTab({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-300 mb-1">Thứ Tự Vòng <span className="text-rose-500">*</span></label>
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Thứ Tự Vòng <span className="text-rose-500">*</span></label>
+                {editingRound.advanceTopN === 0 ? (
+                  <input
+                    type="text"
+                    disabled
+                    value={editRoundOrderInput}
+                    className="w-full bg-slate-900 border border-slate-850 rounded-xl px-3 py-2 text-slate-500 cursor-not-allowed"
+                  />
+                ) : (
                   <input
                     type="number"
                     required
@@ -1680,17 +1675,7 @@ export default function RoundsTab({
                     onChange={(e) => setEditRoundOrderInput(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500"
                   />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-300 mb-1">Lấy Top N Đội</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={editRoundTopNInput}
-                    onChange={(e) => setEditRoundTopNInput(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500"
-                  />
-                </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">

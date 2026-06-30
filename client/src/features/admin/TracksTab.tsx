@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 import { FolderKanban, ChevronRight, BookOpen, Users, Edit, Trash2, ExternalLink } from "lucide-react";
@@ -78,6 +78,8 @@ export default function TracksTab({
 }: TracksTabProps) {
   const [judgeEmail, setJudgeEmail] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [accountSuggestions, setAccountSuggestions] = useState<any[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [memberRole, setMemberRole] = useState<"judge" | "mentor">("judge");
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const confirm = useConfirm();
@@ -124,12 +126,51 @@ export default function TracksTab({
       ((role.trackId?._id || role.trackId) === selectedTrack?._id)
   );
 
-  const filteredUsers = allUsers.filter(user => {
-    if (!judgeEmail) return false;
-    const emailLower = user.email.toLowerCase();
-    const queryLower = judgeEmail.toLowerCase();
-    return emailLower.includes(queryLower) && emailLower !== queryLower;
-  });
+  useEffect(() => {
+    const query = judgeEmail.trim();
+    if (!showSuggestions || query.length < 2 || !token || allUsers.length > 0) {
+      setAccountSuggestions([]);
+      setLoadingSuggestions(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timeoutId = window.setTimeout(async () => {
+      setLoadingSuggestions(true);
+      try {
+        const res = await axios.get(
+          `http://localhost:5000/api/auth/users?search=${encodeURIComponent(query)}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!cancelled) {
+          setAccountSuggestions((res.data || []).filter((user: any) => !user.isSystemAdmin));
+        }
+      } catch (err) {
+        if (!cancelled) setAccountSuggestions([]);
+      } finally {
+        if (!cancelled) setLoadingSuggestions(false);
+      }
+    }, 180);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [allUsers.length, judgeEmail, showSuggestions, token]);
+
+  const filteredUsers = useMemo(() => {
+    const query = judgeEmail.trim().toLowerCase();
+    if (!query) return [];
+
+    const sourceUsers = allUsers.length > 0 ? allUsers : accountSuggestions;
+    return sourceUsers
+      .filter((user: any) => {
+        const emailLower = String(user.email || "").toLowerCase();
+        const fullNameLower = String(user.fullName || "").toLowerCase();
+        return emailLower.includes(query) || fullNameLower.includes(query);
+      })
+      .slice(0, 6);
+  }, [accountSuggestions, allUsers, judgeEmail]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -537,17 +578,23 @@ export default function TracksTab({
                       onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                       className="w-full px-3 py-2.5 rounded-xl text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200 focus:outline-none focus:border-cyan-500"
                     />
-                    {showSuggestions && filteredUsers.length > 0 && (
+                    {showSuggestions && (loadingSuggestions || filteredUsers.length > 0) && (
                       <div className="absolute left-0 right-0 bottom-full mb-1 z-50 max-h-45 overflow-y-auto bg-slate-900 border border-slate-800 rounded-xl shadow-xl divide-y divide-slate-800/60">
-                        {filteredUsers.map((user) => (
+                        {loadingSuggestions && filteredUsers.length === 0 && (
+                          <div className="px-3 py-2 text-[10px] font-mono uppercase tracking-wider text-slate-500">
+                            Đang tìm tài khoản...
+                          </div>
+                        )}
+                        {filteredUsers.map((user: any) => (
                           <button
                             key={user._id}
                             type="button"
-                            onClick={() => {
+                            onMouseDown={(e) => {
+                              e.preventDefault();
                               setJudgeEmail(user.email);
                               setShowSuggestions(false);
                             }}
-                            className="w-full text-left px-3 py-2 text-xs font-mono hover:bg-slate-800 text-slate-300 hover:text-white transition-colors block"
+                            className="w-full text-left px-3 py-2 text-xs font-mono hover:bg-slate-800 text-slate-300 hover:text-white transition-colors block cursor-pointer"
                           >
                             <span className="font-semibold">{user.fullName}</span> ({user.email})
                           </button>

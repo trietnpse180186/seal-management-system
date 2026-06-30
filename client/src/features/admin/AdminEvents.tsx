@@ -2047,21 +2047,9 @@ export default function AdminEvents({
                     toast.error("Vui lòng khởi tạo thông tin sự kiện ở Bước 1 trước!");
                     return;
                   }
-                  if (rounds.length === 0) {
-                    toast.error("Vui lòng tạo ít nhất 1 vòng thi ở Bước 2 trước!");
-                    return;
-                  }
-                  if (tracks.length === 0) {
-                    toast.error("Vui lòng tạo ít nhất 1 bảng đấu ở Bước 3 trước!");
-                    return;
-                  }
-                  if (!selectedEvent.registrationClose || !selectedEvent.contestStart) {
-                    toast.error("Vui lòng hoàn tất Thiết lập thời gian ở Bước 4 trước khi sang Seminar & Thông báo!");
-                    return;
-                  }
                   setActiveTab("seminar");
                 }}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${(!selectedEvent || tracks.length === 0 || !selectedEvent.registrationClose) ? "opacity-40 cursor-not-allowed" : ""} ${activeTab === "seminar"
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${!selectedEvent ? "opacity-40 cursor-not-allowed" : ""} ${activeTab === "seminar"
                   ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
                   : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
                   }`}

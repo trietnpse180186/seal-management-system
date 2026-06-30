@@ -136,7 +136,7 @@ export default function AdminLayout({ user, onLogout }: AdminLayoutProps) {
           <div className="overflow-hidden">
             <h4 className="text-xs font-bold text-white truncate">{user?.fullName || 'Admin Name'}</h4>
             <p className="text-[9px] text-cyan-400 font-mono uppercase tracking-wider">
-              {user?.isSystemAdmin ? 'System Admin' : 'Ban tổ chức (Coordinator)'}
+              Admin
             </p>
           </div>
         </div>
@@ -144,7 +144,6 @@ export default function AdminLayout({ user, onLogout }: AdminLayoutProps) {
         {/* Navigation Links */}
         <nav className="flex-1 py-6 space-y-2 overflow-y-auto px-3">
           {navItems
-            .filter((item) => item.path !== '/admin/users' || user?.isSystemAdmin)
             .map((item) => {
               const Icon = item.icon;
               const active = isActive(item.path);

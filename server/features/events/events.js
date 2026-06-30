@@ -1346,24 +1346,13 @@ router.put('/:id/seminar', authenticateToken, async (req, res) => {
     if (!event) return res.status(404).json({ message: 'Event not found.' });
 
     if (!req.user.isSystemAdmin) {
-      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator', status: 'active' });
-      if (!isCoord) return res.status(403).json({ message: 'Access denied. Only coordinators or system admins can configure seminar.' });
+      return res.status(403).json({ message: 'Access denied. Only system admins can configure seminar.' });
     }
 
     if (scheduledAt) {
       const semDate = new Date(scheduledAt);
       if (isNaN(semDate.getTime())) {
         return res.status(400).json({ message: 'Thời gian bắt đầu Seminar không hợp lệ.' });
-      }
-      if (event.registrationClose && semDate < new Date(event.registrationClose)) {
-        return res.status(400).json({ 
-          message: `Thời gian bắt đầu Seminar phải diễn ra SAU KHI đóng cổng đăng ký (${new Date(event.registrationClose).toLocaleString('vi-VN')}).` 
-        });
-      }
-      if (event.contestStart && semDate >= new Date(event.contestStart)) {
-        return res.status(400).json({ 
-          message: `Thời gian bắt đầu Seminar phải diễn ra TRƯỚC KHI cuộc thi bắt đầu (${new Date(event.contestStart).toLocaleString('vi-VN')}).` 
-        });
       }
     }
 
@@ -1374,11 +1363,6 @@ router.put('/:id/seminar', authenticateToken, async (req, res) => {
       }
       if (scheduledAt && semEndDate <= new Date(scheduledAt)) {
         return res.status(400).json({ message: 'Thời gian kết thúc Seminar phải diễn ra SAU thời gian bắt đầu.' });
-      }
-      if (event.contestStart && semEndDate > new Date(event.contestStart)) {
-        return res.status(400).json({ 
-          message: `Thời gian kết thúc Seminar phải diễn ra TRƯỚC KHI cuộc thi bắt đầu (${new Date(event.contestStart).toLocaleString('vi-VN')}).` 
-        });
       }
     }
 
@@ -1422,8 +1406,7 @@ router.post('/:id/seminar/send-email', authenticateToken, async (req, res) => {
     if (!event) return res.status(404).json({ message: 'Event not found.' });
 
     if (!req.user.isSystemAdmin) {
-      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator', status: 'active' });
-      if (!isCoord) return res.status(403).json({ message: 'Access denied. Only coordinators or system admins can send seminar emails.' });
+      return res.status(403).json({ message: 'Access denied. Only system admins can send seminar emails.' });
     }
 
     if (!event.seminar || !event.seminar.meetUrl) {

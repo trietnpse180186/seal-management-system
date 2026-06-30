@@ -171,6 +171,12 @@ export default function MyAchievements() {
                             rank === 3 ? "text-amber-600 bg-amber-700/10 border-amber-800/30" :
                             "text-slate-400 bg-slate-800/40 border-slate-700/30";
 
+                          const roundName = ach.roundId?.name || "";
+                          const isFinalRound = 
+                            roundName.toLowerCase() === "chung kết" || 
+                            roundName.toLowerCase().includes("chung kết") || 
+                            roundName.toLowerCase() === "final";
+
                           return (
                             <div
                               key={ach._id}
@@ -200,18 +206,22 @@ export default function MyAchievements() {
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                  {ach.isAdvanced ? (
-                                    <span className="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-bold">
-                                      ĐÃ ĐI TIẾP
-                                    </span>
-                                  ) : ach.roundId?.status === "completed" ? (
-                                    <span className="text-[9px] bg-slate-800 text-slate-500 border border-slate-750 px-2 py-0.5 rounded">
-                                      DỪNG BƯỚC
-                                    </span>
-                                  ) : (
-                                    <span className="text-[9px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded font-bold animate-pulse">
-                                      ĐANG CHẤM
-                                    </span>
+                                  {!isFinalRound && (
+                                    <>
+                                      {ach.isAdvanced ? (
+                                        <span className="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-bold">
+                                          ĐÃ ĐI TIẾP
+                                        </span>
+                                      ) : ach.roundId?.status === "completed" ? (
+                                        <span className="text-[9px] bg-slate-800 text-slate-500 border border-slate-750 px-2 py-0.5 rounded">
+                                          DỪNG BƯỚC
+                                        </span>
+                                      ) : (
+                                        <span className="text-[9px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded font-bold animate-pulse">
+                                          ĐANG CHẤM
+                                        </span>
+                                      )}
+                                    </>
                                   )}
 
                                   <button

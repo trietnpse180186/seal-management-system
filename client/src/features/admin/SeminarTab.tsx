@@ -107,13 +107,6 @@ export default function SeminarTab({ selectedEvent, fetchEventDetails }: Seminar
     }
   };
 
-  const minSeminarDate = selectedEvent.registrationClose
-    ? new Date(selectedEvent.registrationClose).toISOString().slice(0, 16)
-    : undefined;
-  const maxSeminarDate = selectedEvent.contestStart
-    ? new Date(selectedEvent.contestStart).toISOString().slice(0, 16)
-    : undefined;
-
   const semStatus = selectedEvent.seminar?.isEmailSent;
 
   return (
@@ -191,8 +184,6 @@ export default function SeminarTab({ selectedEvent, fetchEventDetails }: Seminar
               onEndChange={setScheduledEnd}
               startLabel="Bắt đầu Seminar"
               endLabel="Kết thúc Seminar"
-              minDate={minSeminarDate}
-              maxDate={maxSeminarDate}
             />
           </div>
 

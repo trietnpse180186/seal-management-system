@@ -128,6 +128,28 @@ router.post('/', authenticateToken, requireSystemAdmin, async (req, res) => {
 
     await newEvent.save();
 
+    // Auto-create default Final Round (Vòng Chung Kết)
+    const newRound = new Round({
+      eventId: newEvent._id,
+      name: 'Vòng Chung Kết',
+      order: 1,
+      advanceTopN: 0,
+      status: 'pending'
+    });
+    await newRound.save();
+
+    // Create an empty Rubric for this round
+    const Rubric = mongoose.model('Rubric');
+    const rubricObj = new Rubric({
+      eventId: newEvent._id,
+      roundId: newRound._id,
+      name: 'Rubric Vòng Chung Kết',
+      totalWeight: 100,
+      maxCriterionScore: 10,
+      isLocked: false
+    });
+    await rubricObj.save();
+
     // Create a default coordinator EventRole for the creator
     const creatorRole = new EventRole({
       userId: req.user._id,
@@ -288,12 +310,52 @@ router.get('/:id', async (req, res) => {
     }
 
     const tracks = await Track.find({ eventId: event._id });
-    const rounds = await Round.find({ eventId: event._id }).sort({ order: 1 });
+    let rounds = await Round.find({ eventId: event._id }).sort({ order: 1 });
+
+    const Rubric = mongoose.model('Rubric');
+    const Criterion = mongoose.model('Criterion');
+
+    // Self-healing: Check if a Final Round exists (advanceTopN === 0)
+    let hasFinalRound = rounds.some(r => r.advanceTopN === 0);
+    if (!hasFinalRound) {
+      const nextOrder = rounds.length > 0 ? (rounds[rounds.length - 1].order + 1) : 1;
+      const newFinalRound = new Round({
+        eventId: event._id,
+        name: 'Vòng Chung Kết',
+        order: nextOrder,
+        advanceTopN: 0,
+        status: 'pending'
+      });
+      await newFinalRound.save();
+
+      const rubricObj = new Rubric({
+        eventId: event._id,
+        roundId: newFinalRound._id,
+        name: 'Rubric Vòng Chung Kết',
+        totalWeight: 100,
+        maxCriterionScore: 10,
+        isLocked: false
+      });
+      await rubricObj.save();
+
+      // Re-fetch rounds
+      rounds = await Round.find({ eventId: event._id }).sort({ order: 1 });
+    }
+
+    const roundsWithRubricStatus = [];
+    for (const r of rounds) {
+      const rubric = await Rubric.findOne({ roundId: r._id });
+      const hasCriteria = rubric ? (rubric.isLocked || (await Criterion.exists({ rubricId: rubric._id })) !== null) : false;
+      roundsWithRubricStatus.push({
+        ...sanitizeRoundForAdmin(r),
+        hasCriteria
+      });
+    }
 
     res.json({
       event,
       tracks,
-      rounds: rounds.map((r) => sanitizeRoundForAdmin(r)),
+      rounds: roundsWithRubricStatus,
       driveIntegration: getDriveStatus()
     });
   } catch (error) {
@@ -609,8 +671,8 @@ router.post('/:eventId/rounds', authenticateToken, async (req, res) => {
   const { eventId } = req.params;
   const { name, order, submissionDeadline, advanceTopN } = req.body;
 
-  if (!name || order === undefined) {
-    return res.status(400).json({ message: 'Round name and order sequence are required.' });
+  if (!name) {
+    return res.status(400).json({ message: 'Round name is required.' });
   }
 
   try {
@@ -627,10 +689,20 @@ router.post('/:eventId/rounds', authenticateToken, async (req, res) => {
       }
     }
 
+    // Find the round with the highest order (the Final Round)
+    const finalRound = await Round.findOne({ eventId }).sort({ order: -1 });
+    let assignedOrder = 1;
+    
+    if (finalRound) {
+      assignedOrder = finalRound.order;
+      finalRound.order = finalRound.order + 1;
+      await finalRound.save();
+    }
+
     const newRound = new Round({
       eventId,
       name,
-      order: parseInt(order),
+      order: assignedOrder,
       submissionDeadline: submissionDeadline ? new Date(submissionDeadline) : undefined,
       advanceTopN: advanceTopN ? parseInt(advanceTopN) : undefined,
       status: 'pending'
@@ -676,6 +748,30 @@ router.put('/:eventId/rounds/:roundId', authenticateToken, async (req, res) => {
 
     const round = await Round.findById(roundId);
     if (!round) return res.status(404).json({ message: 'Round not found.' });
+
+    // Validate Final Round constraints
+    if (round.advanceTopN === 0) {
+      if (advanceTopN !== undefined && parseInt(advanceTopN) !== 0) {
+        return res.status(400).json({ message: 'Không thể thay đổi số lượng đội đi tiếp của Vòng Chung Kết (phải là 0).' });
+      }
+      if (order !== undefined) {
+        const maxOtherRound = await Round.findOne({ eventId, _id: { $ne: roundId } }).sort({ order: -1 });
+        if (maxOtherRound && parseInt(order) <= maxOtherRound.order) {
+          return res.status(400).json({ message: 'Thứ tự của Vòng Chung Kết phải là lớn nhất trong tất cả các vòng.' });
+        }
+      }
+    } else {
+      // Validate intermediate round constraints
+      const finalRound = await Round.findOne({ eventId, advanceTopN: 0 });
+      if (finalRound) {
+        if (order !== undefined && parseInt(order) >= finalRound.order) {
+          return res.status(400).json({ message: 'Thứ tự của vòng thi này phải nhỏ hơn thứ tự của Vòng Chung Kết.' });
+        }
+        if (advanceTopN !== undefined && parseInt(advanceTopN) === 0) {
+          return res.status(400).json({ message: 'Chỉ có duy nhất một vòng chung kết.' });
+        }
+      }
+    }
 
     if (name !== undefined) round.name = name;
     if (order !== undefined) round.order = parseInt(order);
@@ -751,7 +847,8 @@ router.post('/:eventId/rounds/:roundId/sync-drive-access', authenticateToken, as
 
 /**
  * @route   POST /api/events/:eventId/upload-exam
- * @desc    Save exam material — prefer roundId (one Drive link per round)
+ * @desc    Save exam material — Admin pastes a Google Drive URL directly (no OAuth needed).
+ *          The link should already be set to "Anyone with the link" on Drive.
  * @access  Private (Coordinator or Admin)
  */
 router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
@@ -759,7 +856,7 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
   const { trackId, fileName, fileUrl, roundId } = req.body;
 
   if (!fileName || !fileUrl) {
-    return res.status(400).json({ message: 'File name and URL are required.' });
+    return res.status(400).json({ message: 'Tên file và URL Drive là bắt buộc.' });
   }
 
   try {
@@ -771,10 +868,8 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
       if (!isCoord) return res.status(403).json({ message: 'Unauthorized.' });
     }
 
-    const driveFileId = extractDriveFileId(fileUrl);
-    if (!driveFileId) {
-      return res.status(400).json({ message: 'Không parse được ID từ link Google Drive. Kiểm tra lại URL.' });
-    }
+    // Try to extract Drive ID for display purposes only — not required
+    const driveFileId = extractDriveFileId(fileUrl) || null;
 
     if (roundId) {
       const round = await Round.findById(roundId);
@@ -784,7 +879,7 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
 
       round.driveFileId = driveFileId;
       round.driveFileName = fileName;
-      round.driveFileUrl = fileUrl;
+      round.driveFileUrl = fileUrl;   // ← Lưu URL gốc thẳng từ admin
       round.isDriveAccessSynced = false;
       round.driveSyncedEmailCount = 0;
       round.driveSyncErrors = [];
@@ -799,7 +894,7 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
       await newLog.save();
 
       return res.json({
-        message: 'Đã lưu đề bài cho vòng thi. Nhớ đồng bộ quyền Drive trước/sau giờ mở đề.',
+        message: 'Đã lưu link Drive cho vòng thi. Thí sinh sẽ click vào link này trực tiếp khi đến giờ mở đề.',
         round: sanitizeRoundForAdmin(round)
       });
     }
@@ -826,7 +921,7 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
     }
 
     res.json({
-      message: 'Lưu tài liệu legacy (theo track). Nên dùng roundId để gắn 1 link / vòng.',
+      message: 'Lưu tài liệu (theo track). Nên dùng roundId để gắn link Drive / vòng.',
       attachment: fileMeta
     });
 
@@ -1402,24 +1497,13 @@ router.put('/:id/seminar', authenticateToken, async (req, res) => {
     if (!event) return res.status(404).json({ message: 'Event not found.' });
 
     if (!req.user.isSystemAdmin) {
-      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator', status: 'active' });
-      if (!isCoord) return res.status(403).json({ message: 'Access denied. Only coordinators or system admins can configure seminar.' });
+      return res.status(403).json({ message: 'Access denied. Only system admins can configure seminar.' });
     }
 
     if (scheduledAt) {
       const semDate = new Date(scheduledAt);
       if (isNaN(semDate.getTime())) {
         return res.status(400).json({ message: 'Thời gian bắt đầu Seminar không hợp lệ.' });
-      }
-      if (event.registrationClose && semDate < new Date(event.registrationClose)) {
-        return res.status(400).json({ 
-          message: `Thời gian bắt đầu Seminar phải diễn ra SAU KHI đóng cổng đăng ký (${new Date(event.registrationClose).toLocaleString('vi-VN')}).` 
-        });
-      }
-      if (event.contestStart && semDate >= new Date(event.contestStart)) {
-        return res.status(400).json({ 
-          message: `Thời gian bắt đầu Seminar phải diễn ra TRƯỚC KHI cuộc thi bắt đầu (${new Date(event.contestStart).toLocaleString('vi-VN')}).` 
-        });
       }
     }
 
@@ -1430,11 +1514,6 @@ router.put('/:id/seminar', authenticateToken, async (req, res) => {
       }
       if (scheduledAt && semEndDate <= new Date(scheduledAt)) {
         return res.status(400).json({ message: 'Thời gian kết thúc Seminar phải diễn ra SAU thời gian bắt đầu.' });
-      }
-      if (event.contestStart && semEndDate > new Date(event.contestStart)) {
-        return res.status(400).json({ 
-          message: `Thời gian kết thúc Seminar phải diễn ra TRƯỚC KHI cuộc thi bắt đầu (${new Date(event.contestStart).toLocaleString('vi-VN')}).` 
-        });
       }
     }
 
@@ -1479,8 +1558,7 @@ router.post('/:id/seminar/send-email', authenticateToken, async (req, res) => {
     if (!event) return res.status(404).json({ message: 'Event not found.' });
 
     if (!req.user.isSystemAdmin) {
-      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator', status: 'active' });
-      if (!isCoord) return res.status(403).json({ message: 'Access denied. Only coordinators or system admins can send seminar emails.' });
+      return res.status(403).json({ message: 'Access denied. Only system admins can send seminar emails.' });
     }
 
     if (!event.seminar || !event.seminar.meetUrl) {

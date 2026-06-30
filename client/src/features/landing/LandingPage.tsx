@@ -1,5 +1,6 @@
 import Hero from './Hero';
 import About from './About';
+import Ranking from './Ranking';
 import Timeline from './Timeline';
 import Prizes from './Prizes';
 
@@ -18,6 +19,8 @@ export default function LandingPage({ user, roles }: LandingPageProps) {
       <Hero user={user} roles={roles} />
       
       <About />
+
+      <Ranking />
 
       <Timeline />
 

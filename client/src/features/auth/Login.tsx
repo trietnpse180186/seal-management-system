@@ -149,8 +149,8 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       const exchangeCode = async () => {
         setLoading(true);
         setError('');
+        const baseUrl = getBaseUrl();
         try {
-          const baseUrl = getBaseUrl();
           const response = await axios.post(`${baseUrl}/auth/github`, {
             code,
             redirectUri: window.location.origin + '/login',
@@ -197,8 +197,8 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         const loginWithGoogle = async () => {
           setLoading(true);
           setError('');
+          const baseUrl = getBaseUrl();
           try {
-            const baseUrl = getBaseUrl();
             const response = await axios.post(`${baseUrl}/auth/google`, {
               idToken,
               isMock: false
@@ -272,12 +272,11 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       }
     }
   }, [platform, provider]);
-
   const handleMockGoogleLogin = async (selectedEmail: string, selectedName?: string) => {
     setLoading(true);
     setError('');
+    const baseUrl = getBaseUrl();
     try {
-      const baseUrl = getBaseUrl();
       const name = selectedName || selectedEmail.split('@')[0];
       const response = await axios.post(`${baseUrl}/auth/google`, {
         email: selectedEmail,

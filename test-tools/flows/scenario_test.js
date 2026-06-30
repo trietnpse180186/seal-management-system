@@ -1,6 +1,6 @@
-module.paths.push('c:/Users/Triet/MyProject/seal-management-system/server/node_modules');
-const mongoose = require('mongoose');
 const path = require('path');
+module.paths.push(path.join(__dirname, '../../server/node_modules'));
+const mongoose = require('mongoose');
 require('dotenv').config({ path: path.join(__dirname, '../../server/.env') });
 
 async function clearDatabase() {

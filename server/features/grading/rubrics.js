@@ -57,7 +57,7 @@ async function getCriteriaSum(rubricId) {
   );
 }
 
-function styleWorksheet(ws) {
+function styleWorksheet(ws, headerRowsCount = 2) {
   if (!ws['!ref']) return;
   const range = XLSX.utils.decode_range(ws['!ref']);
   
@@ -74,7 +74,7 @@ function styleWorksheet(ws) {
       }
       
       const cell = ws[cellRef];
-      const isHeader = r < 2;
+      const isHeader = r < headerRowsCount;
       
       cell.s = {
         border: {
@@ -799,88 +799,84 @@ router.get('/template/download', authenticateToken, async (req, res) => {
   try {
     const wb = XLSX.utils.book_new();
 
-    // Header row 1 + row 2 matching Template_Criteria (1).xlsx exactly
+    // Header row matching the new format exactly (1-row header)
     const headers = [
-      ["Mã tiêu chí", "Tiêu chí", "Trọng số (%)", "Các mức độ chấm điểm", "", "", ""],
-      ["", "", "", "Xuất sắc (9.0 - 10.0)", "Tốt (7.0 - 8.9)", "Đạt (5.0 - 6.9)", "Chưa đạt (0.0 - 4.9)"]
+      ["Mã", "Tiêu chí", "Trọng số", "Điểm 5", "Điểm 4", "Điểm 3", "Điểm 2", "Điểm 1"]
     ];
 
-    // Data rows matching Template_Criteria (1).xlsx exactly
+    // Data rows matching the new format exactly
     const sampleData = [
       [
-        "R1_01",
-        "Tính đúng đắn & Hoàn thiện chức năng",
-        30,
-        "Hoàn thành đầy đủ, kết quả đúng, hệ thống chạy ổn định",
-        "Hoàn thành phần lớn, ít lỗi nhỏ, kết quả cơ bản đúng",
-        "Hoàn thành một phần, còn lỗi, kết quả chưa ổn định",
-        "Không chạy được hoặc sai lệch nhiều"
+        "R2_01",
+        "Độ hoàn thiện và ổn định của sản phẩm",
+        0.25,
+        "Sản phẩm hoàn thiện, hoạt động ổn định, xử lý đầy đủ các luồng chính và vượt qua tốt kịch bản đánh giá.",
+        "Sản phẩm tương đối hoàn thiện; có lỗi nhỏ nhưng không ảnh hưởng lớn đến kết quả.",
+        "Có đầy đủ chức năng chính nhưng còn lỗi hoặc thiếu một số phần phụ.",
+        "Sản phẩm chưa hoàn thiện; lỗi xảy ra thường xuyên và ảnh hưởng đến quá trình sử dụng.",
+        "Sản phẩm không thể vận hành hoặc không đủ chức năng để đánh giá."
       ],
       [
-        "R1_02",
-        "Ứng dụng AI trong giải pháp",
-        25,
-        "AI tích hợp hợp lý, có giá trị rõ ràng trong SDLC",
-        "Có ứng dụng AI nhưng còn hạn chế về chiều sâu",
-        "Ứng dụng AI ở mức cơ bản, chưa thể hiện vai trò rõ",
-        "Không có ứng dụng AI hoặc chỉ dừng ở hình thức"
+        "R2_02",
+        "Năng lực phân tích và hỗ trợ quyết định của AI",
+        0.25,
+        "AI phân tích chính xác, xác định được bất thường hoặc rủi ro, hỗ trợ chẩn đoán và đề xuất hành động phù hợp.",
+        "AI hỗ trợ tốt việc phân tích và ra quyết định; còn hạn chế nhỏ về độ sâu hoặc tính nhất quán.",
+        "AI đưa ra kết quả cơ bản nhưng còn chung chung hoặc giá trị hỗ trợ quyết định chưa cao.",
+        "Kết quả phân tích thiếu chính xác; đề xuất chưa hợp lý khó áp dụng.",
+        "AI không hỗ trợ hiệu quả cho việc phân tích hoặc ra quyết định."
       ],
       [
-        "R1_03",
-        "Thiết kế & Kiến trúc phần mềm",
-        15,
-        "Kiến trúc rõ ràng, có sơ đồ minh họa, dễ mở rộng",
-        "Kiến trúc hợp lý nhưng chưa tối ưu",
-        "Có kiến trúc nhưng rời rạc, thiếu minh họa",
-        "Không có thiết kế/khó hiểu"
+        "R2_03",
+        "Độ tin cậy, an toàn và khả năng giải thích",
+        0.20,
+        "Kết quả AI có thể kiểm chứng; hệ thống giải thích rõ cơ sở phân tích, xử lý tốt dữ liệu bất thường và hạn chế cảnh báo sai.",
+        "Kết quả nhìn chung đáng tin cậy; có khả năng giải thích nhưng chưa đầy đủ ở một số tình huống.",
+        "Có kiểm soát cơ bản nhưng giải thích còn hạn chế; đôi lúc xuất hiện kết quả thiếu nhất quán.",
+        "Thiếu cơ chế kiểm chứng; cảnh báo sai hoặc kết quả khó giải thích.",
+        "Kết quả không đáng tin cậy; không có khả năng giải thích hoặc kiểm soát lỗi."
       ],
       [
-        "R1_04",
-        "Thuyết trình & Demo",
-        20,
-        "Trình bày rõ ràng, demo mượt, trả lời phản biện xuất sắc",
-        "Trình bày tốt, demo chạy được, trả lời khá tốt",
-        "Thuyết trình cơ bản, demo hạn chế, trả lời chưa thuyết phục",
-        "Thuyết trình rời rạc, demo thất bại"
+        "R2_04",
+        "Tính sáng tạo, khả năng mở rộng và ứng dụng thực tế",
+        0.15,
+        "Giải pháp có điểm khác biệt rõ ràng; kiến trúc có thể mở rộng và có tiềm năng triển khai thực tế cao.",
+        "Có yếu tố sáng tạo; phương án mở rộng và ứng dụng tương đối khả thi.",
+        "Giải pháp an toàn, phổ biến; khả năng mở rộng và ứng dụng ở mức chấp nhận được.",
+        "Ít sáng tạo; phương án mở rộng chưa rõ ràng hoặc khó triển khai thực tế.",
+        "Không có điểm mới; không thể mở rộng hoặc áp dụng trong thực tế."
       ],
       [
-        "R1_05",
-        "Teamwork & Tinh thần làm việc",
-        10,
-        "Phân công hợp lý, teamwork mượt mà",
-        "Có phối hợp nhưng chưa thật sự đồng đều",
-        "Teamwork ở mức tối thiểu, chưa thể hiện sự ăn ý",
-        "Không phối hợp, chỉ 1–2 người làm chính"
+        "R2_05",
+        "Kỹ năng Demo, trình bày và phản biện",
+        0.15,
+        "Demo trôi chảy; trình bày thuyết phục; trả lời rõ ràng và bảo vệ tốt các quyết định kỹ thuật, sản phẩm.",
+        "Demo và trình bày tốt; trả lời được phần lớn câu hỏi nhưng còn thiếu chiều sâu ở một số nội dung.",
+        "Trình bày ở mức cơ bản; trả lời được các câu hỏi trực tiếp nhưng phản biện còn hạn chế.",
+        "Demo thiếu ổn định; trình bày rời rạc, lúng túng khi trả lời câu hỏi.",
+        "Không demo hoặc không trả lời được các câu hỏi chính của Ban Giám khảo."
       ]
     ];
 
     const wsData = [...headers, ...sampleData];
     const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-    // Set merged cells for header
-    ws['!merges'] = [
-      // "Các mức độ chấm điểm" merged across D1:G1
-      { s: { r: 0, c: 3 }, e: { r: 0, c: 6 } },
-      // "Mã tiêu chí" merged A1:A2
-      { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } },
-      // "Tiêu chí" merged B1:B2
-      { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } },
-      // "Trọng số (%)" merged C1:C2
-      { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } },
-    ];
+    // No merged cells in the new template
+    ws['!merges'] = [];
 
     // Set column widths
     ws['!cols'] = [
-      { wch: 15 }, // A - Mã tiêu chí
-      { wch: 30 }, // B - Tiêu chí
-      { wch: 14 }, // C - Trọng số
-      { wch: 25 }, // D - Xuất sắc
-      { wch: 25 }, // E - Tốt
-      { wch: 25 }, // F - Đạt
-      { wch: 25 }, // G - Chưa đạt
+      { wch: 10 }, // A - Mã
+      { wch: 35 }, // B - Tiêu chí
+      { wch: 12 }, // C - Trọng số
+      { wch: 30 }, // D - Điểm 5
+      { wch: 30 }, // E - Điểm 4
+      { wch: 30 }, // F - Điểm 3
+      { wch: 30 }, // G - Điểm 2
+      { wch: 30 }, // H - Điểm 1
     ];
 
-    styleWorksheet(ws);
+    styleWorksheet(ws, 1);
 
     XLSX.utils.book_append_sheet(wb, ws, 'R1_Rubrics');
 
@@ -1038,37 +1034,97 @@ router.post('/:rubricId/import-criteria', authenticateToken, upload.single('file
     const sheet = workbook.Sheets[sheetName];
     const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
 
-    if (rawData.length < 3) {
+    if (rawData.length < 2) {
       return res.status(400).json({
-        message: 'File Excel phải có ít nhất 2 hàng header và 1 hàng dữ liệu.',
+        message: 'File Excel không đúng định dạng mẫu tiêu chí.',
       });
     }
 
-    // 4. Parse grading levels from row 2 (index 1)
-    const headerRow2 = rawData[1];
-    const gradingLevelDefs = [];
-    const gradingLevelRegex = /^(.+?)\s*\(\s*([\d.]+)\s*-\s*([\d.]+)\s*\)$/;
+    // Auto-detect header format:
+    // If the first cell of row 2 (index 1) is a valid criteria code or is not "mã", it is a 1-header file
+    const cell0 = String(rawData[0][0] || '').trim().toLowerCase();
+    const cell1 = String(rawData[1][0] || '').trim().toUpperCase();
+    const isOneHeader = cell0 === 'mã' && (cell1.match(/^[A-Z0-9_-]+$/) || cell1 !== 'mã');
 
-    for (let col = 3; col < headerRow2.length; col++) {
-      const headerVal = String(headerRow2[col] || '').trim();
-      if (!headerVal) continue; // skip empty columns
-
-      const match = headerVal.match(gradingLevelRegex);
-      if (!match) {
+    let headerRow;
+    let dataStartIdx;
+    if (isOneHeader) {
+      headerRow = rawData[0];
+      dataStartIdx = 1;
+    } else {
+      if (rawData.length < 3) {
         return res.status(400).json({
-          message: `Cột ${String.fromCharCode(65 + col)} header mức chấm không đúng format. Yêu cầu: "Tên mức (min - max)", ví dụ: "Xuất sắc (9.0 - 10.0)". Giá trị hiện tại: "${headerVal}"`,
+          message: 'File Excel dạng 2 dòng header phải có ít nhất 2 hàng header và 1 hàng dữ liệu.',
         });
       }
+      headerRow = rawData[1];
+      dataStartIdx = 2;
+    }
 
+    // 4. Parse grading levels from headerRow starting from column index 3 (Col D)
+    const gradingLevelDefs = [];
+    const gradingLevelRegex = /^(.+?)\s*\(\s*([\d.]+)\s*-\s*([\d.]+)\s*\)$/;
+    const diemRegex = /^Điểm\s*([\d.]+)$/i;
+    const numericRegex = /^([\d.]+)$/;
+
+    for (let col = 3; col < headerRow.length; col++) {
+      const headerVal = String(headerRow[col] || '').trim();
+      if (!headerVal) continue; // skip empty columns
+
+      // Try matching old format: "Xuất sắc (9.0 - 10.0)"
+      let match = headerVal.match(gradingLevelRegex);
+      if (match) {
+        gradingLevelDefs.push({
+          colIndex: col,
+          label: match[1].trim(),
+          minScore: parseFloat(match[2]),
+          maxScore: parseFloat(match[3]),
+        });
+        continue;
+      }
+
+      // Try matching new format: "Điểm 5"
+      match = headerVal.match(diemRegex);
+      if (match) {
+        const score = parseFloat(match[1]);
+        gradingLevelDefs.push({
+          colIndex: col,
+          label: `Điểm ${score}`,
+          minScore: score,
+          maxScore: score,
+        });
+        continue;
+      }
+
+      // Try matching plain number: "5"
+      match = headerVal.match(numericRegex);
+      if (match) {
+        const score = parseFloat(match[1]);
+        gradingLevelDefs.push({
+          colIndex: col,
+          label: `Điểm ${score}`,
+          minScore: score,
+          maxScore: score,
+        });
+        continue;
+      }
+
+      // Default fallback
       gradingLevelDefs.push({
         colIndex: col,
-        label: match[1].trim(),
-        minScore: parseFloat(match[2]),
-        maxScore: parseFloat(match[3]),
+        label: headerVal,
+        minScore: 0,
+        maxScore: 0,
       });
     }
 
-    // 5. Parse data rows (from row 3 onward, index 2+)
+    if (gradingLevelDefs.length === 0) {
+      return res.status(400).json({
+        message: 'Không tìm thấy định nghĩa mức điểm nào bắt đầu từ cột D.',
+      });
+    }
+
+    // 5. Parse data rows
     const existingCriteria = await Criterion.find({ rubricId: rubric._id });
 
     const toImport = [];
@@ -1076,7 +1132,7 @@ router.post('/:rubricId/import-criteria', authenticateToken, upload.single('file
     let newWeightSum = 0;
     let nextOrder = 1;
 
-    for (let rowIdx = 2; rowIdx < rawData.length; rowIdx++) {
+    for (let rowIdx = dataStartIdx; rowIdx < rawData.length; rowIdx++) {
       const row = rawData[rowIdx];
       const rowNum = rowIdx + 1; // 1-based for user display
 
@@ -1099,7 +1155,19 @@ router.post('/:rubricId/import-criteria', authenticateToken, upload.single('file
         continue;
       }
 
-      const weight = Number(weightRaw);
+      // Parse weight intelligently
+      let weight = NaN;
+      const weightRawStr = String(weightRaw || '').trim();
+      if (weightRawStr.endsWith('%')) {
+        weight = parseFloat(weightRawStr);
+      } else {
+        weight = Number(weightRaw);
+        if (!isNaN(weight) && weight > 0 && weight <= 1.0) {
+          // Auto-convert decimal fraction (0.25) to percentage (25)
+          weight = weight * 100;
+        }
+      }
+
       if (isNaN(weight) || weight <= 0) {
         errors.push(`Dòng ${rowNum}: Trọng số không hợp lệ (cột C). Giá trị: "${weightRaw}"`);
         continue;
@@ -1111,7 +1179,7 @@ router.post('/:rubricId/import-criteria', authenticateToken, upload.single('file
         continue;
       }
 
-      // Build grading levels for this row and validate none are empty
+      // Build grading levels for this row
       let missingLevel = false;
       const gradingLevels = [];
       for (const def of gradingLevelDefs) {
@@ -1255,45 +1323,38 @@ router.get('/:rubricId/export-criteria', authenticateToken, async (req, res) => 
     // 2. Load criteria
     const criteria = await Criterion.find({ rubricId: rubric._id }).sort({ order: 1 });
 
-    // 3. Extract grading level definitions
+    // 3. Define grading levels for this rubric (based on existing criteria if possible)
     let gradingLevelDefs = [];
-    const firstWithLevels = criteria.find(c => c.gradingLevels && c.gradingLevels.length > 0);
-    if (firstWithLevels) {
-      gradingLevelDefs = firstWithLevels.gradingLevels.map(lvl => ({
+    if (criteria.length > 0 && criteria[0].gradingLevels && criteria[0].gradingLevels.length > 0) {
+      // Use existing labels and score mapping
+      gradingLevelDefs = criteria[0].gradingLevels.map(lvl => ({
         label: lvl.label,
         minScore: lvl.minScore,
         maxScore: lvl.maxScore
       }));
     } else {
-      // Default fallback grading levels definitions
+      // Default fallback grading levels definitions (new 5-point scale)
       gradingLevelDefs = [
-        { label: 'Xuất sắc', minScore: 9.0, maxScore: 10.0 },
-        { label: 'Tốt', minScore: 7.0, maxScore: 8.9 },
-        { label: 'Đạt', minScore: 5.0, maxScore: 6.9 },
-        { label: 'Chưa đạt', minScore: 0.0, maxScore: 4.9 }
+        { label: 'Điểm 5', minScore: 5.0, maxScore: 5.0 },
+        { label: 'Điểm 4', minScore: 4.0, maxScore: 4.0 },
+        { label: 'Điểm 3', minScore: 3.0, maxScore: 3.0 },
+        { label: 'Điểm 2', minScore: 2.0, maxScore: 2.0 },
+        { label: 'Điểm 1', minScore: 1.0, maxScore: 1.0 }
       ];
     }
 
     // 4. Create Workbook & Worksheet
     const wb = XLSX.utils.book_new();
 
-    // Headers Construction
-    const row1 = ['Mã tiêu chí', 'Tiêu chí', 'Trọng số (%)', 'Các mức độ chấm điểm'];
-    for (let i = 1; i < gradingLevelDefs.length; i++) {
-      row1.push(''); // spacing for merges
-    }
-
-    const row2 = ['', '', ''];
-    for (const def of gradingLevelDefs) {
-      row2.push(`${def.label} (${def.minScore.toFixed(1)} - ${def.maxScore.toFixed(1)})`);
-    }
-
-    const headers = [row1, row2];
+    // Headers Construction (new 1-row header format)
+    const headers = [['Mã', 'Tiêu chí', 'Trọng số', ...gradingLevelDefs.map(def => def.label)]];
 
     // Data rows
     const dataRows = [];
     for (const c of criteria) {
-      const row = [c.code, c.name, c.weight];
+      // Divide weight by 100 to output decimal if it's stored as percentage (e.g. 25 -> 0.25)
+      const formattedWeight = c.weight > 1 ? c.weight / 100 : c.weight;
+      const row = [c.code, c.name, formattedWeight];
       for (const def of gradingLevelDefs) {
         const match = c.gradingLevels && c.gradingLevels.find(
           lvl => lvl.label === def.label &&
@@ -1308,25 +1369,20 @@ router.get('/:rubricId/export-criteria', authenticateToken, async (req, res) => 
     const wsData = [...headers, ...dataRows];
     const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-    // Dynamic Merging rules
-    ws['!merges'] = [
-      { s: { r: 0, c: 3 }, e: { r: 0, c: 3 + gradingLevelDefs.length - 1 } }, // merging "Các mức độ chấm điểm" header
-      { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } }, // "Mã tiêu chí" header merge
-      { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } }, // "Tiêu chí" header merge
-      { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } }, // "Trọng số (%)" header merge
-    ];
+    // No merged cells in the new template
+    ws['!merges'] = [];
 
     // Columns width
     ws['!cols'] = [
-      { wch: 15 }, // A
-      { wch: 30 }, // B
-      { wch: 14 }, // C
+      { wch: 10 }, // A - Mã
+      { wch: 35 }, // B - Tiêu chí
+      { wch: 12 }, // C - Trọng số
     ];
     for (let i = 0; i < gradingLevelDefs.length; i++) {
-      ws['!cols'].push({ wch: 25 });
+      ws['!cols'].push({ wch: 30 });
     }
 
-    styleWorksheet(ws);
+    styleWorksheet(ws, 1);
 
     const sanitizedSheetName = rubric.name.substring(0, 30).replace(/[*?:\\/\[\]]/g, '') || 'Criteria';
     XLSX.utils.book_append_sheet(wb, ws, sanitizedSheetName);

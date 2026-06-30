@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare } from 'lucide-react';
+import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare, FileText, Download } from 'lucide-react';
 import RegisterTeam from './RegisterTeam';
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
@@ -28,7 +28,7 @@ export default function TeamArea() {
 
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  const [openingExam, setOpeningExam] = useState(false);
+
 
   const round = data?.team?.trackId?.roundId;
 
@@ -50,22 +50,7 @@ export default function TeamArea() {
     return () => clearInterval(timer);
   }, [round?.startTime]);
 
-  const handleOpenExamAccess = async () => {
-    try {
-      setOpeningExam(true);
-      const res = await axios.get('http://localhost:5000/api/teams/my-team/exam-access', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.data?.accessUrl) {
-        window.open(res.data.accessUrl, '_blank', 'noopener,noreferrer');
-        toast.success('Đã mở Google Drive. Dùng email đã đăng ký để đăng nhập Google.');
-      }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Không thể mở đề bài.');
-    } finally {
-      setOpeningExam(false);
-    }
-  };
+
 
   const getRemainingTimeText = (startTimeStr: string) => {
     const diff = new Date(startTimeStr).getTime() - currentTime.getTime();
@@ -308,11 +293,50 @@ export default function TeamArea() {
         {/* Left Side: Topic Submission & Members info */}
         <div className="lg:col-span-1 space-y-8">
 
+          {/* Event Rules & PDF Info Card */}
+          <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all space-y-4">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2 font-mono-tech">
+              <FileText size={18} className="text-cyan-400" />
+              <span className="text-cyan-400">[THÔNG_TIN_CUỘC_THI]</span>
+            </h2>
+            <div className="space-y-3 text-xs font-sans text-slate-300">
+              <div>
+                <span className="text-[10px] text-slate-550 block font-mono font-bold uppercase tracking-wider">Chủ đề chính</span>
+                <p className="font-bold text-white font-mono mt-0.5">AI-Driven Smart Operations</p>
+                <p className="text-[10px] text-slate-450 italic mt-0.5 leading-relaxed font-mono uppercase">Turning Real-Time IoT Data into Intelligent Actions</p>
+              </div>
+              <div className="border-t border-slate-850 pt-2">
+                <span className="text-[10px] text-slate-550 block font-mono font-bold uppercase tracking-wider">Cơ cấu & Lộ trình</span>
+                <p className="mt-0.5 leading-relaxed">
+                  Gồm 3 Track chuyên môn. Vòng bảng chấm điểm AI &amp; thuyết trình 5 phút (QA 3 phút). 02 đội điểm cao nhất mỗi bảng sẽ bước vào Vòng chung kết (Tổng cộng 06 đội).
+                </p>
+              </div>
+              <div className="border-t border-slate-850 pt-2">
+                <span className="text-[10px] text-slate-550 block font-mono font-bold uppercase tracking-wider">Tiêu chí Vòng bảng</span>
+                <ul className="mt-0.5 space-y-0.5 text-slate-400">
+                  <li>• Xử lý dữ liệu thực tế: <strong className="text-cyan-400">30%</strong></li>
+                  <li>• Hiệu quả ứng dụng AI: <strong className="text-cyan-400">30%</strong></li>
+                  <li>• Phù hợp Domain &amp; UX: <strong className="text-cyan-400">20%</strong></li>
+                  <li>• Ý tưởng &amp; Pitching: <strong className="text-cyan-400">20%</strong></li>
+                </ul>
+              </div>
+            </div>
+            <a
+              href="http://localhost:5000/THÔNG%20TIN%20VỀ%20CUỘC%20THI.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-cyan-400 hover:text-cyan-300 text-xs font-bold font-mono py-2.5 rounded-xl transition-colors cursor-pointer"
+            >
+              <Download size={14} />
+              <span>Tải Thể Lệ PDF</span>
+            </a>
+          </div>
+
           {/* Exam & Materials from BTC */}
           <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all">
             <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2 font-mono-tech">
               <BookOpen size={18} className="text-cyan-400" />
-              <span className="text-cyan-400">[ĐỀ_BÀI_&_TÀI_LIỆU_THI]</span>
+              <span className="text-cyan-400">[ĐỀ_BÀI_&amp;_TÀI_LIỆU_THI]</span>
             </h2>
             {round?.startTime && new Date(round.startTime) > currentTime ? (
               <div className="text-center py-4 space-y-2">
@@ -328,21 +352,25 @@ export default function TeamArea() {
               </div>
             ) : round?.hasExamMaterial && round?.examOpened ? (
               <div className="space-y-3">
-                <div className="p-3 bg-slate-900/50 rounded-xl border border-slate-800">
-                  <p className="text-xs font-bold text-white">{round.driveFileName || `Đề vòng ${round.name}`}</p>
-                  <p className="text-[9px] text-slate-500 font-sans mt-1">
-                    Chỉ thành viên đội đã xác nhận — email Google phải trùng email đăng ký.
+                <div className="p-3 bg-emerald-950/30 rounded-xl border border-emerald-800/40">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <p className="text-xs font-bold text-emerald-400">ĐỀ BÀI ĐÃ MỞ</p>
+                  </div>
+                  <p className="text-xs font-semibold text-white">{round.driveFileName || `Đề vòng ${round.name}`}</p>
+                  <p className="text-[9px] text-slate-400 font-sans mt-1">
+                    Click nút bên dưới để mở tài liệu trên Google Drive.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleOpenExamAccess}
-                  disabled={openingExam}
-                  className="w-full flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-60 text-white text-xs font-bold uppercase py-3 rounded-xl transition-colors"
+                <a
+                  href={round.driveFileUrl || "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase py-3 rounded-xl transition-colors shadow-lg shadow-cyan-600/20 text-center"
                 >
                   <BookOpen size={16} />
-                  {openingExam ? 'Đang mở...' : 'Mở đề & tài liệu (Google Drive)'}
-                </button>
+                  Mở đề & tài liệu (Google Drive)
+                </a>
               </div>
             ) : round?.hasExamMaterial ? (
               <p className="text-xs text-slate-500 italic py-2 text-center font-sans">

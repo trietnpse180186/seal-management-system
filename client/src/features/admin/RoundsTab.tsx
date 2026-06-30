@@ -13,6 +13,7 @@ interface RoundsTabProps {
   setSelectedTrack: (track: any) => void;
   selectedRubricRoundId: string;
   setSelectedRubricRoundId: (id: string) => void;
+  fetchEventDetails: () => Promise<void>;
   handleAdvanceRound: (roundId: string) => Promise<void>;
   handleLockRound: (roundId: string) => Promise<void>;
   handleDeleteRound?: (roundId: string) => void;
@@ -21,12 +22,8 @@ interface RoundsTabProps {
   // Create Round form props
   roundName: string;
   setRoundName: (val: string) => void;
-  roundOrder: string;
-  setRoundOrder: (val: string) => void;
   roundDeadline: string;
   setRoundDeadline: (val: string) => void;
-  roundLimit: string;
-  setRoundLimit: (val: string) => void;
   rubricTypeOption: "new" | "existing";
   setRubricTypeOption: (val: "new" | "existing") => void;
   existingRubrics: any[];
@@ -113,12 +110,8 @@ export default function RoundsTab({
 
   roundName,
   setRoundName,
-  roundOrder,
-  setRoundOrder,
   roundDeadline,
   setRoundDeadline,
-  roundLimit,
-  setRoundLimit,
   rubricTypeOption,
   setRubricTypeOption,
   existingRubrics,
@@ -189,23 +182,29 @@ export default function RoundsTab({
   const [editingRound, setEditingRound] = useState<any | null>(null);
   const [editRoundNameInput, setEditRoundNameInput] = useState("");
   const [editRoundOrderInput, setEditRoundOrderInput] = useState("1");
-  const [editRoundTopNInput, setEditRoundTopNInput] = useState("3");
 
   const handleOpenEditRound = (e: React.MouseEvent, r: any) => {
     e.stopPropagation();
     setEditingRound(r);
     setEditRoundNameInput(r.name || "");
     setEditRoundOrderInput(String(r.order || 1));
-    setEditRoundTopNInput(String(r.advanceTopN || 3));
   };
 
   const handleSaveEditRound = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingRound || !handleUpdateRound) return;
+
+    if (editingRound.advanceTopN !== 0) {
+      const finalRound = rounds.find((r: any) => r.advanceTopN === 0);
+      if (finalRound && parseInt(editRoundOrderInput) >= finalRound.order) {
+        alert("Thứ tự của vòng thi này phải nhỏ hơn thứ tự của Vòng Chung Kết!");
+        return;
+      }
+    }
+
     await handleUpdateRound(editingRound._id, {
       name: editRoundNameInput,
       order: parseInt(editRoundOrderInput),
-      advanceTopN: parseInt(editRoundTopNInput),
     });
     setEditingRound(null);
   };
@@ -379,30 +378,80 @@ export default function RoundsTab({
         const sheet = workbook.Sheets[sheetName];
         const rawData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
 
-        if (rawData.length < 3) {
-          setImportError("File phải có ít nhất 2 hàng header và 1 hàng dữ liệu.");
-          return;
-        }
+        // Auto-detect header format:
+        // If the first cell of row 2 (index 1) is a valid criteria code or is not "mã", it is a 1-header file
+        const cell0 = String(rawData[0]?.[0] || '').trim().toLowerCase();
+        const cell1 = String(rawData[1]?.[0] || '').trim().toUpperCase();
+        const isOneHeader = cell0 === 'mã' && (cell1.match(/^[A-Z0-9_-]+$/) || cell1 !== 'mã');
 
-        // Parse grading level definitions from row 2 (index 1)
-        const headerRow2 = rawData[1];
-        const gradingLevelRegex = /^(.+?)\s*\(\s*([\d.]+)\s*-\s*([\d.]+)\s*\)$/;
-        const gradingDefs: any[] = [];
-
-        for (let col = 3; col < headerRow2.length; col++) {
-          const headerVal = String(headerRow2[col] || "").trim();
-          if (!headerVal) continue;
-          const match = headerVal.match(gradingLevelRegex);
-          if (!match) {
-            setImportError(`Cột ${String.fromCharCode(65 + col)} header mức chấm không đúng format. Yêu cầu: "Tên mức (min - max)". Giá trị: "${headerVal}"`);
-            setImportPreview(null);
+        let headerRow: any[];
+        let dataStartIdx: number;
+        if (isOneHeader) {
+          headerRow = rawData[0];
+          dataStartIdx = 1;
+        } else {
+          if (rawData.length < 3) {
+            setImportError("File phải có ít nhất 2 hàng header và 1 hàng dữ liệu.");
             return;
           }
+          headerRow = rawData[1];
+          dataStartIdx = 2;
+        }
+
+        // Parse grading level definitions from headerRow starting from column index 3 (Col D)
+        const gradingLevelRegex = /^(.+?)\s*\(\s*([\d.]+)\s*-\s*([\d.]+)\s*\)$/;
+        const diemRegex = /^Điểm\s*([\d.]+)$/i;
+        const numericRegex = /^([\d.]+)$/;
+        const gradingDefs: any[] = [];
+
+        for (let col = 3; col < headerRow.length; col++) {
+          const headerVal = String(headerRow[col] || "").trim();
+          if (!headerVal) continue;
+
+          // Try matching old format: "Xuất sắc (9.0 - 10.0)"
+          let match = headerVal.match(gradingLevelRegex);
+          if (match) {
+            gradingDefs.push({
+              colIndex: col,
+              label: match[1].trim(),
+              minScore: parseFloat(match[2]),
+              maxScore: parseFloat(match[3]),
+            });
+            continue;
+          }
+
+          // Try matching new format: "Điểm 5"
+          match = headerVal.match(diemRegex);
+          if (match) {
+            const score = parseFloat(match[1]);
+            gradingDefs.push({
+              colIndex: col,
+              label: `Điểm ${score}`,
+              minScore: score,
+              maxScore: score,
+            });
+            continue;
+          }
+
+          // Try matching plain number: "5"
+          match = headerVal.match(numericRegex);
+          if (match) {
+            const score = parseFloat(match[1]);
+            gradingDefs.push({
+              colIndex: col,
+              label: `Điểm ${score}`,
+              minScore: score,
+              maxScore: score,
+            });
+            continue;
+          }
+
+          // Default fallback
           gradingDefs.push({
             colIndex: col,
-            label: match[1].trim(),
-            minScore: parseFloat(match[2]),
-            maxScore: parseFloat(match[3]),
+            label: headerVal,
+            minScore: 0,
+            maxScore: 0,
           });
         }
 
@@ -413,13 +462,26 @@ export default function RoundsTab({
         const fileCodes = new Set<string>();
         const previewed: any[] = [];
 
-        for (let rowIdx = 2; rowIdx < rawData.length; rowIdx++) {
+        for (let rowIdx = dataStartIdx; rowIdx < rawData.length; rowIdx++) {
           const row = rawData[rowIdx];
           const code = String(row[0] || "").trim().toUpperCase();
           const name = String(row[1] || "").trim();
-          const weight = Number(row[2]);
+          const weightRaw = row[2];
 
           if (!code && !name && !row[2]) continue; // skip empty rows
+
+          // Parse weight intelligently
+          let weight = NaN;
+          const weightRawStr = String(weightRaw || '').trim();
+          if (weightRawStr.endsWith('%')) {
+            weight = parseFloat(weightRawStr);
+          } else {
+            weight = Number(weightRaw);
+            if (!isNaN(weight) && weight > 0 && weight <= 1.0) {
+              // Auto-convert decimal fraction (0.25) to percentage (25)
+              weight = weight * 100;
+            }
+          }
 
           const issues: string[] = [];
           if (!code) issues.push("Thiếu mã tiêu chí");
@@ -550,7 +612,7 @@ export default function RoundsTab({
             <ListOrdered size={16} className="text-cyan-400" />
             <span>Các Vòng thi (Sự kiện)</span>
           </h3>
-          <div className="space-y-2 mb-6 max-h-48 overflow-y-auto pr-1">
+          <div className="space-y-2 mb-6 pr-1">
             {rounds.map((r: any) => (
               <button
                 key={r._id}
@@ -563,9 +625,20 @@ export default function RoundsTab({
                   }`}
               >
                 <div>
-                  <p>{r.name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p>{r.name}</p>
+                    {r.hasCriteria === false && (
+                      <span 
+                        className="inline-flex items-center gap-0.5 bg-amber-950/70 text-amber-400 border border-amber-900/50 px-1 py-0.2 rounded text-[7px] font-bold tracking-wider uppercase shrink-0 font-sans"
+                        title="Vòng thi này chưa được cấu hình Tiêu chí chấm điểm (Rubric)"
+                      >
+                        <AlertTriangle size={8} className="shrink-0 text-amber-400" />
+                        Chưa cấu hình
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[9px] text-slate-500 mt-0.5">
-                    Thứ tự: {r.order} | Lấy Top: {r.advanceTopN}
+                    Thứ tự: {r.order}{r.advanceTopN === 0 ? " (Chung kết)" : ""}
                   </p>
                   <div className="flex flex-wrap gap-1 mt-1.5">
                     {tracks
@@ -641,33 +714,16 @@ export default function RoundsTab({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
-                Thứ tự vòng
-              </label>
-              <input
-                type="number"
-                required
-                placeholder="Thứ tự (e.g. 2)"
-                value={roundOrder}
-                onChange={(e) => setRoundOrder(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
-                Lấy Top N đội đi tiếp
-              </label>
-              <input
-                type="number"
-                required
-                placeholder="Lấy Top N (e.g. 5)"
-                value={roundLimit}
-                onChange={(e) => setRoundLimit(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
-              />
-            </div>
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
+              Thứ tự vòng
+            </label>
+            <input
+              type="text"
+              disabled
+              value={rounds.length > 0 ? rounds[rounds.length - 1].order : 1}
+              className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-900 border border-slate-850 text-slate-500 cursor-not-allowed font-bold"
+            />
           </div>
 
           {/* Rubric Configuration */}
@@ -751,6 +807,30 @@ export default function RoundsTab({
             className="w-full font-mono"
           />
         </div>
+
+        {(() => {
+          const currentSelectedRound = rounds.find((r: any) => r._id === selectedRubricRoundId);
+          const isSelectedRoundFinal = currentSelectedRound && 
+            (currentSelectedRound.name.includes("Chung Kết") || 
+             currentSelectedRound.name.includes("Chung kết") || 
+             currentSelectedRound.order === (rounds.length > 0 ? rounds[rounds.length - 1].order : -1));
+          const showWarning = isSelectedRoundFinal && criteria.length === 0;
+
+          if (showWarning) {
+            return (
+              <div className="flex items-start gap-2.5 bg-amber-500/10 border border-amber-500/25 p-3.5 rounded-xl text-xs text-amber-300 font-sans">
+                <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">Vòng Chung Kết chưa được cấu hình Rubric</p>
+                  <p className="text-[11px] text-amber-450/80 mt-0.5">
+                    Vui lòng thêm các tiêu chí chấm điểm bên dưới hoặc chọn import từ Excel để tiếp tục.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          return null;
+        })()}
 
         {selectedRubricRoundId ? (
           rubric ? (
@@ -1577,9 +1657,16 @@ export default function RoundsTab({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-300 mb-1">Thứ Tự Vòng <span className="text-rose-500">*</span></label>
+              <div>
+                <label className="block font-bold text-slate-300 mb-1">Thứ Tự Vòng <span className="text-rose-500">*</span></label>
+                {editingRound.advanceTopN === 0 ? (
+                  <input
+                    type="text"
+                    disabled
+                    value={editRoundOrderInput}
+                    className="w-full bg-slate-900 border border-slate-850 rounded-xl px-3 py-2 text-slate-500 cursor-not-allowed"
+                  />
+                ) : (
                   <input
                     type="number"
                     required
@@ -1588,17 +1675,7 @@ export default function RoundsTab({
                     onChange={(e) => setEditRoundOrderInput(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500"
                   />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-300 mb-1">Lấy Top N Đội</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={editRoundTopNInput}
-                    onChange={(e) => setEditRoundTopNInput(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500"
-                  />
-                </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">

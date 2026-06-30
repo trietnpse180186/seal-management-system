@@ -168,17 +168,11 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Thông tin đăng nhập không chính xác.' });
     }
 
-    // Check session concurrency: if user has active session and heartbeat is fresh (< 20 seconds)
-    if (user.activeSessionId && user.lastActiveAt && (Date.now() - new Date(user.lastActiveAt).getTime() < 20000)) {
-      const loginFailLog = new EventLog({
-        actorId: user._id,
-        action: 'login_failed',
-        type: 'login',
-        details: `Đăng nhập thất bại: Trùng lặp phiên đăng nhập với thiết bị khác cho email ${email}`
-      });
-      await loginFailLog.save();
+    // Check session concurrency: if user has active session and heartbeat is fresh (< 90 seconds)
+    if (!req.body.force && user.activeSessionId && user.lastActiveAt && (Date.now() - new Date(user.lastActiveAt).getTime() < 90000)) {
       return res.status(409).json({ 
-        message: 'Tài khoản này đang được đăng nhập ở nơi khác. Vui lòng đăng xuất ở thiết bị cũ hoặc đợi 20 giây.' 
+        message: 'Tài khoản này đang được đăng nhập ở nơi khác. Vui lòng đăng xuất ở thiết bị cũ.',
+        code: 'ACTIVE_SESSION_EXISTS'
       });
     }
 
@@ -500,9 +494,10 @@ router.post('/google', async (req, res) => {
     }
 
     // Check session concurrency
-    if (user.activeSessionId && user.lastActiveAt && (Date.now() - new Date(user.lastActiveAt).getTime() < 20000)) {
+    if (!req.body.force && user.activeSessionId && user.lastActiveAt && (Date.now() - new Date(user.lastActiveAt).getTime() < 90000)) {
       return res.status(409).json({ 
-        message: 'Tài khoản này đang được đăng nhập ở nơi khác. Vui lòng đăng xuất ở thiết bị cũ hoặc đợi 20 giây.' 
+        message: 'Tài khoản này đang được đăng nhập ở nơi khác. Vui lòng đăng xuất ở thiết bị cũ.',
+        code: 'ACTIVE_SESSION_EXISTS'
       });
     }
 
@@ -690,9 +685,10 @@ router.post('/github', async (req, res) => {
     }
 
     // Check session concurrency
-    if (user.activeSessionId && user.lastActiveAt && (Date.now() - new Date(user.lastActiveAt).getTime() < 20000)) {
+    if (!req.body.force && user.activeSessionId && user.lastActiveAt && (Date.now() - new Date(user.lastActiveAt).getTime() < 90000)) {
       return res.status(409).json({ 
-        message: 'Tài khoản này đang được đăng nhập ở nơi khác. Vui lòng đăng xuất ở thiết bị cũ hoặc đợi 20 giây.' 
+        message: 'Tài khoản này đang được đăng nhập ở nơi khác. Vui lòng đăng xuất ở thiết bị cũ.',
+        code: 'ACTIVE_SESSION_EXISTS'
       });
     }
 

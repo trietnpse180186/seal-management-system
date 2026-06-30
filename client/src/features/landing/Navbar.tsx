@@ -103,8 +103,8 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
         }
       };
       fetchNotifications();
-      // Polling every 15s as fallback
-      const interval = setInterval(fetchNotifications, 15000);
+      // Polling every 2m as fallback (Socket.io is active for real-time)
+      const interval = setInterval(fetchNotifications, 120000);
 
       // Real-time: connect socket to receive instant push notifications
       const token = localStorage.getItem("token");
@@ -182,7 +182,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
   };
 
   const isSystemAdmin = user?.isSystemAdmin;
-  const isCoordinator = roles?.some((r) => r.role === "coordinator") || isSystemAdmin;
+  const isCoordinator = !!isSystemAdmin;
   const isJudge = roles?.some((r) => r.role === "judge") || isSystemAdmin;
   const isMentor = roles?.some((r) => r.role === "mentor");
   const isParticipant =

@@ -38,7 +38,7 @@ export default function JudgeLayout({ user, onLogout }: JudgeLayoutProps) {
         }
       };
       fetchNotifications();
-      const interval = setInterval(fetchNotifications, 30000);
+      const interval = setInterval(fetchNotifications, 120000);
       return () => clearInterval(interval);
     }
   }, [user]);

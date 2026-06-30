@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { FolderKanban, ChevronRight, BookOpen, Users, Edit, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
+import { toast } from "sonner";
+import { FolderKanban, ChevronRight, BookOpen, Users, Edit, Trash2, ExternalLink } from "lucide-react";
 import { useConfirm } from "../shared/ConfirmDialog";
 import CustomSelect from "../shared/CustomSelect";
 
@@ -71,15 +73,47 @@ export default function TracksTab({
   handleRemoveRole,
   teamsList = [],
   allUsers = [],
-  token: _token,
-  fetchEventDetails: _fetchEventDetails,
+  token,
+  fetchEventDetails,
 }: TracksTabProps) {
   const [judgeEmail, setJudgeEmail] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [accountSuggestions, setAccountSuggestions] = useState<any[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [memberRole, setMemberRole] = useState<"judge" | "mentor">("judge");
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const confirm = useConfirm();
 
+  // Drive upload state
+  const [driveFileName, setDriveFileName] = useState("");
+  const [driveFileUrl, setDriveFileUrl] = useState("");
+  const [uploadingDrive, setUploadingDrive] = useState(false);
+
+  const handleUploadDriveForTrack = async () => {
+    if (!selectedTrack || !driveFileName || !driveFileUrl) return;
+    // Lấy roundId từ track đang chọn
+    const roundId = selectedTrack.roundId;
+    if (!roundId) {
+      toast.error("Bảng đấu này chưa được gắn vòng thi. Hãy gắn Round cho Track trước.");
+      return;
+    }
+    setUploadingDrive(true);
+    try {
+      await axios.post(
+        `http://localhost:5000/api/events/${selectedEvent._id}/upload-exam`,
+        { fileName: driveFileName, fileUrl: driveFileUrl, roundId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success(`Đã gắn link Drive cho bảng “${selectedTrack.name}”!`);
+      setDriveFileName("");
+      setDriveFileUrl("");
+      if (fetchEventDetails) fetchEventDetails();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Lỗi khi gắn link Drive.");
+    } finally {
+      setUploadingDrive(false);
+    }
+  };
 
 
   const maxEventTeams = selectedEvent?.maxTeams || 0;
@@ -92,12 +126,51 @@ export default function TracksTab({
       ((role.trackId?._id || role.trackId) === selectedTrack?._id)
   );
 
-  const filteredUsers = allUsers.filter(user => {
-    if (!judgeEmail) return false;
-    const emailLower = user.email.toLowerCase();
-    const queryLower = judgeEmail.toLowerCase();
-    return emailLower.includes(queryLower) && emailLower !== queryLower;
-  });
+  useEffect(() => {
+    const query = judgeEmail.trim();
+    if (!showSuggestions || query.length < 2 || !token || allUsers.length > 0) {
+      setAccountSuggestions([]);
+      setLoadingSuggestions(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timeoutId = window.setTimeout(async () => {
+      setLoadingSuggestions(true);
+      try {
+        const res = await axios.get(
+          `http://localhost:5000/api/auth/users?search=${encodeURIComponent(query)}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!cancelled) {
+          setAccountSuggestions((res.data || []).filter((user: any) => !user.isSystemAdmin));
+        }
+      } catch (err) {
+        if (!cancelled) setAccountSuggestions([]);
+      } finally {
+        if (!cancelled) setLoadingSuggestions(false);
+      }
+    }, 180);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [allUsers.length, judgeEmail, showSuggestions, token]);
+
+  const filteredUsers = useMemo(() => {
+    const query = judgeEmail.trim().toLowerCase();
+    if (!query) return [];
+
+    const sourceUsers = allUsers.length > 0 ? allUsers : accountSuggestions;
+    return sourceUsers
+      .filter((user: any) => {
+        const emailLower = String(user.email || "").toLowerCase();
+        const fullNameLower = String(user.fullName || "").toLowerCase();
+        return emailLower.includes(query) || fullNameLower.includes(query);
+      })
+      .slice(0, 6);
+  }, [accountSuggestions, allUsers, judgeEmail]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -286,17 +359,87 @@ export default function TracksTab({
 
       {/* Column 2: Attachments & Judges list stack */}
       <div className="space-y-6">
-        {/* Exam materials — moved to Round schedule tab */}
-        <div className="glass p-6 rounded-2xl border border-amber-500/20 bg-amber-500/5">
-          <h3 className="text-md font-bold text-white mb-2 flex items-center gap-1.5 font-mono">
-            <BookOpen size={16} className="text-amber-400" />
+        {/* Drive Upload Card — gắn link Drive cho bảng đấu đang chọn */}
+        <div className="glass p-6 rounded-2xl space-y-4">
+          <h3 className="text-md font-bold text-white flex items-center gap-1.5 font-mono border-b border-slate-800/80 pb-3">
+            <BookOpen size={16} className="text-cyan-400" />
             <span>Đề bài & Tài liệu</span>
+            {selectedTrack && (
+              <span className="ml-auto text-[9px] text-cyan-400 border border-cyan-500/30 bg-cyan-950/30 px-2 py-0.5 rounded font-mono uppercase tracking-wider">
+                {selectedTrack.name}
+              </span>
+            )}
           </h3>
-          <p className="text-[11px] text-slate-400 font-sans leading-relaxed">
-            Gắn <strong>1 link Google Drive cho cả vòng thi</strong> tại tab{" "}
-            <strong className="text-cyan-400">Thiết lập thời gian → Lịch trình vòng thi (Rounds)</strong>.
-            Hệ thống chỉ share Drive cho email thành viên đội đã xác nhận.
-          </p>
+
+          {!selectedTrack ? (
+            <p className="text-xs text-slate-500 italic text-center py-4 font-sans">
+              Chọn một bảng đấu ở cột bên trái để gắn link Drive.
+            </p>
+          ) : (() => {
+            // Lấy round của track đang chọn để hiển thị link hiện tại
+            const round = rounds.find((r: any) => r._id === selectedTrack.roundId);
+            const currentUrl = round?.driveFileUrl;
+            const currentName = round?.driveFileName;
+            return (
+              <div className="space-y-3">
+                {/* Hiển thị link đã gắn */}
+                {currentUrl ? (
+                  <div className="p-3 bg-emerald-950/30 rounded-xl border border-emerald-800/40 space-y-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <p className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">Đã gắn Drive</p>
+                    </div>
+                    <p className="text-xs font-semibold text-white">{currentName}</p>
+                    <a
+                      href={currentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[9px] text-cyan-400 hover:text-cyan-300 font-mono truncate max-w-full"
+                    >
+                      <ExternalLink size={10} />
+                      {currentUrl.length > 50 ? currentUrl.slice(0, 50) + "…" : currentUrl}
+                    </a>
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-amber-400 italic font-sans">
+                    Bảng này chưa có link Drive nào được gắn.
+                  </p>
+                )}
+
+                {/* Form upload mới */}
+                <div className="space-y-2.5 pt-2 border-t border-slate-800/60">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                    {currentUrl ? "Cập nhật link Drive:" : "Gắn link Drive:"}
+                  </p>
+                  <input
+                    type="text"
+                    placeholder="VD: Đề Vòng Sơ loại SU26"
+                    value={driveFileName}
+                    onChange={(e) => setDriveFileName(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl text-xs bg-slate-950 border border-slate-800 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="https://drive.google.com/drive/folders/..."
+                    value={driveFileUrl}
+                    onChange={(e) => setDriveFileUrl(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl text-xs bg-slate-950 border border-slate-800 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500"
+                  />
+                  <p className="text-[9px] text-amber-400 font-sans">
+                    Đặt Drive là <strong>"Anyone with the link"</strong> trước khi lưu.
+                  </p>
+                  <button
+                    type="button"
+                    disabled={uploadingDrive || !driveFileName || !driveFileUrl}
+                    onClick={handleUploadDriveForTrack}
+                    className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold text-xs py-2.5 rounded-xl uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    {uploadingDrive ? "Đang lưu..." : "Lưu link Drive"}
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Judge Assignment Card */}
@@ -435,17 +578,23 @@ export default function TracksTab({
                       onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                       className="w-full px-3 py-2.5 rounded-xl text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200 focus:outline-none focus:border-cyan-500"
                     />
-                    {showSuggestions && filteredUsers.length > 0 && (
+                    {showSuggestions && (loadingSuggestions || filteredUsers.length > 0) && (
                       <div className="absolute left-0 right-0 bottom-full mb-1 z-50 max-h-45 overflow-y-auto bg-slate-900 border border-slate-800 rounded-xl shadow-xl divide-y divide-slate-800/60">
-                        {filteredUsers.map((user) => (
+                        {loadingSuggestions && filteredUsers.length === 0 && (
+                          <div className="px-3 py-2 text-[10px] font-mono uppercase tracking-wider text-slate-500">
+                            Đang tìm tài khoản...
+                          </div>
+                        )}
+                        {filteredUsers.map((user: any) => (
                           <button
                             key={user._id}
                             type="button"
-                            onClick={() => {
+                            onMouseDown={(e) => {
+                              e.preventDefault();
                               setJudgeEmail(user.email);
                               setShowSuggestions(false);
                             }}
-                            className="w-full text-left px-3 py-2 text-xs font-mono hover:bg-slate-800 text-slate-300 hover:text-white transition-colors block"
+                            className="w-full text-left px-3 py-2 text-xs font-mono hover:bg-slate-800 text-slate-300 hover:text-white transition-colors block cursor-pointer"
                           >
                             <span className="font-semibold">{user.fullName}</span> ({user.email})
                           </button>

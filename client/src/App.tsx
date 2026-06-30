@@ -31,7 +31,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
   const location = useLocation();
   const isJudgeRoute = location.pathname.startsWith('/judge');
   const isAdminRoute = location.pathname.startsWith('/admin');
-  const isCoordinator = user?.isSystemAdmin || roles?.some((r: any) => r.role === 'coordinator');
+  const isCoordinator = !!user?.isSystemAdmin;
   const showChatWidget = user && !isJudgeRoute && (!isAdminRoute || isCoordinator);
 
   return (
@@ -42,7 +42,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
         <Routes>
           <Route path="/" element={
             user ? (
-              user.isSystemAdmin || roles.some((r: any) => r.role === 'coordinator') ? (
+              user.isSystemAdmin ? (
                 <Navigate to="/admin" />
               ) : roles.some((r: any) => r.role === 'judge') ? (
                 <Navigate to="/judge/dashboard" />
@@ -282,7 +282,7 @@ export default function App() {
       } catch (err) {
         console.error('Session heartbeat failed:', err);
       }
-    }, 10000);
+    }, 30000); // Poll once every 30 seconds to reduce traffic and database/Redis workload
 
     return () => clearInterval(interval);
   }, [user]);

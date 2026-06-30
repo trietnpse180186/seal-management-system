@@ -827,7 +827,8 @@ router.get('/my-team', authenticateToken, async (req, res) => {
 
 /**
  * @route   GET /api/teams/my-team/exam-access
- * @desc    Gated access to round exam Google Drive (registered confirmed members only)
+ * @desc    Trả về link Google Drive đề bài cho thành viên đội đã xác nhận.
+ *          Link Drive phải được admin set "Anyone with the link" — không cần OAuth cấp quyền.
  * @access  Private (Confirmed team member)
  */
 router.get('/my-team/exam-access', authenticateToken, async (req, res) => {
@@ -856,28 +857,21 @@ router.get('/my-team/exam-access', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: access.message, reason: access.reason });
     }
 
-    const round = access.round;
-    const shareResult = await ensureUserDriveAccess(round.driveFileId, access.user.email);
-    if (!shareResult.success) {
-      return res.status(502).json({
-        message: 'Không thể cấp quyền Google Drive cho email của bạn. Liên hệ BTC.',
-        detail: shareResult.error
-      });
-    }
-
-    const accessUrl = buildDriveUrl(round.driveFileId);
+    // Trả về link Drive trực tiếp — thí sinh click vào là mở được ngay
+    const accessUrl = access.accessUrl;
 
     res.json({
-      fileName: round.driveFileName,
+      fileName: access.round.driveFileName,
       accessUrl,
-      roundName: round.name,
-      message: 'Truy cập thành công. Hãy đăng nhập Google bằng cùng email đã đăng ký trên hệ thống.'
+      roundName: access.round.name,
+      message: 'Đề bài đã sẵn sàng. Nhấn vào link để mở Google Drive.'
     });
   } catch (error) {
     console.error('Exam Access Error:', error.message);
     res.status(500).json({ message: 'Lỗi khi mở đề bài.', detail: error.message });
   }
 });
+
 
 /**
  * @route   POST /api/teams/submit-topic

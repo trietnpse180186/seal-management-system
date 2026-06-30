@@ -675,7 +675,8 @@ router.post('/:eventId/rounds/:roundId/sync-drive-access', authenticateToken, as
 
 /**
  * @route   POST /api/events/:eventId/upload-exam
- * @desc    Save exam material — prefer roundId (one Drive link per round)
+ * @desc    Save exam material — Admin pastes a Google Drive URL directly (no OAuth needed).
+ *          The link should already be set to "Anyone with the link" on Drive.
  * @access  Private (Coordinator or Admin)
  */
 router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
@@ -683,7 +684,7 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
   const { trackId, fileName, fileUrl, roundId } = req.body;
 
   if (!fileName || !fileUrl) {
-    return res.status(400).json({ message: 'File name and URL are required.' });
+    return res.status(400).json({ message: 'Tên file và URL Drive là bắt buộc.' });
   }
 
   try {
@@ -695,10 +696,8 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
       if (!isCoord) return res.status(403).json({ message: 'Unauthorized.' });
     }
 
-    const driveFileId = extractDriveFileId(fileUrl);
-    if (!driveFileId) {
-      return res.status(400).json({ message: 'Không parse được ID từ link Google Drive. Kiểm tra lại URL.' });
-    }
+    // Try to extract Drive ID for display purposes only — not required
+    const driveFileId = extractDriveFileId(fileUrl) || null;
 
     if (roundId) {
       const round = await Round.findById(roundId);
@@ -708,7 +707,7 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
 
       round.driveFileId = driveFileId;
       round.driveFileName = fileName;
-      round.driveFileUrl = fileUrl;
+      round.driveFileUrl = fileUrl;   // ← Lưu URL gốc thẳng từ admin
       round.isDriveAccessSynced = false;
       round.driveSyncedEmailCount = 0;
       round.driveSyncErrors = [];
@@ -723,7 +722,7 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
       await newLog.save();
 
       return res.json({
-        message: 'Đã lưu đề bài cho vòng thi. Nhớ đồng bộ quyền Drive trước/sau giờ mở đề.',
+        message: 'Đã lưu link Drive cho vòng thi. Thí sinh sẽ click vào link này trực tiếp khi đến giờ mở đề.',
         round: sanitizeRoundForAdmin(round)
       });
     }
@@ -750,7 +749,7 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
     }
 
     res.json({
-      message: 'Lưu tài liệu legacy (theo track). Nên dùng roundId để gắn 1 link / vòng.',
+      message: 'Lưu tài liệu (theo track). Nên dùng roundId để gắn link Drive / vòng.',
       attachment: fileMeta
     });
 

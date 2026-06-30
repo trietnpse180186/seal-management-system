@@ -280,7 +280,7 @@ export default function App() {
       } catch (err) {
         console.error('Session heartbeat failed:', err);
       }
-    }, 10000);
+    }, 30000); // Poll once every 30 seconds to reduce traffic and database/Redis workload
 
     return () => clearInterval(interval);
   }, [user]);

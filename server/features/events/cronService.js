@@ -165,37 +165,29 @@ async function syncAllRepositories() {
   const activeRepos = await GithubRepository.find({ isArchived: false });
   console.log(`[CRON] Syncing ${activeRepos.length} repository/repositories...`);
 
-  const concurrencyLimit = 3;
-  const executing = [];
-
-  for (const repo of activeRepos) {
-    const p = (async () => {
+  if (githubAiQueue.isQueueAvailable()) {
+    // If BullMQ queue is active, enqueue all sync jobs. The sequential worker will throttle execution.
+    for (const repo of activeRepos) {
       try {
-        if (githubAiQueue.isQueueAvailable()) {
-          await githubAiQueue.addSyncJob(repo._id.toString());
-        } else {
-          await syncRepo(repo._id);
-        }
+        await githubAiQueue.addSyncJob(repo._id.toString());
+      } catch (err) {
+        console.error(`[CRON ERROR] Failed to enqueue repo ID ${repo._id}:`, err.message);
+      }
+    }
+  } else {
+    // Fallback sequential execution with a 12-second cooldown to stay under Gemini 5 RPM rate limit
+    for (const repo of activeRepos) {
+      try {
+        await syncRepo(repo._id);
+        console.log('[CRON] Fallback sync cooldown sleep for 12 seconds...');
+        await new Promise(resolve => setTimeout(resolve, 12000));
       } catch (err) {
         console.error(`[CRON ERROR] Failed syncing repo ID ${repo._id}:`, err.message);
       }
-    })();
-
-    executing.push(p);
-
-    const clean = () => {
-      const idx = executing.indexOf(p);
-      if (idx > -1) executing.splice(idx, 1);
-    };
-    p.then(clean, clean);
-
-    if (executing.length >= concurrencyLimit) {
-      await Promise.race(executing);
     }
   }
 
-  await Promise.all(executing);
-  console.log('[CRON] All repositories synced successfully.');
+  console.log('[CRON] All repositories sync processes completed.');
 }
 
 /**

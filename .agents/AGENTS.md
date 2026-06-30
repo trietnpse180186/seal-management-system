@@ -44,3 +44,9 @@ When adding any AI capabilities, structure your code according to these 6 layers
 
 For details on how to write code adhering to these rules, read:
 * **[SYSTEM_HARNESS_GUIDE.md](file:///c:/Users/Triet/MyProject/seal-management-system/SYSTEM_HARNESS_GUIDE.md)**
+
+---
+
+## 4. UI/UX & Design Constraints
+
+* **NO 3D/Colored Emojis or Icons**: Never use 3D-styled colored emoji/icon assets (such as 📥, 📤, or similar 3D colored emojis) in code or UI. Always use flat, outline, vector-based SVG icons (such as Lucide React icons like `Download`, `Upload`, etc.) to maintain a premium, clean, professional modern developer aesthetic.

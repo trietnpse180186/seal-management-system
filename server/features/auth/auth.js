@@ -147,10 +147,10 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Thông tin đăng nhập không chính xác.' });
     }
 
-    // Check session concurrency: if user has active session and heartbeat is fresh (< 20 seconds)
-    if (user.activeSessionId && user.lastActiveAt && (Date.now() - new Date(user.lastActiveAt).getTime() < 20000)) {
+    // Check session concurrency: if user has active session and heartbeat is fresh (< 90 seconds)
+    if (user.activeSessionId && user.lastActiveAt && (Date.now() - new Date(user.lastActiveAt).getTime() < 90000)) {
       return res.status(409).json({ 
-        message: 'Tài khoản này đang được đăng nhập ở nơi khác. Vui lòng đăng xuất ở thiết bị cũ hoặc đợi 20 giây.' 
+        message: 'Tài khoản này đang được đăng nhập ở nơi khác. Vui lòng đăng xuất ở thiết bị cũ hoặc đợi 90 giây.' 
       });
     }
 
@@ -462,9 +462,9 @@ router.post('/google', async (req, res) => {
     }
 
     // Check session concurrency
-    if (user.activeSessionId && user.lastActiveAt && (Date.now() - new Date(user.lastActiveAt).getTime() < 20000)) {
+    if (user.activeSessionId && user.lastActiveAt && (Date.now() - new Date(user.lastActiveAt).getTime() < 90000)) {
       return res.status(409).json({ 
-        message: 'Tài khoản này đang được đăng nhập ở nơi khác. Vui lòng đăng xuất ở thiết bị cũ hoặc đợi 20 giây.' 
+        message: 'Tài khoản này đang được đăng nhập ở nơi khác. Vui lòng đăng xuất ở thiết bị cũ hoặc đợi 90 giây.' 
       });
     }
 
@@ -652,9 +652,9 @@ router.post('/github', async (req, res) => {
     }
 
     // Check session concurrency
-    if (user.activeSessionId && user.lastActiveAt && (Date.now() - new Date(user.lastActiveAt).getTime() < 20000)) {
+    if (user.activeSessionId && user.lastActiveAt && (Date.now() - new Date(user.lastActiveAt).getTime() < 90000)) {
       return res.status(409).json({ 
-        message: 'Tài khoản này đang được đăng nhập ở nơi khác. Vui lòng đăng xuất ở thiết bị cũ hoặc đợi 20 giây.' 
+        message: 'Tài khoản này đang được đăng nhập ở nơi khác. Vui lòng đăng xuất ở thiết bị cũ hoặc đợi 90 giây.' 
       });
     }
 

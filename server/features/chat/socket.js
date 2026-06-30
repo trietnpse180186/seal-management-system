@@ -257,11 +257,14 @@ module.exports = {
       socket.on('coordinator_select_team', async (data) => {
         try {
           const { eventId, teamId, roundId } = data;
-          if (!eventId || !teamId) return;
+          if (!eventId) return;
 
           // Optional validation: check if user is coordinator or admin
           const EventRole = mongoose.model('EventRole');
-          const isAllowed = socket.decoded.isSystemAdmin || await EventRole.findOne({
+          const User = mongoose.model('User');
+          const userObj = await User.findById(userId).select('isSystemAdmin').lean();
+
+          const isAllowed = (userObj && userObj.isSystemAdmin) || await EventRole.findOne({
             userId,
             eventId,
             role: 'coordinator',

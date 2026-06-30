@@ -110,8 +110,6 @@ export default function AdminEvents({
   const [critWeight, setCritWeight] = useState("20");
   const [critDesc, setCritDesc] = useState("");
 
-  const [attachmentName, setAttachmentName] = useState("");
-  const [attachmentUrl, setAttachmentUrl] = useState("");
 
   const [eventRoles, setEventRoles] = useState<any[]>([]);
   const [teamsList, setTeamsList] = useState<any[]>([]);
@@ -1747,63 +1745,10 @@ export default function AdminEvents({
 
 
 
-  const handleUploadExam = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedEvent || !selectedRoundForSchedule) {
-      toast.error("Chọn vòng thi trước khi gắn link Drive.");
-      return;
-    }
-    setMessage({ type: "", text: "" });
-    setLoading(true);
+  // handleUploadExam removed — Drive upload moved to TracksTab component
 
-    try {
-      await axios.post(
-        `http://localhost:5000/api/events/${selectedEvent._id}/upload-exam`,
-        {
-          fileName: attachmentName,
-          fileUrl: attachmentUrl,
-          roundId: selectedRoundForSchedule._id,
-        },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      setAttachmentName("");
-      setAttachmentUrl("");
-      setMessage({ type: "success", text: "Lưu đề vòng thi thành công! Hãy đồng bộ quyền Drive." });
-      toast.success("Lưu đề vòng thi thành công!");
-      fetchEventDetails();
-    } catch (err: any) {
-      setMessage({
-        type: "error",
-        text: err.response?.data?.message || "Lỗi tải tài liệu.",
-      });
-      toast.error(err.response?.data?.message || "Lỗi tải tài liệu.");
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const handleSyncDriveAccess = async () => {
-    if (!selectedEvent || !selectedRoundForSchedule) return;
-    setLoading(true);
-    try {
-      const res = await axios.post(
-        `http://localhost:5000/api/events/${selectedEvent._id}/rounds/${selectedRoundForSchedule._id}/sync-drive-access`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      toast.success(res.data.message || "Đồng bộ Drive thành công!");
-      if (res.data.round) {
-        setSelectedRoundForSchedule(res.data.round);
-        setRounds((prev) =>
-          prev.map((r: any) => (r._id === res.data.round._id ? res.data.round : r))
-        );
-      }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Lỗi đồng bộ Google Drive.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // handleSyncDriveAccess removed — Drive links are now direct public links (no OAuth API needed)
 
   const handleAssignRoleForTrack = async (email: string, trackId: string, role: "judge" | "mentor" = "judge", teamId?: string) => {
     if (!selectedEvent) return;
@@ -2865,65 +2810,6 @@ export default function AdminEvents({
                           </button>
                         </div>
 
-                        <div className="border-t border-slate-800 pt-6 mt-6 space-y-4">
-                          <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-wider font-mono">
-                            Đề bài Google Drive (1 link / vòng)
-                          </h4>
-                          <p className="text-[10px] text-slate-500 font-sans leading-relaxed">
-                            Folder Drive phải <strong className="text-slate-300">Restricted</strong>. Hệ thống tự share reader cho email thành viên đội đã xác nhận.
-                          </p>
-                          {selectedRoundForSchedule.hasExamMaterial && (
-                            <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs">
-                              <p className="text-slate-300 font-bold">{selectedRoundForSchedule.driveFileName}</p>
-                              <p className="text-[10px] text-slate-500 mt-1 font-mono truncate">
-                                {selectedRoundForSchedule.driveFileUrl}
-                              </p>
-                              <p className="text-[10px] mt-2">
-                                Drive sync:{" "}
-                                <span className={selectedRoundForSchedule.isDriveAccessSynced ? "text-emerald-400" : "text-amber-400"}>
-                                  {selectedRoundForSchedule.driveSyncedEmailCount || 0} email
-                                  {selectedRoundForSchedule.isDriveAccessSynced ? " ✓" : " (chưa đồng bộ)"}
-                                </span>
-                              </p>
-                            </div>
-                          )}
-                          <div>
-                            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Tên tài liệu</label>
-                            <input
-                              type="text"
-                              placeholder="VD: Đề R1 SU26"
-                              value={attachmentName}
-                              onChange={(e) => setAttachmentName(e.target.value)}
-                              className="w-full px-3 py-2 rounded-xl text-xs bg-slate-950 border border-slate-850 text-slate-200"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Link Google Drive</label>
-                            <input
-                              type="text"
-                              placeholder="https://drive.google.com/drive/folders/..."
-                              value={attachmentUrl}
-                              onChange={(e) => setAttachmentUrl(e.target.value)}
-                              className="w-full px-3 py-2 rounded-xl text-xs bg-slate-950 border border-slate-850 text-slate-200"
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            disabled={loading || !attachmentName || !attachmentUrl}
-                            onClick={(e) => handleUploadExam(e as unknown as React.FormEvent)}
-                            className="w-full bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white font-bold text-xs py-2.5 rounded-xl uppercase tracking-wider"
-                          >
-                            Lưu link Drive cho vòng này
-                          </button>
-                          <button
-                            type="button"
-                            disabled={loading || !selectedRoundForSchedule.hasExamMaterial}
-                            onClick={handleSyncDriveAccess}
-                            className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs py-2.5 rounded-xl uppercase tracking-wider"
-                          >
-                            Đồng bộ quyền Drive (email đã đăng ký)
-                          </button>
-                        </div>
                       </>
                     )}
                   </form>

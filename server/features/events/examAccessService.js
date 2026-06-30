@@ -72,13 +72,16 @@ async function getEligibleUserIdsForRound(roundId) {
 }
 
 function isRoundExamOpen(round) {
-  if (!round?.driveFileId) return false;
+  // Phòng thi mở khi có link Drive (id hoặc url) và đã đến giờ
+  const hasMaterial = !!(round?.driveFileId || round?.driveFileUrl);
+  if (!hasMaterial) return false;
   if (!round.startTime) return true;
   return new Date() >= new Date(round.startTime);
 }
 
 /**
- * Sanitize round for participant API — never expose raw Drive URL/ID before access gate.
+ * Sanitize round for participant API.
+ * Chỉ expose driveFileUrl khi đề đã mở — không lộ link khi chưa đến giờ.
  */
 function sanitizeRoundForParticipant(round) {
   if (!round) return null;
@@ -93,9 +96,11 @@ function sanitizeRoundForParticipant(round) {
     startTime: plain.startTime,
     endTime: plain.endTime,
     gradingEndTime: plain.gradingEndTime,
-    hasExamMaterial: !!plain.driveFileId,
+    hasExamMaterial: !!(plain.driveFileId || plain.driveFileUrl),
     examOpened: opened,
     driveFileName: opened ? plain.driveFileName : null,
+    // Chỉ trả về URL khi được mở — frontend sẽ window.open() trực tiếp
+    driveFileUrl: opened ? plain.driveFileUrl : null,
     isDriveAccessSynced: plain.isDriveAccessSynced,
     driveSyncedEmailCount: plain.driveSyncedEmailCount
   };
@@ -114,6 +119,10 @@ function sanitizeRoundForAdmin(round) {
   };
 }
 
+/**
+ * Kiểm tra xem user có quyền xem đề bài không.
+ * Logic mới: Không cần match email — chỉ cần là thành viên đã xác nhận và đến giờ mở đề.
+ */
 async function canUserAccessRoundExam(userId, roundId) {
   const user = await User.findById(userId);
   if (!user || !user.isActive) {
@@ -125,7 +134,7 @@ async function canUserAccessRoundExam(userId, roundId) {
     return { ok: false, reason: 'not_found', message: 'Không tìm thấy vòng thi.' };
   }
 
-  if (!round.driveFileId) {
+  if (!round.driveFileUrl && !round.driveFileId) {
     return { ok: false, reason: 'no_material', message: 'Vòng thi chưa có đề bài được gắn.' };
   }
 
@@ -133,17 +142,10 @@ async function canUserAccessRoundExam(userId, roundId) {
     return { ok: false, reason: 'not_started', message: 'Đề bài chưa đến giờ mở.' };
   }
 
-  const eligibleEmails = await getEligibleEmailsForRound(roundId);
-  const userEmail = user.email.toLowerCase().trim();
-  if (!eligibleEmails.includes(userEmail)) {
-    return {
-      ok: false,
-      reason: 'not_eligible',
-      message: 'Email của bạn chưa được đăng ký tham gia vòng thi này (cần là thành viên đội đã xác nhận).'
-    };
-  }
+  // Link Drive được sử dụng trực tiếp, không cần cấp quyền theo email
+  const accessUrl = round.driveFileUrl || buildDriveUrl(round.driveFileId);
 
-  return { ok: true, round, user };
+  return { ok: true, round, user, accessUrl };
 }
 
 module.exports = {

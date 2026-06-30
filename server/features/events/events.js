@@ -236,14 +236,42 @@ router.get('/:id', async (req, res) => {
     }
 
     const tracks = await Track.find({ eventId: event._id });
-    const rounds = await Round.find({ eventId: event._id }).sort({ order: 1 });
+    let rounds = await Round.find({ eventId: event._id }).sort({ order: 1 });
 
-    const roundsWithRubricStatus = [];
     const Rubric = mongoose.model('Rubric');
     const Criterion = mongoose.model('Criterion');
+
+    // Self-healing: Check if a Final Round exists (advanceTopN === 0)
+    let hasFinalRound = rounds.some(r => r.advanceTopN === 0);
+    if (!hasFinalRound) {
+      const nextOrder = rounds.length > 0 ? (rounds[rounds.length - 1].order + 1) : 1;
+      const newFinalRound = new Round({
+        eventId: event._id,
+        name: 'Vòng Chung Kết',
+        order: nextOrder,
+        advanceTopN: 0,
+        status: 'pending'
+      });
+      await newFinalRound.save();
+
+      const rubricObj = new Rubric({
+        eventId: event._id,
+        roundId: newFinalRound._id,
+        name: 'Rubric Vòng Chung Kết',
+        totalWeight: 100,
+        maxCriterionScore: 10,
+        isLocked: false
+      });
+      await rubricObj.save();
+
+      // Re-fetch rounds
+      rounds = await Round.find({ eventId: event._id }).sort({ order: 1 });
+    }
+
+    const roundsWithRubricStatus = [];
     for (const r of rounds) {
       const rubric = await Rubric.findOne({ roundId: r._id });
-      const hasCriteria = rubric ? (await Criterion.exists({ rubricId: rubric._id })) !== null : false;
+      const hasCriteria = rubric ? (rubric.isLocked || (await Criterion.exists({ rubricId: rubric._id })) !== null) : false;
       roundsWithRubricStatus.push({
         ...sanitizeRoundForAdmin(r),
         hasCriteria
@@ -644,6 +672,30 @@ router.put('/:eventId/rounds/:roundId', authenticateToken, async (req, res) => {
 
     const round = await Round.findById(roundId);
     if (!round) return res.status(404).json({ message: 'Round not found.' });
+
+    // Validate Final Round constraints
+    if (round.advanceTopN === 0) {
+      if (advanceTopN !== undefined && parseInt(advanceTopN) !== 0) {
+        return res.status(400).json({ message: 'Không thể thay đổi số lượng đội đi tiếp của Vòng Chung Kết (phải là 0).' });
+      }
+      if (order !== undefined) {
+        const maxOtherRound = await Round.findOne({ eventId, _id: { $ne: roundId } }).sort({ order: -1 });
+        if (maxOtherRound && parseInt(order) <= maxOtherRound.order) {
+          return res.status(400).json({ message: 'Thứ tự của Vòng Chung Kết phải là lớn nhất trong tất cả các vòng.' });
+        }
+      }
+    } else {
+      // Validate intermediate round constraints
+      const finalRound = await Round.findOne({ eventId, advanceTopN: 0 });
+      if (finalRound) {
+        if (order !== undefined && parseInt(order) >= finalRound.order) {
+          return res.status(400).json({ message: 'Thứ tự của vòng thi này phải nhỏ hơn thứ tự của Vòng Chung Kết.' });
+        }
+        if (advanceTopN !== undefined && parseInt(advanceTopN) === 0) {
+          return res.status(400).json({ message: 'Chỉ có duy nhất một vòng chung kết.' });
+        }
+      }
+    }
 
     if (name !== undefined) round.name = name;
     if (order !== undefined) round.order = parseInt(order);

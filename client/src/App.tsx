@@ -263,22 +263,22 @@ export default function App() {
         }
 
         // B. Centralized Error Message Localization
-        let friendlyMessage = '';
-        if (!error.response) {
-          friendlyMessage = errorMessages.NETWORK_ERROR;
-        } else {
+        const getFriendlyMessage = () => {
+          if (!error.response) {
+            return errorMessages.NETWORK_ERROR;
+          }
           const statusCode = error.response.status;
           const responseData = error.response.data;
 
           // Priority 1: Backend detailed message
           if (responseData && typeof responseData.message === 'string') {
-            friendlyMessage = responseData.message;
+            return responseData.message;
           } 
           // Priority 2: Dictionary lookup by status code
-          else {
-            friendlyMessage = errorMessages[statusCode] || errorMessages.DEFAULT_ERROR;
-          }
-        }
+          return errorMessages[statusCode] || errorMessages.DEFAULT_ERROR;
+        };
+
+        const friendlyMessage = getFriendlyMessage();
 
         // Inject friendly message into the error object so all catches benefit automatically
         error.message = friendlyMessage;

@@ -65,9 +65,8 @@ export default function Hero({ user, roles }: HeroProps) {
             <span className="text-white">SEAL HACKATHON</span>
           </h1>
 
-          <p className="hero-desc text-on-surface-variant text-base sm:text-lg max-w-lg leading-relaxed mx-auto md:mx-0 font-sans opacity-0">
-            Khai phóng tiềm năng của bạn trong thử thách lập trình đại học đỉnh
-            cao. Sáng tạo giải pháp, làm chủ thuật toán và kiến tạo tương lai.
+          <p className="hero-desc text-on-surface-variant text-base sm:text-lg max-w-xl leading-relaxed mx-auto md:mx-0 font-sans opacity-0">
+            SEAL HACKATHON là cuộc thi học thuật và trải nghiệm công nghệ dành cho các sinh viên ngành Công nghệ thông tin từ Trường Đại học FPT tại TP.HCM và các trường Đại học khác trong địa bàn thành phố Hồ Chí Minh.
           </p>
 
           <div className="hero-btn pt-4 flex flex-col sm:flex-row gap-4 justify-center md:justify-start opacity-0">
@@ -83,15 +82,6 @@ export default function Hero({ user, roles }: HeroProps) {
               className="px-8 py-3.5 bg-cyan-300 text-black border border-cyan-300 rounded-sm text-xs font-bold uppercase tracking-widest text-center transition-all duration-300 hover:bg-transparent hover:text-cyan-300 hover:scale-105 active:scale-95 shadow-[inset_0_0_10px_rgba(0,240,255,0.1)] hover:shadow-[0_0_20px_rgba(0,240,255,0.4)]"
             >
               Xem Lịch trình
-            </a>
-
-            <a
-              href="http://localhost:5000/THÔNG%20TIN%20VỀ%20CUỘC%20THI.pdf"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-8 py-3.5 bg-slate-900/80 text-white border border-slate-700 rounded-sm text-xs font-bold uppercase tracking-widest text-center transition-all duration-300 hover:bg-slate-800 hover:scale-105 active:scale-95 shadow-[inset_0_0_10px_rgba(255,255,255,0.05)]"
-            >
-              Thể Lệ PDF 📥
             </a>
           </div>
         </div>

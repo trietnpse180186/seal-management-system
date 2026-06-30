@@ -10,6 +10,7 @@ import {
   Users,
   DollarSign,
   Cpu,
+  Download,
 } from "lucide-react";
 
 interface GuestPortalProps {
@@ -729,8 +730,8 @@ export default function GuestPortal({ user }: GuestPortalProps) {
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 px-4 py-2 border border-cyan-500/30 hover:border-cyan-400/80 bg-cyan-950/20 hover:bg-cyan-950/40 rounded-xl text-xs font-mono font-bold text-cyan-400 hover:text-cyan-300 transition-all cursor-pointer shadow-lg shadow-cyan-500/5"
           >
+            <Download size={12} />
             <span>[TẢI_THỂ_LỆ_PDF]</span>
-            <span>📥</span>
           </a>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare, FileText } from 'lucide-react';
+import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare, FileText, Download } from 'lucide-react';
 import RegisterTeam from './RegisterTeam';
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
@@ -342,7 +342,8 @@ export default function TeamArea() {
               rel="noopener noreferrer"
               className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-cyan-400 hover:text-cyan-300 text-xs font-bold font-mono py-2.5 rounded-xl transition-colors cursor-pointer"
             >
-              <span>Tải Thể Lệ PDF 📥</span>
+              <Download size={14} />
+              <span>Tải Thể Lệ PDF</span>
             </a>
           </div>
 

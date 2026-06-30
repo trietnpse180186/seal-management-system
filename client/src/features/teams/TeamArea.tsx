@@ -28,7 +28,7 @@ export default function TeamArea() {
 
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  const [openingExam, setOpeningExam] = useState(false);
+
 
   const round = data?.team?.trackId?.roundId;
 
@@ -50,22 +50,7 @@ export default function TeamArea() {
     return () => clearInterval(timer);
   }, [round?.startTime]);
 
-  const handleOpenExamAccess = async () => {
-    try {
-      setOpeningExam(true);
-      const res = await axios.get('http://localhost:5000/api/teams/my-team/exam-access', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.data?.accessUrl) {
-        window.open(res.data.accessUrl, '_blank', 'noopener,noreferrer');
-        toast.success('Đã mở Google Drive. Dùng email đã đăng ký để đăng nhập Google.');
-      }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Không thể mở đề bài.');
-    } finally {
-      setOpeningExam(false);
-    }
-  };
+
 
   const getRemainingTimeText = (startTimeStr: string) => {
     const diff = new Date(startTimeStr).getTime() - currentTime.getTime();
@@ -351,7 +336,7 @@ export default function TeamArea() {
           <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all">
             <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2 font-mono-tech">
               <BookOpen size={18} className="text-cyan-400" />
-              <span className="text-cyan-400">[ĐỀ_BÀI_&_TÀI_LIỆU_THI]</span>
+              <span className="text-cyan-400">[ĐỀ_BÀI_&amp;_TÀI_LIỆU_THI]</span>
             </h2>
             {round?.startTime && new Date(round.startTime) > currentTime ? (
               <div className="text-center py-4 space-y-2">
@@ -367,21 +352,25 @@ export default function TeamArea() {
               </div>
             ) : round?.hasExamMaterial && round?.examOpened ? (
               <div className="space-y-3">
-                <div className="p-3 bg-slate-900/50 rounded-xl border border-slate-800">
-                  <p className="text-xs font-bold text-white">{round.driveFileName || `Đề vòng ${round.name}`}</p>
-                  <p className="text-[9px] text-slate-500 font-sans mt-1">
-                    Chỉ thành viên đội đã xác nhận — email Google phải trùng email đăng ký.
+                <div className="p-3 bg-emerald-950/30 rounded-xl border border-emerald-800/40">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <p className="text-xs font-bold text-emerald-400">ĐỀ BÀI ĐÃ MỞ</p>
+                  </div>
+                  <p className="text-xs font-semibold text-white">{round.driveFileName || `Đề vòng ${round.name}`}</p>
+                  <p className="text-[9px] text-slate-400 font-sans mt-1">
+                    Click nút bên dưới để mở tài liệu trên Google Drive.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleOpenExamAccess}
-                  disabled={openingExam}
-                  className="w-full flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-60 text-white text-xs font-bold uppercase py-3 rounded-xl transition-colors"
+                <a
+                  href={round.driveFileUrl || "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase py-3 rounded-xl transition-colors shadow-lg shadow-cyan-600/20 text-center"
                 >
                   <BookOpen size={16} />
-                  {openingExam ? 'Đang mở...' : 'Mở đề & tài liệu (Google Drive)'}
-                </button>
+                  Mở đề & tài liệu (Google Drive)
+                </a>
               </div>
             ) : round?.hasExamMaterial ? (
               <p className="text-xs text-slate-500 italic py-2 text-center font-sans">

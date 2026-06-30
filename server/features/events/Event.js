@@ -59,6 +59,17 @@ const EventSchema = new Schema({
       { title: 'Điều 9. Quy định về đạo đức và bản quyền', description: 'Nghiêm cấm mọi hành vi gian lận, đạo nhái, vi phạm bản quyền hoặc can thiệp trái phép vào hệ thống thi đấu. Sản phẩm nộp dự thi phải là kết quả làm việc của chính đội thi trong thời gian cuộc thi.' },
       { title: 'Điều 10. Quy định chung và hiệu lực', description: 'Ban Tổ Chức có toàn quyền giải thích và điều chỉnh điều lệ khi cần thiết. Mọi tình huống không quy định sẽ do BTC xem xét quyết định đảm bảo công bằng. Hiệu lệ kể từ ngày công bố.' }
     ]
+  },
+  seminar: {
+    scheduledAt: { type: Date },
+    scheduledEnd: { type: Date },
+    meetUrl: { type: String },
+    title: { type: String, default: 'Buổi Seminar Hướng Dẫn & Giải Đáp Thắc Mắc Cuộc Thi' },
+    description: { type: String },
+    isEmailSent: { type: Boolean, default: false },
+    emailSentAt: { type: Date },
+    attendanceFormUrl: { type: String },
+    attendanceSpreadsheetUrl: { type: String }
   }
 }, {
   timestamps: true

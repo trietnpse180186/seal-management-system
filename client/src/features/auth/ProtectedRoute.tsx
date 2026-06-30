@@ -22,7 +22,7 @@ export default function ProtectedRoute({
   // If role restrictions are specified, check if user satisfies at least one
   if (allowedRoles && allowedRoles.length > 0) {
     const isSystemAdmin = user.isSystemAdmin;
-    const isCoordinator = roles.some(r => r.role === 'coordinator') || isSystemAdmin;
+    const isCoordinator = isSystemAdmin;
     const isJudge = roles.some(r => r.role === 'judge') || isSystemAdmin;
     const isMentor = roles.some(r => r.role === 'mentor') || isSystemAdmin;
     

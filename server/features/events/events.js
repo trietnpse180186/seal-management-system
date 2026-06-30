@@ -1615,6 +1615,9 @@ router.post('/:id/seminar/send-email', authenticateToken, async (req, res) => {
       totalCount: recipients.length,
       emailSentAt: event.seminar.emailSentAt
     });
+  } catch (error) {
+    console.error('Send Seminar Email Error:', error.message);
+    res.status(500).json({ message: 'Server error sending seminar emails.' });
   }
 });
 

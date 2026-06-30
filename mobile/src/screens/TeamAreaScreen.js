@@ -13,9 +13,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as WebBrowser from 'expo-web-browser';
 import api from '../api/api';
 import BottomTabs from '../components/BottomTabs';
-import { BookOpen, Users, Save, RefreshCw, CheckCircle, Clock } from 'lucide-react-native';
+import { BookOpen, Users, Save, RefreshCw, CheckCircle, Clock, MessageSquare, Download, FileText } from 'lucide-react-native';
 
 export default function TeamAreaScreen({ navigation }) {
   const [data, setData] = useState(null);
@@ -33,6 +34,69 @@ export default function TeamAreaScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [syncing, setSyncing] = useState(false);
+
+  // Time state for exam countdown
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  const round = data?.team?.trackId?.roundId;
+
+  useEffect(() => {
+    const startTimeStr = round?.startTime;
+    if (!startTimeStr) return;
+
+    const startTime = new Date(startTimeStr);
+    if (startTime <= new Date()) return;
+
+    const timer = setInterval(() => {
+      const now = new Date();
+      setCurrentTime(now);
+      if (now >= startTime) {
+        clearInterval(timer);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [round?.startTime]);
+
+  const getRemainingTimeText = (startTimeStr) => {
+    const diff = new Date(startTimeStr).getTime() - currentTime.getTime();
+    if (diff <= 0) return '00:00:00';
+    
+    const seconds = Math.floor((diff / 1000) % 60);
+    const minutes = Math.floor((diff / 1000 / 60) % 60);
+    const hours = Math.floor((diff / 1000 / 60 / 60));
+    
+    const pad = (num) => num.toString().padStart(2, '0');
+    return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+  };
+
+  const handleOpenExamAccess = async () => {
+    if (!round?.driveFileUrl) {
+      Alert.alert('Thông báo', 'Đề bài chưa được mở.');
+      return;
+    }
+    try {
+      await WebBrowser.openBrowserAsync(round.driveFileUrl);
+    } catch (error) {
+      Alert.alert('Lỗi', 'Không thể mở liên kết Google Drive.');
+    }
+  };
+
+  const handleOpenPdf = async () => {
+    try {
+      const pdfUrl = 'http://localhost:5000/THÔNG%20TIN%20VỀ%20CUỘC%20THI.pdf';
+      await WebBrowser.openBrowserAsync(pdfUrl);
+    } catch (error) {
+      Alert.alert('Lỗi', 'Không thể mở tài liệu PDF.');
+    }
+  };
+
+  const handleMentorChatPress = () => {
+    Alert.alert(
+      'Hỗ trợ từ Mentor',
+      'Tính năng Chat trực tuyến hiện đang được phát triển cho ứng dụng Mobile. Vui lòng truy cập phiên bản Web để gửi tin nhắn hỗ trợ trực tiếp với Mentor của nhóm bạn!'
+    );
+  };
 
   const fetchTeamData = async () => {
     try {
@@ -187,56 +251,90 @@ export default function TeamAreaScreen({ navigation }) {
           {/* Nội dung Tab 1: Đề tài & Dự án */}
           {activeTab === 'project' && (
             <View style={styles.tabContent}>
-              <View style={styles.sectionTitleRow}>
-                <BookOpen size={16} color="#00f0ff" />
-                <Text style={styles.sectionTitle}>[NỘP_ĐỀ_TÀI_&_TÀI_LIỆU]</Text>
+              {/* BTC Exam Materials Card */}
+              <View style={styles.examCard}>
+                <View style={styles.sectionTitleRow}>
+                  <BookOpen size={16} color="#00f0ff" />
+                  <Text style={styles.sectionTitle}>[ĐỀ_BÀI_&_TÀI_LIỆU_THI]</Text>
+                </View>
+
+                {round?.startTime && new Date(round.startTime) > currentTime ? (
+                  <View style={styles.countdownContainer}>
+                    <Text style={styles.countdownLabel}>Đề bài vòng "{round.name}" sẽ được mở sau:</Text>
+                    <Text style={styles.countdownTime}>{getRemainingTimeText(round.startTime)}</Text>
+                    <Text style={styles.countdownDetail}>Thời gian mở đề: {new Date(round.startTime).toLocaleString('vi-VN')}</Text>
+                  </View>
+                ) : round?.hasExamMaterial && round?.examOpened ? (
+                  <View style={styles.examOpenContainer}>
+                    <View style={styles.activeDotRow}>
+                      <View style={styles.activeDot} />
+                      <Text style={styles.activeLabel}>ĐỀ BÀI ĐÃ MỞ</Text>
+                    </View>
+                    <Text style={styles.examFileName}>{round.driveFileName || `Đề vòng ${round.name}`}</Text>
+                    <Text style={styles.examSubText}>Nhấn nút bên dưới để mở tài liệu trên Google Drive.</Text>
+                    <TouchableOpacity style={styles.openExamBtn} onPress={handleOpenExamAccess}>
+                      <Text style={styles.openExamBtnText}>MỞ ĐỀ & TÀI LIỆU (GOOGLE DRIVE)</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : round?.hasExamMaterial ? (
+                  <Text style={styles.italicText}>Đề đã được gắn nhưng chưa đến giờ mở hoặc chưa cấu hình thời gian.</Text>
+                ) : (
+                  <Text style={styles.italicText}>Chưa có đề bài cho vòng thi của bạn.</Text>
+                )}
               </View>
 
-              <Text style={styles.label}>TÊN ĐỀ TÀI / DỰ ÁN</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Nhập tên đề tài..."
-                placeholderTextColor="#849495"
-                value={topicTitle}
-                onChangeText={setTopicTitle}
-              />
+              {/* Chat with Mentor Card */}
+              {team && team.eventId?.status === 'ongoing' && (
+                <View style={styles.chatCard}>
+                  <View style={styles.chatHeader}>
+                    <View style={styles.chatIconBox}>
+                      <MessageSquare size={18} color="#00f0ff" />
+                    </View>
+                    <View style={styles.chatTitleBox}>
+                      <Text style={styles.chatCardTitle}>Hỗ trợ từ Mentor</Text>
+                      <Text style={styles.chatCardDesc}>Bạn có câu hỏi hoặc cần sự giúp đỡ? Hãy nhắn tin trao đổi trực tiếp với Mentor.</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity style={styles.chatBtn} onPress={handleMentorChatPress}>
+                    <Text style={styles.chatBtnText}>NHẮN TIN NGAY</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
 
-              <Text style={styles.label}>MÔ TẢ NGẮN</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Mô tả dự án Hackathon của đội..."
-                placeholderTextColor="#849495"
-                value={topicDesc}
-                onChangeText={setTopicDesc}
-                multiline
-                numberOfLines={4}
-              />
+              {/* Event Info Card */}
+              <View style={styles.infoCard}>
+                <View style={styles.sectionTitleRow}>
+                  <FileText size={16} color="#00f0ff" />
+                  <Text style={styles.sectionTitle}>[THÔNG_TIN_CUỘC_THI]</Text>
+                </View>
+                <View style={styles.infoBody}>
+                  <Text style={styles.infoLabel}>Chủ đề chính</Text>
+                  <Text style={styles.infoValue}>AI-Driven Smart Operations</Text>
+                  <Text style={styles.infoSubText}>Turning Real-Time IoT Data into Intelligent Actions</Text>
 
-              <Text style={styles.label}>LINK FILE TÀI LIỆU (DRIVE/PDF)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="https://drive.google.com/..."
-                placeholderTextColor="#849495"
-                value={docLink}
-                onChangeText={setDocLink}
-                keyboardType="url"
-                autoCapitalize="none"
-              />
+                  <View style={styles.infoDivider} />
 
-              <TouchableOpacity
-                style={styles.saveBtn}
-                onPress={handleSaveTopic}
-                disabled={submitting}
-              >
-                {submitting ? (
-                  <ActivityIndicator color="#000" size="small" />
-                ) : (
-                  <>
-                    <Save size={16} color="#000" />
-                    <Text style={styles.saveBtnText}>LƯU THÔNG TIN ĐỀ TÀI</Text>
-                  </>
-                )}
-              </TouchableOpacity>
+                  <Text style={styles.infoLabel}>Cơ cấu & Lộ trình</Text>
+                  <Text style={styles.infoBodyText}>
+                    Gồm 3 Track chuyên môn. Vòng bảng chấm điểm AI &amp; thuyết trình 5 phút (QA 3 phút). 02 đội điểm cao nhất mỗi bảng sẽ bước vào Vòng chung kết (Tổng cộng 06 đội).
+                  </Text>
+
+                  <View style={styles.infoDivider} />
+
+                  <Text style={styles.infoLabel}>Tiêu chí Vòng bảng</Text>
+                  <View style={styles.criteriaRow}>
+                    <Text style={styles.criteriaText}>• Xử lý dữ liệu thực tế: <Text style={styles.criteriaHighlight}>30%</Text></Text>
+                    <Text style={styles.criteriaText}>• Hiệu quả ứng dụng AI: <Text style={styles.criteriaHighlight}>30%</Text></Text>
+                    <Text style={styles.criteriaText}>• Phù hợp Domain &amp; UX: <Text style={styles.criteriaHighlight}>20%</Text></Text>
+                    <Text style={styles.criteriaText}>• Ý tưởng &amp; Pitching: <Text style={styles.criteriaHighlight}>20%</Text></Text>
+                  </View>
+
+                  <TouchableOpacity style={styles.downloadBtn} onPress={handleOpenPdf}>
+                    <Download size={14} color="#00f0ff" />
+                    <Text style={styles.downloadBtnText}>TẢI THỂ LỆ PDF</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
           )}
 
@@ -651,6 +749,219 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     lineHeight: 18,
+  },
+  examCard: {
+    backgroundColor: '#131d25',
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    padding: 16,
+    borderRadius: 6,
+    marginBottom: 16,
+  },
+  countdownContainer: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  countdownLabel: {
+    color: '#f59e0b',
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  countdownTime: {
+    color: '#00f0ff',
+    fontSize: 22,
+    fontWeight: '900',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    backgroundColor: '#0a141d',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.04)',
+    textAlign: 'center',
+    letterSpacing: 2,
+    overflow: 'hidden',
+  },
+  countdownDetail: {
+    color: '#5c6d70',
+    fontSize: 9,
+    marginTop: 6,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  examOpenContainer: {
+    paddingVertical: 4,
+  },
+  activeDotRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  activeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10b981',
+    marginRight: 6,
+  },
+  activeLabel: {
+    color: '#10b981',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  examFileName: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  examSubText: {
+    color: '#849495',
+    fontSize: 10,
+    marginBottom: 12,
+  },
+  openExamBtn: {
+    backgroundColor: '#00f0ff',
+    paddingVertical: 12,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#00f0ff',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  openExamBtnText: {
+    color: '#000',
+    fontSize: 11,
+    fontWeight: '850',
+    letterSpacing: 0.5,
+  },
+  italicText: {
+    color: '#849495',
+    fontSize: 12,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingVertical: 10,
+  },
+  chatCard: {
+    backgroundColor: '#131d25',
+    borderColor: 'rgba(0, 240, 255, 0.15)',
+    borderWidth: 1,
+    padding: 16,
+    borderRadius: 6,
+    marginBottom: 16,
+  },
+  chatHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  chatIconBox: {
+    width: 36,
+    height: 36,
+    backgroundColor: 'rgba(0, 240, 255, 0.1)',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  chatTitleBox: {
+    flex: 1,
+  },
+  chatCardTitle: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  chatCardDesc: {
+    color: '#849495',
+    fontSize: 10,
+    marginTop: 2,
+    lineHeight: 14,
+  },
+  chatBtn: {
+    backgroundColor: '#00f0ff',
+    paddingVertical: 10,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chatBtnText: {
+    color: '#000',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  infoCard: {
+    backgroundColor: '#131d25',
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    padding: 16,
+    borderRadius: 6,
+    marginBottom: 16,
+  },
+  infoBody: {
+    paddingVertical: 4,
+  },
+  infoLabel: {
+    color: '#849495',
+    fontSize: 9,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  infoValue: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '750',
+  },
+  infoSubText: {
+    color: '#5c6d70',
+    fontSize: 9,
+    fontStyle: 'italic',
+    marginTop: 1,
+  },
+  infoDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    marginVertical: 10,
+  },
+  infoBodyText: {
+    color: '#cddce0',
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  criteriaRow: {
+    marginTop: 4,
+    spaceY: 2,
+  },
+  criteriaText: {
+    color: '#cddce0',
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  criteriaHighlight: {
+    color: '#00f0ff',
+    fontWeight: '700',
+  },
+  downloadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0a141d',
+    borderColor: 'rgba(0, 240, 255, 0.2)',
+    borderWidth: 1,
+    paddingVertical: 10,
+    borderRadius: 6,
+    marginTop: 14,
+    gap: 8,
+  },
+  downloadBtnText: {
+    color: '#00f0ff',
+    fontSize: 11,
+    fontWeight: '800',
   },
   spin: {
     // Rotation is typically handled in JS animation, but here we can rely on standard spinner or simple state text

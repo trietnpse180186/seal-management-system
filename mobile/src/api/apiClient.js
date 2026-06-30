@@ -2,45 +2,14 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import errorMessages from './errorMessages';
 
-// URL mặc định khi test trên máy ảo Android (10.0.2.2 ánh xạ tới localhost của máy chủ dev)
-export const DEFAULT_API_URL = 'https://seal-management-system.onrender.com/api';
-
-let currentApiUrl = DEFAULT_API_URL;
-
-const api = axios.create({
-  baseURL: currentApiUrl,
+// Khởi tạo Axios Client với cấu hình mặc định
+const apiClient = axios.create({
+  baseURL: 'https://seal-management-system.onrender.com/api',
   timeout: 10000,
 });
 
-// Khởi tạo Base URL từ bộ nhớ máy
-export const initApiUrl = async () => {
-  try {
-    const savedUrl = await AsyncStorage.getItem('api_base_url');
-    if (savedUrl) {
-      currentApiUrl = savedUrl;
-      api.defaults.baseURL = savedUrl;
-    }
-  } catch (error) {
-    console.error('Không tải được api_base_url', error);
-  }
-  return currentApiUrl;
-};
-
-// Cập nhật động Base URL khi chuyển môi trường dev/staging
-export const updateBaseUrl = async (newUrl) => {
-  try {
-    currentApiUrl = newUrl;
-    api.defaults.baseURL = newUrl;
-    await AsyncStorage.setItem('api_base_url', newUrl);
-  } catch (error) {
-    console.error('Không lưu được api_base_url mới', error);
-  }
-};
-
-export const getBaseUrl = () => currentApiUrl;
-
-// Bộ đánh chặn Request để tự động chèn JWT Token
-api.interceptors.request.use(
+// Interceptor chèn JWT Token trước khi gửi request
+apiClient.interceptors.request.use(
   async (config) => {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -52,14 +21,15 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Bộ đánh chặn Response để xử lý lỗi tập trung
-api.interceptors.response.use(
-  (response) => response,
+// Interceptor xử lý Response & lỗi tập trung (Centralized Error Interceptor)
+apiClient.interceptors.response.use(
+  (response) => {
+    // Trả về dữ liệu nếu request thành công
+    return response;
+  },
   async (error) => {
     // 1. Tự động dọn dẹp phiên đăng nhập nếu nhận mã 401
     if (error.response && error.response.status === 401) {
@@ -86,7 +56,7 @@ api.interceptors.response.use(
       }
     }
 
-    // 3. Ghi đè thông báo lỗi thân thiện vào đối tượng lỗi gốc để tương thích ngược với các màn hình đang đọc error.response.data.message
+    // 3. Ghi đè thông báo lỗi thân thiện vào đối tượng lỗi gốc để tương thích với cấu trúc Axios chuẩn
     error.message = friendlyMessage;
     if (error.response && error.response.data) {
       error.response.data.message = friendlyMessage;
@@ -96,4 +66,4 @@ api.interceptors.response.use(
   }
 );
 
-export default api;
+export default apiClient;

@@ -809,7 +809,7 @@ router.get('/template/download', authenticateToken, async (req, res) => {
       [
         "R2_01",
         "Độ hoàn thiện và ổn định của sản phẩm",
-        0.25,
+        "25%",
         "Sản phẩm hoàn thiện, hoạt động ổn định, xử lý đầy đủ các luồng chính và vượt qua tốt kịch bản đánh giá.",
         "Sản phẩm tương đối hoàn thiện; có lỗi nhỏ nhưng không ảnh hưởng lớn đến kết quả.",
         "Có đầy đủ chức năng chính nhưng còn lỗi hoặc thiếu một số phần phụ.",
@@ -819,7 +819,7 @@ router.get('/template/download', authenticateToken, async (req, res) => {
       [
         "R2_02",
         "Năng lực phân tích và hỗ trợ quyết định của AI",
-        0.25,
+        "25%",
         "AI phân tích chính xác, xác định được bất thường hoặc rủi ro, hỗ trợ chẩn đoán và đề xuất hành động phù hợp.",
         "AI hỗ trợ tốt việc phân tích và ra quyết định; còn hạn chế nhỏ về độ sâu hoặc tính nhất quán.",
         "AI đưa ra kết quả cơ bản nhưng còn chung chung hoặc giá trị hỗ trợ quyết định chưa cao.",
@@ -829,7 +829,7 @@ router.get('/template/download', authenticateToken, async (req, res) => {
       [
         "R2_03",
         "Độ tin cậy, an toàn và khả năng giải thích",
-        0.20,
+        "20%",
         "Kết quả AI có thể kiểm chứng; hệ thống giải thích rõ cơ sở phân tích, xử lý tốt dữ liệu bất thường và hạn chế cảnh báo sai.",
         "Kết quả nhìn chung đáng tin cậy; có khả năng giải thích nhưng chưa đầy đủ ở một số tình huống.",
         "Có kiểm soát cơ bản nhưng giải thích còn hạn chế; đôi lúc xuất hiện kết quả thiếu nhất quán.",
@@ -839,7 +839,7 @@ router.get('/template/download', authenticateToken, async (req, res) => {
       [
         "R2_04",
         "Tính sáng tạo, khả năng mở rộng và ứng dụng thực tế",
-        0.15,
+        "15%",
         "Giải pháp có điểm khác biệt rõ ràng; kiến trúc có thể mở rộng và có tiềm năng triển khai thực tế cao.",
         "Có yếu tố sáng tạo; phương án mở rộng và ứng dụng tương đối khả thi.",
         "Giải pháp an toàn, phổ biến; khả năng mở rộng và ứng dụng ở mức chấp nhận được.",
@@ -849,7 +849,7 @@ router.get('/template/download', authenticateToken, async (req, res) => {
       [
         "R2_05",
         "Kỹ năng Demo, trình bày và phản biện",
-        0.15,
+        "15%",
         "Demo trôi chảy; trình bày thuyết phục; trả lời rõ ràng và bảo vệ tốt các quyết định kỹ thuật, sản phẩm.",
         "Demo và trình bày tốt; trả lời được phần lớn câu hỏi nhưng còn thiếu chiều sâu ở một số nội dung.",
         "Trình bày ở mức cơ bản; trả lời được các câu hỏi trực tiếp nhưng phản biện còn hạn chế.",
@@ -1127,6 +1127,8 @@ router.post('/:rubricId/import-criteria', authenticateToken, upload.single('file
     // 5. Parse data rows
     const existingCriteria = await Criterion.find({ rubricId: rubric._id });
 
+    const maxScoreFromExcel = gradingLevelDefs.reduce((max, lvl) => Math.max(max, lvl.maxScore || 0), 0);
+
     const toImport = [];
     const errors = [];
     let newWeightSum = 0;
@@ -1207,7 +1209,7 @@ router.post('/:rubricId/import-criteria', authenticateToken, upload.single('file
         code,
         name,
         weight,
-        maxScore: rubric.maxCriterionScore || 10,
+        maxScore: maxScoreFromExcel || rubric.maxCriterionScore || 10,
         order: nextOrder++,
         gradingLevels,
       });
@@ -1272,6 +1274,11 @@ router.post('/:rubricId/import-criteria', authenticateToken, upload.single('file
     if (toInsert.length > 0) {
       const inserted = await Criterion.insertMany(toInsert);
       insertedCount = inserted.length;
+    }
+
+    if (maxScoreFromExcel > 0 && maxScoreFromExcel !== rubric.maxCriterionScore) {
+      rubric.maxCriterionScore = maxScoreFromExcel;
+      await rubric.save();
     }
 
     // Return the final list of criteria
@@ -1352,8 +1359,8 @@ router.get('/:rubricId/export-criteria', authenticateToken, async (req, res) => 
     // Data rows
     const dataRows = [];
     for (const c of criteria) {
-      // Divide weight by 100 to output decimal if it's stored as percentage (e.g. 25 -> 0.25)
-      const formattedWeight = c.weight > 1 ? c.weight / 100 : c.weight;
+      const percentWeight = c.weight > 1 ? c.weight : c.weight * 100;
+      const formattedWeight = `${percentWeight}%`;
       const row = [c.code, c.name, formattedWeight];
       for (const def of gradingLevelDefs) {
         const match = c.gradingLevels && c.gradingLevels.find(

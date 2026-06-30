@@ -31,7 +31,7 @@ const { addEmailJob, isQueueAvailable } = require('../notifications/notification
 router.get('/', async (req, res) => {
   const { semester, year, status } = req.query;
   const filter = {};
-  
+
   if (semester) filter.semester = semester;
   if (year) filter.year = parseInt(year);
   if (status) filter.status = status;
@@ -41,7 +41,7 @@ router.get('/', async (req, res) => {
   const jwt = require('jsonwebtoken');
   const User = mongoose.model('User');
   const EventRole = mongoose.model('EventRole');
-  
+
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   let showArchived = false;
@@ -75,7 +75,7 @@ router.get('/', async (req, res) => {
 
   try {
     const events = await Event.find(filter).sort({ year: -1, semester: 1 }).lean();
-    
+
     const eventsWithTeamCount = await Promise.all(events.map(async (event) => {
       const teamCount = await Team.countDocuments({ eventId: event._id });
       return { ...event, teamCount };
@@ -104,8 +104,8 @@ router.post('/', authenticateToken, requireSystemAdmin, async (req, res) => {
     // Check if event already exists for this semester and year
     const existing = await Event.findOne({ semester, year });
     if (existing) {
-      return res.status(400).json({ 
-        message: `An event already exists for semester "${semester}" and year "${year}".` 
+      return res.status(400).json({
+        message: `An event already exists for semester "${semester}" and year "${year}".`
       });
     }
 
@@ -137,6 +137,17 @@ router.post('/', authenticateToken, requireSystemAdmin, async (req, res) => {
       status: 'pending'
     });
     await newRound.save();
+
+    // Create default Track for Vòng Chung Kết (always available)
+    const finalTrack = new Track({
+      eventId: newEvent._id,
+      roundId: newRound._id,
+      name: 'Bảng Chung Kết',
+      description: 'Bảng đấu tập trung dành cho các đội xuất sắc nhất vượt qua các vòng thi trước',
+      maxTeams: 10,
+      topicSubmissionOpen: true
+    });
+    await finalTrack.save();
 
     // Create an empty Rubric for this round
     const Rubric = mongoose.model('Rubric');
@@ -195,7 +206,7 @@ router.get('/judge/active-contest', authenticateToken, async (req, res) => {
 
     // 2. Find all rounds for this event, sorted by order ascending
     const rounds = await Round.find({ eventId: event._id }).sort({ order: 1 }).lean();
-    
+
     // 3. Find the current active round (first round that is not 'completed')
     const currentRound = rounds.find(r => r.status !== 'completed') || rounds[rounds.length - 1] || null;
 
@@ -212,7 +223,7 @@ router.get('/judge/active-contest', authenticateToken, async (req, res) => {
       eventId: event._id,
       status: 'active'
     });
-    
+
     if (userRole && userRole.trackId) {
       assignedTrack = await Track.findById(userRole.trackId).lean();
     }
@@ -301,7 +312,7 @@ router.get('/:id', async (req, res) => {
               authorized = !!coordinatorRole;
             }
           }
-        } catch (err) {}
+        } catch (err) { }
       }
 
       if (!authorized) {
@@ -316,21 +327,21 @@ router.get('/:id', async (req, res) => {
     const Criterion = mongoose.model('Criterion');
 
     // Self-healing: Check if a Final Round exists (advanceTopN === 0)
-    let hasFinalRound = rounds.some(r => r.advanceTopN === 0);
-    if (!hasFinalRound) {
+    let finalRound = rounds.find(r => r.advanceTopN === 0);
+    if (!finalRound) {
       const nextOrder = rounds.length > 0 ? (rounds[rounds.length - 1].order + 1) : 1;
-      const newFinalRound = new Round({
+      finalRound = new Round({
         eventId: event._id,
         name: 'Vòng Chung Kết',
         order: nextOrder,
         advanceTopN: 0,
         status: 'pending'
       });
-      await newFinalRound.save();
+      await finalRound.save();
 
       const rubricObj = new Rubric({
         eventId: event._id,
-        roundId: newFinalRound._id,
+        roundId: finalRound._id,
         name: 'Rubric Vòng Chung Kết',
         totalWeight: 100,
         maxCriterionScore: 10,
@@ -340,6 +351,20 @@ router.get('/:id', async (req, res) => {
 
       // Re-fetch rounds
       rounds = await Round.find({ eventId: event._id }).sort({ order: 1 });
+    }
+
+    // Self-healing: Check if the Final Round has a consolidated Track (Bảng Chung Kết)
+    const finalRoundTrack = await Track.findOne({ roundId: finalRound._id });
+    if (!finalRoundTrack) {
+      const finalTrack = new Track({
+        eventId: event._id,
+        roundId: finalRound._id,
+        name: 'Bảng Chung Kết',
+        description: 'Bảng đấu tập trung dành cho các đội xuất sắc nhất vượt qua các vòng thi trước',
+        maxTeams: 10,
+        topicSubmissionOpen: true
+      });
+      await finalTrack.save();
     }
 
     const roundsWithRubricStatus = [];
@@ -405,14 +430,24 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
       }
     }
 
-    // Check maxTeams limits
-    const existingTracks = await Track.find({ eventId });
-    const currentTotalMaxTeams = existingTracks.reduce((sum, t) => sum + (t.maxTeams || 0), 0);
+    // Check maxTeams limits (excluding final round tracks)
+    const finalRound = await Round.findOne({ eventId, advanceTopN: 0 });
+    const finalRoundIdStr = finalRound ? finalRound._id.toString() : '';
+
+    const isFinalRoundTrack = roundId.toString() === finalRoundIdStr;
     const newMaxTeamsNum = maxTeams ? parseInt(maxTeams) : 10;
-    if (currentTotalMaxTeams + newMaxTeamsNum > event.maxTeams) {
-      return res.status(400).json({ 
-        message: `Tổng số đội tối đa của các bảng đấu (${currentTotalMaxTeams + newMaxTeamsNum}) vượt quá số lượng đội giới hạn của cuộc thi (${event.maxTeams}).` 
-      });
+
+    if (!isFinalRoundTrack) {
+      const existingTracks = await Track.find({ eventId });
+      const currentTotalMaxTeams = existingTracks
+        .filter(t => t.roundId && t.roundId.toString() !== finalRoundIdStr)
+        .reduce((sum, t) => sum + (t.maxTeams || 0), 0);
+
+      if (currentTotalMaxTeams + newMaxTeamsNum > event.maxTeams) {
+        return res.status(400).json({
+          message: `Tổng số đội tối đa của các bảng đấu (${currentTotalMaxTeams + newMaxTeamsNum}) vượt quá số lượng đội giới hạn của cuộc thi (${event.maxTeams}).`
+        });
+      }
     }
 
     const newTrack = new Track({
@@ -437,7 +472,7 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
       actorId: req.user._id,
       action: 'create_track',
       type: 'operation',
-      details: `Tạo bảng đấu mới: "${newTrack.name}" trong vòng thi: "${roundName}" (Số lượng đội tối đa: ${newTrack.maxTeams || 'Không giới hạn'}, Đội đi tiếp: ${newTrack.advanceTopN || 'Không giới hạn'})`
+      details: `Tạo bảng đấu mới: "${newTrack.name}" trong vòng thi: "${round.name}" (Số lượng đội tối đa: ${newTrack.maxTeams || 'Không giới hạn'}, Đội đi tiếp: ${newTrack.advanceTopN || 'Không giới hạn'})`
     });
     await newLog.save();
 
@@ -503,16 +538,25 @@ router.put('/:eventId/tracks/:trackId', authenticateToken, async (req, res) => {
     const oldGradingEndTime = track.gradingEndTime;
 
     if (maxTeams !== undefined) {
-      const existingTracks = await Track.find({ eventId });
-      const otherTracksMaxTeams = existingTracks
-        .filter(t => t._id.toString() !== trackId)
-        .reduce((sum, t) => sum + (t.maxTeams || 0), 0);
-      const updatedMaxTeamsNum = parseInt(maxTeams) || 0;
-      if (otherTracksMaxTeams + updatedMaxTeamsNum > event.maxTeams) {
-        return res.status(400).json({ 
-          message: `Tổng số đội tối đa của các bảng đấu (${otherTracksMaxTeams + updatedMaxTeamsNum}) vượt quá số lượng đội giới hạn của cuộc thi (${event.maxTeams}).` 
-        });
+      const finalRound = await Round.findOne({ eventId, advanceTopN: 0 });
+      const finalRoundIdStr = finalRound ? finalRound._id.toString() : '';
+
+      const isFinalRoundTrack = finalRoundId.toString() === finalRoundIdStr;
+
+      if (!isFinalRoundTrack) {
+        const existingTracks = await Track.find({ eventId });
+        const otherTracksMaxTeams = existingTracks
+          .filter(t => t._id.toString() !== trackId && t.roundId && t.roundId.toString() !== finalRoundIdStr)
+          .reduce((sum, t) => sum + (t.maxTeams || 0), 0);
+        const updatedMaxTeamsNum = parseInt(maxTeams) || 0;
+        if (otherTracksMaxTeams + updatedMaxTeamsNum > event.maxTeams) {
+          return res.status(400).json({
+            message: `Tổng số đội tối đa của các bảng đấu (${otherTracksMaxTeams + updatedMaxTeamsNum}) vượt quá số lượng đội giới hạn của cuộc thi (${event.maxTeams}).`
+          });
+        }
       }
+
+      const updatedMaxTeamsNum = parseInt(maxTeams) || 0;
       track.maxTeams = updatedMaxTeamsNum;
       if (oldMaxTeams !== updatedMaxTeamsNum) {
         logDetails.push(`Số lượng đội tối đa: ${oldMaxTeams || 0} -> ${updatedMaxTeamsNum}`);
@@ -535,7 +579,7 @@ router.put('/:eventId/tracks/:trackId', authenticateToken, async (req, res) => {
       logDetails.push(`Vòng thi: "${oldRoundName}" -> "${newRoundName}"`);
       track.roundId = roundId;
     }
-    
+
     if (startTime !== undefined) {
       const newStart = startTime ? new Date(startTime) : null;
       const oldStart = oldStartTime;
@@ -692,7 +736,7 @@ router.post('/:eventId/rounds', authenticateToken, async (req, res) => {
     // Find the round with the highest order (the Final Round)
     const finalRound = await Round.findOne({ eventId }).sort({ order: -1 });
     let assignedOrder = 1;
-    
+
     if (finalRound) {
       assignedOrder = finalRound.order;
       finalRound.order = finalRound.order + 1;
@@ -938,7 +982,7 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
  */
 router.get('/:eventId/roles', authenticateToken, async (req, res) => {
   const { eventId } = req.params;
-  
+
   try {
     // Auth Check
     if (!req.user.isSystemAdmin) {
@@ -1048,12 +1092,12 @@ router.post('/:eventId/distribute-teams', authenticateToken, async (req, res) =>
     }
 
     // 3. Fetch confirmed teams without trackId
-    const teams = await Team.find({ 
-      eventId, 
-      status: 'confirmed', 
-      $or: [{ trackId: null }, { trackId: { $exists: false } }] 
+    const teams = await Team.find({
+      eventId,
+      status: 'confirmed',
+      $or: [{ trackId: null }, { trackId: { $exists: false } }]
     });
-    
+
     if (teams.length === 0) {
       return res.status(400).json({ message: 'Không tìm thấy nhóm thi đấu nào đã xác nhận mà chưa chia bảng.' });
     }
@@ -1077,7 +1121,7 @@ router.post('/:eventId/distribute-teams', authenticateToken, async (req, res) =>
 
       // Trigger GitHub Repo creation in the background
       const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
-      
+
       githubService.createTeamRepository(slugRepoName, 'private', orgName)
         .then(async (gitResult) => {
           // Check if repo already exists for this team
@@ -1253,7 +1297,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         }
       }
     }
-    
+
     if (registrationOpen !== undefined) {
       const newOpen = registrationOpen ? new Date(registrationOpen) : null;
       const oldOpen = event.registrationOpen;
@@ -1293,7 +1337,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         isTimeUpdated = true;
       }
     }
-    
+
     if (githubOrgName && githubOrgName !== event.githubOrgName) {
       logDetails.push(`GitHub Org: "${event.githubOrgName || 'Chưa liên kết'}" -> "${githubOrgName}"`);
       event.githubOrgName = githubOrgName;
@@ -1405,7 +1449,37 @@ router.put('/:id', authenticateToken, async (req, res) => {
 /**
  * @route   GET /api/events/:eventId/logs
  * @desc    Get all activity logs for a specific event
- * @access/**
+ * @access  Private (Coordinator or Admin)
+ */
+router.get('/:eventId/logs', authenticateToken, async (req, res) => {
+  const { eventId } = req.params;
+
+  try {
+    // Auth Check
+    if (!req.user.isSystemAdmin) {
+      const coordinatorRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId,
+        role: 'coordinator',
+        status: 'active'
+      });
+      if (!coordinatorRole) {
+        return res.status(403).json({ message: 'Unauthorized. Only coordinators or system administrators can view event logs.' });
+      }
+    }
+
+    const logs = await EventLog.find({ eventId })
+      .populate('actorId', 'fullName email')
+      .sort({ createdAt: -1 });
+
+    res.json(logs);
+  } catch (error) {
+    console.error('Fetch Event Logs Error:', error.message);
+    res.status(500).json({ message: 'Server error retrieving event logs.' });
+  }
+});
+
+/**
  * @route   DELETE /api/events/:id
  * @desc    Soft-delete / Archive an event by setting isArchived to true
  *          (All information remains in DB, but hidden from everyone except admin/coordinators)
@@ -1567,7 +1641,7 @@ router.post('/:id/seminar/send-email', authenticateToken, async (req, res) => {
 
     // Fetch all registered team members for this event
     const members = await TeamMember.find({ eventId }).populate('userId', 'email fullName');
-    
+
     // Extract unique contestant emails & names
     const recipientMap = new Map();
     members.forEach(m => {
@@ -1609,12 +1683,15 @@ router.post('/:id/seminar/send-email', authenticateToken, async (req, res) => {
     });
     await newLog.save();
 
-    res.json({ 
+    res.json({
       message: `Đã phát email thông báo Seminar thành công cho ${successCount} thí sinh!`,
       sentCount: successCount,
       totalCount: recipients.length,
       emailSentAt: event.seminar.emailSentAt
     });
+  } catch (error) {
+    console.error('Send Seminar Email Error:', error.message);
+    res.status(500).json({ message: 'Server error sending seminar emails.' });
   }
 });
 

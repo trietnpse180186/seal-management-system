@@ -117,7 +117,14 @@ export default function TracksTab({
 
 
   const maxEventTeams = selectedEvent?.maxTeams || 0;
-  const totalAllocatedTeams = tracks.reduce((sum, t) => sum + (t.maxTeams || 0), 0);
+  const finalRound = rounds.find(r => r.advanceTopN === 0);
+  const finalRoundId = finalRound?._id || finalRound?.id;
+  const totalAllocatedTeams = tracks
+    .filter(t => {
+      const tRoundId = t.roundId?._id || t.roundId;
+      return tRoundId && tRoundId.toString() !== finalRoundId?.toString();
+    })
+    .reduce((sum, t) => sum + (t.maxTeams || 0), 0);
   const remainingTeams = maxEventTeams - totalAllocatedTeams;
 
   const trackMembers = eventRoles.filter(

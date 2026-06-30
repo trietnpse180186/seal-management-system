@@ -45,6 +45,12 @@ export default function Leaderboard({
       (r: any) => r.eventId === selectedEventId && r.role === "coordinator",
     );
 
+  const roundName = selectedRound?.name || "";
+  const isFinalRound =
+    roundName.toLowerCase() === "chung kết" ||
+    roundName.toLowerCase().includes("chung kết") ||
+    roundName.toLowerCase() === "final";
+
   useEffect(() => {
     axios
       .get("http://localhost:5000/api/events")
@@ -316,10 +322,11 @@ export default function Leaderboard({
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px] font-bold">
-                  <th className="py-4 px-4 w-[15%] text-center">Thứ Hạng</th>
-                  <th className="py-4 px-4 w-[45%]">Tên Đội Thi</th>
-                  <th className="py-4 px-4 w-[20%] text-center">Điểm Trung Bình</th>
-                  <th className="py-4 px-4 w-[20%] text-center">Trạng Thái</th>
+                  <th className="py-4 px-4 w-[12%] text-center">Thứ Hạng</th>
+                  <th className={isFinalRound ? "py-4 px-4 w-[63%]" : "py-4 px-4 w-[38%]"}>Tên Đội Thi</th>
+                  {!isFinalRound && <th className="py-4 px-4 w-[20%]">Bảng Đấu</th>}
+                  <th className="py-4 px-4 w-[15%] text-center">Điểm Trung Bình</th>
+                  {!isFinalRound && <th className="py-4 px-4 w-[15%] text-center">Trạng Thái</th>}
                 </tr>
               </thead>
               <tbody>
@@ -355,6 +362,12 @@ export default function Leaderboard({
                         {row.teamId?.name}
                       </td>
 
+                      {!isFinalRound && (
+                        <td className="py-4 px-4 text-slate-300 font-mono text-xs">
+                          {row.trackId?.name || "—"}
+                        </td>
+                      )}
+
                       <td className="py-4 px-4 text-center font-black text-cyan-400 text-sm font-mono-tech">
                         {row.averageScore != null
                           ? row.averageScore.toFixed(2)
@@ -366,22 +379,22 @@ export default function Leaderboard({
                         )}
                       </td>
 
-
-
-                      <td className="py-4 px-4 text-center">
-                        {selectedRound?.status !==
-                          "completed" ? // Round not finalized: leave status cell empty
-                          null : // Round finalized: show official advancement status
-                          row.isAdvanced ? (
-                            <span className="inline-flex items-center gap-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded-md text-[10px] font-bold">
-                              <CheckSquare size={10} /> ĐÃ ĐI TIẾP
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-0.5 bg-slate-800 text-slate-500 border border-slate-700 px-2 py-1 rounded-md text-[10px]">
-                              Bị loại
-                            </span>
-                          )}
-                      </td>
+                      {!isFinalRound && (
+                        <td className="py-4 px-4 text-center">
+                          {selectedRound?.status !==
+                            "completed" ? // Round not finalized: leave status cell empty
+                            null : // Round finalized: show official advancement status
+                            row.isAdvanced ? (
+                              <span className="inline-flex items-center gap-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded-md text-[10px] font-bold">
+                                <CheckSquare size={10} /> ĐÃ ĐI TIẾP
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-0.5 bg-slate-800 text-slate-500 border border-slate-700 px-2 py-1 rounded-md text-[10px]">
+                                Bị loại
+                              </span>
+                            )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}

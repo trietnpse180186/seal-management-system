@@ -15,7 +15,12 @@ const GLOBAL_SCOPE_CONFIG = {
     '.env',
     '.env.example',
     'README.md'
-  ]
+  ],
+
+  DESIGN_CONSTRAINTS: {
+    NO_3D_COLORED_ICONS: true,
+    RULE: 'Never use 3D-styled colored emoji/icon assets (such as 📥, 📤) in code or UI. Always use flat, outline, vector-based SVG icons.'
+  }
 };
 
 /**

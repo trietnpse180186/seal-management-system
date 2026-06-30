@@ -1,7 +1,4 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-
 const isMock = process.env.GEMINI_SERVICE_MOCK === 'true';
-const apiKey = process.env.GEMINI_API_KEY;
 
 // Import Global System-Level Harness Layers
 const promptsManager = require('../../harness/boundaries/promptsManager');
@@ -12,15 +9,6 @@ const hitlManager = require('../../harness/telemetry/hitlManager');
 
 // Local tools for database saving
 const dbTools = require('./tools/dbTools');
-
-let ai;
-if (!isMock && apiKey) {
-  try {
-    ai = new GoogleGenerativeAI(apiKey);
-  } catch (err) {
-    console.error('Error initializing Google Generative AI:', err.message);
-  }
-}
 
 /**
  * Call n8n webhook workflow asynchronously or synchronously.
@@ -123,8 +111,8 @@ async function analyzeCommit(commit, files) {
     return n8nResult;
   }
 
-  // 2. Mock service fallback
-  if (isMock || !ai) {
+  // 2. Mock service fallback (when n8n is bypassed or fails)
+  if (isMock || !n8nResult) {
     console.log(`[GEMINI MOCK] Analyzing commit per-push: ${commit.commitSha.substring(0, 7)}`);
     await new Promise(resolve => setTimeout(resolve, 600));
 
@@ -207,49 +195,6 @@ async function analyzeCommit(commit, files) {
     }
     return mockResult;
   }
-
-  // 3. Gemini Direct Analysis with Resilience Engine
-  const startTime = Date.now();
-  try {
-    const parsed = await resilienceEngine.executeWithRetry(async () => {
-      const model = ai.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
-      const result = await model.generateContent(prompt);
-      const textResponse = result.response.text().trim();
-      
-      const fixedJson = resilienceEngine.autoFixJsonString(textResponse);
-      if (!fixedJson) {
-        throw new Error('LLM output could not be parsed as JSON');
-      }
-      schemaValidator.validateSchema(fixedJson, ['tech_stack', 'rag_maturity', 'overall_picture', 'assessment']);
-      return fixedJson;
-    }, 'Gemini Commit Review');
-
-    const latency = Date.now() - startTime;
-    hitlManager.recordTelemetry(latency, 0, true);
-
-    parsed._provider = 'Google Gemini';
-    parsed._model = 'gemini-3.1-flash-lite';
-    
-    if (hitlManager.requiresHumanApproval(parsed)) {
-      parsed._requires_approval = true;
-    }
-    return parsed;
-  } catch (error) {
-    const latency = Date.now() - startTime;
-    hitlManager.recordTelemetry(latency, 0, false);
-    console.error('Error generating per-push review with Gemini:', error.message);
-    return {
-      tech_stack: { frameworks: ["React", "Express"], llm_models: [], vector_db: [], agent_frameworks: [], third_party_tools: [] },
-      inventory_exhaustive: { llm_models_and_apis: [], frameworks_and_runtimes: [], vector_databases: [], agent_orchestration: [], third_party_integrations: [] },
-      agent_intelligence: { detected_skills: [], tool_definitions: [], reasoning_pattern: "None", has_agent_config_files: false },
-      rag_maturity: { level: "Basic", features_detected: [] },
-      overall_picture: { project_about: "Analysis failed", tools_plain_bullets: "", current_focus: "", architectural_style: "", significant_change: false, push_summary: `LLM API Error: ${error.message}` },
-      assessment: { advantages: "", disadvantages: "", improvement_areas: "", context_and_fit: "", source_structure: "", completeness: "", security: `Service limits reached or invalid key. Details: ${error.message}` },
-      suggested_test_cases: [],
-      suggested_questions_for_team: [],
-      suggested_prompt_refinement: ""
-    };
-  }
 }
 
 /**
@@ -288,8 +233,8 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
     return n8nResult;
   }
 
-  // 2. Mock service fallback
-  if (isMock || !ai) {
+  // 2. Mock service fallback (when n8n is bypassed or fails)
+  if (isMock || !n8nResult) {
     console.log(`[GEMINI MOCK] Analyzing team aggregate for: ${teamId}`);
     await new Promise(resolve => setTimeout(resolve, 800));
 
@@ -329,44 +274,6 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
       },
       _provider: 'Mock Service',
       _model: 'mock-model'
-    };
-  }
-
-  // 3. Gemini Direct Analysis with Resilience Engine
-  const startTime = Date.now();
-  try {
-    const parsed = await resilienceEngine.executeWithRetry(async () => {
-      const model = ai.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
-      const result = await model.generateContent(prompt);
-      const textResponse = result.response.text().trim();
-      
-      const fixedJson = resilienceEngine.autoFixJsonString(textResponse);
-      if (!fixedJson) {
-        throw new Error('LLM output could not be parsed as JSON');
-      }
-      schemaValidator.validateSchema(fixedJson, ['criteria_comments', 'smb_scale_advisory', 'overall_picture']);
-      return fixedJson;
-    }, 'Gemini Team Aggregate');
-
-    const latency = Date.now() - startTime;
-    hitlManager.recordTelemetry(latency, 0, true);
-
-    parsed._provider = 'Google Gemini';
-    parsed._model = 'gemini-3.1-flash-lite';
-    return parsed;
-  } catch (error) {
-    const latency = Date.now() - startTime;
-    hitlManager.recordTelemetry(latency, 0, false);
-    console.error('Error generating aggregate review with Gemini:', error.message);
-    const fallbackMap = {};
-    const defaultCodes = context.roundCriteria.length > 0 ? context.roundCriteria.map(c => c.code) : ["R1_01", "R1_02", "R1_03", "R1_04", "R1_05", "R2_01", "R2_02", "R2_03", "R2_04", "R2_05"];
-    defaultCodes.forEach(code => {
-      fallbackMap[code] = { grade: "Tốt", comment: `Phân tích chi tiết tiêu chí tạm thời chưa khả dụng. Chi tiết: ${error.message}` };
-    });
-    return {
-      criteria_comments: fallbackMap,
-      smb_scale_advisory: { summary: `Giới hạn dịch vụ hoặc lỗi API kết nối Gemini. Chi tiết: ${error.message}` },
-      overall_picture: { historical_synthesis: "Phân tích thất bại", evolution_notes: "Không có ghi nhận" }
     };
   }
 }

@@ -39,8 +39,8 @@ async function authenticateToken(req, res, next) {
       });
     }
 
-    // Update lastActiveAt heartbeat (throttled to once every 5 seconds)
-    if (!user.lastActiveAt || Date.now() - new Date(user.lastActiveAt).getTime() > 5000) {
+    // Update lastActiveAt heartbeat (throttled to once every 25 seconds to reduce DB/Redis updates)
+    if (!user.lastActiveAt || Date.now() - new Date(user.lastActiveAt).getTime() > 25000) {
       user.lastActiveAt = new Date();
       await user.save();
     }

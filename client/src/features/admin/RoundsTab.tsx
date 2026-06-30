@@ -21,8 +21,6 @@ interface RoundsTabProps {
   // Create Round form props
   roundName: string;
   setRoundName: (val: string) => void;
-  roundOrder: string;
-  setRoundOrder: (val: string) => void;
   roundDeadline: string;
   setRoundDeadline: (val: string) => void;
   roundLimit: string;
@@ -113,8 +111,6 @@ export default function RoundsTab({
 
   roundName,
   setRoundName,
-  roundOrder,
-  setRoundOrder,
   roundDeadline,
   setRoundDeadline,
   roundLimit,
@@ -626,7 +622,18 @@ export default function RoundsTab({
                   }`}
               >
                 <div>
-                  <p>{r.name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p>{r.name}</p>
+                    {r.hasCriteria === false && (
+                      <span 
+                        className="inline-flex items-center gap-0.5 bg-amber-950/70 text-amber-400 border border-amber-900/50 px-1 py-0.2 rounded text-[7px] font-bold tracking-wider uppercase shrink-0 font-sans"
+                        title="Vòng thi này chưa được cấu hình Tiêu chí chấm điểm (Rubric)"
+                      >
+                        <AlertTriangle size={8} className="shrink-0 text-amber-400" />
+                        Chưa cấu hình
+                      </span>
+                    )}
+                  </div>
                   <p className="text-[9px] text-slate-500 mt-0.5">
                     Thứ tự: {r.order} | Lấy Top: {r.advanceTopN}
                   </p>
@@ -710,12 +717,10 @@ export default function RoundsTab({
                 Thứ tự vòng
               </label>
               <input
-                type="number"
-                required
-                placeholder="Thứ tự (e.g. 2)"
-                value={roundOrder}
-                onChange={(e) => setRoundOrder(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
+                type="text"
+                disabled
+                value={rounds.length > 0 ? rounds[rounds.length - 1].order : 1}
+                className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-900 border border-slate-850 text-slate-550 cursor-not-allowed font-bold"
               />
             </div>
             <div>
@@ -814,6 +819,30 @@ export default function RoundsTab({
             className="w-full font-mono"
           />
         </div>
+
+        {(() => {
+          const currentSelectedRound = rounds.find((r: any) => r._id === selectedRubricRoundId);
+          const isSelectedRoundFinal = currentSelectedRound && 
+            (currentSelectedRound.name.includes("Chung Kết") || 
+             currentSelectedRound.name.includes("Chung kết") || 
+             currentSelectedRound.order === (rounds.length > 0 ? rounds[rounds.length - 1].order : -1));
+          const showWarning = isSelectedRoundFinal && criteria.length === 0;
+
+          if (showWarning) {
+            return (
+              <div className="flex items-start gap-2.5 bg-amber-500/10 border border-amber-500/25 p-3.5 rounded-xl text-xs text-amber-300 font-sans">
+                <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">Vòng Chung Kết chưa được cấu hình Rubric</p>
+                  <p className="text-[11px] text-amber-450/80 mt-0.5">
+                    Vui lòng thêm các tiêu chí chấm điểm bên dưới hoặc chọn import từ Excel để tiếp tục.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          return null;
+        })()}
 
         {selectedRubricRoundId ? (
           rubric ? (

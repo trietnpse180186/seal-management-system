@@ -91,7 +91,6 @@ export default function AdminEvents({
 
   const [rounds, setRounds] = useState<any[]>([]);
   const [roundName, setRoundName] = useState("");
-  const [roundOrder, setRoundOrder] = useState("1");
   const [roundDeadline, setRoundDeadline] = useState("");
   const [roundLimit, setRoundLimit] = useState("3");
 
@@ -522,7 +521,6 @@ export default function AdminEvents({
       setTracks(res.data.tracks || []);
       const fetchedRounds = res.data.rounds || [];
       setRounds(fetchedRounds);
-      setRoundOrder(String(fetchedRounds.length + 1));
 
       if (res.data.tracks && res.data.tracks.length > 0 && !selectedTrack) {
         setSelectedTrack(res.data.tracks[0]);
@@ -1199,12 +1197,15 @@ export default function AdminEvents({
     setLoading(true);
 
     try {
+      // Calculate the order dynamically (equal to the current highest order, which belongs to Vòng Chung Kết)
+      const autoNewRoundOrder = rounds.length > 0 ? rounds[rounds.length - 1].order : 1;
+
       // 1. Create the Round
       const roundRes = await axios.post(
         `http://localhost:5000/api/events/${selectedEvent._id}/rounds`,
         {
           name: roundName,
-          order: parseInt(roundOrder),
+          order: autoNewRoundOrder,
           submissionDeadline: roundDeadline ? new Date(roundDeadline).toISOString() : undefined,
           advanceTopN: parseInt(roundLimit),
         },
@@ -2430,8 +2431,6 @@ export default function AdminEvents({
               setSelectedRubricRoundId={setSelectedRubricRoundId}
               roundName={roundName}
               setRoundName={setRoundName}
-              roundOrder={roundOrder}
-              setRoundOrder={setRoundOrder}
               roundDeadline={roundDeadline}
               setRoundDeadline={setRoundDeadline}
               roundLimit={roundLimit}

@@ -91,6 +91,28 @@ router.post('/', authenticateToken, requireSystemAdmin, async (req, res) => {
 
     await newEvent.save();
 
+    // Auto-create default Final Round (Vòng Chung Kết)
+    const newRound = new Round({
+      eventId: newEvent._id,
+      name: 'Vòng Chung Kết',
+      order: 1,
+      advanceTopN: 0,
+      status: 'pending'
+    });
+    await newRound.save();
+
+    // Create an empty Rubric for this round
+    const Rubric = mongoose.model('Rubric');
+    const rubricObj = new Rubric({
+      eventId: newEvent._id,
+      roundId: newRound._id,
+      name: 'Rubric Vòng Chung Kết',
+      totalWeight: 100,
+      maxCriterionScore: 10,
+      isLocked: false
+    });
+    await rubricObj.save();
+
     // Create a default coordinator EventRole for the creator
     const creatorRole = new EventRole({
       userId: req.user._id,
@@ -216,10 +238,22 @@ router.get('/:id', async (req, res) => {
     const tracks = await Track.find({ eventId: event._id });
     const rounds = await Round.find({ eventId: event._id }).sort({ order: 1 });
 
+    const roundsWithRubricStatus = [];
+    const Rubric = mongoose.model('Rubric');
+    const Criterion = mongoose.model('Criterion');
+    for (const r of rounds) {
+      const rubric = await Rubric.findOne({ roundId: r._id });
+      const hasCriteria = rubric ? (await Criterion.exists({ rubricId: rubric._id })) !== null : false;
+      roundsWithRubricStatus.push({
+        ...sanitizeRoundForAdmin(r),
+        hasCriteria
+      });
+    }
+
     res.json({
       event,
       tracks,
-      rounds: rounds.map((r) => sanitizeRoundForAdmin(r)),
+      rounds: roundsWithRubricStatus,
       driveIntegration: getDriveStatus()
     });
   } catch (error) {
@@ -534,8 +568,8 @@ router.post('/:eventId/rounds', authenticateToken, async (req, res) => {
   const { eventId } = req.params;
   const { name, order, submissionDeadline, advanceTopN } = req.body;
 
-  if (!name || order === undefined) {
-    return res.status(400).json({ message: 'Round name and order sequence are required.' });
+  if (!name) {
+    return res.status(400).json({ message: 'Round name is required.' });
   }
 
   try {
@@ -552,10 +586,20 @@ router.post('/:eventId/rounds', authenticateToken, async (req, res) => {
       }
     }
 
+    // Find the round with the highest order (the Final Round)
+    const finalRound = await Round.findOne({ eventId }).sort({ order: -1 });
+    let assignedOrder = 1;
+    
+    if (finalRound) {
+      assignedOrder = finalRound.order;
+      finalRound.order = finalRound.order + 1;
+      await finalRound.save();
+    }
+
     const newRound = new Round({
       eventId,
       name,
-      order: parseInt(order),
+      order: assignedOrder,
       submissionDeadline: submissionDeadline ? new Date(submissionDeadline) : undefined,
       advanceTopN: advanceTopN ? parseInt(advanceTopN) : undefined,
       status: 'pending'

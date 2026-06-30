@@ -683,7 +683,8 @@ router.get('/leaderboard/:roundId', authenticateToken, async (req, res) => {
 
     const leaderboard = await Ranking.find({ roundId: req.params.roundId })
       .sort({ rank: 1 })
-      .populate('teamId', 'name status topicSubmission');
+      .populate('teamId', 'name status topicSubmission')
+      .populate('trackId', 'name');
 
     res.json({ locked: false, isCoordinator, standings: leaderboard });
   } catch (error) {
@@ -724,7 +725,8 @@ router.get('/live-ranking/:roundId', authenticateToken, async (req, res) => {
 
     // 2. Get all confirmed teams in these tracks
     const teams = await Team.find({ eventId: round.eventId, trackId: { $in: trackIds }, status: 'confirmed' })
-      .populate('topicSubmission');
+      .populate('topicSubmission')
+      .populate('trackId', 'name');
 
     // Get all submitted/locked scores for this round
     const scores = await Score.find({

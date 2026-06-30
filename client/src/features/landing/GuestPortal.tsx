@@ -9,7 +9,6 @@ import {
   Scale,
   Users,
   DollarSign,
-  Cpu,
   Download,
 } from "lucide-react";
 
@@ -718,92 +717,107 @@ export default function GuestPortal({ user }: GuestPortalProps) {
       </section>
 
       {/* Protocols Grid */}
-      <section className="glass p-6 rounded-2xl border border-slate-800 space-y-6">
-        <div className="border-b border-slate-800 pb-3 flex justify-between items-center flex-wrap gap-4">
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <Scale size={18} className="text-cyan-400" />
-            <span>Quy định cuộc thi</span>
-          </h2>
-          <a
-            href="http://localhost:5000/THÔNG%20TIN%20VỀ%20CUỘC%20THI.pdf"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-4 py-2 border border-cyan-500/30 hover:border-cyan-400/80 bg-cyan-950/20 hover:bg-cyan-950/40 rounded-xl text-xs font-mono font-bold text-cyan-400 hover:text-cyan-300 transition-all cursor-pointer shadow-lg shadow-cyan-500/5"
-          >
-            <Download size={12} />
-            <span>[TẢI_THỂ_LỆ_PDF]</span>
-          </a>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-          {(activeEvent?.rules || [
-            { title: "Mã nguồn tự viết", description: "Tất cả các dòng code chính và sản phẩm phải được viết trong thời gian diễn ra cuộc thi. Các thư viện và framework có sẵn được phép sử dụng nếu là mã nguồn mở." },
-            { title: "Giới hạn đội thi", description: "Mỗi đội phải có từ 2 đến 4 thành viên. Không cho phép tham gia cá nhân hoặc đội thi có số lượng vượt mức quy định." },
-            { title: "Ranh giới Đạo đức", description: "Bất kỳ hành vi gian lận hoặc tấn công phá hoại hạ tầng bên ngoài phạm vi quy định sẽ dẫn đến việc truất quyền thi đấu ngay lập tức." }
-          ]).map((r: any, idx: number) => {
-            const IconComponent = idx === 0 ? Cpu : idx === 1 ? Users : Shield;
-            return (
-              <div key={idx} className="p-4 border border-slate-850 hover:border-cyan-500/40 transition-colors bg-slate-900/20 rounded-xl">
-                <IconComponent size={24} className="text-cyan-400 mb-3" />
-                <h3 className="text-xs text-white font-bold uppercase tracking-wider mb-2">
-                  {r.title}
-                </h3>
-                <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
-                  {r.description}
-                </p>
-              </div>
-            );
-          })}
-        </div>
+      {(() => {
+        const defaultRules = [
+          { title: 'Điều 1. Mục tiêu và sứ mệnh cuộc thi', description: 'Thông qua cuộc thi, các đội xây dựng sản phẩm có khả năng giám sát hệ thống, phát hiện bất thường, dự báo rủi ro, chẩn đoán sự cố và hỗ trợ người dùng đưa ra quyết định trong các lĩnh vực vận hành thông minh.' },
+          { title: 'Điều 2. Đối tượng tham gia', description: 'Sinh viên, học viên, hoặc nhóm nghiên cứu trong lĩnh vực CNTT, Khoa học dữ liệu, AI, tự động hóa hoặc các ngành liên quan. Mỗi đội thi gồm từ 3 đến 5 thành viên, có thể đến từ cùng hoặc khác trường/đơn vị. Mỗi cá nhân chỉ được đăng ký tham gia duy nhất một đội.' },
+          { title: 'Điều 3. Chủ đề và phạm vi thi đấu', description: 'Các đội phát triển một sản phẩm ứng dụng AI để tiếp nhận, xử lý và phân tích dữ liệu IoT theo thời gian thực trong một lĩnh vực cụ thể. Cuộc thi gồm 03 Track chuyên môn khác nhau, bảo mật chủ đề và bốc thăm trước ngày thi đấu. Sản phẩm phải thể hiện rõ vai trò của AI (phát hiện bất thường, dự báo, chẩn đoán, đề xuất hành động). Sản phẩm chỉ trực quan hóa dữ liệu hoặc cảnh báo bằng điều kiện cố định sẽ không được xem là đáp ứng đầy đủ yêu cầu.' },
+          { title: 'Điều 4. Cấu trúc và lịch trình cuộc thi', description: 'Ngày 1: Khai mạc, chọn track, bốc thăm chủ đề và chia bảng thi đấu. Ngày 2: Thi đấu chính thức (07h00 - 15h00) gồm Milestone 1 (nộp Slide ý tưởng trước 10h00), Milestone 2 (Thuyết trình ý tưởng 5-8 phút & Hoàn thiện sản phẩm), Technical Review (chấm sản phẩm trực tiếp tại bàn) và Vòng chung kết (Top 3 đội trình diễn).' },
+          { title: 'Điều 5. Quy định thi đấu', description: 'Thời gian thi đấu chính thức: 07h00 – 15h00. Trễ quá 60 phút sẽ bị loại. Lưu trữ mã nguồn trên GitHub/GitLab; tài liệu quản lý trên Jira, Confluence hoặc Notion. Sản phẩm trình bày dưới dạng slide. Các đội được phép tự do sử dụng mô hình AI (XGBoost, LSTM, Transformer, GPT, Gemini, Claude, Llama, Qwen, Mistral...). Vòng bảng thuyết trình 5 phút + Q&A 3 phút. Vòng chung kết thuyết trình 7 phút + Q&A 3 phút.' },
+          { title: 'Điều 6. Cơ cấu thi đấu và chia bảng', description: 'Sau khi các đội chọn Track, BTC sẽ chia bảng, mỗi bảng tối đa 6 đội. Mỗi Track có thể gồm nhiều bảng, tùy vào số lượng đội đăng ký thực tế.' },
+          { title: 'Điều 7. Vòng chung kết và điều kiện xét chọn', description: 'Ban Tổ Chức lựa chọn tổng cộng 08 đội có thành tích cao nhất vào Chung kết. Mỗi bảng chọn số lượng đội bằng nhau để đảm bảo công bằng. Trường hợp xét chọn bổ sung sẽ dựa trên điểm số trung bình so sánh giữa các bảng và có thể áp dụng penalty evaluation (mini test tối đa 10 phút).' },
+          { title: 'Điều 8. Tiêu chí chấm điểm', description: 'Chấm điểm phân loại theo thang điểm. Vòng bảng: Xử lý dữ liệu thực tế (25%), Hiệu quả AI (25%), Kiến trúc & Tích hợp (20%), Phù hợp Domain & UX (15%), Ý tưởng & Pitching (15%). Vòng chung kết: Độ hoàn thiện (25%), Năng lực phân tích AI (25%), Độ tin cậy & An toàn (20%), Sáng tạo (15%), Demo & Phản biện (15%).' },
+          { title: 'Điều 9. Quy định về đạo đức và bản quyền', description: 'Nghiêm cấm mọi hành vi gian lận, đạo nhái, vi phạm bản quyền hoặc can thiệp trái phép vào hệ thống thi đấu. Sản phẩm nộp dự thi phải là kết quả làm việc của chính đội thi trong thời gian cuộc thi.' },
+          { title: 'Điều 10. Quy định chung và hiệu lực', description: 'Ban Tổ Chức có toàn quyền giải thích và điều chỉnh điều lệ khi cần thiết. Mọi tình huống không quy định sẽ do BTC xem xét quyết định đảm bảo công bằng. Hiệu lực kể từ ngày công bố.' }
+        ];
+        const displayRules = activeEvent?.rules?.length > 0 ? activeEvent.rules : defaultRules;
 
-        {/* Summer 2026 Additional PDF Information Panels */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-slate-850 text-left">
-          {/* Rules and Structure details */}
-          <div className="p-5 bg-slate-900/30 rounded-2xl border border-slate-850 space-y-4">
-            <h3 className="text-xs text-cyan-400 font-extrabold uppercase font-mono tracking-widest flex items-center gap-2">
-              <Terminal size={14} />
-              <span>Cơ cấu & Quy chế thi đấu</span>
-            </h3>
-            <ul className="space-y-2 text-[11px] text-slate-300 font-sans leading-relaxed list-disc list-inside">
-              <li><strong>03 Track chuyên môn</strong>: Các lĩnh vực vận hành thông minh khác nhau. Chủ đề được bảo mật và công bố bằng bốc thăm trước ngày thi đấu.</li>
-              <li><strong>Thời gian thi đấu chính thức</strong>: <span className="text-cyan-400 font-mono font-bold">07h00 – 14h00</span>. Đội hoặc thành viên trễ quá 60 phút sẽ bị truất quyền.</li>
-              <li><strong>Lưu trữ & Công cụ</strong>: Mã nguồn lưu trên GitHub/GitLab; tài liệu quản lý trên Jira, Confluence hoặc Notion.</li>
-              <li><strong>Vòng bảng</strong>: Thuyết trình <span className="text-cyan-400 font-mono font-bold">5 phút</span>, trả lời câu hỏi <span className="text-cyan-400 font-mono font-bold">3 phút</span>.</li>
-              <li><strong>Vòng chung kết</strong>: Chọn <span className="text-cyan-400 font-mono font-bold">02 đội điểm cao nhất mỗi bảng</span> (tổng cộng 06 đội). Thuyết trình <span className="text-cyan-400 font-mono font-bold">7 phút</span>, phản biện <span className="text-cyan-400 font-mono font-bold">3 phút</span>.</li>
-            </ul>
-          </div>
+        return (
+          <section className="glass p-6 rounded-2xl border border-slate-800 space-y-6">
+            <div className="border-b border-slate-800 pb-3 flex justify-between items-center flex-wrap gap-4">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Scale size={18} className="text-cyan-400" />
+                <span>Điều lệ & Quy định cuộc thi</span>
+              </h2>
+              <a
+                href="http://localhost:5000/THÔNG%20TIN%20VỀ%20CUỘC%20THI.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-4 py-2 border border-cyan-500/30 hover:border-cyan-400/80 bg-cyan-950/20 hover:bg-cyan-950/40 rounded-xl text-xs font-mono font-bold text-cyan-400 hover:text-cyan-300 transition-all cursor-pointer shadow-lg shadow-cyan-500/5"
+              >
+                <Download size={12} />
+                <span>[TẢI_THỂ_LỆ_PDF]</span>
+              </a>
+            </div>
 
-          {/* Scoring Criteria details */}
-          <div className="p-5 bg-slate-900/30 rounded-2xl border border-slate-850 space-y-4">
-            <h3 className="text-xs text-cyan-400 font-extrabold uppercase font-mono tracking-widest flex items-center gap-2">
-              <Terminal size={14} />
-              <span>Tiêu chí chấm điểm</span>
-            </h3>
-            <div className="grid grid-cols-2 gap-4 text-[11px] font-sans">
-              <div className="space-y-1.5">
-                <span className="text-[10px] text-slate-400 font-bold block uppercase border-b border-slate-800 pb-1 font-mono">1. Vòng bảng</span>
-                <ul className="space-y-1 text-slate-300">
-                  <li>• Xử lý dữ liệu thực tế: <strong className="text-cyan-400">30%</strong></li>
-                  <li>• Hiệu quả ứng dụng AI: <strong className="text-cyan-400">30%</strong></li>
-                  <li>• Trải nghiệm & Domain: <strong className="text-cyan-400">20%</strong></li>
-                  <li>• Ý tưởng & Pitching: <strong className="text-cyan-400">20%</strong></li>
-                </ul>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 text-left items-start">
+              {/* Left: 10 Info Cards */}
+              <div className="lg:col-span-7 space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                {displayRules.map((r: any, idx: number) => (
+                  <div key={idx} className="p-5 border border-slate-850 bg-slate-900/10 rounded-2xl space-y-2 hover:border-cyan-500/30 transition-all">
+                    <h3 className="text-xs text-cyan-400 font-extrabold uppercase font-mono tracking-wider">
+                      {r.title}
+                    </h3>
+                    <p className="text-[11px] text-slate-350 font-sans leading-relaxed whitespace-pre-line">
+                      {r.description}
+                    </p>
+                  </div>
+                ))}
               </div>
-              <div className="space-y-1.5">
-                <span className="text-[10px] text-slate-400 font-bold block uppercase border-b border-slate-800 pb-1 font-mono">2. Vòng chung kết</span>
-                <ul className="space-y-1 text-slate-300">
-                  <li>• Độ hoàn thiện & Ổn định: <strong className="text-cyan-400">30%</strong></li>
-                  <li>• Năng lực phân tích AI: <strong className="text-cyan-400">30%</strong></li>
-                  <li>• Sáng tạo & Thực tế: <strong className="text-cyan-400">20%</strong></li>
-                  <li>• Trình bày & Phản biện: <strong className="text-cyan-400">20%</strong></li>
-                </ul>
+
+              {/* Right: Scoring Criteria & AI guidelines */}
+              <div className="lg:col-span-5 space-y-6">
+                {/* Scoring Criteria details */}
+                <div className="p-5 bg-slate-900/30 rounded-2xl border border-slate-850 space-y-4">
+                  <h3 className="text-xs text-cyan-400 font-extrabold uppercase font-mono tracking-widest flex items-center gap-2">
+                    <Terminal size={14} />
+                    <span>Tiêu chí chấm điểm (Điều 8)</span>
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4 text-[11px] font-sans">
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] text-slate-400 font-bold block uppercase border-b border-slate-800 pb-1 font-mono">1. Vòng bảng</span>
+                      <ul className="space-y-1 text-slate-300">
+                        <li>• Xử lý dữ liệu: <strong className="text-cyan-400">25%</strong></li>
+                        <li>• Hiệu quả ứng dụng AI: <strong className="text-cyan-400">25%</strong></li>
+                        <li>• Kiến trúc &amp; Tích hợp: <strong className="text-cyan-400">20%</strong></li>
+                        <li>• Phù hợp Domain &amp; UX: <strong className="text-cyan-400">15%</strong></li>
+                        <li>• Ý tưởng &amp; Pitching: <strong className="text-cyan-400">15%</strong></li>
+                      </ul>
+                    </div>
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] text-slate-400 font-bold block uppercase border-b border-slate-800 pb-1 font-mono">2. Vòng chung kết</span>
+                      <ul className="space-y-1 text-slate-300">
+                        <li>• Độ hoàn thiện &amp; Ổn định: <strong className="text-cyan-400">25%</strong></li>
+                        <li>• Năng lực phân tích AI: <strong className="text-cyan-400">25%</strong></li>
+                        <li>• Độ tin cậy &amp; An toàn: <strong className="text-cyan-400">20%</strong></li>
+                        <li>• Sáng tạo &amp; Thực tế: <strong className="text-cyan-400">15%</strong></li>
+                        <li>• Trình bày &amp; Phản biện: <strong className="text-cyan-400">15%</strong></li>
+                      </ul>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-mono leading-relaxed pt-1.5 border-t border-slate-800">
+                    * Ghi chú: Các giải pháp chỉ đơn thuần hiển thị hoặc cảnh báo điều kiện tĩnh sẽ không được tính điểm ứng dụng AI.
+                  </p>
+                </div>
+
+                {/* General Info */}
+                <div className="p-5 bg-slate-900/30 rounded-2xl border border-slate-850 space-y-4">
+                  <h3 className="text-xs text-cyan-400 font-extrabold uppercase font-mono tracking-widest flex items-center gap-2">
+                    <Terminal size={14} />
+                    <span>Quy chế thi đấu cốt lõi</span>
+                  </h3>
+                  <ul className="space-y-2 text-[11px] text-slate-300 font-sans leading-relaxed list-disc list-inside">
+                    <li><strong>Thời gian thi đấu</strong>: <span className="text-cyan-400 font-mono font-bold">07h00 – 15h00</span>. Trễ quá 60 phút sẽ bị hủy quyền tham gia.</li>
+                    <li><strong>Lưu trữ mã nguồn</strong>: Phải đẩy lên GitHub/GitLab chính thức.</li>
+                    <li><strong>Hồ sơ tài liệu</strong>: Quản lý qua Jira, Confluence hoặc Notion.</li>
+                    <li><strong>Sản phẩm báo cáo</strong>: Thuyết trình bằng Slide (không dùng tài liệu).</li>
+                  </ul>
+                </div>
               </div>
             </div>
-            <p className="text-[10px] text-slate-500 font-mono leading-relaxed pt-1.5 border-t border-slate-800">
-              * Ghi chú: Các giải pháp chỉ đơn thuần hiển thị hoặc cảnh báo điều kiện tĩnh sẽ không được tính điểm ứng dụng AI.
-            </p>
-          </div>
-        </div>
-      </section>
+          </section>
+        );
+      })()}
 
       {/* Bottom CTA */}
       <section className="py-4 flex justify-center">

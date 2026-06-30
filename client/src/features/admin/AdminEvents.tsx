@@ -1011,16 +1011,28 @@ export default function AdminEvents({
       return;
     }
 
-    // Client-side validation: total maxTeams check
-    const totalAllocatedTeams = tracks.reduce((sum, t) => sum + (t.maxTeams || 0), 0);
-    const maxEventTeams = selectedEvent.maxTeams || 0;
+    // Client-side validation: total maxTeams check (excluding Final Round)
+    const finalRound = rounds.find((r) => r.advanceTopN === 0);
+    const finalRoundId = finalRound?._id || finalRound?.id;
+    const isFinalRoundTrack = trackRoundId === finalRoundId;
+
     const newMaxTeamsNum = parseInt(trackMax) || 0;
-    if (totalAllocatedTeams + newMaxTeamsNum > maxEventTeams) {
-      setMessage({
-        type: "error",
-        text: `Không thể tạo bảng đấu. Tổng số lượng đội tối đa của các bảng đấu (${totalAllocatedTeams + newMaxTeamsNum}) vượt quá số lượng đội giới hạn của cuộc thi (${maxEventTeams}).`,
-      });
-      return;
+
+    if (!isFinalRoundTrack) {
+      const totalAllocatedTeams = tracks
+        .filter((t) => {
+          const tRoundId = t.roundId?._id || t.roundId;
+          return tRoundId && tRoundId !== finalRoundId;
+        })
+        .reduce((sum, t) => sum + (t.maxTeams || 0), 0);
+      const maxEventTeams = selectedEvent.maxTeams || 0;
+      if (totalAllocatedTeams + newMaxTeamsNum > maxEventTeams) {
+        setMessage({
+          type: "error",
+          text: `Không thể tạo bảng đấu. Tổng số lượng đội tối đa của các bảng đấu (${totalAllocatedTeams + newMaxTeamsNum}) vượt quá số lượng đội giới hạn của cuộc thi (${maxEventTeams}).`,
+        });
+        return;
+      }
     }
 
     setMessage({ type: "", text: "" });
@@ -1082,18 +1094,28 @@ export default function AdminEvents({
       return;
     }
 
-    // Client-side validation for max teams limit
-    const totalAllocatedTeams = tracks
-      .filter((t) => t._id !== editingTrack._id)
-      .reduce((sum, t) => sum + (t.maxTeams || 0), 0);
-    const maxEventTeams = selectedEvent.maxTeams || 0;
+    // Client-side validation for max teams limit (excluding Final Round)
+    const finalRound = rounds.find((r) => r.advanceTopN === 0);
+    const finalRoundId = finalRound?._id || finalRound?.id;
+    const isFinalRoundTrack = trackRoundId === finalRoundId;
+
     const updatedMaxTeamsNum = parseInt(trackMax) || 0;
-    if (totalAllocatedTeams + updatedMaxTeamsNum > maxEventTeams) {
-      setMessage({
-        type: "error",
-        text: `Không thể cập nhật bảng đấu. Tổng số lượng đội tối đa của các bảng đấu (${totalAllocatedTeams + updatedMaxTeamsNum}) vượt quá số lượng đội giới hạn của cuộc thi (${maxEventTeams}).`,
-      });
-      return;
+
+    if (!isFinalRoundTrack) {
+      const totalAllocatedTeams = tracks
+        .filter((t) => {
+          const tRoundId = t.roundId?._id || t.roundId;
+          return t._id !== editingTrack._id && tRoundId && tRoundId !== finalRoundId;
+        })
+        .reduce((sum, t) => sum + (t.maxTeams || 0), 0);
+      const maxEventTeams = selectedEvent.maxTeams || 0;
+      if (totalAllocatedTeams + updatedMaxTeamsNum > maxEventTeams) {
+        setMessage({
+          type: "error",
+          text: `Không thể cập nhật bảng đấu. Tổng số lượng đội tối đa của các bảng đấu (${totalAllocatedTeams + updatedMaxTeamsNum}) vượt quá số lượng đội giới hạn của cuộc thi (${maxEventTeams}).`,
+        });
+        return;
+      }
     }
 
     setMessage({ type: "", text: "" });

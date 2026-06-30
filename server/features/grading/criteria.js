@@ -308,8 +308,9 @@ router.put("/:criterionId", authenticateToken, async (req, res) => {
       return res.status(403).json({ message: "Unauthorized." });
     }
 
+    let normalizedCode = "";
     if (code !== undefined) {
-      const normalizedCode = normalizeCode(code);
+      normalizedCode = normalizeCode(code);
       const duplicate = await Criterion.findOne({
         rubricId: rubric._id,
         code: normalizedCode,
@@ -324,8 +325,6 @@ router.put("/:criterionId", authenticateToken, async (req, res) => {
               "A criterion with this code already exists in this rubric.",
           });
       }
-
-      criterion.code = normalizedCode;
     }
 
     let critDetails = [];

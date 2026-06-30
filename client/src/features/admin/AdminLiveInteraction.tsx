@@ -113,7 +113,9 @@ export default function AdminLiveInteraction() {
 
   const fetchEvents = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/events");
+      const res = await axios.get("http://localhost:5000/api/events", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setEvents(res.data);
       if (res.data.length > 0) {
         setSelectedEventId(res.data[0]._id);
@@ -125,7 +127,9 @@ export default function AdminLiveInteraction() {
 
   const fetchEventDetails = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/events/${selectedEventId}`);
+      const res = await axios.get(`http://localhost:5000/api/events/${selectedEventId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setRounds(res.data.rounds || []);
       if (res.data.rounds && res.data.rounds.length > 0) {
         setSelectedRoundId(res.data.rounds[0]._id);

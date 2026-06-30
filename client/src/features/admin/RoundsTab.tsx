@@ -379,30 +379,80 @@ export default function RoundsTab({
         const sheet = workbook.Sheets[sheetName];
         const rawData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
 
-        if (rawData.length < 3) {
-          setImportError("File phải có ít nhất 2 hàng header và 1 hàng dữ liệu.");
-          return;
-        }
+        // Auto-detect header format:
+        // If the first cell of row 2 (index 1) is a valid criteria code or is not "mã", it is a 1-header file
+        const cell0 = String(rawData[0]?.[0] || '').trim().toLowerCase();
+        const cell1 = String(rawData[1]?.[0] || '').trim().toUpperCase();
+        const isOneHeader = cell0 === 'mã' && (cell1.match(/^[A-Z0-9_-]+$/) || cell1 !== 'mã');
 
-        // Parse grading level definitions from row 2 (index 1)
-        const headerRow2 = rawData[1];
-        const gradingLevelRegex = /^(.+?)\s*\(\s*([\d.]+)\s*-\s*([\d.]+)\s*\)$/;
-        const gradingDefs: any[] = [];
-
-        for (let col = 3; col < headerRow2.length; col++) {
-          const headerVal = String(headerRow2[col] || "").trim();
-          if (!headerVal) continue;
-          const match = headerVal.match(gradingLevelRegex);
-          if (!match) {
-            setImportError(`Cột ${String.fromCharCode(65 + col)} header mức chấm không đúng format. Yêu cầu: "Tên mức (min - max)". Giá trị: "${headerVal}"`);
-            setImportPreview(null);
+        let headerRow: any[];
+        let dataStartIdx: number;
+        if (isOneHeader) {
+          headerRow = rawData[0];
+          dataStartIdx = 1;
+        } else {
+          if (rawData.length < 3) {
+            setImportError("File phải có ít nhất 2 hàng header và 1 hàng dữ liệu.");
             return;
           }
+          headerRow = rawData[1];
+          dataStartIdx = 2;
+        }
+
+        // Parse grading level definitions from headerRow starting from column index 3 (Col D)
+        const gradingLevelRegex = /^(.+?)\s*\(\s*([\d.]+)\s*-\s*([\d.]+)\s*\)$/;
+        const diemRegex = /^Điểm\s*([\d.]+)$/i;
+        const numericRegex = /^([\d.]+)$/;
+        const gradingDefs: any[] = [];
+
+        for (let col = 3; col < headerRow.length; col++) {
+          const headerVal = String(headerRow[col] || "").trim();
+          if (!headerVal) continue;
+
+          // Try matching old format: "Xuất sắc (9.0 - 10.0)"
+          let match = headerVal.match(gradingLevelRegex);
+          if (match) {
+            gradingDefs.push({
+              colIndex: col,
+              label: match[1].trim(),
+              minScore: parseFloat(match[2]),
+              maxScore: parseFloat(match[3]),
+            });
+            continue;
+          }
+
+          // Try matching new format: "Điểm 5"
+          match = headerVal.match(diemRegex);
+          if (match) {
+            const score = parseFloat(match[1]);
+            gradingDefs.push({
+              colIndex: col,
+              label: `Điểm ${score}`,
+              minScore: score,
+              maxScore: score,
+            });
+            continue;
+          }
+
+          // Try matching plain number: "5"
+          match = headerVal.match(numericRegex);
+          if (match) {
+            const score = parseFloat(match[1]);
+            gradingDefs.push({
+              colIndex: col,
+              label: `Điểm ${score}`,
+              minScore: score,
+              maxScore: score,
+            });
+            continue;
+          }
+
+          // Default fallback
           gradingDefs.push({
             colIndex: col,
-            label: match[1].trim(),
-            minScore: parseFloat(match[2]),
-            maxScore: parseFloat(match[3]),
+            label: headerVal,
+            minScore: 0,
+            maxScore: 0,
           });
         }
 
@@ -413,13 +463,26 @@ export default function RoundsTab({
         const fileCodes = new Set<string>();
         const previewed: any[] = [];
 
-        for (let rowIdx = 2; rowIdx < rawData.length; rowIdx++) {
+        for (let rowIdx = dataStartIdx; rowIdx < rawData.length; rowIdx++) {
           const row = rawData[rowIdx];
           const code = String(row[0] || "").trim().toUpperCase();
           const name = String(row[1] || "").trim();
-          const weight = Number(row[2]);
+          const weightRaw = row[2];
 
           if (!code && !name && !row[2]) continue; // skip empty rows
+
+          // Parse weight intelligently
+          let weight = NaN;
+          const weightRawStr = String(weightRaw || '').trim();
+          if (weightRawStr.endsWith('%')) {
+            weight = parseFloat(weightRawStr);
+          } else {
+            weight = Number(weightRaw);
+            if (!isNaN(weight) && weight > 0 && weight <= 1.0) {
+              // Auto-convert decimal fraction (0.25) to percentage (25)
+              weight = weight * 100;
+            }
+          }
 
           const issues: string[] = [];
           if (!code) issues.push("Thiếu mã tiêu chí");

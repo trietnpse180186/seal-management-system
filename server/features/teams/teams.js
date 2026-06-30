@@ -921,6 +921,25 @@ router.post('/submit-topic', authenticateToken, async (req, res) => {
  */
 router.get('/all/:eventId', authenticateToken, async (req, res) => {
   try {
+    const Event = mongoose.model('Event');
+    const event = await Event.findById(req.params.eventId);
+    if (event && event.isArchived) {
+      // Allow only System Admin or Coordinator
+      let authorized = req.user.isSystemAdmin;
+      if (!authorized) {
+        const coordRole = await EventRole.findOne({
+          userId: req.user._id,
+          eventId: event._id,
+          role: 'coordinator',
+          status: 'active'
+        });
+        authorized = !!coordRole;
+      }
+      if (!authorized) {
+        return res.status(403).json({ message: 'Sự kiện này đã bị ẩn. Bạn không có quyền truy cập.' });
+      }
+    }
+
     let query = { eventId: req.params.eventId };
 
     if (!req.user.isSystemAdmin) {
@@ -985,10 +1004,27 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
     const team = await Team.findById(req.params.teamId)
       .populate('trackId', 'name attachments')
       .populate('leaderId', 'fullName email')
-      .populate('eventId', 'name status');
+      .populate('eventId', 'name status isArchived');
 
     if (!team) {
       return res.status(404).json({ message: 'Không tìm thấy đội thi.' });
+    }
+
+    // Block non-coordinators/non-admins if event is archived
+    if (team.eventId && team.eventId.isArchived) {
+      let authorized = req.user.isSystemAdmin;
+      if (!authorized) {
+        const coordRole = await EventRole.findOne({
+          userId: req.user._id,
+          eventId: team.eventId._id,
+          role: 'coordinator',
+          status: 'active'
+        });
+        authorized = !!coordRole;
+      }
+      if (!authorized) {
+        return res.status(403).json({ message: 'Sự kiện của đội thi này đã bị ẩn. Bạn không có quyền truy cập.' });
+      }
     }
 
     // Verify track permissions for judges
@@ -1115,6 +1151,7 @@ router.put('/:teamId/assign-track', authenticateToken, async (req, res) => {
       eventId: team.eventId,
       actorId: req.user._id,
       action: 'assign_team_track',
+      type: 'operation',
       details: `Phân đội ${team.name} vào bảng đấu ${track.name}`
     });
     await newLog.save();
@@ -1260,6 +1297,7 @@ router.put('/:teamId/assign-mentor', authenticateToken, async (req, res) => {
       eventId: team.eventId,
       actorId: req.user._id,
       action: mentorId ? 'assign_team_mentor' : 'unassign_team_mentor',
+      type: 'operation',
       details: logDetailsMsg
     });
     await newLog.save();

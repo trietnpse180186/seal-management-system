@@ -264,6 +264,7 @@ router.post('/:id/kick-all', authenticateToken, async (req, res) => {
       eventId: repo.eventId,
       actorId: req.user._id,
       action: 'kick_collaborators',
+      type: 'system',
       details: `Thu hồi quyền truy cập repository ${repo.repoName} của các thành viên và mentor: ${kickedList.join(', ')}`
     });
     await newLog.save();

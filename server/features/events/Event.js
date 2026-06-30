@@ -13,6 +13,7 @@ const EventSchema = new Schema({
   contestEnd: { type: Date },
   maxTeams: { type: Number },
   status: { type: String, enum: ['draft', 'registration', 'prepare', 'ongoing', 'completed', 'cancelled'], default: 'draft' },
+  isArchived: { type: Boolean, default: false },
   githubOrgName: { type: String },
   githubOrgCreated: { type: Boolean, default: false },
   attachments: { type: Schema.Types.Mixed, default: [] },
@@ -77,5 +78,6 @@ const EventSchema = new Schema({
 
 EventSchema.index({ semester: 1, year: 1 }, { unique: true });
 EventSchema.index({ status: 1 });
+EventSchema.index({ isArchived: 1 });
 
 module.exports = mongoose.model('Event', EventSchema);

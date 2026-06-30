@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "axios";
 import { Search, Check, ChevronRight, AlertCircle } from "lucide-react";
+import { io, Socket } from "socket.io-client";
 
 export default function JudgeProjects() {
   const token = localStorage.getItem("token");
@@ -23,6 +24,34 @@ export default function JudgeProjects() {
     "all" | "pending" | "graded"
   >("all");
   const [loading, setLoading] = useState(false);
+  const [highlightedTeamId, setHighlightedTeamId] = useState<string | null>(null);
+  const socketRef = useRef<Socket | null>(null);
+
+  // Real-time synchronization
+  useEffect(() => {
+    if (!selectedEventId || !token) return;
+
+    const socketUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    const socket = io(socketUrl, { query: { token } });
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      socket.emit("join_live_room", { eventId: selectedEventId });
+    });
+
+    socket.on("team_highlighted", (data: any) => {
+      console.log("Team highlighted via socket:", data);
+      if (!data.roundId || data.roundId === selectedRoundId) {
+        setHighlightedTeamId(data.teamId);
+      }
+    });
+
+    return () => {
+      socket.emit("leave_live_room", { eventId: selectedEventId });
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [selectedEventId, selectedRoundId, token]);
 
   // Fetch active contest details
   useEffect(() => {
@@ -240,7 +269,7 @@ export default function JudgeProjects() {
                   return (
                     <tr
                       key={team._id}
-                      className="hover:bg-cyan-950/20 transition-colors"
+                      className={`hover:bg-cyan-950/20 transition-all ${team._id === highlightedTeamId ? 'bg-amber-500/10 border-l-4 border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.15)] animate-pulse' : ''}`}
                     >
                       {/* Column 1: Team Info */}
                       <td className="px-6 py-5 whitespace-nowrap">
@@ -249,9 +278,16 @@ export default function JudgeProjects() {
                             {team.name.charAt(0)}
                           </div>
                           <div>
-                            <span className="font-extrabold text-white block drop-shadow-[0_0_5px_rgba(255,255,255,0.2)]">
-                              {team.name}
-                            </span>
+                            <div className="flex items-center">
+                              <span className="font-extrabold text-white block drop-shadow-[0_0_5px_rgba(255,255,255,0.2)]">
+                                {team.name}
+                              </span>
+                              {team._id === highlightedTeamId && (
+                                <span className="bg-amber-500 text-slate-950 font-extrabold text-[8px] uppercase px-1.5 py-0.5 rounded tracking-wider animate-pulse ml-2 shadow-[0_0_8px_rgba(245,158,11,0.5)]">
+                                  Đang chấm
+                                </span>
+                              )}
+                            </div>
                             <span className="text-[10px] text-slate-500 block font-mono">
                               ID: {team._id.slice(-6)}
                             </span>

@@ -74,13 +74,16 @@ export default function About() {
         <div ref={cardRef} className="border border-outline-variant/30 bg-surface-container p-8 md:p-12 relative overflow-hidden laser-scan-effect opacity-0">
           <div className="max-w-3xl space-y-4 about-content">
             <span className="font-mono text-xs text-primary-container uppercase tracking-widest block font-semibold opacity-0">
-              Sứ mệnh Cuộc thi
+              Chủ đề Summer 2026
             </span>
             <h2 className="text-2xl sm:text-3xl font-bold text-white uppercase tracking-tight font-sans opacity-0">
-              KIẾN TẠO SỰ SÁNG TẠO
+              AI-Driven Smart Operations
             </h2>
+            <span className="font-mono text-[10px] text-cyan-400 block tracking-widest opacity-0 uppercase mb-2">
+              Turning Real-Time IoT Data into Intelligent Actions
+            </span>
             <p className="text-on-surface-variant text-base leading-relaxed font-sans opacity-0">
-              SEAL Hackathon là cuộc thi lập trình hàng đầu tại Đại học FPT, quy tụ những tài năng công nghệ xuất sắc nhất để giải quyết các thách thức thực tế thông qua sự sáng tạo và dòng code. Chúng tôi chuẩn bị nền tảng, bạn lập trình giải pháp. Trong vòng 48 giờ đầy thử thách, các đội thi sẽ biến các ý tưởng trừu tượng thành các sản phẩm thực tế định hình tương lai.
+              SEAL Hackathon Summer 2026 là sân chơi công nghệ và trải nghiệm học thuật đỉnh cao, khuyến khích các sinh viên ngành CNTT từ Đại học FPT TP.HCM và các trường đại học khác phát triển các giải pháp IoT & AI đột phá. Các đội thi sẽ bốc thăm 1 trong 3 Track chuyên môn mật, xây dựng hệ thống AI để tiếp nhận, phân tích dữ liệu cảm biến thời gian thực, phát hiện bất thường và đề xuất hành động thông minh.
             </p>
           </div>
           <div ref={iconRef} className="absolute top-6 right-6 text-primary-container/20 hidden lg:block opacity-0">

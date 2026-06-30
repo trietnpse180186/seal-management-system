@@ -84,6 +84,15 @@ export default function Hero({ user, roles }: HeroProps) {
             >
               Xem Lịch trình
             </a>
+
+            <a
+              href="http://localhost:5000/THÔNG%20TIN%20VỀ%20CUỘC%20THI.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-8 py-3.5 bg-slate-900/80 text-white border border-slate-700 rounded-sm text-xs font-bold uppercase tracking-widest text-center transition-all duration-300 hover:bg-slate-800 hover:scale-105 active:scale-95 shadow-[inset_0_0_10px_rgba(255,255,255,0.05)]"
+            >
+              Thể Lệ PDF 📥
+            </a>
           </div>
         </div>
       </div>

@@ -717,12 +717,21 @@ export default function GuestPortal({ user }: GuestPortalProps) {
       </section>
 
       {/* Protocols Grid */}
-      <section className="glass p-6 rounded-2xl border border-slate-800">
-        <div className="border-b border-slate-800 pb-3 mb-6">
+      <section className="glass p-6 rounded-2xl border border-slate-800 space-y-6">
+        <div className="border-b border-slate-800 pb-3 flex justify-between items-center flex-wrap gap-4">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <Scale size={18} className="text-cyan-400" />
             <span>Quy định cuộc thi</span>
           </h2>
+          <a
+            href="http://localhost:5000/THÔNG%20TIN%20VỀ%20CUỘC%20THI.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-4 py-2 border border-cyan-500/30 hover:border-cyan-400/80 bg-cyan-950/20 hover:bg-cyan-950/40 rounded-xl text-xs font-mono font-bold text-cyan-400 hover:text-cyan-300 transition-all cursor-pointer shadow-lg shadow-cyan-500/5"
+          >
+            <span>[TẢI_THỂ_LỆ_PDF]</span>
+            <span>📥</span>
+          </a>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
           {(activeEvent?.rules || [
@@ -737,12 +746,61 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                 <h3 className="text-xs text-white font-bold uppercase tracking-wider mb-2">
                   {r.title}
                 </h3>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
+                <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
                   {r.description}
                 </p>
               </div>
             );
           })}
+        </div>
+
+        {/* Summer 2026 Additional PDF Information Panels */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-slate-850 text-left">
+          {/* Rules and Structure details */}
+          <div className="p-5 bg-slate-900/30 rounded-2xl border border-slate-850 space-y-4">
+            <h3 className="text-xs text-cyan-400 font-extrabold uppercase font-mono tracking-widest flex items-center gap-2">
+              <Terminal size={14} />
+              <span>Cơ cấu & Quy chế thi đấu</span>
+            </h3>
+            <ul className="space-y-2 text-[11px] text-slate-300 font-sans leading-relaxed list-disc list-inside">
+              <li><strong>03 Track chuyên môn</strong>: Các lĩnh vực vận hành thông minh khác nhau. Chủ đề được bảo mật và công bố bằng bốc thăm trước ngày thi đấu.</li>
+              <li><strong>Thời gian thi đấu chính thức</strong>: <span className="text-cyan-400 font-mono font-bold">07h00 – 14h00</span>. Đội hoặc thành viên trễ quá 60 phút sẽ bị truất quyền.</li>
+              <li><strong>Lưu trữ & Công cụ</strong>: Mã nguồn lưu trên GitHub/GitLab; tài liệu quản lý trên Jira, Confluence hoặc Notion.</li>
+              <li><strong>Vòng bảng</strong>: Thuyết trình <span className="text-cyan-400 font-mono font-bold">5 phút</span>, trả lời câu hỏi <span className="text-cyan-400 font-mono font-bold">3 phút</span>.</li>
+              <li><strong>Vòng chung kết</strong>: Chọn <span className="text-cyan-400 font-mono font-bold">02 đội điểm cao nhất mỗi bảng</span> (tổng cộng 06 đội). Thuyết trình <span className="text-cyan-400 font-mono font-bold">7 phút</span>, phản biện <span className="text-cyan-400 font-mono font-bold">3 phút</span>.</li>
+            </ul>
+          </div>
+
+          {/* Scoring Criteria details */}
+          <div className="p-5 bg-slate-900/30 rounded-2xl border border-slate-850 space-y-4">
+            <h3 className="text-xs text-cyan-400 font-extrabold uppercase font-mono tracking-widest flex items-center gap-2">
+              <Terminal size={14} />
+              <span>Tiêu chí chấm điểm</span>
+            </h3>
+            <div className="grid grid-cols-2 gap-4 text-[11px] font-sans">
+              <div className="space-y-1.5">
+                <span className="text-[10px] text-slate-400 font-bold block uppercase border-b border-slate-800 pb-1 font-mono">1. Vòng bảng</span>
+                <ul className="space-y-1 text-slate-300">
+                  <li>• Xử lý dữ liệu thực tế: <strong className="text-cyan-400">30%</strong></li>
+                  <li>• Hiệu quả ứng dụng AI: <strong className="text-cyan-400">30%</strong></li>
+                  <li>• Trải nghiệm & Domain: <strong className="text-cyan-400">20%</strong></li>
+                  <li>• Ý tưởng & Pitching: <strong className="text-cyan-400">20%</strong></li>
+                </ul>
+              </div>
+              <div className="space-y-1.5">
+                <span className="text-[10px] text-slate-400 font-bold block uppercase border-b border-slate-800 pb-1 font-mono">2. Vòng chung kết</span>
+                <ul className="space-y-1 text-slate-300">
+                  <li>• Độ hoàn thiện & Ổn định: <strong className="text-cyan-400">30%</strong></li>
+                  <li>• Năng lực phân tích AI: <strong className="text-cyan-400">30%</strong></li>
+                  <li>• Sáng tạo & Thực tế: <strong className="text-cyan-400">20%</strong></li>
+                  <li>• Trình bày & Phản biện: <strong className="text-cyan-400">20%</strong></li>
+                </ul>
+              </div>
+            </div>
+            <p className="text-[10px] text-slate-500 font-mono leading-relaxed pt-1.5 border-t border-slate-800">
+              * Ghi chú: Các giải pháp chỉ đơn thuần hiển thị hoặc cảnh báo điều kiện tĩnh sẽ không được tính điểm ứng dụng AI.
+            </p>
+          </div>
         </div>
       </section>
 

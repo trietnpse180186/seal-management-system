@@ -176,7 +176,6 @@ export default function AdminDashboard() {
               {[
                 { value: 'all', label: 'Tất cả' },
                 { value: 'operation', label: 'Thao tác' },
-                { value: 'login', label: 'Đăng nhập' },
                 { value: 'grading', label: 'Chấm điểm' },
                 { value: 'error', label: 'Lỗi' },
                 { value: 'system', label: 'Hệ thống' }
@@ -188,8 +187,6 @@ export default function AdminDashboard() {
                     logFilter === btn.value
                       ? btn.value === 'error'
                         ? 'bg-rose-500 text-white shadow-[0_0_10px_rgba(244,63,94,0.4)]'
-                        : btn.value === 'login'
-                        ? 'bg-purple-500 text-white shadow-[0_0_10px_rgba(168,85,247,0.4)]'
                         : btn.value === 'grading'
                         ? 'bg-amber-500 text-slate-900 shadow-[0_0_10px_rgba(245,158,11,0.4)]'
                         : btn.value === 'system'

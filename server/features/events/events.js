@@ -259,7 +259,7 @@ router.get('/all/logs', authenticateToken, async (req, res) => {
       }
     }
 
-    const logs = await EventLog.find({})
+    const logs = await EventLog.find({ type: { $ne: 'login' } })
       .populate('actorId', 'fullName email')
       .populate('eventId', 'name semester year')
       .sort({ createdAt: -1 })
@@ -1468,7 +1468,7 @@ router.get('/:eventId/logs', authenticateToken, async (req, res) => {
       }
     }
 
-    const logs = await EventLog.find({ eventId })
+    const logs = await EventLog.find({ eventId, type: { $ne: 'login' } })
       .populate('actorId', 'fullName email')
       .sort({ createdAt: -1 });
 

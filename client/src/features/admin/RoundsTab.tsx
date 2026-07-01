@@ -3,6 +3,7 @@ import { ListOrdered, ChevronRight, Award, Lock, Download, Upload, FileSpreadshe
 import axios from "axios";
 import * as XLSX from "xlsx";
 import CustomSelect from "../shared/CustomSelect";
+import { useConfirm } from "../shared/ConfirmDialog";
 
 interface RoundsTabProps {
   selectedEvent: any;
@@ -173,6 +174,7 @@ export default function RoundsTab({
   fetchRoundsAndRubric,
 }: RoundsTabProps) {
   // Read unused props to satisfy the TS compiler (noUnusedLocals: true)
+  const confirm = useConfirm();
   const selectedRound = rounds.find((r: any) => r._id === selectedRubricRoundId);
   if (false as boolean) {
     console.log(selectedTrack, setSelectedTrack, setRubric, setCriteria, roundDeadline, setRoundDeadline);
@@ -249,7 +251,11 @@ export default function RoundsTab({
           return;
         }
 
-        if (!window.confirm(`Bạn có chắc chắn muốn nhập Rubric "${rubricData.name}" vào vòng thi hiện tại không?`)) {
+        const confirmed = await confirm({
+          title: "Xác nhận nhập Rubric",
+          message: `Bạn có chắc chắn muốn nhập Rubric "${rubricData.name}" vào vòng thi hiện tại không?`
+        });
+        if (!confirmed) {
           return;
         }
 

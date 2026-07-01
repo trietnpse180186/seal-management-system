@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Users, UserPlus, Lock, Search, Trash2, Edit2, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useConfirm } from "../shared/ConfirmDialog";
 
 interface UsersTabProps {
   token: string | null;
 }
 
 export const UsersTab: React.FC<UsersTabProps> = ({ token }) => {
+  const confirm = useConfirm();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -124,7 +126,11 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token }) => {
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa tài khoản người dùng này? Thao tác không thể hoàn tác!')) return;
+    const confirmed = await confirm({
+      title: 'Xác nhận xóa tài khoản',
+      message: 'Bạn có chắc chắn muốn xóa tài khoản người dùng này? Thao tác không thể hoàn tác!'
+    });
+    if (!confirmed) return;
     try {
       const res = await axios.delete(`http://localhost:5000/api/auth/users/${userId}`, {
         headers: { Authorization: `Bearer ${token}` }

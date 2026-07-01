@@ -974,27 +974,23 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
           }
         }
 
-        let isFinalRound = false;
         if (effectiveRoundId) {
           const roundDoc = await Round.findById(effectiveRoundId);
-          if (roundDoc) {
-            isFinalRound = roundDoc.name.toLowerCase().includes('chung kết') || roundDoc.name.toLowerCase() === 'final' || roundDoc.advanceTopN === 0;
+          if (roundDoc && roundDoc.status === 'completed') {
+            // Hide all teams from judges if the round is already locked/completed
+            return res.json([]);
           }
         }
 
-        if (isFinalRound) {
-          const finalTracks = await Track.find({ roundId: effectiveRoundId });
-          const finalTrackIds = finalTracks.map(t => t._id);
-          query.trackId = { $in: finalTrackIds };
-        } else if (userRole.trackId) {
-          // If not final round, verify if user's assigned track belongs to this round
+        if (userRole.trackId) {
           const track = await Track.findById(userRole.trackId);
-          if (track && effectiveRoundId && track.roundId.toString() === effectiveRoundId.toString()) {
-            query.trackId = userRole.trackId;
-          } else {
-            // A judge not assigned to this round should be restricted to their assigned track
-            query.trackId = userRole.trackId;
+          if (track && effectiveRoundId && track.roundId.toString() !== effectiveRoundId.toString()) {
+            // Queried/active round does not match the judge's assigned track's round
+            return res.json([]);
           }
+          query.trackId = userRole.trackId;
+        } else {
+          return res.json([]);
         }
       } else if (!userRole) {
         return res.json([]); // No active role in this event/round, return empty

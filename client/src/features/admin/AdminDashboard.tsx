@@ -104,7 +104,7 @@ export default function AdminDashboard() {
           </p>
         </div>
         <button
-          onClick={() => navigate("/admin/events")}
+          onClick={() => navigate("/admin/events?create=true")}
           className="bg-cyan-500 hover:bg-cyan-400 text-white px-4 py-2.5 rounded-xl border border-cyan-500/20 text-xs font-mono font-semibold flex items-center gap-1.5 cursor-pointer shadow-lg shadow-cyan-500/25 transition-all"
         >
           <CalendarPlus size={14} />

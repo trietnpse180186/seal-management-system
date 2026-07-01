@@ -463,6 +463,20 @@ export default function AdminEvents({
     }
   }, [eventIdParam, events]);
 
+  useEffect(() => {
+    const createParam = searchParams.get("create");
+    if (createParam === "true") {
+      sessionStorage.removeItem("creatingEventId");
+      setSelectedEvent(null);
+      setIsWizardMode(true);
+      setWizardStep(1);
+      
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("create");
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   const fetchEvents = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/events");

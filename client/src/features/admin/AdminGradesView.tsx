@@ -163,10 +163,20 @@ export default function AdminGradesView() {
 
           if (hasTracks) {
             const tTrackId = t.trackId && typeof t.trackId === 'object' ? t.trackId._id : t.trackId;
-            return String(tTrackId) === String(selectedTrackId);
+            const currentTrackMatch = String(tTrackId) === String(selectedTrackId);
+            const historicalTrackMatch = t.rankings?.some((r: any) => {
+              const rTrackId = r.trackId && typeof r.trackId === 'object' ? r.trackId._id : r.trackId;
+              return String(rTrackId) === String(selectedTrackId);
+            });
+            return currentTrackMatch || historicalTrackMatch;
           } else {
             const tRoundId = t.currentRoundId && typeof t.currentRoundId === 'object' ? t.currentRoundId._id : t.currentRoundId;
-            return String(tRoundId) === String(selectedRoundId);
+            const currentRoundMatch = String(tRoundId) === String(selectedRoundId);
+            const historicalRoundMatch = t.rankings?.some((r: any) => {
+              const rRoundId = r.roundId && typeof r.roundId === 'object' ? r.roundId._id : r.roundId;
+              return String(rRoundId) === String(selectedRoundId);
+            });
+            return currentRoundMatch || historicalRoundMatch;
           }
         });
         setTeams(matchedTeams);

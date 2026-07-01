@@ -263,7 +263,7 @@ export default function App() {
         }
 
         // B. Centralized Error Message Localization
-        let friendlyMessage = '';
+        let friendlyMessage: string;
         if (!error.response) {
           friendlyMessage = errorMessages.NETWORK_ERROR;
         } else {

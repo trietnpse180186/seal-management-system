@@ -102,7 +102,7 @@ router.post('/', authenticateToken, requireSystemAdmin, async (req, res) => {
 
   try {
     // Check if event already exists for this semester and year
-    const existing = await Event.findOne({ semester, year });
+    const existing = await Event.findOne({ semester, year, isArchived: { $ne: true } });
     if (existing) {
       return res.status(400).json({
         message: `An event already exists for semester "${semester}" and year "${year}".`
@@ -1085,10 +1085,19 @@ router.post('/:eventId/distribute-teams', authenticateToken, async (req, res) =>
     if (!event) return res.status(404).json({ message: 'Không tìm thấy sự kiện.' });
     const orgName = event ? event.githubOrgName : undefined;
 
-    // 2. Fetch tracks
-    const tracks = await Track.find({ eventId });
+    // 2. Fetch tracks, excluding those belonging to the final round(s)
+    const Round = mongoose.model('Round');
+    const rounds = await Round.find({ eventId });
+    const finalRoundIds = rounds
+      .filter(r => r.name.toLowerCase().includes('chung kết') || r.name.toLowerCase() === 'final' || r.advanceTopN === 0)
+      .map(r => r._id.toString());
+
+    const tracks = await Track.find({ 
+      eventId,
+      roundId: { $nin: finalRoundIds }
+    });
     if (tracks.length === 0) {
-      return res.status(400).json({ message: 'Sự kiện này chưa có bảng đấu nào. Vui lòng tạo bảng đấu trước.' });
+      return res.status(400).json({ message: 'Sự kiện này chưa có bảng đấu hợp lệ (không phải chung kết) nào để chia bảng. Vui lòng tạo bảng đấu trước.' });
     }
 
     // 3. Fetch confirmed teams without trackId
@@ -1487,34 +1496,58 @@ router.get('/:eventId/logs', authenticateToken, async (req, res) => {
  */
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
-    // Only System Admin can archive/soft-delete events
+    // Only System Admin can permanently delete events
     if (!req.user.isSystemAdmin) {
-      return res.status(403).json({ message: 'Quyền hạn không đủ. Chỉ Admin hệ thống mới có thể ẩn sự kiện.' });
+      return res.status(403).json({ message: 'Quyền hạn không đủ. Chỉ Admin hệ thống mới có thể xóa vĩnh viễn sự kiện.' });
     }
 
-    const event = await Event.findById(req.params.id);
+    const eventId = req.params.id;
+    const event = await Event.findById(eventId);
     if (!event) {
       return res.status(404).json({ message: 'Không tìm thấy sự kiện.' });
     }
 
-    event.isArchived = true;
-    await event.save();
+    const Rubric = mongoose.model('Rubric');
+    const Criterion = mongoose.model('Criterion');
+    const Score = mongoose.model('Score');
+    const Ranking = mongoose.model('Ranking');
 
-    // Create EventLog
-    const EventLog = mongoose.model('EventLog');
-    const newLog = new EventLog({
-      eventId: event._id,
-      actorId: req.user._id,
-      action: 'archive_event',
-      type: 'system',
-      details: `Ẩn sự kiện: "${event.name}" (${event.semester} ${event.year}) thành công.`
-    });
-    await newLog.save();
+    // 1. Get all teams in this event
+    const teams = await Team.find({ eventId });
+    const teamIds = teams.map(t => t._id);
 
-    res.json({ message: 'Sự kiện đã được ẩn thành công đối với tất cả người dùng thông thường.', event });
+    // 2. Delete team members
+    await TeamMember.deleteMany({ teamId: { $in: teamIds } });
+
+    // 3. Delete github repositories associated with these teams
+    await GithubRepository.deleteMany({ teamId: { $in: teamIds } });
+
+    // 4. Delete scores and rankings
+    await Score.deleteMany({ eventId });
+    await Ranking.deleteMany({ eventId });
+
+    // 5. Delete criteria and rubrics
+    const rubrics = await Rubric.find({ eventId });
+    const rubricIds = rubrics.map(r => r._id);
+    await Criterion.deleteMany({ rubricId: { $in: rubricIds } });
+    await Rubric.deleteMany({ eventId });
+
+    // 6. Delete tracks, rounds, roles, logs
+    await Track.deleteMany({ eventId });
+    await Round.deleteMany({ eventId });
+    await EventRole.deleteMany({ eventId });
+    await EventLog.deleteMany({ eventId });
+
+    // 7. Delete teams
+    await Team.deleteMany({ eventId });
+
+    // 8. Delete the event itself
+    await Event.findByIdAndDelete(eventId);
+
+    res.json({ message: 'Sự kiện và toàn bộ dữ liệu liên quan đã được xóa vĩnh viễn thành công.' });
   } catch (error) {
-    console.error('Archive Event Error:', error.message);
-    res.status(500).json({ message: 'Lỗi hệ thống khi ẩn sự kiện.' });
+    console.error('Delete Event Error:', error.message);
+    res.status(500).json({ message: 'Lỗi hệ thống khi xóa sự kiện.' });
   }
 });
 

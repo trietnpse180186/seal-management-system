@@ -58,6 +58,10 @@
         <input id="wsUrl" value="ws://localhost:9001" />
         <label>API Key của đội (tk_… = test · jk_… = judge)</label>
         <input id="apiKey" placeholder="tk_xxxxxxxx" />
+        <label>MQTT Username (để trống nếu không dùng)</label>
+        <input id="mqttUser" placeholder="Nhập Username MQTT..." />
+        <label>MQTT Password (để trống nếu không dùng)</label>
+        <input id="mqttPass" type="password" placeholder="Nhập Password MQTT..." />
         <label>Topic subscribe</label>
         <input id="topic" value="hackathon/#" />
         <p class="muted">Để mặc định <code>hackathon/#</code> để nghe tất cả (dev). Có thể thu hẹp, vd <code>hackathon/teamx/test/#</code>.</p>
@@ -129,9 +133,14 @@
     function connect() {
       const url = $('wsUrl').value.trim();
       const topic = $('topic').value.trim() || 'hackathon/#';
+      const username = $('mqttUser').value.trim();
+      const password = $('mqttPass').value.trim();
       setMqtt('warn', 'đang kết nối…');
       try {
-        client = mqtt.connect(url, { reconnectPeriod: 3000, connectTimeout: 8000 });
+        const options = { reconnectPeriod: 3000, connectTimeout: 8000 };
+        if (username) options.username = username;
+        if (password) options.password = password;
+        client = mqtt.connect(url, options);
       } catch (e) { setMqtt('off', 'lỗi URL'); return; }
 
       client.on('connect', () => {

@@ -1,6 +1,8 @@
+const path = require('path');
+module.paths.push(path.join(__dirname, '../../server/node_modules'));
 const mongoose = require('../../server/node_modules/mongoose');
 const bcrypt = require('bcryptjs');
-const path = require('path'); require('dotenv').config({ path: path.join(__dirname, '../../server/.env') });
+require('dotenv').config({ path: path.join(__dirname, '../../server/.env') });
 
 // Require all models to ensure Mongoose registers them
 require('../../server/features/auth/User');
@@ -318,6 +320,7 @@ async function setupCompleteMockContest() {
     // Thành viên đội thi
     const tmLeader = new TeamMember({
       teamId: team._id,
+      eventId: event._id,
       userId: leader._id,
       role: 'leader',
       confirmStatus: 'confirmed',
@@ -327,6 +330,7 @@ async function setupCompleteMockContest() {
 
     const tmMember = new TeamMember({
       teamId: team._id,
+      eventId: event._id,
       userId: member._id,
       role: 'member',
       confirmStatus: 'confirmed',

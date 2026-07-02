@@ -3,6 +3,7 @@ import { io, Socket } from 'socket.io-client';
 import axios from 'axios';
 import { Send, Users, User, Quote, Forward, MoreHorizontal, X, ArrowLeft, MessageSquare, Search } from 'lucide-react';
 import { toast } from 'sonner';
+import { useConfirm } from "../shared/ConfirmDialog";
 
 interface Message {
   _id: string;
@@ -45,6 +46,7 @@ interface MentorChatProps {
 const ENDED_EVENT_STATUSES = ['completed', 'cancelled'];
 
 export default function MentorChat({ roles = [], isSystemAdmin = false }: MentorChatProps) {
+  const confirm = useConfirm();
   const [isOpen, setIsOpen] = useState(false);
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null);
@@ -424,9 +426,13 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
     setReplyingTo(null);
   };
 
-  const recallMessage = (messageId: string) => {
+  const recallMessage = async (messageId: string) => {
     if (!socket || !selectedRoom) return;
-    if (window.confirm("Bạn có chắc chắn muốn thu hồi tin nhắn này?")) {
+    const confirmed = await confirm({
+      title: "Xác nhận thu hồi",
+      message: "Bạn có chắc chắn muốn thu hồi tin nhắn này?"
+    });
+    if (confirmed) {
       socket.emit('recall_message', { messageId, roomId: selectedRoom._id });
     }
   };

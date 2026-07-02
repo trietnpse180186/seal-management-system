@@ -20,7 +20,7 @@ import RoundsTab from "./RoundsTab";
 import SeminarTab from "./SeminarTab";
 import GithubTab from "../teams/GithubTab";
 import { toast } from "sonner";
-import { useConfirm } from "../shared/ConfirmDialog";
+import { useConform } from "../shared/ModalConform";
 import CustomSelect from "../shared/CustomSelect";
 import CustomDateTimePicker from "../shared/CustomDateTimePicker";
 import CustomDateRangePicker from "../shared/CustomDateRangePicker";
@@ -68,7 +68,7 @@ export default function AdminEvents({
   }, [token]);
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const confirm = useConfirm();
+  const conform = useConform();
 
   const eventIdParam = searchParams.get("eventId");
   const [eventName, setEventName] = useState("");
@@ -464,6 +464,20 @@ export default function AdminEvents({
     }
   }, [eventIdParam, events]);
 
+  useEffect(() => {
+    const createParam = searchParams.get("create");
+    if (createParam === "true") {
+      sessionStorage.removeItem("creatingEventId");
+      setSelectedEvent(null);
+      setIsWizardMode(true);
+      setWizardStep(1);
+      
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("create");
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   const fetchEvents = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/events");
@@ -620,11 +634,11 @@ export default function AdminEvents({
       return;
     }
 
-    const confirmed = await confirm({
+    const conformed = await conform({
       title: "Phân chia bảng đấu ngẫu nhiên",
       message: `Bạn có chắc chắn muốn phân chia ngẫu nhiên ${unassignedTeams.length} đội thi vào ${tracks.length} bảng đấu? Hệ thống sẽ tự động tạo repository GitHub cho các đội.`,
     });
-    if (!confirmed) {
+    if (!conformed) {
       return;
     }
 
@@ -664,11 +678,11 @@ export default function AdminEvents({
     }
 
     if (trackId === "random") {
-      const confirmed = await confirm({
+      const conformed = await conform({
         title: "Phân chia bảng đấu ngẫu nhiên",
         message: "Bạn có chắc muốn phân bảng đấu ngẫu nhiên cho đội thi này?",
       });
-      if (!confirmed) {
+      if (!conformed) {
         return;
       }
     }
@@ -698,13 +712,11 @@ export default function AdminEvents({
   };
 
   const handleKickAllCollaborators = async (repoId: string) => {
-    if (
-      !window.confirm(
-        "Bạn có chắc chắn muốn thu hồi quyền truy cập (gỡ cộng tác viên) của toàn bộ thành viên nhóm và mentor khỏi repository này không?"
-      )
-    ) {
-      return;
-    }
+    const conformed = await conform({
+      title: "Xác nhận thu hồi quyền",
+      message: "Bạn có chắc chắn muốn thu hồi quyền truy cập (gỡ cộng tác viên) của toàn bộ thành viên nhóm và mentor khỏi repository này không?"
+    });
+    if (!conformed) return;
     setLoading(true);
     setMessage({ type: "", text: "" });
     try {
@@ -907,7 +919,11 @@ export default function AdminEvents({
 
   const handleDeleteEvent = async () => {
     if (!selectedEvent) return;
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa cuộc thi "${selectedEvent.name}"? Tất cả dữ liệu vòng thi, tiêu chí và đội thi sẽ bị xóa vĩnh viễn!`)) return;
+    const conformed = await conform({
+      title: "Xác nhận xóa cuộc thi",
+      message: `Bạn có chắc chắn muốn xóa cuộc thi "${selectedEvent.name}"? Tất cả dữ liệu vòng thi, tiêu chí và đội thi sẽ bị xóa vĩnh viễn!`
+    });
+    if (!conformed) return;
     try {
       await axios.delete(`http://localhost:5000/api/events/${selectedEvent._id}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -922,7 +938,11 @@ export default function AdminEvents({
 
   const handleDeleteRound = async (roundId: string) => {
     if (!selectedEvent || !roundId) return;
-    if (!window.confirm("Bạn có chắc chắn muốn xóa vòng thi này? Các tiêu chí và rubric thuộc vòng thi sẽ bị xóa!")) return;
+    const conformed = await conform({
+      title: "Xác nhận xóa vòng thi",
+      message: "Bạn có chắc chắn muốn xóa vòng thi này? Các tiêu chí và rubric thuộc vòng thi sẽ bị xóa!"
+    });
+    if (!conformed) return;
     try {
       await axios.delete(`http://localhost:5000/api/events/${selectedEvent._id}/rounds/${roundId}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -1407,12 +1427,12 @@ export default function AdminEvents({
 
   const handleDeleteRubric = async () => {
     if (!rubric) return;
-    const confirmed = await confirm({
+    const conformed = await conform({
       title: "Xóa Rubric",
       message: "Bạn có chắc chắn muốn xóa/vô hiệu hóa Rubric này?",
       variant: "danger",
     });
-    if (!confirmed) return;
+    if (!conformed) return;
     try {
       await axios.delete(`http://localhost:5000/api/rubrics/${rubric._id}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -1501,12 +1521,12 @@ export default function AdminEvents({
   };
 
   const handleDeleteCriterion = async (criterionId: string) => {
-    const confirmed = await confirm({
+    const conformed = await conform({
       title: "Xóa tiêu chí",
       message: "Bạn có chắc chắn muốn xóa tiêu chí này?",
       variant: "danger",
     });
-    if (!confirmed) return;
+    if (!conformed) return;
     try {
       await axios.delete(`http://localhost:5000/api/criteria/${criterionId}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -1641,12 +1661,12 @@ export default function AdminEvents({
   const handleAdvanceRound = async (roundId: string) => {
     if (!selectedEvent || !roundId) return;
 
-    const confirmed = await confirm({
+    const conformed = await conform({
       title: "Chốt và thăng hạng vòng đấu",
       message: "Bạn có chắc chắn muốn CHỐT vòng đấu này và THĂNG HẠNG (Advance) các đội xuất sắc nhất vào vòng tiếp theo?",
       variant: "warning",
     });
-    if (!confirmed) {
+    if (!conformed) {
       return;
     }
 
@@ -1682,12 +1702,12 @@ export default function AdminEvents({
   const handleLockRound = async (roundId: string) => {
     if (!selectedEvent || !roundId) return;
 
-    const confirmed = await confirm({
+    const conformed = await conform({
       title: "Khóa điểm vòng đấu",
       message: "Bạn có chắc chắn muốn KHÓA điểm và CÔNG BỐ kết quả xếp hạng cho vòng đấu này? Sau khi khóa, giám khảo sẽ không thể sửa điểm được nữa.",
       variant: "warning",
     });
-    if (!confirmed) {
+    if (!conformed) {
       return;
     }
 
@@ -1814,12 +1834,12 @@ export default function AdminEvents({
 
   const handleRemoveRole = async (roleId: string) => {
     if (!selectedEvent) return;
-    const confirmed = await confirm({
+    const conformed = await conform({
       title: "Thu hồi quyền thành viên",
       message: "Bạn có chắc chắn muốn thu hồi quyền của thành viên này?",
       variant: "danger",
     });
-    if (!confirmed) return;
+    if (!conformed) return;
     setMessage({ type: "", text: "" });
     setLoading(true);
 
@@ -2229,7 +2249,11 @@ export default function AdminEvents({
                   <div className="flex justify-between pt-4">
                     <button
                       type="button"
-                      onClick={() => setSelectedEvent(null)}
+                      onClick={() => {
+                        setSelectedEvent(null);
+                        setIsWizardMode(true);
+                        setWizardStep(1);
+                      }}
                       className="bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white px-5 py-2.5 rounded-xl text-sm border border-slate-800 font-mono flex items-center gap-1.5 cursor-pointer"
                     >
                       Hủy & Tạo mới

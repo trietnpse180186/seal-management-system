@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 import { FolderKanban, ChevronRight, BookOpen, Users, Edit, Trash2, ExternalLink } from "lucide-react";
-import { useConfirm } from "../shared/ConfirmDialog";
+import { useConform } from "../shared/ModalConform";
 import CustomSelect from "../shared/CustomSelect";
 
 interface TracksTabProps {
@@ -86,7 +86,7 @@ export default function TracksTab({
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [memberRole, setMemberRole] = useState<"judge" | "mentor">("judge");
   const [selectedTeamId, setSelectedTeamId] = useState("");
-  const confirm = useConfirm();
+  const conform = useConform();
 
   // Drive upload state
   const [driveFileName, setDriveFileName] = useState("");
@@ -254,12 +254,12 @@ export default function TracksTab({
                     type="button"
                     onClick={async (e) => {
                       e.stopPropagation();
-                      const confirmed = await confirm({
+                      const conformed = await conform({
                         title: "Xóa bảng đấu",
                         message: `Bạn có chắc chắn muốn xóa bảng đấu "${t.name}"?`,
                         variant: "danger",
                       });
-                      if (confirmed) {
+                      if (conformed) {
                         handleDeleteTrack(t._id);
                       }
                     }}

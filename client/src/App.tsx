@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import errorMessages from './utils/errorMessages';
 import Navbar from './features/landing/Navbar';
 import Footer from './features/landing/Footer';
 import Login from './features/auth/Login';
@@ -25,7 +26,7 @@ import MentorDashboard from './features/mentor/MentorDashboard';
 import MentorTeamDetail from './features/mentor/MentorTeamDetail';
 import MentorChat from './features/mentor/MentorChat';
 import { Toaster } from 'sonner';
-import { ConfirmProvider } from './features/shared/ConfirmDialog';
+import { ConformProvider } from './features/shared/ModalConform';
 
 function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
   const location = useLocation();
@@ -241,24 +242,51 @@ export default function App() {
     }
   }, []);
 
-  // 3. Axios Interceptor for Session Expiration (Multi-device login)
+  // 3. Axios Interceptor for Session Expiration & Centralized Error Handling
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
       (response) => response,
-      (error) => {
+      async (error) => {
+        // A. Handle Session Expiry (401) or Account Deactivation (403)
         if (error.response && error.response.status === 401 && error.response.data?.isSessionExpired) {
-          // Local logout
           localStorage.removeItem('token');
           setUser(null);
           setRoles([]);
           window.location.href = '/login?expired=true';
+          return Promise.reject(error);
         } else if (error.response && error.response.status === 403 && (error.response.data?.isDeactivated || error.response.data?.message?.includes('khóa'))) {
-          // Locked user auto logout
           localStorage.removeItem('token');
           setUser(null);
           setRoles([]);
           window.location.href = '/login?locked=true';
+          return Promise.reject(error);
         }
+
+        // B. Centralized Error Message Localization
+        // B. Centralized Error Message Localization
+        const getFriendlyMessage = () => {
+          if (!error.response) {
+            return errorMessages.NETWORK_ERROR;
+          }
+          const statusCode = error.response.status;
+          const responseData = error.response.data;
+
+          // Priority 1: Backend detailed message
+          if (responseData && typeof responseData.message === 'string') {
+            return responseData.message;
+          } 
+          // Priority 2: Dictionary lookup by status code
+          return errorMessages[statusCode] || errorMessages.DEFAULT_ERROR;
+        };
+
+        const friendlyMessage = getFriendlyMessage();
+
+        // Inject friendly message into the error object so all catches benefit automatically
+        error.message = friendlyMessage;
+        if (error.response && error.response.data) {
+          error.response.data.message = friendlyMessage;
+        }
+
         return Promise.reject(error);
       }
     );
@@ -362,7 +390,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <ConfirmProvider>
+      <ConformProvider>
         <AppContent 
           user={user} 
           roles={roles} 
@@ -370,7 +398,7 @@ export default function App() {
           handleLogout={handleLogout} 
         />
         <Toaster position="top-right" theme="dark" closeButton richColors />
-      </ConfirmProvider>
+      </ConformProvider>
     </BrowserRouter>
   );
 }

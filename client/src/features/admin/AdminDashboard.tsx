@@ -104,7 +104,7 @@ export default function AdminDashboard() {
           </p>
         </div>
         <button
-          onClick={() => navigate("/admin/events")}
+          onClick={() => navigate("/admin/events?create=true")}
           className="bg-cyan-500 hover:bg-cyan-400 text-white px-4 py-2.5 rounded-xl border border-cyan-500/20 text-xs font-mono font-semibold flex items-center gap-1.5 cursor-pointer shadow-lg shadow-cyan-500/25 transition-all"
         >
           <CalendarPlus size={14} />
@@ -176,7 +176,6 @@ export default function AdminDashboard() {
               {[
                 { value: 'all', label: 'Tất cả' },
                 { value: 'operation', label: 'Thao tác' },
-                { value: 'login', label: 'Đăng nhập' },
                 { value: 'grading', label: 'Chấm điểm' },
                 { value: 'error', label: 'Lỗi' },
                 { value: 'system', label: 'Hệ thống' }
@@ -188,8 +187,6 @@ export default function AdminDashboard() {
                     logFilter === btn.value
                       ? btn.value === 'error'
                         ? 'bg-rose-500 text-white shadow-[0_0_10px_rgba(244,63,94,0.4)]'
-                        : btn.value === 'login'
-                        ? 'bg-purple-500 text-white shadow-[0_0_10px_rgba(168,85,247,0.4)]'
                         : btn.value === 'grading'
                         ? 'bg-amber-500 text-slate-900 shadow-[0_0_10px_rgba(245,158,11,0.4)]'
                         : btn.value === 'system'

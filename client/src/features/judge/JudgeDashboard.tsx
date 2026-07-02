@@ -250,7 +250,7 @@ export default function JudgeDashboard() {
             <div>
               <p className="text-[9px] font-bold uppercase text-slate-500 tracking-wider">Vòng thi hiện tại</p>
               <p className="text-sm font-extrabold text-cyan-400 mt-1 font-mono uppercase drop-shadow-[0_0_5px_rgba(34,211,238,0.2)]">
-                {activeRound ? `${activeRound.name} (Lấy Top ${activeRound.advanceTopN})` : "Không có vòng thi active"}
+                {activeRound ? (activeRound.advanceTopN > 0 ? `${activeRound.name} (Lấy Top ${activeRound.advanceTopN})` : activeRound.name) : "Không có vòng thi active"}
               </p>
             </div>
             {assignedTrack && (

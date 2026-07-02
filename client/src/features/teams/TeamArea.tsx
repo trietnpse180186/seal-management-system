@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare, FileText, Download, Cpu, Copy, RefreshCw } from 'lucide-react';
+import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare, FileText, Download, ExternalLink, Cpu, Copy, RefreshCw } from 'lucide-react';
 import RegisterTeam from './RegisterTeam';
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
@@ -26,11 +26,31 @@ export default function TeamArea() {
   const token = localStorage.getItem('token');
   const [data, setData] = useState<any>(null);
 
+  // Decode JWT to get current user ID
+  let currentUserId = '';
+  if (token) {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      const payload = JSON.parse(jsonPayload);
+      currentUserId = payload.id || payload._id;
+    } catch (e) {
+      console.error('Error decoding JWT token:', e);
+    }
+  }
+
   const [currentTime, setCurrentTime] = useState(new Date());
   const [syncingMqtt, setSyncingMqtt] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
-
-
+  
+  // Topic Submission Form States
+  const [showTopicForm, setShowTopicForm] = useState(false);
+  const [topicTitle, setTopicTitle] = useState('');
+  const [topicDesc, setTopicDesc] = useState('');
+  const [docLink, setDocLink] = useState('');
 
   const round = data?.team?.trackId?.roundId;
 
@@ -113,7 +133,11 @@ export default function TeamArea() {
       } else {
         setData(res.data);
         
-
+        if (team?.topicSubmission) {
+          setTopicTitle(team.topicSubmission.title || '');
+          setTopicDesc(team.topicSubmission.description || '');
+          setDocLink(team.topicSubmission.documentationLink || '');
+        }
 
         // Fetch commits if repo exists
         if (res.data.repository) {
@@ -129,6 +153,26 @@ export default function TeamArea() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveTopic = async (e: any) => {
+    e.preventDefault();
+    if (!team) return;
+    try {
+      const res = await axios.post('http://localhost:5000/api/teams/submit-topic', {
+        teamId: team._id,
+        title: topicTitle,
+        description: topicDesc,
+        documentationLink: docLink
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success(res.data?.message || 'Đã cập nhật đề tài thành công!');
+      setShowTopicForm(false);
+      fetchTeamData();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Lỗi khi cập nhật đề tài.');
     }
   };
 
@@ -204,6 +248,11 @@ export default function TeamArea() {
   }
 
   const { team, members, repository } = data || {};
+  const isLeader = team && team.leaderId && (
+    team.leaderId === currentUserId ||
+    (typeof team.leaderId === 'object' && team.leaderId._id === currentUserId) ||
+    team.leaderId.toString() === currentUserId
+  );
 
   const isEventEnded = team && (
     team.eventId?.status === 'completed' || 
@@ -314,6 +363,144 @@ export default function TeamArea() {
         </div>
       )}
 
+      {/* New Topic and Member row */}
+      {team && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
+          
+          {/* Left: Topic Card (Col 8) */}
+          <div className="lg:col-span-8 glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all flex flex-col justify-between">
+            <div>
+              <div className="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+                <h2 className="text-sm font-bold text-white flex items-center gap-2 font-mono-tech">
+                  <FileText size={18} className="text-cyan-400" />
+                  <span className="text-cyan-400">[ĐỀ_TÀI_&amp;_GIẢI_PHÁP_ĐỘI_THI]</span>
+                </h2>
+                {!showTopicForm && isLeader && (
+                  <button
+                    onClick={() => setShowTopicForm(true)}
+                    className="px-3 py-1.5 bg-cyan-950/40 hover:bg-cyan-900 border border-cyan-850 hover:border-cyan-700 text-cyan-400 text-[10px] font-bold uppercase rounded-lg transition-all cursor-pointer font-sans"
+                  >
+                    Cập nhật đề tài
+                  </button>
+                )}
+              </div>
+
+              {showTopicForm ? (
+                <form onSubmit={handleSaveTopic} className="space-y-4 font-sans text-xs">
+                  <div className="space-y-1">
+                    <label className="block text-slate-400 font-bold uppercase tracking-wider text-[9px] font-mono">Tên đề tài *</label>
+                    <input
+                      type="text"
+                      required
+                      value={topicTitle}
+                      onChange={e => setTopicTitle(e.target.value)}
+                      placeholder="Nhập tên đề tài/dự án..."
+                      className="w-full bg-slate-900/60 border border-slate-800 rounded-lg text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-slate-400 font-bold uppercase tracking-wider text-[9px] font-mono">Mô tả giải pháp & sản phẩm</label>
+                    <textarea
+                      rows={3}
+                      value={topicDesc}
+                      onChange={e => setTopicDesc(e.target.value)}
+                      placeholder="Nhập mô tả giải pháp ngắn gọn, các công nghệ sử dụng, tính năng chính..."
+                      className="w-full bg-slate-900/60 border border-slate-800 rounded-lg text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-slate-400 font-bold uppercase tracking-wider text-[9px] font-mono">Link tài liệu (Google Drive, Figma, v.v...)</label>
+                    <input
+                      type="url"
+                      value={docLink}
+                      onChange={e => setDocLink(e.target.value)}
+                      placeholder="https://docs.google.com/..."
+                      className="w-full bg-slate-900/60 border border-slate-800 rounded-lg text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 text-xs"
+                    />
+                  </div>
+                  <div className="flex gap-2 justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowTopicForm(false)}
+                      className="px-4 py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-400 text-[10px] font-bold uppercase rounded-lg transition-colors cursor-pointer"
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-bold uppercase rounded-lg transition-colors shadow-lg shadow-cyan-600/25 cursor-pointer"
+                    >
+                      Lưu thay đổi
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="space-y-4 font-sans text-xs">
+                  <div>
+                    <span className="text-[9px] text-slate-500 block font-mono font-bold uppercase tracking-wider">Tên đề tài dự án</span>
+                    <p className="font-bold text-white text-sm mt-0.5 font-mono">
+                      {team.topicSubmission?.title || 'Chưa đăng ký đề tài'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-slate-500 block font-mono font-bold uppercase tracking-wider">Mô tả giải pháp</span>
+                    <p className="text-slate-350 mt-1 leading-relaxed text-xs">
+                      {team.topicSubmission?.description || 'Không có mô tả chi tiết từ đội.'}
+                    </p>
+                  </div>
+                  {team.topicSubmission?.documentationLink && (
+                    <div>
+                      <span className="text-[9px] text-slate-500 block font-mono font-bold uppercase tracking-wider mb-1">Tài liệu đính kèm</span>
+                      <a
+                        href={team.topicSubmission.documentationLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-cyan-400 hover:text-cyan-300 font-medium hover:underline"
+                      >
+                        <ExternalLink size={12} />
+                        Xem tài liệu dự án
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right: Members Card (Col 4) */}
+          <div className="lg:col-span-4 glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all flex flex-col justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-white mb-4 flex items-center gap-2 font-mono-tech border-b border-slate-800 pb-3">
+                <Users size={18} className="text-cyan-400" />
+                <span className="text-cyan-400">[THÀNH_VIÊN_NHÓM]</span>
+              </h2>
+              <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+                {members?.map((m: any) => (
+                  <div key={m._id} className="flex items-center justify-between p-2.5 bg-slate-900/30 rounded-xl border border-slate-800 text-[11px] font-sans">
+                    <div className="min-w-0 flex-1 pr-2">
+                      <p className="font-bold text-slate-200 truncate">{m.userId?.fullName}</p>
+                      <p className="text-[9px] text-slate-400 truncate">{m.userId?.email}</p>
+                    </div>
+                    <div className="shrink-0 flex items-center gap-1">
+                      {m.confirmStatus === 'confirmed' ? (
+                        <span className="flex items-center gap-0.5 bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[8px] font-bold">
+                          <CheckCircle size={8} /> {m.role === 'leader' ? 'Leader' : 'Member'}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-0.5 bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded text-[8px] font-bold">
+                          <Clock size={8} /> Đang chờ
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Left Side: Topic Submission & Members info */}
@@ -408,7 +595,6 @@ export default function TeamArea() {
               </p>
             )}
           </div>
-
           {/* MQTT Connection & API Keys Card */}
           {team && team.eventId?.status === 'ongoing' && round?.startTime && new Date(round.startTime) <= currentTime && (
             <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all space-y-4">
@@ -543,7 +729,6 @@ export default function TeamArea() {
               )}
             </div>
           )}
-          
 
           {/* Members Invite Confirmations Status */}
           <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all">

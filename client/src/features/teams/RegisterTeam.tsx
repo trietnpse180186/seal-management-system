@@ -62,11 +62,13 @@ export default function RegisterTeam() {
     })
       .then(res => {
         const team = res.data?.team;
+        console.log('DEBUG [RegisterTeam]: team =', team);
         const isEventEnded = team && (
           team.eventId?.status === 'completed' || 
           team.eventId?.status === 'cancelled' ||
           (team.eventId?.contestEnd && new Date(team.eventId.contestEnd) <= new Date())
         );
+        console.log('DEBUG [RegisterTeam]: isEventEnded =', isEventEnded, 'contestEnd =', team?.eventId?.contestEnd, 'status =', team?.eventId?.status);
         if (team && !isEventEnded) {
           setAlreadyHasTeam(true);
           setExistingTeamName(team.name);

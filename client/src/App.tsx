@@ -26,7 +26,7 @@ import MentorDashboard from './features/mentor/MentorDashboard';
 import MentorTeamDetail from './features/mentor/MentorTeamDetail';
 import MentorChat from './features/mentor/MentorChat';
 import { Toaster } from 'sonner';
-import { ConfirmProvider } from './features/shared/ConfirmDialog';
+import { ConformProvider } from './features/shared/ModalConform';
 
 function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
   const location = useLocation();
@@ -390,7 +390,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <ConfirmProvider>
+      <ConformProvider>
         <AppContent 
           user={user} 
           roles={roles} 
@@ -398,7 +398,7 @@ export default function App() {
           handleLogout={handleLogout} 
         />
         <Toaster position="top-right" theme="dark" closeButton richColors />
-      </ConfirmProvider>
+      </ConformProvider>
     </BrowserRouter>
   );
 }

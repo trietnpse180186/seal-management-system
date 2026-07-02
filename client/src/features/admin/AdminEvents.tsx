@@ -711,11 +711,11 @@ export default function AdminEvents({
   };
 
   const handleKickAllCollaborators = async (repoId: string) => {
-    const confirmed = await confirm({
+    const conformed = await conform({
       title: "Xác nhận thu hồi quyền",
       message: "Bạn có chắc chắn muốn thu hồi quyền truy cập (gỡ cộng tác viên) của toàn bộ thành viên nhóm và mentor khỏi repository này không?"
     });
-    if (!confirmed) return;
+    if (!conformed) return;
     setLoading(true);
     setMessage({ type: "", text: "" });
     try {
@@ -918,11 +918,11 @@ export default function AdminEvents({
 
   const handleDeleteEvent = async () => {
     if (!selectedEvent) return;
-    const confirmed = await confirm({
+    const conformed = await conform({
       title: "Xác nhận xóa cuộc thi",
       message: `Bạn có chắc chắn muốn xóa cuộc thi "${selectedEvent.name}"? Tất cả dữ liệu vòng thi, tiêu chí và đội thi sẽ bị xóa vĩnh viễn!`
     });
-    if (!confirmed) return;
+    if (!conformed) return;
     try {
       await axios.delete(`http://localhost:5000/api/events/${selectedEvent._id}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -937,11 +937,11 @@ export default function AdminEvents({
 
   const handleDeleteRound = async (roundId: string) => {
     if (!selectedEvent || !roundId) return;
-    const confirmed = await confirm({
+    const conformed = await conform({
       title: "Xác nhận xóa vòng thi",
       message: "Bạn có chắc chắn muốn xóa vòng thi này? Các tiêu chí và rubric thuộc vòng thi sẽ bị xóa!"
     });
-    if (!confirmed) return;
+    if (!conformed) return;
     try {
       await axios.delete(`http://localhost:5000/api/events/${selectedEvent._id}/rounds/${roundId}`, {
         headers: { Authorization: `Bearer ${token}` }

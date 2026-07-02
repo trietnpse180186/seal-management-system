@@ -966,31 +966,44 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
       if (userRole && userRole.role === 'mentor') {
         query.mentorId = req.user._id;
       } else if (userRole && userRole.role === 'judge') {
-        let effectiveRoundId = roundId;
-        if (!effectiveRoundId) {
-          const activeRound = await Round.findOne({ eventId: req.params.eventId, status: 'active' });
-          if (activeRound) {
-            effectiveRoundId = activeRound._id;
+        let isFinalRound = false;
+        if (roundId && mongoose.Types.ObjectId.isValid(roundId)) {
+          const RoundModel = mongoose.model('Round');
+          const roundObj = await RoundModel.findById(roundId);
+          if (roundObj && (roundObj.name.toLowerCase().includes('chung kết') || roundObj.advanceTopN === 0)) {
+            isFinalRound = true;
           }
         }
 
-        if (effectiveRoundId) {
-          const roundDoc = await Round.findById(effectiveRoundId);
-          if (roundDoc && roundDoc.status === 'completed') {
-            // Hide all teams from judges if the round is already locked/completed
-            return res.json([]);
-          }
-        }
-
-        if (userRole.trackId) {
-          const track = await Track.findById(userRole.trackId);
-          if (track && effectiveRoundId && track.roundId.toString() !== effectiveRoundId.toString()) {
-            // Queried/active round does not match the judge's assigned track's round
-            return res.json([]);
-          }
-          query.trackId = userRole.trackId;
+        if (isFinalRound) {
+          // Judges can see all teams in the final round, don't restrict to track
         } else {
-          return res.json([]);
+          let effectiveRoundId = roundId;
+          if (!effectiveRoundId) {
+            const activeRound = await Round.findOne({ eventId: req.params.eventId, status: 'active' });
+            if (activeRound) {
+              effectiveRoundId = activeRound._id;
+            }
+          }
+
+          if (effectiveRoundId) {
+            const roundDoc = await Round.findById(effectiveRoundId);
+            if (roundDoc && roundDoc.status === 'completed') {
+              // Hide all teams from judges if the round is already locked/completed
+              return res.json([]);
+            }
+          }
+
+          if (userRole.trackId) {
+            const track = await Track.findById(userRole.trackId);
+            if (track && effectiveRoundId && track.roundId.toString() !== effectiveRoundId.toString()) {
+              // Queried/active round does not match the judge's assigned track's round
+              return res.json([]);
+            }
+            query.trackId = userRole.trackId;
+          } else {
+            return res.json([]);
+          }
         }
       } else if (!userRole) {
         return res.json([]); // No active role in this event/round, return empty

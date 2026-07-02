@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 import CustomDateRangePicker from "../shared/CustomDateRangePicker";
-import { useConfirm } from "../shared/ConfirmDialog";
+import { useConform } from "../shared/ModalConform";
 
 interface SeminarTabProps {
   selectedEvent: any;
@@ -10,7 +10,7 @@ interface SeminarTabProps {
 }
 
 export default function SeminarTab({ selectedEvent, fetchEventDetails }: SeminarTabProps) {
-  const confirm = useConfirm();
+  const conform = useConform();
   const [scheduledAt, setScheduledAt] = useState("");
   const [scheduledEnd, setScheduledEnd] = useState("");
   const [meetUrl, setMeetUrl] = useState("");
@@ -84,11 +84,11 @@ export default function SeminarTab({ selectedEvent, fetchEventDetails }: Seminar
       toast.error("Vui lòng nhập Link phòng họp (Google Meet) trước khi gửi mail!");
       return;
     }
-    const confirmed = await confirm({
+    const conformed = await conform({
       title: "Xác nhận gửi Email Seminar",
       message: "Bạn có chắc chắn muốn gửi email chứa link Meet Seminar cho toàn bộ thí sinh đã đăng ký nhóm trong cuộc thi này?",
     });
-    if (!confirmed) {
+    if (!conformed) {
       return;
     }
     setSendingMail(true);

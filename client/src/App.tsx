@@ -26,7 +26,7 @@ import MentorDashboard from './features/mentor/MentorDashboard';
 import MentorTeamDetail from './features/mentor/MentorTeamDetail';
 import MentorChat from './features/mentor/MentorChat';
 import { Toaster } from 'sonner';
-import { ConfirmProvider } from './features/shared/ConfirmDialog';
+import { ConformProvider } from './features/shared/ModalConform';
 
 function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
   const location = useLocation();
@@ -263,22 +263,23 @@ export default function App() {
         }
 
         // B. Centralized Error Message Localization
-        let friendlyMessage: string;
-        if (!error.response) {
-          friendlyMessage = errorMessages.NETWORK_ERROR;
-        } else {
+        // B. Centralized Error Message Localization
+        const getFriendlyMessage = () => {
+          if (!error.response) {
+            return errorMessages.NETWORK_ERROR;
+          }
           const statusCode = error.response.status;
           const responseData = error.response.data;
 
           // Priority 1: Backend detailed message
           if (responseData && typeof responseData.message === 'string') {
-            friendlyMessage = responseData.message;
+            return responseData.message;
           } 
           // Priority 2: Dictionary lookup by status code
-          else {
-            friendlyMessage = errorMessages[statusCode] || errorMessages.DEFAULT_ERROR;
-          }
-        }
+          return errorMessages[statusCode] || errorMessages.DEFAULT_ERROR;
+        };
+
+        const friendlyMessage = getFriendlyMessage();
 
         // Inject friendly message into the error object so all catches benefit automatically
         error.message = friendlyMessage;
@@ -389,7 +390,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <ConfirmProvider>
+      <ConformProvider>
         <AppContent 
           user={user} 
           roles={roles} 
@@ -397,7 +398,7 @@ export default function App() {
           handleLogout={handleLogout} 
         />
         <Toaster position="top-right" theme="dark" closeButton richColors />
-      </ConfirmProvider>
+      </ConformProvider>
     </BrowserRouter>
   );
 }

@@ -86,6 +86,7 @@ export default function AdminEvents({
   const [trackMax, setTrackMax] = useState("5");
   const [trackRoundId, setTrackRoundId] = useState("");
   const [trackAdvanceTopN, setTrackAdvanceTopN] = useState("3");
+  const [trackEnvironmentId, setTrackEnvironmentId] = useState("");
   const [selectedTrack, setSelectedTrack] = useState<any>(null);
   const [editingTrack, setEditingTrack] = useState<any>(null);
 
@@ -1067,6 +1068,7 @@ export default function AdminEvents({
           maxTeams: newMaxTeamsNum,
           roundId: trackRoundId,
           advanceTopN: parseInt(trackAdvanceTopN) || 3,
+          environmentId: trackEnvironmentId,
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -1077,6 +1079,7 @@ export default function AdminEvents({
       setTrackRoundId("");
       setTrackMax("");
       setTrackAdvanceTopN("3");
+      setTrackEnvironmentId("");
 
       // Update local tracks state
       const updatedTracks = [...tracks, newTrack];
@@ -1150,6 +1153,7 @@ export default function AdminEvents({
           maxTeams: updatedMaxTeamsNum,
           roundId: trackRoundId,
           advanceTopN: parseInt(trackAdvanceTopN) || 3,
+          environmentId: trackEnvironmentId,
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -1160,6 +1164,7 @@ export default function AdminEvents({
       setTrackRoundId("");
       setTrackMax("");
       setTrackAdvanceTopN("3");
+      setTrackEnvironmentId("");
       setEditingTrack(null);
 
       // Update local tracks state
@@ -2412,6 +2417,8 @@ export default function AdminEvents({
               setTrackAdvanceTopN={setTrackAdvanceTopN}
               trackRoundId={trackRoundId}
               setTrackRoundId={setTrackRoundId}
+              trackEnvironmentId={trackEnvironmentId}
+              setTrackEnvironmentId={setTrackEnvironmentId}
               handleCreateTrack={handleCreateTrack}
               selectedTrack={selectedTrack}
               setSelectedTrack={setSelectedTrack}

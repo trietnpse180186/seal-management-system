@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare, FileText, Download, ExternalLink, Cpu, Copy, RefreshCw } from 'lucide-react';
+import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare, FileText, Download, Cpu, Copy, RefreshCw, Crown } from 'lucide-react';
 import RegisterTeam from './RegisterTeam';
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
@@ -26,33 +26,16 @@ export default function TeamArea() {
   const token = localStorage.getItem('token');
   const [data, setData] = useState<any>(null);
 
-  // Decode JWT to get current user ID
-  let currentUserId = '';
-  if (token) {
-    try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join(''));
-      const payload = JSON.parse(jsonPayload);
-      currentUserId = payload.id || payload._id;
-    } catch (e) {
-      console.error('Error decoding JWT token:', e);
-    }
-  }
+
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [syncingMqtt, setSyncingMqtt] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  
-  // Topic Submission Form States
-  const [showTopicForm, setShowTopicForm] = useState(false);
-  const [topicTitle, setTopicTitle] = useState('');
-  const [topicDesc, setTopicDesc] = useState('');
-  const [docLink, setDocLink] = useState('');
+
+
 
   const round = data?.team?.trackId?.roundId;
+  const showMqttCard = !!(data?.team && data.team.eventId?.status === 'ongoing' && round?.startTime && new Date(round.startTime) <= currentTime);
 
   useEffect(() => {
     const startTimeStr = round?.startTime;
@@ -77,14 +60,14 @@ export default function TeamArea() {
   const getRemainingTimeText = (startTimeStr: string) => {
     const diff = new Date(startTimeStr).getTime() - currentTime.getTime();
     if (diff <= 0) return '00:00:00';
-    
+
     const seconds = Math.floor((diff / 1000) % 60);
     const minutes = Math.floor((diff / 1000 / 60) % 60);
     const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    
+
     const pad = (num: number) => num.toString().padStart(2, '0');
-    
+
     if (days > 0) {
       return `${days} ngày ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
     }
@@ -98,8 +81,8 @@ export default function TeamArea() {
       default: return status?.toUpperCase() || '';
     }
   };
-  
-  
+
+
   // Git commits & AI report
   const [commits, setCommits] = useState<any[]>([]);
   const [selectedCommit, setSelectedCommit] = useState<any>(null);
@@ -121,11 +104,11 @@ export default function TeamArea() {
       const res = await axios.get('http://localhost:5000/api/teams/my-team', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       const team = res.data?.team;
       console.log('DEBUG [TeamArea]: team =', team);
       const isEventEnded = team && (
-        team.eventId?.status === 'completed' || 
+        team.eventId?.status === 'completed' ||
         team.eventId?.status === 'cancelled' ||
         (team.eventId?.contestEnd && new Date(team.eventId.contestEnd) <= new Date())
       );
@@ -134,12 +117,8 @@ export default function TeamArea() {
         setData({ team: null });
       } else {
         setData(res.data);
-        
-        if (team?.topicSubmission) {
-          setTopicTitle(team.topicSubmission.title || '');
-          setTopicDesc(team.topicSubmission.description || '');
-          setDocLink(team.topicSubmission.documentationLink || '');
-        }
+
+
 
         // Fetch commits if repo exists
         if (res.data.repository) {
@@ -158,25 +137,7 @@ export default function TeamArea() {
     }
   };
 
-  const handleSaveTopic = async (e: any) => {
-    e.preventDefault();
-    if (!team) return;
-    try {
-      const res = await axios.post('http://localhost:5000/api/teams/submit-topic', {
-        teamId: team._id,
-        title: topicTitle,
-        description: topicDesc,
-        documentationLink: docLink
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success(res.data?.message || 'Đã cập nhật đề tài thành công!');
-      setShowTopicForm(false);
-      fetchTeamData();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Lỗi khi cập nhật đề tài.');
-    }
-  };
+
 
   const fetchCommits = async (teamId: string) => {
     try {
@@ -250,14 +211,10 @@ export default function TeamArea() {
   }
 
   const { team, members, repository } = data || {};
-  const isLeader = team && team.leaderId && (
-    team.leaderId === currentUserId ||
-    (typeof team.leaderId === 'object' && team.leaderId._id === currentUserId) ||
-    team.leaderId.toString() === currentUserId
-  );
+
 
   const isEventEnded = team && (
-    team.eventId?.status === 'completed' || 
+    team.eventId?.status === 'completed' ||
     team.eventId?.status === 'cancelled' ||
     (team.eventId?.contestEnd && new Date(team.eventId.contestEnd) <= new Date())
   );
@@ -268,30 +225,29 @@ export default function TeamArea() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 space-y-8 font-mono">
-      
+
       {/* Top Banner team details */}
       <div className="glass p-8 rounded-3xl relative overflow-hidden border border-slate-800 hover:border-cyan-500/30 transition-all">
         {/* Decorative elements */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
         <div className="absolute -left-10 -bottom-10 w-40 h-40 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none"></div>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
-          
+
           {/* Main Info (Col 5): Team name & Status */}
           <div className="lg:col-span-5 space-y-4">
             <div className="flex items-center gap-2.5">
               <span className="text-[10px] text-cyan-400 font-bold border border-cyan-500/30 px-2 py-0.5 rounded bg-cyan-950/20 tracking-widest uppercase">
                 [ĐỘI THI]
               </span>
-              <span className={`text-[10px] px-2.5 py-0.5 rounded font-extrabold tracking-wider ${
-                team?.status?.toLowerCase() === 'confirmed'
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-              }`}>
+              <span className={`text-[10px] px-2.5 py-0.5 rounded font-extrabold tracking-wider ${team?.status?.toLowerCase() === 'confirmed'
+                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                }`}>
                 {getTeamStatusText(team?.status)}
               </span>
             </div>
-            
+
             <div>
               <h1 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tight text-cyan-glow">
                 {team?.name}
@@ -334,7 +290,7 @@ export default function TeamArea() {
               <span className="text-[9px] text-slate-500 block uppercase font-mono tracking-wider font-bold">THÀNH VIÊN</span>
               <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5 mt-1 font-mono">
                 <Users size={14} className="text-slate-400" />
-                <span>{members?.length || 0} Operators</span>
+                <span>{members?.length || 0} Thành viên</span>
               </span>
             </div>
           </div>
@@ -354,7 +310,7 @@ export default function TeamArea() {
               <p className="text-xs text-slate-400 font-sans">Bạn có câu hỏi hoặc cần sự giúp đỡ? Hãy nhắn tin trao đổi trực tiếp với Mentor hướng dẫn.</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={() => {
               window.dispatchEvent(new CustomEvent('open_chat_room', { detail: { teamId: team._id } }));
             }}
@@ -365,132 +321,218 @@ export default function TeamArea() {
         </div>
       )}
 
-      {/* New Topic and Member row */}
+      {/* Row 1: Exam, MQTT Connection & Members */}
       {team && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
-          
-          {/* Left: Topic Card (Col 8) */}
-          <div className="lg:col-span-8 glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all flex flex-col justify-between">
+
+          {/* Left: Exam & Materials Card */}
+          <div className={`${showMqttCard ? 'lg:col-span-4' : 'lg:col-span-8'
+            } glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all relative overflow-hidden`}>
+            {round?.hasExamMaterial && round?.examOpened && (
+              <div className="absolute inset-0 pointer-events-none laser-scan-effect opacity-10"></div>
+            )}
             <div>
-              <div className="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+              <div className="flex justify-between items-center border-b border-slate-800 pb-3 mb-5">
                 <h2 className="text-sm font-bold text-white flex items-center gap-2 font-mono-tech">
-                  <FileText size={18} className="text-cyan-400" />
-                  <span className="text-cyan-400">[ĐỀ_TÀI_&amp;_GIẢI_PHÁP_ĐỘI_THI]</span>
+                  <BookOpen size={18} className="text-cyan-400" />
+                  <span className="text-cyan-400">[ĐỀ_BÀI_&amp;_TÀI_LIỆU_THI]</span>
                 </h2>
-                {!showTopicForm && isLeader && (
-                  <button
-                    onClick={() => setShowTopicForm(true)}
-                    className="px-3 py-1.5 bg-cyan-950/40 hover:bg-cyan-900 border border-cyan-850 hover:border-cyan-700 text-cyan-400 text-[10px] font-bold uppercase rounded-lg transition-all cursor-pointer font-sans"
-                  >
-                    Cập nhật đề tài
-                  </button>
+                {round && (
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400 font-mono uppercase tracking-wider">
+                    Vòng: {round.name}
+                  </span>
                 )}
               </div>
 
-              {showTopicForm ? (
-                <form onSubmit={handleSaveTopic} className="space-y-4 font-sans text-xs">
-                  <div className="space-y-1">
-                    <label className="block text-slate-400 font-bold uppercase tracking-wider text-[9px] font-mono">Tên đề tài *</label>
-                    <input
-                      type="text"
-                      required
-                      value={topicTitle}
-                      onChange={e => setTopicTitle(e.target.value)}
-                      placeholder="Nhập tên đề tài/dự án..."
-                      className="w-full bg-slate-900/60 border border-slate-800 rounded-lg text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 text-xs"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-slate-400 font-bold uppercase tracking-wider text-[9px] font-mono">Mô tả giải pháp & sản phẩm</label>
-                    <textarea
-                      rows={3}
-                      value={topicDesc}
-                      onChange={e => setTopicDesc(e.target.value)}
-                      placeholder="Nhập mô tả giải pháp ngắn gọn, các công nghệ sử dụng, tính năng chính..."
-                      className="w-full bg-slate-900/60 border border-slate-800 rounded-lg text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 text-xs"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-slate-400 font-bold uppercase tracking-wider text-[9px] font-mono">Link tài liệu (Google Drive, Figma, v.v...)</label>
-                    <input
-                      type="url"
-                      value={docLink}
-                      onChange={e => setDocLink(e.target.value)}
-                      placeholder="https://docs.google.com/..."
-                      className="w-full bg-slate-900/60 border border-slate-800 rounded-lg text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 text-xs"
-                    />
-                  </div>
-                  <div className="flex gap-2 justify-end pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowTopicForm(false)}
-                      className="px-4 py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-400 text-[10px] font-bold uppercase rounded-lg transition-colors cursor-pointer"
-                    >
-                      Hủy
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-bold uppercase rounded-lg transition-colors shadow-lg shadow-cyan-600/25 cursor-pointer"
-                    >
-                      Lưu thay đổi
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <div className="space-y-4 font-sans text-xs">
-                  <div>
-                    <span className="text-[9px] text-slate-500 block font-mono font-bold uppercase tracking-wider">Tên đề tài dự án</span>
-                    <p className="font-bold text-white text-sm mt-0.5 font-mono">
-                      {team.topicSubmission?.title || 'Chưa đăng ký đề tài'}
+              {round?.startTime && new Date(round.startTime) > currentTime ? (
+                <div className="flex flex-col items-center justify-center py-6 space-y-4">
+                  <div className="space-y-1.5 text-center">
+                    <p className="text-xs text-amber-500 font-sans font-semibold uppercase tracking-wider">
+                      Đề bài vòng thi &quot;{round.name}&quot; sẽ được mở sau:
+                    </p>
+                    <p className="text-[9px] text-slate-500 font-mono">
+                      Thời gian mở đề: {new Date(round.startTime).toLocaleString('vi-VN')}
                     </p>
                   </div>
-                  <div>
-                    <span className="text-[9px] text-slate-500 block font-mono font-bold uppercase tracking-wider">Mô tả giải pháp</span>
-                    <p className="text-slate-350 mt-1 leading-relaxed text-xs">
-                      {team.topicSubmission?.description || 'Không có mô tả chi tiết từ đội.'}
-                    </p>
+                  <div className="text-2xl sm:text-3xl font-black text-cyan-400 font-mono bg-slate-950/70 px-6 py-3.5 rounded-xl border border-slate-900 tracking-widest text-cyan-glow">
+                    {getRemainingTimeText(round.startTime)}
                   </div>
-                  {team.topicSubmission?.documentationLink && (
-                    <div>
-                      <span className="text-[9px] text-slate-500 block font-mono font-bold uppercase tracking-wider mb-1">Tài liệu đính kèm</span>
-                      <a
-                        href={team.topicSubmission.documentationLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-cyan-400 hover:text-cyan-300 font-medium hover:underline"
-                      >
-                        <ExternalLink size={12} />
-                        Xem tài liệu dự án
-                      </a>
+                </div>
+              ) : round?.hasExamMaterial && round?.examOpened ? (
+                <div className="space-y-4 py-1">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <p className="text-[10px] font-bold text-emerald-400 uppercase font-mono tracking-wider">ĐỀ BÀI ĐÃ MỞ KHÓA</p>
                     </div>
-                  )}
+                    <h3 className="text-sm font-bold text-white leading-snug font-sans truncate" title={round.driveFileName || `Đề vòng ${round.name}`}>
+                      {round.driveFileName || `Đề thi & Tài liệu hướng dẫn - Vòng ${round.name}`}
+                    </h3>
+                    <p className="text-[11px] text-slate-400 font-sans leading-relaxed line-clamp-3">
+                      Tài liệu đề bài, sơ đồ kiến trúc hệ thống và dữ liệu mẫu được lưu trữ trên thư mục Google Drive của Ban tổ chức.
+                    </p>
+                  </div>
+                  <div className="pt-2">
+                    <a
+                      href={round.driveFileUrl || "#"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase py-3 px-5 rounded-xl transition-all shadow-lg shadow-cyan-600/20 text-center cursor-pointer hover:-translate-y-0.5 duration-150"
+                    >
+                      <BookOpen size={16} />
+                      Mở đề & tài liệu (Google Drive)
+                    </a>
+                  </div>
+                </div>
+              ) : round?.hasExamMaterial ? (
+                <div className="text-center py-6 text-slate-450 font-sans text-xs">
+                  <Clock size={32} className="mx-auto text-amber-500 mb-2 animate-pulse" />
+                  <p className="font-semibold text-slate-300">Đề thi đang được chuẩn bị</p>
+                  <p className="text-[10px] text-slate-500 mt-1">Đề đã được gắn nhưng chưa đến giờ mở khóa hoặc chưa cấu hình thời gian mở đề.</p>
+                </div>
+              ) : (
+                <div className="text-center py-6 text-slate-500 italic font-sans text-xs">
+                  <BookOpen size={32} className="mx-auto text-slate-650 mb-2" />
+                  <p>Hiện chưa có đề bài hoặc tài liệu thi được phân phối cho vòng này.</p>
                 </div>
               )}
             </div>
           </div>
 
+          {/* Middle: MQTT Connection Card (Col 4) */}
+          {showMqttCard && (
+            <div className="lg:col-span-4 glass p-6 rounded-2xl border border-cyan-500/40 glow-cyan transition-all relative overflow-hidden bg-slate-900/10 shadow-[inset_0_0_20px_rgba(0,240,255,0.02)]">
+              <div className="absolute inset-0 pointer-events-none laser-scan-effect opacity-10"></div>
+              <div>
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+                  <h2 className="text-sm font-bold text-white flex items-center gap-2 font-mono-tech">
+                    <Cpu size={16} className="text-cyan-400 animate-pulse" />
+                    <span className="text-cyan-400">[MQTT_CREDENTIALS]</span>
+                  </h2>
+                  <button
+                    onClick={handleSyncMqtt}
+                    disabled={syncingMqtt}
+                    className="text-slate-400 hover:text-cyan-400 disabled:opacity-50 p-1 cursor-pointer transition-colors"
+                    title="Lấy Key"
+                  >
+                    <RefreshCw size={12} className={syncingMqtt ? "animate-spin text-cyan-400" : ""} />
+                  </button>
+                </div>
+
+                {!team.mqttUsername || !team.testApiKey ? (
+                  <div className="text-center py-4 space-y-3">
+                    <p className="text-xs text-amber-500 font-sans font-semibold">
+                      Khóa kết nối MQTT chưa được đồng bộ từ Simulator.
+                    </p>
+                    <button
+                      onClick={handleSyncMqtt}
+                      disabled={syncingMqtt}
+                      className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold text-xs py-2 rounded-xl uppercase tracking-wider transition-colors cursor-pointer"
+                    >
+                      {syncingMqtt ? "Đang đồng bộ..." : "Đồng bộ kết nối"}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2 text-[10px] font-mono">
+                    <div className="space-y-0.5 bg-slate-950/40 p-2 rounded border border-slate-900">
+                      <span className="text-[8px] text-slate-550 font-bold block uppercase tracking-wider">MQTT Broker</span>
+                      <div className="flex justify-between items-center text-slate-300">
+                        <span>mqtt-hackathon.lexatek.vn</span>
+                        <button onClick={() => handleCopy("mqtt-hackathon.lexatek.vn", "Broker")} className="text-slate-500 hover:text-cyan-400 cursor-pointer">
+                          {copiedField === "Broker" ? <CheckCircle size={10} className="text-emerald-400" /> : <Copy size={10} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div className="space-y-0.5 bg-slate-950/40 p-2 rounded border border-slate-900">
+                        <span className="text-[8px] text-slate-550 font-bold block uppercase tracking-wider">Username</span>
+                        <div className="flex justify-between items-center text-slate-300">
+                          <span className="truncate max-w-[50px]">{team.mqttUsername}</span>
+                          <button onClick={() => handleCopy(team.mqttUsername, "Username")} className="text-slate-500 hover:text-cyan-400 cursor-pointer shrink-0">
+                            {copiedField === "Username" ? <CheckCircle size={10} className="text-emerald-400" /> : <Copy size={10} />}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="space-y-0.5 bg-slate-950/40 p-2 rounded border border-slate-900">
+                        <span className="text-[8px] text-slate-550 font-bold block uppercase tracking-wider">Password</span>
+                        <div className="flex justify-between items-center text-slate-300">
+                          <span className="truncate max-w-[40px]" title={team.mqttPassword}>••••••••</span>
+                          <button onClick={() => handleCopy(team.mqttPassword, "Password")} className="text-slate-500 hover:text-cyan-400 cursor-pointer shrink-0">
+                            {copiedField === "Password" ? <CheckCircle size={10} className="text-emerald-400" /> : <Copy size={10} />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-0.5 bg-slate-950/40 p-2 rounded border border-slate-900">
+                      <span className="text-[8px] text-slate-550 font-bold block uppercase tracking-wider">Test API Key</span>
+                      <div className="flex justify-between items-center text-slate-300">
+                        <span className="truncate max-w-[150px]" title={team.testApiKey}>{team.testApiKey}</span>
+                        <button onClick={() => handleCopy(team.testApiKey, "Test API Key")} className="text-slate-500 hover:text-cyan-400 cursor-pointer">
+                          {copiedField === "Test API Key" ? <CheckCircle size={10} className="text-emerald-400" /> : <Copy size={10} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-0.5 bg-slate-950/40 p-2 rounded border border-slate-900">
+                      <span className="text-[8px] text-slate-550 font-bold block uppercase tracking-wider">Judge API Key</span>
+                      <div className="flex justify-between items-center text-slate-300">
+                        <span className="truncate max-w-[150px]" title={team.judgeApiKey}>{team.judgeApiKey}</span>
+                        <button onClick={() => handleCopy(team.judgeApiKey, "Judge API Key")} className="text-slate-500 hover:text-cyan-400 cursor-pointer">
+                          {copiedField === "Judge API Key" ? <CheckCircle size={10} className="text-emerald-400" /> : <Copy size={10} />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Right: Members Card (Col 4) */}
-          <div className="lg:col-span-4 glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all flex flex-col justify-between">
+          <div className="lg:col-span-4 glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all">
             <div>
               <h2 className="text-sm font-bold text-white mb-4 flex items-center gap-2 font-mono-tech border-b border-slate-800 pb-3">
                 <Users size={18} className="text-cyan-400" />
                 <span className="text-cyan-400">[THÀNH_VIÊN_NHÓM]</span>
               </h2>
-              <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+              <div className="space-y-3.5 max-h-[300px] overflow-y-auto pr-1">
                 {members?.map((m: any) => (
-                  <div key={m._id} className="flex items-center justify-between p-2.5 bg-slate-900/30 rounded-xl border border-slate-800 text-[11px] font-sans">
+                  <div key={m._id} className={`flex items-center justify-between p-3 bg-slate-900/30 rounded-xl border text-xs ${m.role === 'leader' ? 'border-amber-500/30 hover:border-amber-500/50' : 'border-slate-800'
+                    }`}>
                     <div className="min-w-0 flex-1 pr-2">
-                      <p className="font-bold text-slate-200 truncate">{m.userId?.fullName}</p>
-                      <p className="text-[9px] text-slate-400 truncate">{m.userId?.email}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className={`font-bold truncate ${m.role === 'leader' ? 'text-amber-400' : 'text-slate-200'}`}>
+                          {m.userId?.fullName}
+                        </p>
+                        {m.role === 'leader' && (
+                          <Crown size={12} className="text-amber-400 shrink-0 fill-amber-400/20 animate-pulse" />
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-400 truncate">{m.userId?.email}</p>
+                      {(m.userId?.studentId || m.userId?.university) && (
+                        <p className="text-[10px] text-slate-550 font-mono mt-0.5 truncate">
+                          {m.userId?.studentId && `MSSV: ${m.userId.studentId}`}
+                          {m.userId?.studentId && m.userId?.university && ' • '}
+                          {m.userId?.university}
+                        </p>
+                      )}
                     </div>
                     <div className="shrink-0 flex items-center gap-1">
                       {m.confirmStatus === 'confirmed' ? (
-                        <span className="flex items-center gap-0.5 bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[8px] font-bold">
-                          <CheckCircle size={8} /> {m.role === 'leader' ? 'Leader' : 'Member'}
-                        </span>
+                        m.role === 'leader' ? (
+                          <span className="flex items-center gap-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-0.5 rounded text-[9px] font-extrabold uppercase">
+                            Leader
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-0.5 bg-emerald-500/10 text-emerald-450 border border-emerald-500/20 px-2.5 py-0.5 rounded text-[9px] font-extrabold uppercase">
+                            Member
+                          </span>
+                        )
                       ) : (
-                        <span className="flex items-center gap-0.5 bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded text-[8px] font-bold">
-                          <Clock size={8} /> Đang chờ
+                        <span className="flex items-center gap-0.5 bg-slate-800 text-slate-400 px-2.5 py-0.5 rounded text-[9px] font-bold">
+                          <Clock size={8} /> Chờ duyệt
                         </span>
                       )}
                     </div>
@@ -504,7 +546,7 @@ export default function TeamArea() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
+
         {/* Left Side: Topic Submission & Members info */}
         <div className="lg:col-span-1 space-y-8">
 
@@ -547,252 +589,32 @@ export default function TeamArea() {
             </a>
           </div>
 
-          {/* Exam & Materials from BTC */}
-          <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all">
-            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2 font-mono-tech">
-              <BookOpen size={18} className="text-cyan-400" />
-              <span className="text-cyan-400">[ĐỀ_BÀI_&amp;_TÀI_LIỆU_THI]</span>
-            </h2>
-            {round?.startTime && new Date(round.startTime) > currentTime ? (
-              <div className="text-center py-4 space-y-2">
-                <p className="text-xs text-amber-500 font-sans font-semibold">
-                  Đề bài vòng &quot;{round.name}&quot; sẽ được mở sau:
-                </p>
-                <p className="text-sm font-bold text-cyan-400 font-mono bg-slate-900/60 p-2.5 rounded-lg border border-slate-850 tracking-wider">
-                  {getRemainingTimeText(round.startTime)}
-                </p>
-                <p className="text-[10px] text-slate-500 font-mono">
-                  Thời gian mở đề: {new Date(round.startTime).toLocaleString('vi-VN')}
-                </p>
-              </div>
-            ) : round?.hasExamMaterial && round?.examOpened ? (
-              <div className="space-y-3">
-                <div className="p-3 bg-emerald-950/30 rounded-xl border border-emerald-800/40">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <p className="text-xs font-bold text-emerald-400">ĐỀ BÀI ĐÃ MỞ</p>
-                  </div>
-                  <p className="text-xs font-semibold text-white">{round.driveFileName || `Đề vòng ${round.name}`}</p>
-                  <p className="text-[9px] text-slate-400 font-sans mt-1">
-                    Click nút bên dưới để mở tài liệu trên Google Drive.
-                  </p>
-                </div>
-                <a
-                  href={round.driveFileUrl || "#"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase py-3 rounded-xl transition-colors shadow-lg shadow-cyan-600/20 text-center"
-                >
-                  <BookOpen size={16} />
-                  Mở đề & tài liệu (Google Drive)
-                </a>
-              </div>
-            ) : round?.hasExamMaterial ? (
-              <p className="text-xs text-slate-500 italic py-2 text-center font-sans">
-                Đề đã được gắn nhưng chưa đến giờ mở hoặc chưa cấu hình thời gian.
-              </p>
-            ) : (
-              <p className="text-xs text-slate-500 italic py-2 text-center font-sans">
-                Chưa có đề bài cho vòng thi của bạn.
-              </p>
-            )}
-          </div>
-          {/* MQTT Connection & API Keys Card */}
-          {team && team.eventId?.status === 'ongoing' && round?.startTime && new Date(round.startTime) <= currentTime && (
-            <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
-                <h2 className="text-lg font-bold text-white flex items-center gap-2 font-mono-tech">
-                  <Cpu size={18} className="text-cyan-400" />
-                  <span className="text-cyan-400">[MQTT_CREDENTIALS]</span>
-                </h2>
-                <button
-                  onClick={handleSyncMqtt}
-                  disabled={syncingMqtt}
-                  className="text-slate-400 hover:text-cyan-400 disabled:opacity-50 p-1 cursor-pointer transition-colors"
-                  title="Đồng bộ lại thông tin kết nối từ simulator"
-                >
-                  <RefreshCw size={12} className={syncingMqtt ? "animate-spin text-cyan-400" : ""} />
-                </button>
-              </div>
 
-              {!team.mqttUsername || !team.testApiKey ? (
-                <div className="text-center py-4 space-y-3">
-                  <p className="text-xs text-amber-500 font-sans font-semibold">
-                    Khóa kết nối MQTT chưa được đồng bộ từ Simulator.
-                  </p>
-                  <button
-                    onClick={handleSyncMqtt}
-                    disabled={syncingMqtt}
-                    className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold text-xs py-2.5 rounded-xl uppercase tracking-wider transition-colors cursor-pointer"
-                  >
-                    {syncingMqtt ? "Đang đồng bộ..." : "Đồng bộ thông tin kết nối"}
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4 text-xs font-mono">
-                  {/* MQTT Broker Info */}
-                  <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-lg border border-slate-900">
-                    <span className="text-[9px] text-slate-500 font-bold block uppercase tracking-wider">MQTT Broker</span>
-                    <div className="flex justify-between items-center text-slate-300">
-                      <span>mqtt.lexatek.vn</span>
-                      <button
-                        onClick={() => handleCopy("mqtt.lexatek.vn", "Broker")}
-                        className="text-slate-500 hover:text-cyan-400 cursor-pointer"
-                      >
-                        {copiedField === "Broker" ? <CheckCircle size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Username / Password */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-lg border border-slate-900">
-                      <span className="text-[9px] text-slate-500 font-bold block uppercase tracking-wider">Username</span>
-                      <div className="flex justify-between items-center text-slate-300">
-                        <span className="truncate max-w-[100px]">{team.mqttUsername}</span>
-                        <button
-                          onClick={() => handleCopy(team.mqttUsername, "Username")}
-                          className="text-slate-500 hover:text-cyan-400 cursor-pointer shrink-0 ml-1"
-                        >
-                          {copiedField === "Username" ? <CheckCircle size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                        </button>
-                      </div>
-                    </div>
-                    <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-lg border border-slate-900">
-                      <span className="text-[9px] text-slate-500 font-bold block uppercase tracking-wider">Password</span>
-                      <div className="flex justify-between items-center text-slate-300">
-                        <span className="truncate max-w-[80px]" title={team.mqttPassword}>••••••••</span>
-                        <button
-                          onClick={() => handleCopy(team.mqttPassword, "Password")}
-                          className="text-slate-500 hover:text-cyan-400 cursor-pointer shrink-0 ml-1"
-                        >
-                          {copiedField === "Password" ? <CheckCircle size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Test API Key */}
-                  <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-lg border border-slate-900">
-                    <span className="text-[9px] text-slate-500 font-bold block uppercase tracking-wider">Test API Key</span>
-                    <div className="flex justify-between items-center text-slate-300">
-                      <span className="truncate max-w-[200px]" title={team.testApiKey}>{team.testApiKey}</span>
-                      <button
-                        onClick={() => handleCopy(team.testApiKey, "Test API Key")}
-                        className="text-slate-500 hover:text-cyan-400 cursor-pointer"
-                      >
-                        {copiedField === "Test API Key" ? <CheckCircle size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Judge API Key */}
-                  <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-lg border border-slate-900">
-                    <span className="text-[9px] text-slate-500 font-bold block uppercase tracking-wider">Judge API Key</span>
-                    <div className="flex justify-between items-center text-slate-300">
-                      <span className="truncate max-w-[200px]" title={team.judgeApiKey}>{team.judgeApiKey}</span>
-                      <button
-                        onClick={() => handleCopy(team.judgeApiKey, "Judge API Key")}
-                        className="text-slate-500 hover:text-cyan-400 cursor-pointer"
-                      >
-                        {copiedField === "Judge API Key" ? <CheckCircle size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Test Topic */}
-                  <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-lg border border-slate-900">
-                    <span className="text-[9px] text-slate-500 font-bold block uppercase tracking-wider">Test Topic</span>
-                    <div className="flex justify-between items-center text-slate-300">
-                      <span className="truncate max-w-[200px]" title={team.testTopic}>{team.testTopic}</span>
-                      <button
-                        onClick={() => handleCopy(team.testTopic, "Test Topic")}
-                        className="text-slate-500 hover:text-cyan-400 cursor-pointer"
-                      >
-                        {copiedField === "Test Topic" ? <CheckCircle size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Judge Topic */}
-                  <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-lg border border-slate-900">
-                    <span className="text-[9px] text-slate-500 font-bold block uppercase tracking-wider">Judge Topic</span>
-                    <div className="flex justify-between items-center text-slate-300">
-                      <span className="truncate max-w-[200px]" title={team.judgeTopic}>{team.judgeTopic}</span>
-                      <button
-                        onClick={() => handleCopy(team.judgeTopic, "Judge Topic")}
-                        className="text-slate-500 hover:text-cyan-400 cursor-pointer"
-                      >
-                        {copiedField === "Judge Topic" ? <CheckCircle size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Members Invite Confirmations Status */}
-          <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all">
-            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2 font-mono-tech">
-              <Users size={18} className="text-cyan-400" />
-              <span className="text-cyan-400">[THÀNH_VIÊN_NHÓM]</span>
-            </h2>
-            <div className="space-y-3.5">
-              {members?.map((m: any) => (
-                <div key={m._id} className="flex items-center justify-between p-3 bg-slate-900/30 rounded-xl border border-slate-800 text-xs">
-                  <div>
-                    <p className="font-bold text-slate-200">{m.userId?.fullName}</p>
-                    <p className="text-[10px] text-slate-400">{m.userId?.email}</p>
-                    {(m.userId?.studentId || m.userId?.university) && (
-                      <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                        {m.userId?.studentId && `MSSV: ${m.userId.studentId}`}
-                        {m.userId?.studentId && m.userId?.university && ' • '}
-                        {m.userId?.university}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {m.confirmStatus === 'confirmed' ? (
-                      <span className="flex items-center gap-0.5 bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold">
-                        <CheckCircle size={10} /> Đã xác nhận
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-0.5 bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded text-[10px] font-bold">
-                        <Clock size={10} /> Đang chờ
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
 
         </div>
 
         {/* Right Side: GitHub Integration & AI Commit Reviews */}
         <div className="lg:col-span-2 space-y-8">
-          
+
           {repository ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              
+
               {/* Commits List Column */}
               <div className="md:col-span-1 glass p-5 rounded-2xl space-y-4 border border-slate-800">
                 <h3 className="text-sm font-bold text-slate-200 flex items-center gap-1.5 font-mono-tech">
                   <Github size={16} className="text-cyan-400" />
                   <span className="text-cyan-400">[COMMITS_({commits.length})]</span>
                 </h3>
-                
+
                 <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
                   {commits.map((c: any) => (
                     <button
                       key={c._id}
                       onClick={() => handleSelectCommit(c)}
-                      className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer ${
-                        selectedCommit?._id === c._id
-                          ? 'bg-cyan-600/20 border-cyan-500 text-white'
-                          : 'border-slate-800 text-slate-400 hover:border-slate-700'
-                      }`}
+                      className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer ${selectedCommit?._id === c._id
+                        ? 'bg-cyan-600/20 border-cyan-500 text-white'
+                        : 'border-slate-800 text-slate-400 hover:border-slate-700'
+                        }`}
                     >
                       <p className="text-xs font-bold truncate">{c.message}</p>
                       <div className="flex justify-between items-center mt-1.5 text-[9px] text-slate-400">
@@ -809,10 +631,10 @@ export default function TeamArea() {
 
               {/* Commit Details & Gemini AI Analysis */}
               <div className="md:col-span-2 glass p-6 rounded-2xl space-y-6">
-                
+
                 {selectedCommit ? (
                   <div className="space-y-6">
-                    
+
                     {/* Commit Basic Detail */}
                     <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-2">
                       <div className="flex justify-between items-center text-[10px] text-cyan-400 font-bold font-mono-tech">

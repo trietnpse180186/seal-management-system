@@ -634,7 +634,7 @@ export default function RoundsTab({
                   <div className="flex items-center gap-1.5">
                     <p>{r.name}</p>
                     {r.hasCriteria === false && (
-                      <span 
+                      <span
                         className="inline-flex items-center gap-0.5 bg-amber-950/70 text-amber-400 border border-amber-900/50 px-1 py-0.2 rounded text-[7px] font-bold tracking-wider uppercase shrink-0 font-sans"
                         title="Vòng thi này chưa được cấu hình Tiêu chí chấm điểm (Rubric)"
                       >
@@ -816,10 +816,10 @@ export default function RoundsTab({
 
         {(() => {
           const currentSelectedRound = rounds.find((r: any) => r._id === selectedRubricRoundId);
-          const isSelectedRoundFinal = currentSelectedRound && 
-            (currentSelectedRound.name.includes("Chung Kết") || 
-             currentSelectedRound.name.includes("Chung kết") || 
-             currentSelectedRound.order === (rounds.length > 0 ? rounds[rounds.length - 1].order : -1));
+          const isSelectedRoundFinal = currentSelectedRound &&
+            (currentSelectedRound.name.includes("Chung Kết") ||
+              currentSelectedRound.name.includes("Chung kết") ||
+              currentSelectedRound.order === (rounds.length > 0 ? rounds[rounds.length - 1].order : -1));
           const showWarning = isSelectedRoundFinal && criteria.length === 0;
 
           if (showWarning) {
@@ -1352,7 +1352,7 @@ export default function RoundsTab({
                     </div>
                     {(importResult.imported > 0 || importResult.updated > 0 || importResult.deleted > 0) && (
                       <p className="text-[10px] text-emerald-300">
-                        ✅ Đồng bộ thành công:
+                        Đồng bộ thành công:
                         {importResult.imported > 0 && ` +Thêm: ${importResult.imported}`}
                         {importResult.updated > 0 && ` ~Sửa: ${importResult.updated}`}
                         {importResult.deleted > 0 && ` -Xóa: ${importResult.deleted}`}

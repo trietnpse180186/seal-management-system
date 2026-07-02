@@ -123,11 +123,13 @@ export default function TeamArea() {
       });
       
       const team = res.data?.team;
+      console.log('DEBUG [TeamArea]: team =', team);
       const isEventEnded = team && (
         team.eventId?.status === 'completed' || 
         team.eventId?.status === 'cancelled' ||
         (team.eventId?.contestEnd && new Date(team.eventId.contestEnd) <= new Date())
       );
+      console.log('DEBUG [TeamArea]: isEventEnded =', isEventEnded, 'contestEnd =', team?.eventId?.contestEnd, 'status =', team?.eventId?.status);
       if (isEventEnded) {
         setData({ team: null });
       } else {

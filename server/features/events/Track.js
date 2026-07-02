@@ -15,7 +15,8 @@ const TrackSchema = new Schema({
   isAttachmentSent: { type: Boolean, default: false },
   advanceTopN: { type: Number },
   topicName: { type: String },
-  topicLink: { type: String }
+  topicLink: { type: String },
+  environmentId: { type: String }
 }, {
   timestamps: true
 });

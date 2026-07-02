@@ -23,6 +23,80 @@ const { ensureUserDriveAccess } = require('../events/driveAccessService');
 const Round = mongoose.model('Round');
 const { authenticateToken } = require('../auth/authMiddleware');
 const { addEmailJob, addInAppJob, isQueueAvailable } = require('../notifications/notificationQueue');
+const { createExternalTeam } = require('./externalTeamService');
+
+function generateTeamCode(teamName) {
+  return teamName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+async function syncTeamToExternalSimulator(team) {
+  try {
+    if (team.externalTeamId || team.testApiKey) {
+      console.log(`[MQTT SERVICE] Team "${team.name}" is already synced to external API.`);
+      return;
+    }
+
+    if (!team.trackId) {
+      console.warn(`[MQTT SERVICE] Team "${team.name}" has no trackId assigned. Skipping external sync.`);
+      return;
+    }
+
+    const track = await Track.findById(team.trackId);
+    if (!track || !track.environmentId) {
+      console.warn(`[MQTT SERVICE] Track not found or environmentId is empty for track "${team.trackId}". Skipping external sync.`);
+      return;
+    }
+
+    let baseCode = generateTeamCode(team.name);
+    if (!baseCode) {
+      baseCode = `TEAM_${team._id.toString().substring(18).toUpperCase()}`;
+    }
+
+    let code = baseCode;
+    let syncSuccess = false;
+    let result = null;
+    let attempts = 0;
+
+    while (!syncSuccess && attempts < 3) {
+      try {
+        attempts++;
+        result = await createExternalTeam(code, team.name, track.environmentId);
+        syncSuccess = true;
+      } catch (err) {
+        if (err.code === 'TEAM_CODE_EXISTS' && attempts < 3) {
+          const suffix = crypto.randomBytes(2).toString('hex').toUpperCase();
+          code = `${baseCode}_${suffix}`;
+          console.log(`[MQTT SERVICE] Team code conflicted. Retrying with new code: ${code}`);
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    if (result) {
+      team.externalTeamId = result.team?.id || '';
+      team.externalTeamCode = code;
+      team.testApiKey = result.testApiKey || '';
+      team.judgeApiKey = result.judgeApiKey || '';
+      team.mqttUsername = result.mqttUsername || '';
+      team.mqttPassword = result.mqttPassword || '';
+      team.testTopic = `hackathon/${code.toLowerCase()}/test/telemetry`;
+      team.judgeTopic = `hackathon/${code.toLowerCase()}/judge/telemetry`;
+      await team.save();
+
+      console.log(`[MQTT SERVICE] Successfully synchronized team "${team.name}" to simulator. Code: ${code}`);
+    }
+  } catch (error) {
+    console.error(`[MQTT SERVICE] Failed to sync team "${team.name}" to external API:`, error.message);
+  }
+}
+
 
 /**
  * @route   POST /api/teams/register
@@ -241,6 +315,9 @@ router.post('/register', authenticateToken, async (req, res) => {
     if (pendingMembers === 0) {
       team.status = 'confirmed';
       await team.save();
+
+      // Sync team to external simulator API for MQTT keys
+      await syncTeamToExternalSimulator(team);
 
       console.log(`[TEAM] Team "${team.name}" is now FULLY CONFIRMED immediately upon registration! Creating repo...`);
 
@@ -558,6 +635,9 @@ router.get('/confirm-invite', async (req, res) => {
       // All confirmed! Promote team status
       team.status = 'confirmed';
       await team.save();
+
+      // Sync team to external simulator API for MQTT keys
+      await syncTeamToExternalSimulator(team);
 
       console.log(`[TEAM] Team "${team.name}" is now FULLY CONFIRMED! Creating repo...`);
 
@@ -1310,6 +1390,126 @@ router.put('/:teamId/assign-mentor', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Assign Mentor Error:', error.message);
     res.status(500).json({ message: 'Lỗi hệ thống khi phân công Mentor.' });
+  }
+});
+
+/**
+ * @route   POST /api/teams/:teamId/sync-mqtt
+ * @desc    Manually sync MQTT credentials for a team
+ * @access  Private (Admin, Coordinator, or Team Leader)
+ */
+router.post('/:teamId/sync-mqtt', authenticateToken, async (req, res) => {
+  const { teamId } = req.params;
+
+  try {
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return res.status(404).json({ message: 'Không tìm thấy đội thi.' });
+    }
+
+    // Auth check: System Admin, Coordinator of the event, or the team leader themselves
+    let hasAccess = req.user.isSystemAdmin || team.leaderId.toString() === req.user._id.toString();
+    if (!hasAccess) {
+      const coordinatorRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId: team.eventId,
+        role: 'coordinator',
+        status: 'active'
+      });
+      if (coordinatorRole) {
+        hasAccess = true;
+      }
+    }
+
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Bạn không có quyền thực hiện hành động này.' });
+    }
+
+    // Check if track and environmentId are present
+    if (!team.trackId) {
+      return res.status(400).json({ message: 'Đội thi chưa được phân vào bảng đấu.' });
+    }
+
+    const track = await Track.findById(team.trackId);
+    if (!track || !track.environmentId) {
+      return res.status(400).json({ message: 'Bảng đấu của đội thi chưa được cấu hình Environment ID.' });
+    }
+
+    // If already registered on external system, fetch latest credentials using code
+    if (team.externalTeamCode) {
+      try {
+        const { fetchExternalKeys } = require('./externalTeamService');
+        const result = await fetchExternalKeys(team.externalTeamCode);
+        
+        team.testApiKey = result.testApiKey || team.testApiKey || '';
+        team.judgeApiKey = result.judgeApiKey || team.judgeApiKey || '';
+        team.mqttUsername = result.mqttUsername || team.mqttUsername || '';
+        team.mqttPassword = result.mqttPassword || team.mqttPassword || '';
+        team.testTopic = result.testTopic || team.testTopic || `hackathon/${team.externalTeamCode.toLowerCase()}/test/telemetry`;
+        team.judgeTopic = result.judgeTopic || team.judgeTopic || `hackathon/${team.externalTeamCode.toLowerCase()}/judge/telemetry`;
+        await team.save();
+
+        return res.json({
+          message: 'Đồng bộ khóa MQTT thành công từ hệ thống simulator!',
+          team
+        });
+      } catch (err) {
+        console.error('[MQTT SERVICE] fetch keys error during manual sync:', err.message);
+        return res.status(502).json({
+          message: `Không thể đồng bộ khóa từ simulator: ${err.message}`
+        });
+      }
+    } else {
+      // Not registered yet, register now
+      let baseCode = generateTeamCode(team.name);
+      if (!baseCode) {
+        baseCode = `TEAM_${team._id.toString().substring(18).toUpperCase()}`;
+      }
+
+      let code = baseCode;
+      let syncSuccess = false;
+      let result = null;
+      let attempts = 0;
+
+      while (!syncSuccess && attempts < 3) {
+        try {
+          attempts++;
+          const { createExternalTeam } = require('./externalTeamService');
+          result = await createExternalTeam(code, team.name, track.environmentId);
+          syncSuccess = true;
+        } catch (err) {
+          if (err.code === 'TEAM_CODE_EXISTS' && attempts < 3) {
+            const suffix = crypto.randomBytes(2).toString('hex').toUpperCase();
+            code = `${baseCode}_${suffix}`;
+          } else {
+            console.error('[MQTT SERVICE] create team error during manual sync:', err.message);
+            return res.status(err.status || 500).json({
+              message: `Lỗi kết nối simulator: ${err.message}`
+            });
+          }
+        }
+      }
+
+      if (result) {
+        team.externalTeamId = result.team?.id || '';
+        team.externalTeamCode = code;
+        team.testApiKey = result.testApiKey || '';
+        team.judgeApiKey = result.judgeApiKey || '';
+        team.mqttUsername = result.mqttUsername || '';
+        team.mqttPassword = result.mqttPassword || '';
+        team.testTopic = `hackathon/${code.toLowerCase()}/test/telemetry`;
+        team.judgeTopic = `hackathon/${code.toLowerCase()}/judge/telemetry`;
+        await team.save();
+
+        return res.json({
+          message: 'Đăng ký và khởi tạo khóa MQTT thành công từ hệ thống simulator!',
+          team
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Manual Sync Error:', error.message);
+    res.status(500).json({ message: 'Lỗi hệ thống khi đồng bộ khóa MQTT.' });
   }
 });
 

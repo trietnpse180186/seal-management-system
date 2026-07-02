@@ -396,7 +396,7 @@ router.get('/:id', async (req, res) => {
  */
 router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
   const { eventId } = req.params;
-  const { name, description, maxTeams, roundId, startTime, endTime, gradingEndTime, advanceTopN, topicName, topicLink } = req.body;
+  const { name, description, maxTeams, roundId, startTime, endTime, gradingEndTime, advanceTopN, topicName, topicLink, environmentId } = req.body;
 
   if (!name || !roundId) {
     return res.status(400).json({ message: 'Track name and roundId are required.' });
@@ -462,7 +462,8 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
       gradingEndTime: gradingEndTime ? new Date(gradingEndTime) : undefined,
       advanceTopN: advanceTopN ? parseInt(advanceTopN) : undefined,
       topicName,
-      topicLink
+      topicLink,
+      environmentId
     });
 
     await newTrack.save();
@@ -491,7 +492,7 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
  */
 router.put('/:eventId/tracks/:trackId', authenticateToken, async (req, res) => {
   const { eventId, trackId } = req.params;
-  const { name, description, maxTeams, roundId, startTime, endTime, gradingEndTime, advanceTopN, topicName, topicLink } = req.body;
+  const { name, description, maxTeams, roundId, startTime, endTime, gradingEndTime, advanceTopN, topicName, topicLink, environmentId } = req.body;
 
   try {
     const event = await Event.findById(eventId);
@@ -619,6 +620,11 @@ router.put('/:eventId/tracks/:trackId', authenticateToken, async (req, res) => {
     if (topicLink !== undefined && topicLink !== track.topicLink) {
       logDetails.push(`Link đề tài: "${track.topicLink || 'Trống'}" -> "${topicLink}"`);
       track.topicLink = topicLink;
+    }
+
+    if (environmentId !== undefined && environmentId !== track.environmentId) {
+      logDetails.push(`Environment ID: "${track.environmentId || 'Trống'}" -> "${environmentId}"`);
+      track.environmentId = environmentId;
     }
 
     await track.save();

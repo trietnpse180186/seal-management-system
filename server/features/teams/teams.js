@@ -774,8 +774,9 @@ router.get('/my-team', authenticateToken, async (req, res) => {
 
     let team = null;
     let activeMemberRecord = null;
+    const foundTeams = [];
 
-    // Find the first confirmed record pointing to an active team that actually exists
+    // Find all confirmed records pointing to active teams that actually exist
     for (const record of memberRecords) {
       const foundTeam = await Team.findById(record.teamId)
         .populate('eventId', 'name semester year status contestEnd registrationClose')
@@ -788,9 +789,28 @@ router.get('/my-team', authenticateToken, async (req, res) => {
           }
         });
       if (foundTeam) {
-        team = foundTeam;
-        activeMemberRecord = record;
-        break;
+        foundTeams.push({ team: foundTeam, record });
+      }
+    }
+
+    if (foundTeams.length > 0) {
+      // Prioritize teams belonging to events that are NOT completed/cancelled, and whose contestEnd has not passed
+      const activeTeams = foundTeams.filter(({ team }) => {
+        const isEnded = team.eventId && (
+          team.eventId.status === 'completed' ||
+          team.eventId.status === 'cancelled' ||
+          (team.eventId.contestEnd && new Date(team.eventId.contestEnd) <= new Date())
+        );
+        return !isEnded;
+      });
+
+      if (activeTeams.length > 0) {
+        team = activeTeams[0].team;
+        activeMemberRecord = activeTeams[0].record;
+      } else {
+        // Fallback to the first found team (e.g. past team)
+        team = foundTeams[0].team;
+        activeMemberRecord = foundTeams[0].record;
       }
     }
 

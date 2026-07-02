@@ -327,7 +327,7 @@ export default function TeamArea() {
           {/* Left: Exam & Materials Card */}
           <div className={`${
             showMqttCard ? 'lg:col-span-4' : 'lg:col-span-8'
-          } glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all flex flex-col justify-between relative overflow-hidden`}>
+          } glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all relative overflow-hidden`}>
             {round?.hasExamMaterial && round?.examOpened && (
               <div className="absolute inset-0 pointer-events-none laser-scan-effect opacity-10"></div>
             )}
@@ -401,7 +401,7 @@ export default function TeamArea() {
 
           {/* Middle: MQTT Connection Card (Col 4) */}
           {showMqttCard && (
-            <div className="lg:col-span-4 glass p-6 rounded-2xl border border-cyan-500/40 glow-cyan transition-all flex flex-col justify-between relative overflow-hidden bg-slate-900/10 shadow-[inset_0_0_20px_rgba(0,240,255,0.02)]">
+            <div className="lg:col-span-4 glass p-6 rounded-2xl border border-cyan-500/40 glow-cyan transition-all relative overflow-hidden bg-slate-900/10 shadow-[inset_0_0_20px_rgba(0,240,255,0.02)]">
               <div className="absolute inset-0 pointer-events-none laser-scan-effect opacity-10"></div>
               <div>
                 <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
@@ -491,7 +491,7 @@ export default function TeamArea() {
           )}
 
           {/* Right: Members Card (Col 4) */}
-          <div className="lg:col-span-4 glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all flex flex-col justify-between">
+          <div className="lg:col-span-4 glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all">
             <div>
               <h2 className="text-sm font-bold text-white mb-4 flex items-center gap-2 font-mono-tech border-b border-slate-800 pb-3">
                 <Users size={18} className="text-cyan-400" />

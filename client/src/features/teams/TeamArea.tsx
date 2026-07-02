@@ -31,7 +31,7 @@ export default function TeamArea() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [syncingMqtt, setSyncingMqtt] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  
+
 
 
   const round = data?.team?.trackId?.roundId;
@@ -60,14 +60,14 @@ export default function TeamArea() {
   const getRemainingTimeText = (startTimeStr: string) => {
     const diff = new Date(startTimeStr).getTime() - currentTime.getTime();
     if (diff <= 0) return '00:00:00';
-    
+
     const seconds = Math.floor((diff / 1000) % 60);
     const minutes = Math.floor((diff / 1000 / 60) % 60);
     const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    
+
     const pad = (num: number) => num.toString().padStart(2, '0');
-    
+
     if (days > 0) {
       return `${days} ngày ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
     }
@@ -81,8 +81,8 @@ export default function TeamArea() {
       default: return status?.toUpperCase() || '';
     }
   };
-  
-  
+
+
   // Git commits & AI report
   const [commits, setCommits] = useState<any[]>([]);
   const [selectedCommit, setSelectedCommit] = useState<any>(null);
@@ -104,10 +104,10 @@ export default function TeamArea() {
       const res = await axios.get('http://localhost:5000/api/teams/my-team', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       const team = res.data?.team;
       const isEventEnded = team && (
-        team.eventId?.status === 'completed' || 
+        team.eventId?.status === 'completed' ||
         team.eventId?.status === 'cancelled' ||
         (team.eventId?.contestEnd && new Date(team.eventId.contestEnd) <= new Date())
       );
@@ -115,7 +115,7 @@ export default function TeamArea() {
         setData({ team: null });
       } else {
         setData(res.data);
-        
+
 
 
         // Fetch commits if repo exists
@@ -212,7 +212,7 @@ export default function TeamArea() {
 
 
   const isEventEnded = team && (
-    team.eventId?.status === 'completed' || 
+    team.eventId?.status === 'completed' ||
     team.eventId?.status === 'cancelled' ||
     (team.eventId?.contestEnd && new Date(team.eventId.contestEnd) <= new Date())
   );
@@ -223,30 +223,29 @@ export default function TeamArea() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 space-y-8 font-mono">
-      
+
       {/* Top Banner team details */}
       <div className="glass p-8 rounded-3xl relative overflow-hidden border border-slate-800 hover:border-cyan-500/30 transition-all">
         {/* Decorative elements */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
         <div className="absolute -left-10 -bottom-10 w-40 h-40 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none"></div>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
-          
+
           {/* Main Info (Col 5): Team name & Status */}
           <div className="lg:col-span-5 space-y-4">
             <div className="flex items-center gap-2.5">
               <span className="text-[10px] text-cyan-400 font-bold border border-cyan-500/30 px-2 py-0.5 rounded bg-cyan-950/20 tracking-widest uppercase">
                 [ĐỘI THI]
               </span>
-              <span className={`text-[10px] px-2.5 py-0.5 rounded font-extrabold tracking-wider ${
-                team?.status?.toLowerCase() === 'confirmed'
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-              }`}>
+              <span className={`text-[10px] px-2.5 py-0.5 rounded font-extrabold tracking-wider ${team?.status?.toLowerCase() === 'confirmed'
+                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                }`}>
                 {getTeamStatusText(team?.status)}
               </span>
             </div>
-            
+
             <div>
               <h1 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tight text-cyan-glow">
                 {team?.name}
@@ -289,7 +288,7 @@ export default function TeamArea() {
               <span className="text-[9px] text-slate-500 block uppercase font-mono tracking-wider font-bold">THÀNH VIÊN</span>
               <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5 mt-1 font-mono">
                 <Users size={14} className="text-slate-400" />
-                <span>{members?.length || 0} Operators</span>
+                <span>{members?.length || 0} Thành viên</span>
               </span>
             </div>
           </div>
@@ -309,7 +308,7 @@ export default function TeamArea() {
               <p className="text-xs text-slate-400 font-sans">Bạn có câu hỏi hoặc cần sự giúp đỡ? Hãy nhắn tin trao đổi trực tiếp với Mentor hướng dẫn.</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={() => {
               window.dispatchEvent(new CustomEvent('open_chat_room', { detail: { teamId: team._id } }));
             }}
@@ -323,11 +322,10 @@ export default function TeamArea() {
       {/* Row 1: Exam, MQTT Connection & Members */}
       {team && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
-          
+
           {/* Left: Exam & Materials Card */}
-          <div className={`${
-            showMqttCard ? 'lg:col-span-4' : 'lg:col-span-8'
-          } glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all relative overflow-hidden`}>
+          <div className={`${showMqttCard ? 'lg:col-span-4' : 'lg:col-span-8'
+            } glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all relative overflow-hidden`}>
             {round?.hasExamMaterial && round?.examOpened && (
               <div className="absolute inset-0 pointer-events-none laser-scan-effect opacity-10"></div>
             )}
@@ -413,7 +411,7 @@ export default function TeamArea() {
                     onClick={handleSyncMqtt}
                     disabled={syncingMqtt}
                     className="text-slate-400 hover:text-cyan-400 disabled:opacity-50 p-1 cursor-pointer transition-colors"
-                    title="Đồng bộ kết nối từ simulator"
+                    title="Lấy Key"
                   >
                     <RefreshCw size={12} className={syncingMqtt ? "animate-spin text-cyan-400" : ""} />
                   </button>
@@ -499,9 +497,8 @@ export default function TeamArea() {
               </h2>
               <div className="space-y-3.5 max-h-[300px] overflow-y-auto pr-1">
                 {members?.map((m: any) => (
-                  <div key={m._id} className={`flex items-center justify-between p-3 bg-slate-900/30 rounded-xl border text-xs ${
-                    m.role === 'leader' ? 'border-amber-500/30 hover:border-amber-500/50' : 'border-slate-800'
-                  }`}>
+                  <div key={m._id} className={`flex items-center justify-between p-3 bg-slate-900/30 rounded-xl border text-xs ${m.role === 'leader' ? 'border-amber-500/30 hover:border-amber-500/50' : 'border-slate-800'
+                    }`}>
                     <div className="min-w-0 flex-1 pr-2">
                       <div className="flex items-center gap-1.5">
                         <p className={`font-bold truncate ${m.role === 'leader' ? 'text-amber-400' : 'text-slate-200'}`}>
@@ -547,7 +544,7 @@ export default function TeamArea() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
+
         {/* Left Side: Topic Submission & Members info */}
         <div className="lg:col-span-1 space-y-8">
 
@@ -596,27 +593,26 @@ export default function TeamArea() {
 
         {/* Right Side: GitHub Integration & AI Commit Reviews */}
         <div className="lg:col-span-2 space-y-8">
-          
+
           {repository ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              
+
               {/* Commits List Column */}
               <div className="md:col-span-1 glass p-5 rounded-2xl space-y-4 border border-slate-800">
                 <h3 className="text-sm font-bold text-slate-200 flex items-center gap-1.5 font-mono-tech">
                   <Github size={16} className="text-cyan-400" />
                   <span className="text-cyan-400">[COMMITS_({commits.length})]</span>
                 </h3>
-                
+
                 <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
                   {commits.map((c: any) => (
                     <button
                       key={c._id}
                       onClick={() => handleSelectCommit(c)}
-                      className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer ${
-                        selectedCommit?._id === c._id
-                          ? 'bg-cyan-600/20 border-cyan-500 text-white'
-                          : 'border-slate-800 text-slate-400 hover:border-slate-700'
-                      }`}
+                      className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer ${selectedCommit?._id === c._id
+                        ? 'bg-cyan-600/20 border-cyan-500 text-white'
+                        : 'border-slate-800 text-slate-400 hover:border-slate-700'
+                        }`}
                     >
                       <p className="text-xs font-bold truncate">{c.message}</p>
                       <div className="flex justify-between items-center mt-1.5 text-[9px] text-slate-400">
@@ -633,10 +629,10 @@ export default function TeamArea() {
 
               {/* Commit Details & Gemini AI Analysis */}
               <div className="md:col-span-2 glass p-6 rounded-2xl space-y-6">
-                
+
                 {selectedCommit ? (
                   <div className="space-y-6">
-                    
+
                     {/* Commit Basic Detail */}
                     <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-2">
                       <div className="flex justify-between items-center text-[10px] text-cyan-400 font-bold font-mono-tech">

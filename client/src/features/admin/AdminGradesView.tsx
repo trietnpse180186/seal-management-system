@@ -163,10 +163,20 @@ export default function AdminGradesView() {
 
           if (hasTracks) {
             const tTrackId = t.trackId && typeof t.trackId === 'object' ? t.trackId._id : t.trackId;
-            return String(tTrackId) === String(selectedTrackId);
+            const currentTrackMatch = String(tTrackId) === String(selectedTrackId);
+            const historicalTrackMatch = t.rankings?.some((r: any) => {
+              const rTrackId = r.trackId && typeof r.trackId === 'object' ? r.trackId._id : r.trackId;
+              return String(rTrackId) === String(selectedTrackId);
+            });
+            return currentTrackMatch || historicalTrackMatch;
           } else {
             const tRoundId = t.currentRoundId && typeof t.currentRoundId === 'object' ? t.currentRoundId._id : t.currentRoundId;
-            return String(tRoundId) === String(selectedRoundId);
+            const currentRoundMatch = String(tRoundId) === String(selectedRoundId);
+            const historicalRoundMatch = t.rankings?.some((r: any) => {
+              const rRoundId = r.roundId && typeof r.roundId === 'object' ? r.roundId._id : r.roundId;
+              return String(rRoundId) === String(selectedRoundId);
+            });
+            return currentRoundMatch || historicalRoundMatch;
           }
         });
         setTeams(matchedTeams);
@@ -201,13 +211,14 @@ export default function AdminGradesView() {
           { headers: { Authorization: `Bearer ${token}` } }
         ).catch(err => {
           console.warn('No active rubric found for this round:', err);
-          return { data: { criteria: [] } };
+          return { data: { rubric: null, criteria: [] } };
         })
       ]);
       setGradingsData({
         team: selectedTeamObj,
         gradings: gradesRes.data.judgesScores || [],
-        criteria: rubricRes.data?.criteria || []
+        criteria: rubricRes.data?.criteria || [],
+        rubric: rubricRes.data?.rubric || null
       });
     } catch (err: any) {
       console.error('Error fetching grades:', err);
@@ -411,7 +422,7 @@ export default function AdminGradesView() {
                   <div>
                     <span className="text-xs font-semibold text-slate-300">Điểm trung bình chung cuộc: </span>
                     <span className="text-lg font-black text-cyan-300 font-mono ml-1">
-                      {calculateFinalAverage()} / 10.0đ
+                      {calculateFinalAverage()} / {(gradingsData.rubric?.maxCriterionScore || 10).toFixed(1)}đ
                     </span>
                     <span className="text-[10px] text-slate-400 block mt-0.5">
                       Tính toán tự động từ {gradingsData.gradings?.length || 0} giám khảo đã nộp
@@ -467,7 +478,7 @@ export default function AdminGradesView() {
                               <span className="text-xl font-black text-cyan-400 font-mono">
                                 {g.score?.totalWeightedScore || 0}
                               </span>
-                              <span className="text-slate-550 text-xs font-bold font-mono"> / 10đ</span>
+                              <span className="text-slate-550 text-xs font-bold font-mono"> / {gradingsData.rubric?.maxCriterionScore || 10}đ</span>
                             </div>
                           </div>
 

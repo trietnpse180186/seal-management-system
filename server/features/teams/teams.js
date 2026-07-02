@@ -965,14 +965,72 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
 
       if (userRole && userRole.role === 'mentor') {
         query.mentorId = req.user._id;
-      } else if (userRole && (userRole.role === 'judge' || userRole.role === 'coordinator') && userRole.trackId) {
-        query.trackId = userRole.trackId;
+      } else if (userRole && userRole.role === 'judge') {
+        let effectiveRoundId = roundId;
+        if (!effectiveRoundId) {
+          const activeRound = await Round.findOne({ eventId: req.params.eventId, status: 'active' });
+          if (activeRound) {
+            effectiveRoundId = activeRound._id;
+          }
+        }
+
+        if (effectiveRoundId) {
+          const roundDoc = await Round.findById(effectiveRoundId);
+          if (roundDoc && roundDoc.status === 'completed') {
+            // Hide all teams from judges if the round is already locked/completed
+            return res.json([]);
+          }
+        }
+
+        if (userRole.trackId) {
+          const track = await Track.findById(userRole.trackId);
+          if (track && effectiveRoundId && track.roundId.toString() !== effectiveRoundId.toString()) {
+            // Queried/active round does not match the judge's assigned track's round
+            return res.json([]);
+          }
+          query.trackId = userRole.trackId;
+        } else {
+          return res.json([]);
+        }
       } else if (!userRole) {
         return res.json([]); // No active role in this event/round, return empty
       }
     }
 
-    const teams = await Team.find(query)
+    // Support historical and current track/round query matching
+    const Ranking = mongoose.model('Ranking');
+    let effectiveRoundIdForRanking = req.query.roundId;
+    if (!effectiveRoundIdForRanking) {
+      const activeRound = await Round.findOne({ eventId: req.params.eventId, status: 'active' });
+      if (activeRound) {
+        effectiveRoundIdForRanking = activeRound._id;
+      }
+    }
+
+    let teamIdsFromRankings = [];
+    if (query.trackId) {
+      const rankings = await Ranking.find({ trackId: query.trackId });
+      teamIdsFromRankings = rankings.map(r => r.teamId);
+    } else if (effectiveRoundIdForRanking) {
+      const rankings = await Ranking.find({ roundId: effectiveRoundIdForRanking });
+      teamIdsFromRankings = rankings.map(r => r.teamId);
+    }
+
+    let finalQuery = { ...query };
+    if (query.trackId) {
+      delete finalQuery.trackId;
+      finalQuery.$or = [
+        { trackId: query.trackId },
+        { _id: { $in: teamIdsFromRankings } }
+      ];
+    } else if (effectiveRoundIdForRanking) {
+      finalQuery.$or = [
+        { currentRoundId: effectiveRoundIdForRanking },
+        { _id: { $in: teamIdsFromRankings } }
+      ];
+    }
+
+    const teams = await Team.find(finalQuery)
       .populate('trackId', 'name')
       .populate('leaderId', 'fullName email')
       .populate('mentorId', 'fullName email');
@@ -980,10 +1038,12 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
     const detailedTeams = await Promise.all(teams.map(async (t) => {
       const members = await TeamMember.find({ teamId: t._id }).populate('userId', 'fullName email studentId university githubUsername confirmStatus');
       const repo = await GithubRepository.findOne({ teamId: t._id });
+      const rankings = await Ranking.find({ teamId: t._id }).lean();
       return {
         ...t.toObject(),
         members,
-        repository: repo
+        repository: repo,
+        rankings: rankings || []
       };
     }));
 

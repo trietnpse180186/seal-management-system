@@ -263,6 +263,7 @@ export default function App() {
         }
 
         // B. Centralized Error Message Localization
+        // B. Centralized Error Message Localization
         const getFriendlyMessage = () => {
           if (!error.response) {
             return errorMessages.NETWORK_ERROR;

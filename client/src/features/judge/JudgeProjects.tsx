@@ -165,6 +165,8 @@ export default function JudgeProjects() {
     return matchSearch && matchFilter;
   });
 
+  const isRoundCompleted = activeRound?.status === 'completed';
+
   return (
     <div className="space-y-8 animate-fadeIn">
       {/* Page Header */}
@@ -195,7 +197,7 @@ export default function JudgeProjects() {
               <div>
                 <p className="text-[9px] font-bold uppercase text-slate-500 tracking-wider">Vòng thi hiện tại</p>
                 <p className="text-sm font-extrabold text-cyan-400 mt-1 font-mono uppercase drop-shadow-[0_0_5px_rgba(34,211,238,0.2)]">
-                  {activeRound ? `${activeRound.name} (Lấy Top ${activeRound.advanceTopN})` : "Không có vòng thi active"}
+                  {activeRound ? (activeRound.advanceTopN > 0 ? `${activeRound.name} (Lấy Top ${activeRound.advanceTopN})` : activeRound.name) : "Không có vòng thi active"}
                 </p>
               </div>
               {assignedTrack && (
@@ -343,16 +345,19 @@ export default function JudgeProjects() {
 
                       {/* Column 4: Action */}
                       <td className="px-6 py-5 whitespace-nowrap text-right">
-                        <button
-                          onClick={() => navigate(`/judge/score/${team._id}?roundId=${selectedRoundId}`)}
-                          className={`inline-flex items-center gap-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(6,182,212,0.2)] ${isGraded
-                              ? "bg-slate-800 border border-white/10 text-slate-300 hover:bg-slate-700 hover:text-white"
-                              : "bg-cyan-500 hover:bg-cyan-500 text-white hover:shadow-[0_0_15px_rgba(6,182,212,0.5)]"
+                        {!isRoundCompleted && (
+                          <button
+                            onClick={() => navigate(`/judge/score/${team._id}?roundId=${selectedRoundId}`)}
+                            className={`inline-flex items-center gap-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(6,182,212,0.2)] ${
+                              isGraded
+                                ? "bg-slate-800 border border-white/10 text-slate-300 hover:bg-slate-700 hover:text-white"
+                                : "bg-cyan-500 hover:bg-cyan-500 text-white hover:shadow-[0_0_15px_rgba(6,182,212,0.5)]"
                             }`}
-                        >
-                          <span>{isGraded ? "Xem & Sửa" : "Bắt đầu chấm"}</span>
-                          <ChevronRight size={12} />
-                        </button>
+                          >
+                            <span>{isGraded ? "Xem & Sửa" : "Bắt đầu chấm"}</span>
+                            <ChevronRight size={12} />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );

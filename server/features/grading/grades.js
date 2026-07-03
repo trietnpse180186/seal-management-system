@@ -683,7 +683,8 @@ router.get('/leaderboard/:roundId', authenticateToken, async (req, res) => {
 
     const leaderboard = await Ranking.find({ roundId: req.params.roundId })
       .sort({ rank: 1 })
-      .populate('teamId', 'name status topicSubmission');
+      .populate('teamId', 'name status topicSubmission')
+      .populate('trackId', 'name');
 
     res.json({ locked: false, isCoordinator, standings: leaderboard });
   } catch (error) {
@@ -724,7 +725,8 @@ router.get('/live-ranking/:roundId', authenticateToken, async (req, res) => {
 
     // 2. Get all confirmed teams in these tracks
     const teams = await Team.find({ eventId: round.eventId, trackId: { $in: trackIds }, status: 'confirmed' })
-      .populate('topicSubmission');
+      .populate('topicSubmission')
+      .populate('trackId', 'name');
 
     // Get all submitted/locked scores for this round
     const scores = await Score.find({
@@ -938,20 +940,24 @@ router.post('/advance-round', authenticateToken, async (req, res) => {
     const currentRound = await Round.findById(currentRoundId);
     if (!currentRound) return res.status(404).json({ message: 'Current round not found.' });
 
-    // 1. Verify if all tracks in the current round are locked
+    // 1. Verify if all tracks in the current round are locked (only checking tracks with registered teams)
     const tracks = await Track.find({ roundId: currentRoundId });
     if (tracks.length === 0) {
       return res.status(400).json({ message: 'No tracks found in the current round.' });
     }
 
+    const Team = mongoose.model('Team');
     const trackIds = tracks.map(t => t._id);
     for (const trackId of trackIds) {
-      const rankingsExist = await Ranking.exists({ roundId: currentRoundId, trackId });
-      if (!rankingsExist) {
-        const track = tracks.find(t => t._id.toString() === trackId.toString());
-        return res.status(400).json({ 
-          message: `Bảng đấu "${track ? track.name : trackId}" chưa được khóa điểm. Vui lòng khóa điểm và công bố tất cả bảng đấu trước khi chốt vòng.` 
-        });
+      const trackHasTeams = await Team.exists({ eventId, trackId });
+      if (trackHasTeams) {
+        const rankingsExist = await Ranking.exists({ roundId: currentRoundId, trackId });
+        if (!rankingsExist) {
+          const track = tracks.find(t => t._id.toString() === trackId.toString());
+          return res.status(400).json({ 
+            message: `Bảng đấu "${track ? track.name : trackId}" chưa được khóa điểm. Vui lòng khóa điểm và công bố tất cả bảng đấu trước khi chốt vòng.` 
+          });
+        }
       }
     }
 

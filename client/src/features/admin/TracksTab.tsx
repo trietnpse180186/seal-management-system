@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 import { FolderKanban, ChevronRight, BookOpen, Users, Edit, Trash2, ExternalLink } from "lucide-react";
-import { useConfirm } from "../shared/ConfirmDialog";
+import { useConform } from "../shared/ModalConform";
 import CustomSelect from "../shared/CustomSelect";
 
 interface TracksTabProps {
@@ -18,6 +18,8 @@ interface TracksTabProps {
   setTrackAdvanceTopN: (val: string) => void;
   trackRoundId: string;
   setTrackRoundId: (val: string) => void;
+  trackEnvironmentId: string;
+  setTrackEnvironmentId: (val: string) => void;
   handleCreateTrack: (e: React.FormEvent) => Promise<void>;
   selectedTrack: any;
   setSelectedTrack: (track: any) => void;
@@ -56,6 +58,8 @@ export default function TracksTab({
   setTrackAdvanceTopN,
   trackRoundId,
   setTrackRoundId,
+  trackEnvironmentId,
+  setTrackEnvironmentId,
   handleCreateTrack,
   selectedTrack,
   setSelectedTrack,
@@ -82,7 +86,7 @@ export default function TracksTab({
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [memberRole, setMemberRole] = useState<"judge" | "mentor">("judge");
   const [selectedTeamId, setSelectedTeamId] = useState("");
-  const confirm = useConfirm();
+  const conform = useConform();
 
   // Drive upload state
   const [driveFileName, setDriveFileName] = useState("");
@@ -117,7 +121,14 @@ export default function TracksTab({
 
 
   const maxEventTeams = selectedEvent?.maxTeams || 0;
-  const totalAllocatedTeams = tracks.reduce((sum, t) => sum + (t.maxTeams || 0), 0);
+  const finalRound = rounds.find(r => r.advanceTopN === 0);
+  const finalRoundId = finalRound?._id || finalRound?.id;
+  const totalAllocatedTeams = tracks
+    .filter(t => {
+      const tRoundId = t.roundId?._id || t.roundId;
+      return tRoundId && tRoundId.toString() !== finalRoundId?.toString();
+    })
+    .reduce((sum, t) => sum + (t.maxTeams || 0), 0);
   const remainingTeams = maxEventTeams - totalAllocatedTeams;
 
   const trackMembers = eventRoles.filter(
@@ -212,9 +223,14 @@ export default function TracksTab({
                   <span className="font-semibold block">
                     {t.name} (Tối đa {t.maxTeams} đội)
                   </span>
-                  <span className="text-[10px] text-slate-500 font-mono">
+                  <span className="text-[10px] text-slate-500 font-mono block">
                     Vòng: {rounds.find((r) => r._id === t.roundId)?.name || "Chưa gán"}
                   </span>
+                  {t.environmentId && (
+                    <span className="text-[9px] text-cyan-500 font-mono block truncate max-w-[220px]" title={t.environmentId}>
+                      Env: {t.environmentId}
+                    </span>
+                  )}
                 </button>
                 <div className="flex items-center gap-2.5 ml-2 shrink-0">
                   <button
@@ -227,6 +243,7 @@ export default function TracksTab({
                       setTrackMax(t.maxTeams.toString());
                       setTrackAdvanceTopN(t.advanceTopN ? t.advanceTopN.toString() : "");
                       setTrackDesc(t.description || "");
+                      setTrackEnvironmentId(t.environmentId || "");
                     }}
                     className="text-slate-400 hover:text-cyan-400 transition-colors p-1 cursor-pointer"
                     title="Chỉnh sửa bảng đấu"
@@ -237,12 +254,12 @@ export default function TracksTab({
                     type="button"
                     onClick={async (e) => {
                       e.stopPropagation();
-                      const confirmed = await confirm({
+                      const conformed = await conform({
                         title: "Xóa bảng đấu",
                         message: `Bạn có chắc chắn muốn xóa bảng đấu "${t.name}"?`,
                         variant: "danger",
                       });
-                      if (confirmed) {
+                      if (conformed) {
                         handleDeleteTrack(t._id);
                       }
                     }}
@@ -330,6 +347,19 @@ export default function TracksTab({
             />
           </div>
 
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
+              Environment ID (UUID)
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. 6c10dc7a-4021-4299-a12b-215278a89c72"
+              value={trackEnvironmentId}
+              onChange={(e) => setTrackEnvironmentId(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
+            />
+          </div>
+
           <div className="flex gap-2">
             <button
               type="submit"
@@ -347,6 +377,7 @@ export default function TracksTab({
                   setTrackMax("");
                   setTrackAdvanceTopN("");
                   setTrackDesc("");
+                  setTrackEnvironmentId("");
                 }}
                 className="px-4 py-2 border border-slate-700 hover:border-slate-600 hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs font-semibold rounded-lg cursor-pointer font-mono transition-all"
               >

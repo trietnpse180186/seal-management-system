@@ -332,7 +332,7 @@ export default function JudgeScoring() {
       );
 
       setIsGraded(true);
-      setMessage({ type: 'success', text: `Nộp điểm thành công! Tổng điểm: ${res.data.totalWeightedScore}/10` });
+      setMessage({ type: 'success', text: `Nộp điểm thành công! Tổng điểm: ${res.data.totalWeightedScore}/${rubric ? rubric.maxCriterionScore : 10}` });
     } catch (err: any) {
       setMessage({ type: 'error', text: err.response?.data?.message || 'Có lỗi khi nộp điểm.' });
     } finally {
@@ -450,8 +450,8 @@ export default function JudgeScoring() {
         /* TAB 1: SCORING TAB (Master-Detail layout) */
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
           
-          {/* Left Area (8/12): Scoring Master-Detail Container */}
-          <div className="xl:col-span-8 bg-slate-900/40 backdrop-blur-md p-6 rounded-xl border border-white/10 shadow-lg flex flex-col space-y-6">
+          {/* Main Area (12/12): Scoring Master-Detail Container */}
+          <div className="xl:col-span-12 bg-slate-900/40 backdrop-blur-md p-6 rounded-xl border border-white/10 shadow-lg flex flex-col space-y-6">
             
             {/* Scoring Header */}
             <div className="flex justify-between items-center border-b border-white/5 pb-4">
@@ -647,9 +647,9 @@ export default function JudgeScoring() {
 
                             {/* Grading Levels Guides */}
                             {c.gradingLevels && c.gradingLevels.length > 0 && (
-                              <div className="pt-2 border-t border-white/5 space-y-1.5">
+                              <div className="pt-2 border-t border-white/5 space-y-1">
                                 <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest font-mono">Mức điểm hướng dẫn:</p>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[170px] overflow-y-auto pr-1">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-[140px] overflow-y-auto pr-1">
                                   {c.gradingLevels.map((lvl: any, idx: number) => {
                                     const parsedScore = parseFloat(scoreVal);
                                     const isMatched = !isNaN(parsedScore) && parsedScore >= lvl.minScore && parsedScore <= lvl.maxScore;
@@ -662,18 +662,18 @@ export default function JudgeScoring() {
                                             handleScoreChange(c._id, 'scoreValue', lvl.maxScore);
                                           }
                                         }}
-                                        className={`p-2 rounded-lg border transition-all duration-300 flex flex-col justify-between cursor-pointer text-left ${
+                                        className={`px-2.5 py-1.5 rounded-lg border transition-all duration-300 flex flex-col justify-between cursor-pointer text-left ${
                                           isMatched
-                                            ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.15)]'
-                                            : 'bg-slate-800/30 border-white/5 hover:border-white/15 text-slate-400'
+                                            ? 'bg-cyan-500/25 border-cyan-400 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.15)]'
+                                            : 'bg-slate-800/30 border-white/5 hover:border-white/12 text-slate-400'
                                         }`}
                                       >
-                                        <div className="flex flex-col gap-0.5 text-[9px] font-bold">
-                                          <span className={isMatched ? 'text-cyan-200 text-[9px]' : 'text-slate-300 text-[9px]'}>{lvl.label}</span>
+                                        <div className="flex flex-col gap-0.5 text-[8.5px] font-bold">
+                                          <span className={isMatched ? 'text-cyan-200' : 'text-slate-355'}>{lvl.label}</span>
                                           <span className={isMatched ? 'text-cyan-400 font-mono font-black' : 'text-slate-500 font-mono font-black'}>{lvl.minScore} - {lvl.maxScore}đ</span>
                                         </div>
                                         {lvl.description && (
-                                          <p className={`text-[8.5px] mt-1 leading-normal font-sans ${isMatched ? 'text-cyan-200/70' : 'text-slate-500'}`}>{lvl.description}</p>
+                                          <p className={`text-[8px] mt-0.5 leading-normal font-sans ${isMatched ? 'text-cyan-200/70' : 'text-slate-500'}`}>{lvl.description}</p>
                                         )}
                                       </div>
                                     );
@@ -685,13 +685,13 @@ export default function JudgeScoring() {
                             {/* Comment */}
                             <div className="space-y-1">
                               <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest font-mono">Nhận xét tiêu chí này</label>
-                              <input
-                                type="text"
-                                placeholder={isRoundLocked ? "Không có nhận xét." : "Nhập nhận xét cụ thể cho tiêu chí này..."}
+                              <textarea
+                                placeholder={isRoundLocked ? "Không có nhận xét." : "Nhập nhận xét cụ thể, lý do chấm điểm và góp ý chi tiết cho tiêu chí này..."}
                                 value={commentVal}
                                 onChange={e => handleScoreChange(c._id, 'comment', e.target.value)}
                                 disabled={isRoundLocked}
-                                className="bg-slate-900 border border-slate-700 rounded-lg text-slate-300 text-xs px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 disabled:opacity-50 shadow-inner placeholder-slate-600"
+                                rows={4}
+                                className="bg-slate-900 border border-slate-700 rounded-xl text-slate-300 text-xs px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400 disabled:opacity-50 shadow-inner placeholder-slate-655 font-sans leading-relaxed resize-y"
                               />
                             </div>
                           </div>
@@ -731,37 +731,6 @@ export default function JudgeScoring() {
               </div>
             )}
 
-          </div>
-
-          {/* Right Area (4/12): Compact Commits Activity timeline */}
-          <div className="xl:col-span-4 bg-slate-900/40 backdrop-blur-md p-5 rounded-xl border border-white/10 shadow-lg flex flex-col h-fit space-y-4">
-            <div className="flex justify-between items-center border-b border-white/5 pb-2">
-              <h3 className="text-xs font-black text-slate-300 uppercase tracking-widest font-mono flex items-center gap-1.5">
-                <Clock size={14} className="text-cyan-400" />
-                <span>Hoạt động Commit ({commits.length})</span>
-              </h3>
-            </div>
-            
-            <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
-              {commits.map((c: any, idx: number) => (
-                <div key={c._id || idx} className="p-3 bg-slate-800/30 rounded-xl border border-white/5 text-[10px] space-y-1.5 hover:border-white/10 transition-colors shadow-inner">
-                  <p className="font-semibold text-slate-200 truncate leading-snug">{c.message}</p>
-                  <div className="flex justify-between items-center text-slate-400 font-mono">
-                    <span className="text-cyan-400/80">@{c.authorGithubUsername || c.authorName}</span>
-                    <span>{new Date(c.committedAt).toLocaleDateString('vi-VN')}</span>
-                  </div>
-                  <div className="flex gap-2 text-[9px] font-bold font-mono">
-                    <span className="text-emerald-400">+{c.additions}</span>
-                    <span className="text-rose-400">-{c.deletions}</span>
-                  </div>
-                </div>
-              ))}
-              {commits.length === 0 && (
-                <p className="text-[10px] text-slate-500 italic text-center py-10 font-mono">
-                  [CHƯA CÓ HOẠT ĐỘNG COMMIT]
-                </p>
-              )}
-            </div>
           </div>
 
         </div>
@@ -1185,6 +1154,37 @@ export default function JudgeScoring() {
                     <li className="list-none text-slate-500 italic font-mono text-[10px] py-4">[CHƯA CÓ GỢI Ý CÂU HỎI PHẢN BIỆN]</li>
                   )}
                 </ul>
+              </div>
+
+              {/* Hoạt động Commit card moved from grading tab */}
+              <div className="bg-slate-900/40 backdrop-blur-md p-5 rounded-xl border border-white/10 shadow-lg flex flex-col h-fit space-y-4">
+                <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                  <h3 className="text-xs font-black text-slate-300 uppercase tracking-widest font-mono flex items-center gap-1.5">
+                    <Clock size={14} className="text-cyan-400" />
+                    <span>Hoạt động Commit ({commits.length})</span>
+                  </h3>
+                </div>
+                
+                <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                  {commits.map((c: any, idx: number) => (
+                    <div key={c._id || idx} className="p-3 bg-slate-800/30 rounded-xl border border-white/5 text-[10px] space-y-1.5 hover:border-white/10 transition-colors shadow-inner">
+                      <p className="font-semibold text-slate-200 truncate leading-snug">{c.message}</p>
+                      <div className="flex justify-between items-center text-slate-400 font-mono">
+                        <span className="text-cyan-400/80">@{c.authorGithubUsername || c.authorName}</span>
+                        <span>{new Date(c.committedAt).toLocaleDateString('vi-VN')}</span>
+                      </div>
+                      <div className="flex gap-2 text-[9px] font-bold font-mono">
+                        <span className="text-emerald-400">+{c.additions}</span>
+                        <span className="text-rose-400">-{c.deletions}</span>
+                      </div>
+                    </div>
+                  ))}
+                  {commits.length === 0 && (
+                    <p className="text-[10px] text-slate-500 italic text-center py-10 font-mono">
+                      [CHƯA CÓ HOẠT ĐỘNG COMMIT]
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* Project Profile Info */}

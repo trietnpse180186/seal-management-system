@@ -41,14 +41,13 @@ export default function TeamsTab({
                 (t) => t.status === "confirmed" && !t.trackId,
               )
             }
-            className={`text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center gap-1.5 ${
-              tracks.length > 0 &&
+            className={`text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center gap-1.5 ${tracks.length > 0 &&
               teamsList.some(
                 (t) => t.status === "confirmed" && !t.trackId,
               )
-                ? "bg-cyan-500 hover:bg-cyan-500 cursor-pointer shadow-lg shadow-cyan-500/25"
-                : "bg-slate-800/80 text-slate-500 cursor-not-allowed border border-slate-700/50"
-            }`}
+              ? "bg-cyan-500 hover:bg-cyan-500 cursor-pointer shadow-lg shadow-cyan-500/25"
+              : "bg-slate-800/80 text-slate-500 cursor-not-allowed border border-slate-700/50"
+              }`}
           >
             Chia bảng ngẫu nhiên vào Track
           </button>
@@ -97,11 +96,10 @@ export default function TeamsTab({
                       </h5>
                     </div>
                     <span
-                      className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${
-                        team.trackId
-                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                          : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                      }`}
+                      className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${team.trackId
+                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                        : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                        }`}
                     >
                       {team.trackId?.name ||
                         (team.trackId ? "Đã gán" : "Chưa chia bảng")}
@@ -188,7 +186,7 @@ export default function TeamsTab({
                         disabled={loading || tracks.length === 0}
                         className="flex-1 bg-cyan-500 hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-slate-500 text-[10px] text-white font-bold py-1.5 px-2 rounded-lg font-mono transition-all flex items-center justify-center gap-1 cursor-pointer disabled:cursor-not-allowed border border-cyan-500/20"
                       >
-                        🎲 Phân ngẫu nhiên
+                        Phân ngẫu nhiên
                       </button>
 
                       {tracks.length > 0 && (
@@ -219,17 +217,17 @@ export default function TeamsTab({
               ))}
             {teamsList.filter((t) => t.status === "confirmed")
               .length === 0 && (
-              <p className="col-span-2 text-xs text-slate-500 italic text-center py-2">
-                Chưa có đội thi nào xác nhận hoàn tất.
-              </p>
-            )}
+                <p className="col-span-2 text-xs text-slate-500 italic text-center py-2">
+                  Chưa có đội thi nào xác nhận hoàn tất.
+                </p>
+              )}
           </div>
         </div>
 
         {/* 2. Pending Teams */}
         <div>
           <h4 className="text-xs font-bold text-amber-500 uppercase tracking-wider font-mono mb-3">
-            ⏳ Đội thi đang chờ xác nhận (
+            Đội thi đang chờ xác nhận (
             {
               teamsList.filter((t) => t.status === "pending_confirm")
                 .length
@@ -269,11 +267,10 @@ export default function TeamsTab({
                           • {m.userId?.fullName}
                         </span>
                         <span
-                          className={`text-[9px] font-mono px-1 rounded ${
-                            m.confirmStatus === "confirmed"
-                              ? "text-emerald-400 bg-emerald-500/5"
-                              : "text-slate-500 bg-slate-800"
-                          }`}
+                          className={`text-[9px] font-mono px-1 rounded ${m.confirmStatus === "confirmed"
+                            ? "text-emerald-400 bg-emerald-500/5"
+                            : "text-slate-500 bg-slate-800"
+                            }`}
                         >
                           {m.confirmStatus === "confirmed"
                             ? "Đã nhận"
@@ -286,10 +283,10 @@ export default function TeamsTab({
               ))}
             {teamsList.filter((t) => t.status === "pending_confirm")
               .length === 0 && (
-              <p className="col-span-2 text-xs text-slate-500 italic text-center py-2">
-                Không có nhóm nào ở trạng thái chờ xác nhận.
-              </p>
-            )}
+                <p className="col-span-2 text-xs text-slate-500 italic text-center py-2">
+                  Không có nhóm nào ở trạng thái chờ xác nhận.
+                </p>
+              )}
           </div>
         </div>
       </div>

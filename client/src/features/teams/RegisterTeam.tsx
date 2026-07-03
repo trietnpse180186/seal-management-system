@@ -35,6 +35,7 @@ export default function RegisterTeam() {
   const [infoMessage, setInfoMessage] = useState('');
 
   const [loading, setLoading] = useState(false);
+  const [oldTeamName, setOldTeamName] = useState('');
   const [success, _setSuccess] = useState('');
   const [alreadyHasTeam, setAlreadyHasTeam] = useState(false);
   const [existingTeamName, setExistingTeamName] = useState('');
@@ -61,11 +62,13 @@ export default function RegisterTeam() {
     })
       .then(res => {
         const team = res.data?.team;
+        console.log('DEBUG [RegisterTeam]: team =', team);
         const isEventEnded = team && (
           team.eventId?.status === 'completed' || 
           team.eventId?.status === 'cancelled' ||
           (team.eventId?.contestEnd && new Date(team.eventId.contestEnd) <= new Date())
         );
+        console.log('DEBUG [RegisterTeam]: isEventEnded =', isEventEnded, 'contestEnd =', team?.eventId?.contestEnd, 'status =', team?.eventId?.status);
         if (team && !isEventEnded) {
           setAlreadyHasTeam(true);
           setExistingTeamName(team.name);
@@ -115,7 +118,8 @@ export default function RegisterTeam() {
     const team = pastTeams.find(t => t._id === selectedPastTeamId);
     if (!team) return;
 
-    setTeamName(team.name);
+    setOldTeamName(team.name);
+    setTeamName('');
 
     if (team.members && Array.isArray(team.members)) {
       setMembers(team.members.map((m: any) => ({
@@ -127,7 +131,7 @@ export default function RegisterTeam() {
       })));
     }
 
-    setInfoMessage('Đã điền thông tin nhóm và thành viên từ đội cũ. Bạn có thể tự do chỉnh sửa nếu cần.');
+    setInfoMessage('Đã tải thành viên từ nhóm cũ. Vui lòng nhập tên mới cho đội thi của bạn.');
     setTimeout(() => setInfoMessage(''), 5000);
   };
 
@@ -172,6 +176,12 @@ export default function RegisterTeam() {
 
     if (!teamName.trim()) {
       setError('Tên nhóm không được để trống.');
+      setLoading(false);
+      return;
+    }
+
+    if (oldTeamName && teamName.trim().toLowerCase() === oldTeamName.toLowerCase()) {
+      setError('Vui lòng đặt tên mới cho nhóm (không sử dụng lại tên của nhóm cũ).');
       setLoading(false);
       return;
     }

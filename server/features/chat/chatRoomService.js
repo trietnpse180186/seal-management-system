@@ -141,6 +141,12 @@ async function checkRoomAccess(room, userId, options = {}) {
   if (!room?.eventId) return false;
 
   const eventId = normalizeEventId(room.eventId);
+
+  // System Admin and Event Coordinators always have access to all rooms in their event
+  if (isSystemAdmin) return true;
+  const isCoordinator = await isCoordinatorForEvent(userId, eventId);
+  if (isCoordinator) return true;
+
   const chatClosed = await isEventChatClosed(eventId);
 
   if (chatClosed) {

@@ -159,7 +159,7 @@ export default function AdminLiveInteraction() {
       const res = await axios.get(`http://localhost:5000/api/grades/live-ranking/${selectedRoundId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setTeams(res.data);
+      setTeams(res.data.standings || []);
     } catch (err) {
       console.error(err);
     }

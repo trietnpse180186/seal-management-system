@@ -31,13 +31,13 @@ export default function GuestPortal({ user }: GuestPortalProps) {
     if (!dateStr) return "Chưa có thông báo";
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return "Chưa có thông báo";
-    
+
     const day = date.getDate().toString().padStart(2, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const year = date.getFullYear();
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
-    
+
     return `${hours}:${minutes} - ${day}/${month}/${year}`;
   };
 
@@ -49,7 +49,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
     if (!endDateStr) {
       return `Bắt đầu từ ${startStr}`;
     }
-    
+
     const endStr = formatDateString(endDateStr);
     if (endStr === "Chưa có thông báo") {
       return `Bắt đầu từ ${startStr}`;
@@ -102,18 +102,18 @@ export default function GuestPortal({ user }: GuestPortalProps) {
       try {
         const res = await axios.get("http://localhost:5000/api/events");
         const allEvents = res.data;
-        
+
         // Prioritize registration or ongoing events
         let filtered = allEvents.filter((e: any) => e.status === "registration" || e.status === "ongoing");
-        
+
         // Fallback to completed or prepare if none of the above exist
         if (filtered.length === 0) {
           filtered = allEvents.filter((e: any) => e.status === "completed" || e.status === "prepare");
         }
-        
+
         // Sort by newest
         const sorted = filtered.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        
+
         // Show only a single event
         setEvents(sorted.length > 0 ? [sorted[0]] : []);
       } catch (err) {
@@ -133,7 +133,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
         if (res.data && res.data.team) {
           const team = res.data.team;
           const isEventEnded = team && (
-            team.eventId?.status === 'completed' || 
+            team.eventId?.status === 'completed' ||
             team.eventId?.status === 'cancelled' ||
             (team.eventId?.contestEnd && new Date(team.eventId.contestEnd) <= new Date())
           );
@@ -178,7 +178,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
   const getPhaseStyles = (phaseNum: number) => {
     const statusObj = getPhaseStatus(phaseNum);
     const label = statusObj.label;
-    
+
     let headingClass: string;
     let dateClass: string;
     let descClass: string;
@@ -409,7 +409,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                             {hasTeam ? "Vào khu vực đội" : "Đăng ký tham gia"}
                           </button>
                         )}
-                        
+
                         {e.status === "prepare" && (
                           hasTeam ? (
                             <button
@@ -424,7 +424,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                             </div>
                           )
                         )}
-                        
+
                         {e.status === "ongoing" && (
                           hasTeam ? (
                             <button
@@ -535,7 +535,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                           {hasTeam ? "Vào khu vực đội" : "Đăng ký tham gia"}
                         </button>
                       )}
-                      
+
                       {e.status === "prepare" && (
                         hasTeam ? (
                           <button
@@ -550,7 +550,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                           </div>
                         )
                       )}
-                      
+
                       {e.status === "ongoing" && (
                         hasTeam ? (
                           <button
@@ -616,7 +616,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                     SỐ THÀNH VIÊN
                   </div>
                   <div className="text-sm font-bold text-white">
-                    {activeEvent?.memberLimitText || "2-4 OPERATORS"}
+                    {activeEvent?.memberLimitText || "3 - 5 Thành Viên"}
                   </div>
                 </div>
                 <div className="border border-slate-800 p-3 bg-slate-900/30 rounded-xl col-span-2 flex justify-between items-center">
@@ -625,7 +625,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                       QUỸ GIẢI THƯỞNG
                     </div>
                     <div className="text-sm font-bold text-cyan-400">
-                      {activeEvent?.prizePoolText || "$50,000 USD"}
+                      {activeEvent?.prizePoolText || "Tiền mặt và chứng nhận"}
                     </div>
                   </div>
                   <DollarSign size={20} className="text-cyan-400/40" />

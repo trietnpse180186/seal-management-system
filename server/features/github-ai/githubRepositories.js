@@ -353,24 +353,13 @@ router.post('/webhook', async (req, res) => {
       return res.status(404).json({ message: 'Repository not registered in system.' });
     }
 
-    // 4. Enqueue or run syncRepo
-    if (githubAiQueue.isQueueAvailable()) {
-      await githubAiQueue.addSyncJob(repo._id.toString());
-      console.log(`[GITHUB WEBHOOK] Enqueued sync job for ${repo.repoName}`);
-      res.json({ message: 'GitHub push event received and enqueued for sync.', repositoryId: repo._id });
-    } else {
-      console.log(`[GITHUB WEBHOOK] Redis queue not available. Running sync asynchronously in background for ${repo.repoName}...`);
-      // Fallback: Run in background asynchronously without blocking the response
-      // Wrap in setTimeout to defer execution and let the HTTP response close immediately
-      setTimeout(async () => {
-        try {
-          await cronService.syncRepo(repo._id);
-        } catch (err) {
-          console.error(`[GITHUB WEBHOOK BACKGROUND ERROR] Sync failed for ${repo.repoName}:`, err.message);
-        }
-      }, 100);
-      res.json({ message: 'GitHub push event received. Synchronizing in background.', repositoryId: repo._id });
-    }
+    // 4. Do NOT enqueue or run syncRepo immediately on webhook.
+    // Instead, log the push event. The background cron job will scan the repository on its next cycle.
+    console.log(`[GITHUB WEBHOOK] Push event logged for ${repo.repoName}. Skipping immediate sync (sync runs on cron).`);
+    res.json({ 
+      message: 'GitHub push event received. The background cron job will check for new commits and run AI review.', 
+      repositoryId: repo._id 
+    });
   } catch (error) {
     console.error('[GITHUB WEBHOOK ERROR]', error.message);
     res.status(500).json({ message: 'Server error processing webhook.' });

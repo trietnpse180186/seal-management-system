@@ -861,7 +861,7 @@ router.get('/my-team', authenticateToken, async (req, res) => {
         .populate('eventId', 'name semester year status contestEnd registrationClose')
         .populate({
           path: 'trackId',
-          select: 'name description startTime endTime roundId',
+          select: 'name description startTime endTime roundId environmentId',
           populate: {
             path: 'roundId',
             model: 'Round'

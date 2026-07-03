@@ -16,7 +16,7 @@ const GithubRepositorySchema = new Schema({
   createdAtGithub: { type: Date },
   lastSyncedAt: { type: Date },
   lastCommitSha: { type: String },
-  syncStatus: { type: String, enum: ['not_synced', 'syncing', 'success', 'failed'], default: 'not_synced' },
+  syncStatus: { type: String, enum: ['not_synced', 'queued', 'syncing', 'success', 'failed'], default: 'not_synced' },
   syncErrorMessage: { type: String },
   isArchived: { type: Boolean, default: false }
 }, {

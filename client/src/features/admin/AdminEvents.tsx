@@ -114,6 +114,9 @@ export default function AdminEvents({
   const [teamsList, setTeamsList] = useState<any[]>([]);
 
   const [loading, setLoading] = useState(false);
+  const [syncingRepoId, setSyncingRepoId] = useState<string | null>(null);
+  const [syncingAll, setSyncingAll] = useState(false);
+  const [syncProgress, setSyncProgress] = useState<any>(null);
   const setMessage = (msg: { type: string; text: string }) => {
     if (msg.text) {
       if (msg.type === "success") {
@@ -464,6 +467,59 @@ export default function AdminEvents({
     }
   }, [eventIdParam, events]);
 
+  const fetchSyncProgress = async () => {
+    if (!selectedEvent) return false;
+    const token = localStorage.getItem("token");
+    const reposToSync = teamsList
+      .filter((t) => t.repository)
+      .map((t) => t.repository._id);
+
+    if (reposToSync.length === 0) return false;
+
+    try {
+      const res = await axios.get(
+        `http://localhost:5000/api/github-repositories/sync-progress?eventId=${selectedEvent._id}&repositoryIds=${reposToSync.join(",")}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setSyncProgress(res.data);
+      return res.data.active;
+    } catch (err) {
+      console.error("Lỗi lấy tiến trình đồng bộ:", err);
+      return false;
+    }
+  };
+
+  // Check sync progress on selectedEvent change
+  useEffect(() => {
+    if (selectedEvent) {
+      fetchSyncProgress();
+    }
+  }, [selectedEvent]);
+
+  // Poll sync progress if active
+  useEffect(() => {
+    let intervalId: any = null;
+    if (syncProgress?.active) {
+      setSyncingAll(true);
+      intervalId = setInterval(async () => {
+        const isActive = await fetchSyncProgress();
+        if (!isActive) {
+          clearInterval(intervalId);
+          setSyncingAll(false);
+          toast.success("Quá trình đồng bộ tất cả repository đã hoàn thành!");
+          fetchEventDetails();
+        }
+      }, 3000); // check every 3 seconds
+    } else {
+      setSyncingAll(false);
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [syncProgress?.active]);
+
   useEffect(() => {
     const createParam = searchParams.get("create");
     if (createParam === "true") {
@@ -610,6 +666,71 @@ export default function AdminEvents({
       setTeamsList(res.data || []);
     } catch (err) {
       console.error("Lỗi lấy danh sách đội thi:", err);
+    }
+  };
+
+  const handleSyncRepo = async (repoId: string) => {
+    const token = localStorage.getItem("token");
+    setSyncingRepoId(repoId);
+    try {
+      const res = await axios.post(
+        `http://localhost:5000/api/github-repositories/${repoId}/sync`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      toast.success(res.data.message || "Đồng bộ và phân tích AI thành công!");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Lỗi khi đồng bộ repository.");
+    } finally {
+      setSyncingRepoId(null);
+    }
+  };
+
+  const handleSyncAllRepos = async () => {
+    const reposToSync = teamsList
+      .filter((t) => t.repository)
+      .map((t) => t.repository._id);
+
+    if (reposToSync.length === 0) {
+      toast.error("Không có repository nào của đội thi hiện tại để đồng bộ.");
+      return;
+    }
+
+    const conformed = await conform({
+      title: "Đồng bộ tất cả Repository",
+      message: `Bạn có chắc chắn muốn kích hoạt đồng bộ và phân tích AI cho ${reposToSync.length} repository của các đội thi hiện tại? Quá trình này sẽ chạy ngầm và mất vài phút để tránh quá tải API.`,
+    });
+    if (!conformed) return;
+
+    const token = localStorage.getItem("token");
+    setSyncingAll(true);
+
+    // Set initial sync progress immediately to show progress bar instantly
+    setSyncProgress({
+      total: reposToSync.length,
+      completed: 0,
+      syncing: 0,
+      queued: reposToSync.length,
+      active: true,
+    });
+
+    try {
+      const res = await axios.post(
+        `http://localhost:5000/api/github-repositories/sync-all?eventId=${selectedEvent._id}`,
+        { repositoryIds: reposToSync },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      toast.success(res.data.message || "Đã kích hoạt đồng bộ toàn bộ repository thành công!");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Lỗi khi đồng bộ toàn bộ repository.");
+      setSyncProgress(null);
+      setSyncingAll(false);
     }
   };
 
@@ -2392,6 +2513,11 @@ export default function AdminEvents({
             loading={loading}
             handleDistributeTeams={handleDistributeTeams}
             handleAssignTrack={handleAssignTrack}
+            handleSyncRepo={handleSyncRepo}
+            syncingRepoId={syncingRepoId}
+            handleSyncAllRepos={handleSyncAllRepos}
+            syncingAll={syncingAll}
+            syncProgress={syncProgress}
           />
         ) : (
           <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">

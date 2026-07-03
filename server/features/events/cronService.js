@@ -72,12 +72,13 @@ async function autoTransitionEvents() {
  */
 async function checkAndSyncDueRepositories() {
   const activeRepos = await GithubRepository.find({ isArchived: false });
+  const eventIntervals = {}; // cache to avoid multiple queries for the same event
   
   const concurrencyLimit = 3;
   const executing = [];
 
   for (const repo of activeRepos) {
-    // Skip if already syncing in the last 5 minutes to prevent race conditions
+    // 1. Skip if already syncing in the last 5 minutes to prevent race conditions
     if (repo.syncStatus === 'syncing') {
       const lastUpdated = repo.updatedAt ? new Date(repo.updatedAt).getTime() : 0;
       const elapsedMinutes = (Date.now() - lastUpdated) / (1000 * 60);
@@ -87,29 +88,49 @@ async function checkAndSyncDueRepositories() {
       }
     }
 
-    console.log(`[CRON] Scanning repo ${repo.repoName} for new commits...`);
-    const p = (async () => {
-      try {
-        if (githubAiQueue.isQueueAvailable()) {
-          await githubAiQueue.addSyncJob(repo._id.toString());
-        } else {
-          await syncRepo(repo._id);
-        }
-      } catch (err) {
-        console.error(`[CRON ERROR] Failed syncing repo ID ${repo._id}:`, err.message);
+    // 2. Check if the commit sync interval has elapsed
+    let commitSyncInterval = 30; // default 30 minutes
+    if (repo.eventId) {
+      const eventIdStr = repo.eventId.toString();
+      if (eventIntervals[eventIdStr] !== undefined) {
+        commitSyncInterval = eventIntervals[eventIdStr];
+      } else {
+        const event = await Event.findById(repo.eventId);
+        commitSyncInterval = (event && typeof event.commitSyncInterval === 'number') 
+          ? event.commitSyncInterval 
+          : 30;
+        eventIntervals[eventIdStr] = commitSyncInterval;
       }
-    })();
+    }
 
-    executing.push(p);
+    const lastSynced = repo.lastSyncedAt ? new Date(repo.lastSyncedAt).getTime() : 0;
+    const elapsedMinutes = (Date.now() - lastSynced) / (1000 * 60);
 
-    const clean = () => {
-      const idx = executing.indexOf(p);
-      if (idx > -1) executing.splice(idx, 1);
-    };
-    p.then(clean, clean);
+    if (elapsedMinutes >= commitSyncInterval) {
+      console.log(`[CRON] Repo ${repo.repoName} is due for sync (elapsed: ${elapsedMinutes.toFixed(1)}m, interval: ${commitSyncInterval}m)`);
+      const p = (async () => {
+        try {
+          if (githubAiQueue.isQueueAvailable()) {
+            await githubAiQueue.addSyncJob(repo._id.toString());
+          } else {
+            await syncRepo(repo._id);
+          }
+        } catch (err) {
+          console.error(`[CRON ERROR] Failed syncing repo ID ${repo._id}:`, err.message);
+        }
+      })();
 
-    if (executing.length >= concurrencyLimit) {
-      await Promise.race(executing);
+      executing.push(p);
+
+      const clean = () => {
+        const idx = executing.indexOf(p);
+        if (idx > -1) executing.splice(idx, 1);
+      };
+      p.then(clean, clean);
+
+      if (executing.length >= concurrencyLimit) {
+        await Promise.race(executing);
+      }
     }
   }
 
@@ -150,9 +171,16 @@ function startCronJobs() {
 /**
  * Syncs all active repositories in the database
  */
-async function syncAllRepositories() {
-  const activeRepos = await GithubRepository.find({ isArchived: false });
-  console.log(`[CRON] Syncing ${activeRepos.length} repository/repositories...`);
+async function syncAllRepositories(eventId = null, repositoryIds = null) {
+  const filter = { isArchived: false };
+  if (eventId) {
+    filter.eventId = eventId;
+  }
+  if (repositoryIds && repositoryIds.length > 0) {
+    filter._id = { $in: repositoryIds };
+  }
+  const activeRepos = await GithubRepository.find(filter);
+  console.log(`[CRON] Syncing ${activeRepos.length} repository/repositories (eventId: ${eventId || 'none'}, repos: ${repositoryIds ? repositoryIds.length : 'all'})...`);
 
   if (githubAiQueue.isQueueAvailable()) {
     // If BullMQ queue is active, enqueue all sync jobs. The sequential worker will throttle execution.

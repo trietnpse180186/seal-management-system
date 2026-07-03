@@ -196,6 +196,76 @@ router.post('/link', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @route   POST /api/github-repositories/sync-all
+ * @desc    Sync commits and trigger AI analysis for all active repositories sequentially or via queue
+ * @access  Private
+ */
+router.post('/sync-all', authenticateToken, async (req, res) => {
+  try {
+    const { eventId } = req.query;
+    const { repositoryIds } = req.body;
+    if (!eventId) {
+      return res.status(400).json({ message: 'Thiếu tham số eventId.' });
+    }
+
+    const filter = { eventId, isArchived: false };
+    if (repositoryIds && repositoryIds.length > 0) {
+      filter._id = { $in: repositoryIds };
+    }
+
+    // 1. Reset only repositories belonging to this event and specified in the request
+    await GithubRepository.updateMany(filter, { syncStatus: 'queued' });
+
+    // 2. Run syncAllRepositories in the background (asynchronously) without blocking the HTTP request
+    // since syncing all repos with 12s sleep in between can take minutes.
+    cronService.syncAllRepositories(eventId, repositoryIds).catch(err => {
+      console.error('[SYNC ALL BACKGROUND ERROR]', err.message);
+    });
+    res.json({ message: 'Đã kích hoạt đồng bộ toàn bộ repository thành công. Quá trình quét và phân tích đang chạy ngầm.' });
+  } catch (error) {
+    console.error('Sync all repositories error:', error.message);
+    res.status(500).json({ message: error.message || 'Server error starting global sync.' });
+  }
+});
+
+/**
+ * @route   GET /api/github-repositories/sync-progress
+ * @desc    Get progress of current global sync run
+ * @access  Private
+ */
+router.get('/sync-progress', authenticateToken, async (req, res) => {
+  try {
+    const { eventId, repositoryIds } = req.query;
+    if (!eventId) {
+      return res.status(400).json({ message: 'Thiếu tham số eventId.' });
+    }
+
+    const filter = { eventId, isArchived: false };
+    if (repositoryIds) {
+      const ids = repositoryIds.split(',');
+      filter._id = { $in: ids };
+    }
+
+    const activeRepos = await GithubRepository.find(filter);
+    const total = activeRepos.length;
+    const completed = activeRepos.filter(r => r.syncStatus === 'success' || r.syncStatus === 'failed').length;
+    const syncing = activeRepos.filter(r => r.syncStatus === 'syncing').length;
+    const queued = activeRepos.filter(r => r.syncStatus === 'queued').length;
+    
+    res.json({
+      total,
+      completed,
+      syncing,
+      queued,
+      active: queued > 0 || syncing > 0
+    });
+  } catch (error) {
+    console.error('Get sync progress error:', error.message);
+    res.status(500).json({ message: error.message || 'Server error getting sync progress.' });
+  }
+});
+
+/**
  * @route   POST /api/github-repositories/:id/sync
  * @desc    Sync commits for a repository immediately
  * @access  Private

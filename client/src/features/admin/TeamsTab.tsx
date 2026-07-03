@@ -1,4 +1,4 @@
-import { Users } from "lucide-react";
+import { Users, RefreshCw } from "lucide-react";
 import CustomSelect from "../shared/CustomSelect";
 
 interface TeamsTabProps {
@@ -8,6 +8,17 @@ interface TeamsTabProps {
   loading: boolean;
   handleDistributeTeams: () => Promise<void>;
   handleAssignTrack: (teamId: string, trackId: string) => Promise<void>;
+  handleSyncRepo: (repoId: string) => Promise<void>;
+  syncingRepoId: string | null;
+  handleSyncAllRepos: () => Promise<void>;
+  syncingAll: boolean;
+  syncProgress: {
+    total: number;
+    completed: number;
+    syncing: number;
+    queued: number;
+    active: boolean;
+  } | null;
 }
 
 export default function TeamsTab({
@@ -16,6 +27,11 @@ export default function TeamsTab({
   loading,
   handleDistributeTeams,
   handleAssignTrack,
+  handleSyncRepo,
+  syncingRepoId,
+  handleSyncAllRepos,
+  syncingAll,
+  syncProgress,
 }: TeamsTabProps) {
   return (
     <div className="glass p-6 rounded-2xl space-y-6">
@@ -30,42 +46,85 @@ export default function TeamsTab({
           </p>
         </div>
 
-        {/* Auto distribute button */}
-        <div className="flex flex-col items-end gap-1">
+        {/* Action Buttons */}
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+          {/* Global Sync button */}
           <button
-            onClick={handleDistributeTeams}
-            disabled={
-              loading ||
-              tracks.length === 0 ||
-              !teamsList.some(
-                (t) => t.status === "confirmed" && !t.trackId,
-              )
-            }
-            className={`text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center gap-1.5 ${tracks.length > 0 &&
-              teamsList.some(
-                (t) => t.status === "confirmed" && !t.trackId,
-              )
-              ? "bg-cyan-500 hover:bg-cyan-500 cursor-pointer shadow-lg shadow-cyan-500/25"
-              : "bg-slate-800/80 text-slate-500 cursor-not-allowed border border-slate-700/50"
-              }`}
+            onClick={handleSyncAllRepos}
+            disabled={loading || syncingAll}
+            className={`text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed ${
+              syncingAll
+                ? "bg-slate-800 text-slate-500 border border-slate-700/50"
+                : "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-lg shadow-emerald-600/25 border border-emerald-500/20"
+            }`}
           >
-            Chia bảng ngẫu nhiên vào Track
+            <RefreshCw size={14} className={syncingAll ? "animate-spin" : ""} />
+            <span>{syncingAll ? "Đang đồng bộ chung..." : "Đồng bộ tất cả Repo"}</span>
           </button>
-          {tracks.length === 0 && (
-            <span className="text-[9px] text-rose-400 font-mono">
-              * Cần tạo Bảng đấu (Track) trước
-            </span>
-          )}
-          {tracks.length > 0 &&
-            !teamsList.some(
-              (t) => t.status === "confirmed" && !t.trackId,
-            ) && (
-              <span className="text-[9px] text-slate-500 font-mono">
-                * Không có nhóm thi đấu chờ chia bảng
+
+          {/* Auto distribute button */}
+          <div className="flex flex-col items-stretch md:items-end gap-1">
+            <button
+              onClick={handleDistributeTeams}
+              disabled={
+                loading ||
+                tracks.length === 0 ||
+                !teamsList.some(
+                  (t) => t.status === "confirmed" && !t.trackId,
+                )
+              }
+              className={`text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 ${tracks.length > 0 &&
+                teamsList.some(
+                  (t) => t.status === "confirmed" && !t.trackId,
+                )
+                ? "bg-cyan-500 hover:bg-cyan-500 cursor-pointer shadow-lg shadow-cyan-500/25"
+                : "bg-slate-800/80 text-slate-500 cursor-not-allowed border border-slate-700/50"
+                }`}
+            >
+              Chia bảng ngẫu nhiên vào Track
+            </button>
+            {tracks.length === 0 && (
+              <span className="text-[9px] text-rose-400 font-mono text-center md:text-right">
+                * Cần tạo Bảng đấu (Track) trước
               </span>
             )}
+            {tracks.length > 0 &&
+              !teamsList.some(
+                (t) => t.status === "confirmed" && !t.trackId,
+              ) && (
+                <span className="text-[9px] text-slate-500 font-mono text-center md:text-right">
+                  * Không có nhóm thi đấu chờ chia bảng
+                </span>
+              )}
+          </div>
         </div>
       </div>
+
+      {/* Sync Progress Bar */}
+      {syncProgress && syncProgress.active && (
+        <div className="bg-slate-950/60 p-4 rounded-xl border border-emerald-500/25 space-y-2.5 font-mono">
+          <div className="flex justify-between items-center text-xs">
+            <span className="text-emerald-400 font-bold flex items-center gap-1.5 animate-pulse">
+              <RefreshCw size={12} className="animate-spin text-emerald-400" />
+              <span>ĐANG ĐỒNG BỘ TOÀN BỘ REPOS ({syncProgress.completed}/{syncProgress.total})</span>
+            </span>
+            <span className="text-slate-400 font-bold">
+              {Math.round((syncProgress.completed / (syncProgress.total || 1)) * 100)}%
+            </span>
+          </div>
+          {/* Bar track */}
+          <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+            <div
+              className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full transition-all duration-500"
+              style={{ width: `${(syncProgress.completed / (syncProgress.total || 1)) * 100}%` }}
+            />
+          </div>
+          <div className="flex justify-between text-[9px] text-slate-500">
+            <span>Đang hàng đợi: {syncProgress.queued} | Đang phân tích: {syncProgress.syncing}</span>
+            <span>Quãng nghỉ 12s giữa mỗi repo để bảo vệ API key</span>
+          </div>
+        </div>
+      )}
 
       {/* Grouped lists */}
       <div className="space-y-6">
@@ -125,8 +184,8 @@ export default function TeamsTab({
                       </p>
                     )}
                     {team.repository ? (
-                      <p>
-                        Repository:{" "}
+                      <p className="flex items-center gap-2 flex-wrap">
+                        <span>Repository:</span>
                         <a
                           href={team.repository.repoUrl}
                           target="_blank"
@@ -135,6 +194,22 @@ export default function TeamsTab({
                         >
                           {team.repository.repoName}
                         </a>
+                        <button
+                          onClick={() => handleSyncRepo(team.repository._id)}
+                          disabled={loading || syncingRepoId === team.repository._id}
+                          title="Đồng bộ commit và chạy AI đánh giá thủ công ngay lập tức"
+                          className={`text-[9px] font-mono px-1.5 py-0.5 rounded border transition-all inline-flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed ${
+                            syncingRepoId === team.repository._id
+                              ? "bg-cyan-950/40 text-cyan-500 border-cyan-500/20"
+                              : "bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border-cyan-500/20 hover:border-cyan-500/40"
+                          }`}
+                        >
+                          <RefreshCw
+                            size={9}
+                            className={syncingRepoId === team.repository._id ? "animate-spin" : ""}
+                          />
+                          <span>{syncingRepoId === team.repository._id ? "Đang đồng bộ..." : "Đồng bộ AI"}</span>
+                        </button>
                       </p>
                     ) : (
                       <p className="text-slate-500 italic">

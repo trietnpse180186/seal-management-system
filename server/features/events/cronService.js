@@ -72,55 +72,44 @@ async function autoTransitionEvents() {
  */
 async function checkAndSyncDueRepositories() {
   const activeRepos = await GithubRepository.find({ isArchived: false });
-  const eventIntervals = {}; // cache to avoid multiple queries for the same event
   
   const concurrencyLimit = 3;
   const executing = [];
 
   for (const repo of activeRepos) {
-    let commitSyncInterval = 30; // default 30 minutes
-    
-    if (repo.eventId) {
-      const eventIdStr = repo.eventId.toString();
-      if (eventIntervals[eventIdStr] !== undefined) {
-        commitSyncInterval = eventIntervals[eventIdStr];
-      } else {
-        const event = await Event.findById(repo.eventId);
-        commitSyncInterval = (event && typeof event.commitSyncInterval === 'number') 
-          ? event.commitSyncInterval 
-          : 30;
-        eventIntervals[eventIdStr] = commitSyncInterval;
+    // Skip if already syncing in the last 5 minutes to prevent race conditions
+    if (repo.syncStatus === 'syncing') {
+      const lastUpdated = repo.updatedAt ? new Date(repo.updatedAt).getTime() : 0;
+      const elapsedMinutes = (Date.now() - lastUpdated) / (1000 * 60);
+      if (elapsedMinutes < 5) {
+        console.log(`[CRON] Repo ${repo.repoName} is already syncing. Skipping.`);
+        continue;
       }
     }
 
-    const lastSynced = repo.lastSyncedAt ? new Date(repo.lastSyncedAt).getTime() : 0;
-    const elapsedMinutes = (Date.now() - lastSynced) / (1000 * 60);
-
-    if (elapsedMinutes >= commitSyncInterval) {
-      console.log(`[CRON] Repo ${repo.repoName} is due for sync (elapsed: ${elapsedMinutes.toFixed(1)}m, interval: ${commitSyncInterval}m)`);
-      const p = (async () => {
-        try {
-          if (githubAiQueue.isQueueAvailable()) {
-            await githubAiQueue.addSyncJob(repo._id.toString());
-          } else {
-            await syncRepo(repo._id);
-          }
-        } catch (err) {
-          console.error(`[CRON ERROR] Failed syncing repo ID ${repo._id}:`, err.message);
+    console.log(`[CRON] Scanning repo ${repo.repoName} for new commits...`);
+    const p = (async () => {
+      try {
+        if (githubAiQueue.isQueueAvailable()) {
+          await githubAiQueue.addSyncJob(repo._id.toString());
+        } else {
+          await syncRepo(repo._id);
         }
-      })();
-
-      executing.push(p);
-
-      const clean = () => {
-        const idx = executing.indexOf(p);
-        if (idx > -1) executing.splice(idx, 1);
-      };
-      p.then(clean, clean);
-
-      if (executing.length >= concurrencyLimit) {
-        await Promise.race(executing);
+      } catch (err) {
+        console.error(`[CRON ERROR] Failed syncing repo ID ${repo._id}:`, err.message);
       }
+    })();
+
+    executing.push(p);
+
+    const clean = () => {
+      const idx = executing.indexOf(p);
+      if (idx > -1) executing.splice(idx, 1);
+    };
+    p.then(clean, clean);
+
+    if (executing.length >= concurrencyLimit) {
+      await Promise.race(executing);
     }
   }
 
@@ -373,33 +362,55 @@ async function syncRepo(repoId) {
         patch: aggregatedDiff
       }];
 
-      // Call Gemini for Per-Push batch analysis
+      // Perform a single combined AI analysis call (only 1 n8n/AI request!)
       try {
-        const aiResult = await aiService.analyzeCommit(batchCommit, batchFiles);
-
-        const aiAnalysis = new AiAnalysis({
-          repositoryId: repo._id,
+        console.log(`[SYNC] Running combined sync AI analysis (commit + team aggregate) for team: ${repo.teamId}...`);
+        
+        // Fetch up to 200 commits for the team
+        const allTeamCommits = await Commit.find({ teamId: repo.teamId }).sort({ committedAt: 1 }).limit(200);
+        // Fetch up to 40 prior reviews
+        const priorReviews = await AiAnalysis.find({
           teamId: repo.teamId,
-          commitId: latestCommit._id,
           analysisType: 'commit_review',
-          provider: aiResult._provider || 'Google Gemini',
-          model: aiResult._model || 'gemini-3.1-flash-lite',
-          result: aiResult,
-          status: 'completed',
-          completedAt: new Date()
-        });
-        await aiAnalysis.save();
+          status: 'completed'
+        }).sort({ createdAt: -1 }).limit(40);
 
-        // Update latest commit with summary
-        latestCommit.diffSummary = aiResult.overall_picture?.push_summary || aiResult.summary || '';
-        await latestCommit.save();
+        const combinedResult = await aiService.analyzeCommitAndAggregate(
+          batchCommit,
+          batchFiles,
+          repo.teamId,
+          allTeamCommits,
+          priorReviews
+        );
 
-        console.log(`[SYNC] Completed per-push AI analysis successfully.`);
+        const aiResult = combinedResult.commit_review;
+        const aggResult = combinedResult.repository_review;
 
-        // Auto-create GitHub Issue when significant change is detected
-        if (aiResult.overall_picture?.significant_change === true || aiResult.significant_change === true) {
-          const title = `[Gemini AI] Phát hiện thay đổi quan trọng trong mã nguồn`;
-          const body = `### Phân tích Thay đổi Quan trọng từ Gemini AI
+        // 1. Save Per-Push Commit Review
+        if (aiResult) {
+          const aiAnalysis = new AiAnalysis({
+            repositoryId: repo._id,
+            teamId: repo.teamId,
+            commitId: latestCommit._id,
+            analysisType: 'commit_review',
+            provider: combinedResult._provider || aiResult._provider || 'Google Gemini',
+            model: combinedResult._model || aiResult._model || 'gemini-3.1-flash-lite',
+            result: aiResult,
+            status: 'completed',
+            completedAt: new Date()
+          });
+          await aiAnalysis.save();
+
+          // Update latest commit with summary
+          latestCommit.diffSummary = aiResult.overall_picture?.push_summary || aiResult.summary || '';
+          await latestCommit.save();
+
+          console.log(`[SYNC] Completed per-push AI analysis successfully.`);
+
+          // Auto-create GitHub Issue when significant change is detected
+          if (aiResult.overall_picture?.significant_change === true || aiResult.significant_change === true) {
+            const title = `[Gemini AI] Phát hiện thay đổi quan trọng trong mã nguồn`;
+            const body = `### Phân tích Thay đổi Quan trọng từ Gemini AI
 
 Chúng tôi phát hiện một số thay đổi quan trọng trong mã nguồn thông qua các commit gần đây:
 
@@ -425,68 +436,63 @@ ${aiResult.assessment?.improvement_areas || 'Không có thông tin.'}
 ---
 *Thông báo này được tạo tự động bởi hệ thống Seal Hackathon khi phát hiện thay đổi quan trọng.*`;
 
-          console.log(`[SYNC] Significant change detected. Auto-creating GitHub Issue on repo ${repo.repoName}...`);
-          const issue = await githubService.createIssue(repo.repoName, title, body, repo.orgName);
-          if (issue) {
-            aiResult.github_issue_url = issue.html_url;
-            aiAnalysis.result = aiResult;
-            aiAnalysis.markModified('result');
-            await aiAnalysis.save();
+            console.log(`[SYNC] Significant change detected. Auto-creating GitHub Issue on repo ${repo.repoName}...`);
+            const issue = await githubService.createIssue(repo.repoName, title, body, repo.orgName);
+            if (issue) {
+              aiResult.github_issue_url = issue.html_url;
+              aiAnalysis.result = aiResult;
+              aiAnalysis.markModified('result');
+              await aiAnalysis.save();
+            }
           }
         }
 
+        // 2. Save Team Aggregate Review
+        if (aggResult) {
+          const aggAnalysis = new AiAnalysis({
+            repositoryId: repo._id,
+            teamId: repo.teamId,
+            analysisType: 'repository_review', // Maps to team_aggregate
+            provider: combinedResult._provider || aggResult._provider || 'Google Gemini',
+            model: combinedResult._model || aggResult._model || 'gemini-3.1-flash-lite',
+            result: aggResult,
+            status: 'completed',
+            completedAt: new Date()
+          });
+          await aggAnalysis.save();
+          console.log(`[SYNC] Completed Team Aggregate AI review successfully.`);
+        }
 
       } catch (aiErr) {
-        console.error(`[SYNC] Gemini AI per-push review failed:`, aiErr.message);
-        const aiAnalysisFailed = new AiAnalysis({
-          repositoryId: repo._id,
-          teamId: repo.teamId,
-          commitId: latestCommit._id,
-          analysisType: 'commit_review',
-          status: 'failed',
-          errorMessage: aiErr.message
-        });
-        await aiAnalysisFailed.save();
-      }
+        console.error(`[SYNC] Combined AI sync analysis failed:`, aiErr.message);
+        
+        // Save failed records for troubleshooting
+        try {
+          const aiAnalysisFailed = new AiAnalysis({
+            repositoryId: repo._id,
+            teamId: repo.teamId,
+            commitId: latestCommit._id,
+            analysisType: 'commit_review',
+            status: 'failed',
+            errorMessage: aiErr.message
+          });
+          await aiAnalysisFailed.save();
+        } catch (dbErr) {
+          console.error(`[SYNC] Failed saving error log for commit review:`, dbErr.message);
+        }
 
-      // After per-push review, automatically trigger Team Aggregate review
-      try {
-        console.log(`[SYNC] Auto-triggering Team Aggregate Review for team: ${repo.teamId}...`);
-
-        // Fetch up to 200 commits for the team
-        const allTeamCommits = await Commit.find({ teamId: repo.teamId }).sort({ committedAt: 1 }).limit(200);
-        // Fetch up to 40 prior reviews
-        const priorReviews = await AiAnalysis.find({
-          teamId: repo.teamId,
-          analysisType: 'commit_review',
-          status: 'completed'
-        }).sort({ createdAt: -1 }).limit(40);
-
-        const aggResult = await aiService.analyzeTeamAggregate(repo.teamId, allTeamCommits, priorReviews);
-
-        const aggAnalysis = new AiAnalysis({
-          repositoryId: repo._id,
-          teamId: repo.teamId,
-          analysisType: 'repository_review', // Maps to team_aggregate
-          provider: aggResult._provider || 'Google Gemini',
-          model: aggResult._model || 'gemini-3.1-flash-lite',
-          result: aggResult,
-          status: 'completed',
-          completedAt: new Date()
-        });
-        await aggAnalysis.save();
-        console.log(`[SYNC] Completed Team Aggregate AI review successfully.`);
-
-      } catch (aggErr) {
-        console.error(`[SYNC] Gemini AI team aggregate review failed:`, aggErr.message);
-        const aggAnalysisFailed = new AiAnalysis({
-          repositoryId: repo._id,
-          teamId: repo.teamId,
-          analysisType: 'repository_review',
-          status: 'failed',
-          errorMessage: aggErr.message
-        });
-        await aggAnalysisFailed.save();
+        try {
+          const aggAnalysisFailed = new AiAnalysis({
+            repositoryId: repo._id,
+            teamId: repo.teamId,
+            analysisType: 'repository_review',
+            status: 'failed',
+            errorMessage: aiErr.message
+          });
+          await aggAnalysisFailed.save();
+        } catch (dbErr) {
+          console.error(`[SYNC] Failed saving error log for team aggregate review:`, dbErr.message);
+        }
       }
     }
 

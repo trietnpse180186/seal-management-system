@@ -146,6 +146,112 @@ const promptsRegistry = {
         "evolution_notes": "notable milestones during the hackathon in Vietnamese"
       }
     }
+  `,
+
+  combined_sync_review: (authorName, authorGithubUsername, message, fileSummaries, teamId, commitSummaries, reviewSummaries, criteriaPrompt, detailedRubrics) => `
+    You are an expert AI code reviewer and Hackathon Judge Auditor for the SEAL Hackathon.
+    Your task is to analyze the new batch of commits and also synthesize the overall development history of team ${teamId} to evaluate their progress.
+    
+    =========================================
+    PART 1: NEW BATCH OF COMMITS TO REVIEW
+    =========================================
+    Commit Author: ${authorName} (@${authorGithubUsername})
+    Commit Message: ${message}
+    
+    Files changed in this batch:
+    ${fileSummaries}
+    
+    =========================================
+    PART 2: TEAM HISTORICAL MEMORY
+    =========================================
+    Commits history (up to 200):
+    ${commitSummaries}
+    
+    Prior reviews (up to 40):
+    ${reviewSummaries}
+    
+    Active Rubric Criteria to score:
+    ${criteriaPrompt}
+    
+    =========================================
+    PART 3: DETAILED EVALUATION GUIDELINES (RUBRICS)
+    =========================================
+    Use the following exact rubric levels and criteria descriptions to grade the team. All qualitative grades MUST choose from ["Xuất sắc", "Tốt", "Khá", "Trung bình", "Yếu"].
+    ${detailedRubrics}
+    
+    =========================================
+    INSTRUCTIONS & OUTPUT FORMAT
+    =========================================
+    Please provide your review in JSON format with the following keys. Do not include markdown code block syntax. Return only raw JSON.
+    All comments, summaries, evolution notes, test cases, and advisories MUST be in fluent, professional Vietnamese.
+    
+    {
+      "commit_review": {
+        "tech_stack": {
+          "frameworks": ["e.g. React", "FastAPI"],
+          "llm_models": ["e.g. Gemini 1.5 Pro"],
+          "vector_db": ["e.g. ChromaDB"],
+          "agent_frameworks": ["e.g. LangChain"],
+          "third_party_tools": ["e.g. TailwindCSS"]
+        },
+        "inventory_exhaustive": {
+          "llm_models_and_apis": [],
+          "frameworks_and_runtimes": [],
+          "vector_databases": [],
+          "agent_orchestration": [],
+          "third_party_integrations": []
+        },
+        "agent_intelligence": {
+          "detected_skills": [],
+          "tool_definitions": [],
+          "reasoning_pattern": "e.g. ReAct | Plan-and-Solve | None",
+          "has_agent_config_files": false
+        },
+        "rag_maturity": {
+          "level": "Basic | Advanced | Agentic-RAG",
+          "features_detected": ["e.g. hybrid_search", "rerank", "metadata_filtering"]
+        },
+        "overall_picture": {
+          "project_about": "Brief description of what this project does",
+          "tools_plain_bullets": "- Tool 1\\n- Tool 2",
+          "current_focus": "What the developer is currently working on based on the commits",
+          "architectural_style": "e.g. Microservices, MVC",
+          "significant_change": true,
+          "push_summary": "Summary of the changes in this push"
+        },
+        "assessment": {
+          "advantages": "Pros of the design",
+          "disadvantages": "Cons of the design",
+          "improvement_areas": "Areas of enhancement",
+          "context_and_fit": "How it fits in the hackathon context",
+          "source_structure": "Quality of project structure",
+          "completeness": "Readiness level",
+          "security": "Security warnings (e.g. exposed keys, poor validation)"
+        },
+        "suggested_test_cases": ["Test case 1", "Test case 2"],
+        "suggested_questions_for_team": ["Question 1", "Question 2"],
+        "suggested_prompt_refinement": "Refinement suggestions for their LLM prompts"
+      },
+      "repository_review": {
+        "criteria_comments": {
+          // You MUST include exactly one entry for each criterion code listed in the Active Rubric.
+          // Format: "CODE": {"grade": "Tốt|Xuất sắc|...", "comment": "detailed review comment in Vietnamese explaining the grade based on code commits and matching the rubrics descriptions"}
+        },
+        "smb_scale_advisory": {
+          "system_identity_recap": "system identity recap in Vietnamese",
+          "summary": "overall viability summary in Vietnamese",
+          "tech_and_architecture": "architecture advice in Vietnamese",
+          "cost_for_smb": "estimated API and hosting costs in Vietnamese",
+          "throughput_and_reliability": "reliability pointers in Vietnamese",
+          "observability_and_operations": "monitoring advice in Vietnamese",
+          "data_and_integrations": "integration capabilities in Vietnamese"
+        },
+        "overall_picture": {
+          "historical_synthesis": "overview of the team development progress in Vietnamese",
+          "evolution_notes": "notable milestones during the hackathon in Vietnamese"
+        }
+      }
+    }
   `
 };
 

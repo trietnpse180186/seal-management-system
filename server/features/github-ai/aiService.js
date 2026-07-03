@@ -342,9 +342,181 @@ async function generateScoringSuggestion(repositorySnapshot, commits, criteria) 
   });
 }
 
+/**
+ * Performs a combined AI analysis (commit_review + repository_review) in a single request.
+ */
+async function analyzeCommitAndAggregate(commit, files, teamId, commits, priorReviews) {
+  const fs = require('fs');
+  const path = require('path');
+  
+  // Load State Context from Global Context Store
+  const context = await contextStore.loadTeamAggregateContext(teamId);
+  
+  // Read detailed rubrics from tieu_chi_danh_gia.md
+  let detailedRubrics = '';
+  try {
+    const rubricPath = path.join(__dirname, '../../..', 'tieu_chi_danh_gia.md');
+    detailedRubrics = fs.readFileSync(rubricPath, 'utf8');
+  } catch (err) {
+    console.warn('[AI SERVICE] Warning: Could not read tieu_chi_danh_gia.md:', err.message);
+  }
+
+  const fileSummaries = files.map(f => {
+    const patch = promptsManager.enforceFilePatchBoundary(f.patch);
+    return `File: ${f.filename}\nStatus: ${f.status}\nAdditions: ${f.additions}, Deletions: ${f.deletions}\nDiff:\n${patch}`;
+  }).join('\n\n');
+
+  const prompt = promptsManager.promptsRegistry.combined_sync_review(
+    commit.authorName,
+    commit.authorGithubUsername,
+    commit.message,
+    fileSummaries,
+    teamId,
+    context.commitSummaries,
+    context.reviewSummaries,
+    context.criteriaPrompt,
+    detailedRubrics
+  );
+
+  // 1. Call n8n webhook (only 1 call!)
+  const n8nResult = await callN8nWebhook({
+    analysisType: 'combined_sync_review',
+    commit: {
+      commitSha: commit.commitSha,
+      message: commit.message,
+      authorName: commit.authorName,
+      authorGithubUsername: commit.authorGithubUsername,
+      committedAt: commit.committedAt
+    },
+    files: files.map(f => ({
+      filename: f.filename,
+      status: f.status,
+      additions: f.additions,
+      deletions: f.deletions,
+      patch: promptsManager.enforceFilePatchBoundary(f.patch)
+    })),
+    teamId,
+    commits: commits.map(c => ({
+      commitSha: c.commitSha,
+      message: c.message,
+      committedAt: c.committedAt
+    })),
+    priorReviews: priorReviews.map(r => ({
+      analysisType: r.analysisType,
+      result: r.result
+    })),
+    prompt
+  });
+
+  if (n8nResult) {
+    n8nResult._provider = 'n8n-gemini';
+    n8nResult._model = 'gemini-2.5-flash (via n8n)';
+    return n8nResult;
+  }
+
+  // 2. Mock service fallback
+  if (isMock || !n8nResult) {
+    console.log(`[GEMINI MOCK] Analyzing combined commit and aggregate for team: ${teamId}`);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Generate mock commit review
+    const mockCommitReview = {
+      tech_stack: {
+        frameworks: ["React", "Express"],
+        llm_models: ["gemini-2.5-flash"],
+        vector_db: ["Pinecone"],
+        agent_frameworks: ["LangChain"],
+        third_party_tools: ["TailwindCSS"]
+      },
+      inventory_exhaustive: {
+        llm_models_and_apis: ["gemini-2.5-flash"],
+        frameworks_and_runtimes: ["React", "Express", "Node.js"],
+        vector_databases: ["Pinecone"],
+        agent_orchestration: ["LangChain"],
+        third_party_integrations: ["TailwindCSS"]
+      },
+      agent_intelligence: {
+        detected_skills: ["Retrieval-Augmented Generation (RAG)", "Semantic Search"],
+        tool_definitions: [],
+        reasoning_pattern: "None",
+        has_agent_config_files: false
+      },
+      rag_maturity: {
+        level: "Basic",
+        features_detected: ["semantic_search"]
+      },
+      overall_picture: {
+        project_about: "Hệ thống RAG hỗ trợ quản lý và phân loại tài liệu SEAL.",
+        tools_plain_bullets: "- React\\n- Express\\n- Pinecone Vector DB",
+        current_focus: "Xây dựng khung giao diện dashboard và tích hợp kết nối API.",
+        "architectural_style": "Client-Server",
+        significant_change: true,
+        push_summary: "Đồng bộ mã nguồn và cấu hình API cho hệ thống RAG cơ bản."
+      },
+      assessment: {
+        advantages: "Cấu trúc mã nguồn sạch sẽ, tổ chức thư mục rõ ràng.",
+        disadvantages: "Thiếu phần kiểm tra lỗi dữ liệu đầu vào và các trường hợp biên.",
+        improvement_areas: "Cần cải thiện chất lượng tìm kiếm bằng cách thêm Hybrid search hoặc Reranking.",
+        context_and_fit: "Phù hợp với yêu cầu cơ bản của Hackathon.",
+        source_structure: "Tốt",
+        completeness: "Khá",
+        security: "Không phát hiện rò rỉ API key."
+      },
+      suggested_test_cases: ["Kiểm tra tìm kiếm tài liệu với câu hỏi đúng chuyên ngành", "Kiểm tra phản hồi khi không tìm thấy tài liệu liên quan"],
+      suggested_questions_for_team: ["Tại sao đội thi lựa chọn Pinecone thay vì các Vector DB local như ChromaDB?", "Giải pháp của đội thi để xử lý các tài liệu PDF chứa bảng biểu phức tạp là gì?"],
+      suggested_prompt_refinement: "Nên thêm System Instruction để bắt buộc model chỉ trả lời dựa vào ngữ cảnh được cung cấp."
+    };
+
+    // Generate mock repository review
+    const commentsMap = {};
+    const defaultCodes = context.roundCriteria.length > 0 ? context.roundCriteria.map(c => c.code) : ["R1_01", "R1_02", "R1_03", "R1_04", "R1_05", "R2_01", "R2_02", "R2_03", "R2_04", "R2_05"];
+    
+    defaultCodes.forEach(code => {
+      let commentText = `Nhóm thực hiện tốt tiêu chí này, cấu trúc code sạch sẽ và rõ ràng.`;
+      let grade = "Tốt";
+      if (code === 'R1_01') {
+        commentText = "Ý tưởng giải quyết bài toán logistics rất thực tế và thiết thực, có tính khả thi cao.";
+        grade = "Xuất sắc";
+      } else if (code === 'R1_02') {
+        commentText = "Pipeline xử lý dữ liệu và chia tài liệu thành chunking hợp lý, có overlap 15% để giữ ngữ cảnh.";
+        grade = "Tốt";
+      } else if (code === 'R1_03') {
+        commentText = "Đã có tìm kiếm ngữ nghĩa nhưng chưa có reranking nâng cao hoặc trích dẫn nguồn (citation) chi tiết.";
+        grade = "Khá";
+      }
+      commentsMap[code] = { grade, comment: commentText };
+    });
+
+    const mockRepositoryReview = {
+      criteria_comments: commentsMap,
+      smb_scale_advisory: {
+        system_identity_recap: "Hệ thống RAG và trợ lý số hỗ trợ thông quan tờ khai hải quan logistics.",
+        summary: "Dự án có triển vọng thương mại hóa tốt cho các doanh nghiệp kho bãi logistics vừa và nhỏ.",
+        tech_and_architecture: "Nên sử dụng kiến trúc Serverless Microservices để dễ dàng scale theo nhu cầu sử dụng.",
+        cost_for_smb: "Chi phí vận hành ước tính $20-$50/tháng cho nhu cầu 5000 tờ khai/tháng.",
+        throughput_and_reliability: "Đạt mức ổn định cơ bản. Cần bổ sung Redis cache để tối ưu truy vấn.",
+        observability_and_operations: "Tích hợp OpenTelemetry hoặc Winston Log để dễ phát hiện lỗi.",
+        data_and_integrations: "Hỗ trợ export kết quả qua API webhook để đồng bộ trực tiếp với hệ thống CRM/ERP."
+      },
+      overall_picture: {
+        historical_synthesis: "Đội thi đã đi từ một khung sườn chatbot đơn giản ban đầu đến một hệ thống RAG hoàn thiện hơn với các file cấu hình và cơ sở dữ liệu vector.",
+        evolution_notes: "Tuần 1: Khởi tạo scaffold; Tuần 2: Nạp dữ liệu Vector DB; Tuần 3: Tích hợp agent logic."
+      }
+    };
+
+    return {
+      commit_review: mockCommitReview,
+      repository_review: mockRepositoryReview,
+      _provider: 'Mock Service',
+      _model: 'mock-model'
+    };
+  }
+}
+
 module.exports = {
   analyzeCommit,
   analyzeTeamAggregate,
+  analyzeCommitAndAggregate,
   generateScoringSuggestion,
   parseAiResult: schemaValidator.parseAiResult
 };

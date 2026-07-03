@@ -34,8 +34,9 @@ export default function TeamArea() {
 
 
 
-  const round = data?.team?.trackId?.roundId;
-  const showMqttCard = !!(data?.team && data.team.eventId?.status === 'ongoing' && round?.startTime && new Date(round.startTime) <= currentTime);
+  const track = data?.team?.trackId;
+  const round = track?.roundId;
+  const showMqttCard = !!(data?.team && data.team.eventId?.status === 'ongoing' && round?.startTime && new Date(round.startTime) <= currentTime && track?.environmentId);
 
   useEffect(() => {
     const startTimeStr = round?.startTime;

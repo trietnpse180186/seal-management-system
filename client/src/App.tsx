@@ -25,6 +25,7 @@ import AdminLayout from './features/admin/AdminLayout';
 import MentorDashboard from './features/mentor/MentorDashboard';
 import MentorTeamDetail from './features/mentor/MentorTeamDetail';
 import MentorChat from './features/mentor/MentorChat';
+import Gallery from './features/landing/Gallery';
 import { Toaster } from 'sonner';
 import { ConformProvider } from './features/shared/ModalConform';
 import { ConfirmProvider } from './features/shared/ConfirmDialog';
@@ -120,6 +121,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
           } />
           
           <Route path="/leaderboard" element={<Leaderboard user={user} roles={roles} />} />
+          <Route path="/album" element={<Gallery />} />
         </Routes>
       </main>
 

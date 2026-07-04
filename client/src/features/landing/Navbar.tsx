@@ -14,6 +14,7 @@ import {
   Compass,
   Settings2,
   MessageSquare,
+  Camera,
 } from "lucide-react";
 
 interface NavbarProps {
@@ -227,6 +228,13 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
 
         {/* Navigation Items */}
         <div className="hidden md:flex items-center gap-2 justify-center">
+
+
+          <Link to="/album" className={linkClass("/album")}>
+            <Camera size={16} />
+            <span>Album ảnh</span>
+          </Link>
+
 
           {user && (
             <>

@@ -394,14 +394,14 @@ async function syncRepo(repoId) {
       try {
         console.log(`[SYNC] Running combined sync AI analysis (commit + team aggregate) for team: ${repo.teamId}...`);
         
-        // Fetch up to 200 commits for the team
-        const allTeamCommits = await Commit.find({ teamId: repo.teamId }).sort({ committedAt: 1 }).limit(200);
-        // Fetch up to 40 prior reviews
+        // Fetch up to 40 commits for the team
+        const allTeamCommits = await Commit.find({ teamId: repo.teamId }).sort({ committedAt: 1 }).limit(40);
+        // Fetch up to 10 prior reviews
         const priorReviews = await AiAnalysis.find({
           teamId: repo.teamId,
           analysisType: 'commit_review',
           status: 'completed'
-        }).sort({ createdAt: -1 }).limit(40);
+        }).sort({ createdAt: -1 }).limit(10);
 
         const combinedResult = await aiService.analyzeCommitAndAggregate(
           batchCommit,

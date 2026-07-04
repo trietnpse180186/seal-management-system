@@ -10,15 +10,6 @@ interface TeamsTabProps {
   handleAssignTrack: (teamId: string, trackId: string) => Promise<void>;
   handleSyncRepo: (repoId: string) => Promise<void>;
   syncingRepoId: string | null;
-  handleSyncAllRepos: () => Promise<void>;
-  syncingAll: boolean;
-  syncProgress: {
-    total: number;
-    completed: number;
-    syncing: number;
-    queued: number;
-    active: boolean;
-  } | null;
   readOnly?: boolean;
 }
 
@@ -30,9 +21,6 @@ export default function TeamsTab({
   handleAssignTrack,
   handleSyncRepo,
   syncingRepoId,
-  handleSyncAllRepos,
-  syncingAll,
-  syncProgress,
   readOnly = false,
 }: TeamsTabProps) {
   return (
@@ -51,20 +39,6 @@ export default function TeamsTab({
         {/* Action Buttons */}
         {!readOnly && (
           <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-            {/* Global Sync button */}
-            <button
-              onClick={handleSyncAllRepos}
-              disabled={loading || syncingAll}
-              className={`text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed ${
-                syncingAll
-                  ? "bg-slate-800 text-slate-500 border border-slate-700/50"
-                  : "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-lg shadow-emerald-600/25 border border-emerald-500/20"
-              }`}
-            >
-              <RefreshCw size={14} className={syncingAll ? "animate-spin" : ""} />
-              <span>{syncingAll ? "Đang đồng bộ chung..." : "Đồng bộ tất cả Repo"}</span>
-            </button>
-
             {/* Auto distribute button */}
             <div className="flex flex-col items-stretch md:items-end gap-1">
               <button
@@ -103,32 +77,6 @@ export default function TeamsTab({
           </div>
         )}
       </div>
-
-      {/* Sync Progress Bar */}
-      {syncProgress && syncProgress.active && (
-        <div className="bg-slate-950/60 p-4 rounded-xl border border-emerald-500/25 space-y-2.5 font-mono">
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-emerald-400 font-bold flex items-center gap-1.5 animate-pulse">
-              <RefreshCw size={12} className="animate-spin text-emerald-400" />
-              <span>ĐANG ĐỒNG BỘ TOÀN BỘ REPOS ({syncProgress.completed}/{syncProgress.total})</span>
-            </span>
-            <span className="text-slate-400 font-bold">
-              {Math.round((syncProgress.completed / (syncProgress.total || 1)) * 100)}%
-            </span>
-          </div>
-          {/* Bar track */}
-          <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-            <div
-              className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full transition-all duration-500"
-              style={{ width: `${(syncProgress.completed / (syncProgress.total || 1)) * 100}%` }}
-            />
-          </div>
-          <div className="flex justify-between text-[9px] text-slate-500">
-            <span>Đang hàng đợi: {syncProgress.queued} | Đang phân tích: {syncProgress.syncing}</span>
-            <span>Quãng nghỉ 12s giữa mỗi repo để bảo vệ API key</span>
-          </div>
-        </div>
-      )}
 
       {/* Grouped lists */}
       <div className="space-y-6">

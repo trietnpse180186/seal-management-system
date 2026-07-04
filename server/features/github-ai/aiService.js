@@ -11,6 +11,40 @@ const hitlManager = require('../../harness/telemetry/hitlManager');
 const dbTools = require('./tools/dbTools');
 
 /**
+ * Filter criteria comments to keep only the active ones for the round
+ */
+function filterCriteriaComments(result, roundCriteria) {
+  if (!result) return result;
+  
+  if (roundCriteria && roundCriteria.length > 0) {
+    const activeCodes = new Set(roundCriteria.map(c => c.code.toUpperCase()));
+    
+    // Check if result has repository_review (combined review response)
+    if (result.repository_review && result.repository_review.criteria_comments) {
+      const filtered = {};
+      Object.keys(result.repository_review.criteria_comments).forEach(key => {
+        if (activeCodes.has(key.toUpperCase())) {
+          filtered[key] = result.repository_review.criteria_comments[key];
+        }
+      });
+      result.repository_review.criteria_comments = filtered;
+    }
+    
+    // Check if result itself has criteria_comments (individual repository review response)
+    if (result.criteria_comments) {
+      const filtered = {};
+      Object.keys(result.criteria_comments).forEach(key => {
+        if (activeCodes.has(key.toUpperCase())) {
+          filtered[key] = result.criteria_comments[key];
+        }
+      });
+      result.criteria_comments = filtered;
+    }
+  }
+  return result;
+}
+
+/**
  * Call n8n webhook workflow asynchronously or synchronously.
  */
 async function callN8nWebhook(payload) {
@@ -19,14 +53,21 @@ async function callN8nWebhook(payload) {
   
   const startTime = Date.now();
   console.log(`[N8N] Calling n8n webhook: ${n8nUrl} for ${payload.analysisType}...`);
+  
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 35000); // 35s timeout
+
   try {
     const response = await fetch(n8nUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       throw new Error(`n8n returned status ${response.status}: ${response.statusText}`);
@@ -57,9 +98,14 @@ async function callN8nWebhook(payload) {
     console.log(`[N8N] Received successful response from n8n.`);
     return schemaValidator.parseAiResult(resultJson);
   } catch (error) {
+    clearTimeout(timeoutId);
     const latency = Date.now() - startTime;
     hitlManager.recordTelemetry(latency, 0, false);
-    console.error(`[N8N] Webhook call failed:`, error.message);
+    if (error.name === 'AbortError') {
+      console.error(`[N8N] Webhook call timed out after 35 seconds.`);
+    } else {
+      console.error(`[N8N] Webhook call failed:`, error.message);
+    }
     return null;
   }
 }
@@ -68,7 +114,8 @@ async function callN8nWebhook(payload) {
  * Analyzes a batch of commits (per-push) using Gemini AI.
  */
 async function analyzeCommit(commit, files) {
-  const fileSummaries = files.map(f => {
+  const activeFiles = files.filter(f => !promptsManager.shouldIgnoreFile(f.filename));
+  const fileSummaries = activeFiles.map(f => {
     const patch = promptsManager.enforceFilePatchBoundary(f.patch);
     return `File: ${f.filename}\nStatus: ${f.status}\nAdditions: ${f.additions}, Deletions: ${f.deletions}\nDiff:\n${patch}`;
   }).join('\n\n');
@@ -90,7 +137,7 @@ async function analyzeCommit(commit, files) {
       authorGithubUsername: commit.authorGithubUsername,
       committedAt: commit.committedAt
     },
-    files: files.map(f => ({
+    files: activeFiles.map(f => ({
       filename: f.filename,
       status: f.status,
       additions: f.additions,
@@ -112,7 +159,7 @@ async function analyzeCommit(commit, files) {
   }
 
   // 2. Mock service fallback (when n8n is bypassed or fails)
-  if (isMock || !n8nResult) {
+  if (isMock) {
     console.log(`[GEMINI MOCK] Analyzing commit per-push: ${commit.commitSha.substring(0, 7)}`);
     await new Promise(resolve => setTimeout(resolve, 600));
 
@@ -195,6 +242,8 @@ async function analyzeCommit(commit, files) {
     }
     return mockResult;
   }
+
+  throw new Error("Gọi webhook n8n thất bại hoặc hết hạn phản hồi (timeout). Vui lòng kiểm tra lại dịch vụ n8n và quota của API Gemini.");
 }
 
 /**
@@ -361,7 +410,8 @@ async function analyzeCommitAndAggregate(commit, files, teamId, commits, priorRe
     console.warn('[AI SERVICE] Warning: Could not read tieu_chi_danh_gia.md:', err.message);
   }
 
-  const fileSummaries = files.map(f => {
+  const activeFiles = files.filter(f => !promptsManager.shouldIgnoreFile(f.filename));
+  const fileSummaries = activeFiles.map(f => {
     const patch = promptsManager.enforceFilePatchBoundary(f.patch);
     return `File: ${f.filename}\nStatus: ${f.status}\nAdditions: ${f.additions}, Deletions: ${f.deletions}\nDiff:\n${patch}`;
   }).join('\n\n');
@@ -388,7 +438,7 @@ async function analyzeCommitAndAggregate(commit, files, teamId, commits, priorRe
       authorGithubUsername: commit.authorGithubUsername,
       committedAt: commit.committedAt
     },
-    files: files.map(f => ({
+    files: activeFiles.map(f => ({
       filename: f.filename,
       status: f.status,
       additions: f.additions,
@@ -411,11 +461,11 @@ async function analyzeCommitAndAggregate(commit, files, teamId, commits, priorRe
   if (n8nResult) {
     n8nResult._provider = 'n8n-gemini';
     n8nResult._model = 'gemini-2.5-flash (via n8n)';
-    return n8nResult;
+    return filterCriteriaComments(n8nResult, context.roundCriteria);
   }
 
   // 2. Mock service fallback
-  if (isMock || !n8nResult) {
+  if (isMock) {
     console.log(`[GEMINI MOCK] Analyzing combined commit and aggregate for team: ${teamId}`);
     await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -447,9 +497,9 @@ async function analyzeCommitAndAggregate(commit, files, teamId, commits, priorRe
       },
       overall_picture: {
         project_about: "Hệ thống RAG hỗ trợ quản lý và phân loại tài liệu SEAL.",
-        tools_plain_bullets: "- React\\n- Express\\n- Pinecone Vector DB",
+        tools_plain_bullets: "- React\n- Express\n- Pinecone Vector DB",
         current_focus: "Xây dựng khung giao diện dashboard và tích hợp kết nối API.",
-        "architectural_style": "Client-Server",
+        architectural_style: "Client-Server",
         significant_change: true,
         push_summary: "Đồng bộ mã nguồn và cấu hình API cho hệ thống RAG cơ bản."
       },
@@ -504,13 +554,16 @@ async function analyzeCommitAndAggregate(commit, files, teamId, commits, priorRe
       }
     };
 
-    return {
+    const mockResult = {
       commit_review: mockCommitReview,
       repository_review: mockRepositoryReview,
       _provider: 'Mock Service',
       _model: 'mock-model'
     };
+    return filterCriteriaComments(mockResult, context.roundCriteria);
   }
+
+  throw new Error("Gọi webhook n8n thất bại hoặc hết hạn phản hồi (timeout). Vui lòng kiểm tra lại dịch vụ n8n và quota của API Gemini.");
 }
 
 module.exports = {

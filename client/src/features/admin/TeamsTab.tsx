@@ -10,6 +10,7 @@ interface TeamsTabProps {
   handleAssignTrack: (teamId: string, trackId: string) => Promise<void>;
   handleSyncRepo: (repoId: string) => Promise<void>;
   syncingRepoId: string | null;
+  readOnly?: boolean;
 }
 
 export default function TeamsTab({
@@ -20,6 +21,7 @@ export default function TeamsTab({
   handleAssignTrack,
   handleSyncRepo,
   syncingRepoId,
+  readOnly = false,
 }: TeamsTabProps) {
   return (
     <div className="glass p-6 rounded-2xl space-y-6">
@@ -35,43 +37,45 @@ export default function TeamsTab({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-          {/* Auto distribute button */}
-          <div className="flex flex-col items-stretch md:items-end gap-1">
-            <button
-              onClick={handleDistributeTeams}
-              disabled={
-                loading ||
-                tracks.length === 0 ||
-                !teamsList.some(
-                  (t) => t.status === "confirmed" && !t.trackId,
-                )
-              }
-              className={`text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 ${tracks.length > 0 &&
-                teamsList.some(
-                  (t) => t.status === "confirmed" && !t.trackId,
-                )
-                ? "bg-cyan-500 hover:bg-cyan-500 cursor-pointer shadow-lg shadow-cyan-500/25"
-                : "bg-slate-800/80 text-slate-500 cursor-not-allowed border border-slate-700/50"
-                }`}
-            >
-              Chia bảng ngẫu nhiên vào Track
-            </button>
-            {tracks.length === 0 && (
-              <span className="text-[9px] text-rose-400 font-mono text-center md:text-right">
-                * Cần tạo Bảng đấu (Track) trước
-              </span>
-            )}
-            {tracks.length > 0 &&
-              !teamsList.some(
-                (t) => t.status === "confirmed" && !t.trackId,
-              ) && (
-                <span className="text-[9px] text-slate-500 font-mono text-center md:text-right">
-                  * Không có nhóm thi đấu chờ chia bảng
+        {!readOnly && (
+          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+            {/* Auto distribute button */}
+            <div className="flex flex-col items-stretch md:items-end gap-1">
+              <button
+                onClick={handleDistributeTeams}
+                disabled={
+                  loading ||
+                  tracks.length === 0 ||
+                  !teamsList.some(
+                    (t) => t.status === "confirmed" && !t.trackId,
+                  )
+                }
+                className={`text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 ${tracks.length > 0 &&
+                  teamsList.some(
+                    (t) => t.status === "confirmed" && !t.trackId,
+                  )
+                  ? "bg-cyan-500 hover:bg-cyan-500 cursor-pointer shadow-lg shadow-cyan-500/25"
+                  : "bg-slate-800/80 text-slate-500 cursor-not-allowed border border-slate-700/50"
+                  }`}
+              >
+                Chia bảng ngẫu nhiên vào Track
+              </button>
+              {tracks.length === 0 && (
+                <span className="text-[9px] text-rose-400 font-mono text-center md:text-right">
+                  * Cần tạo Bảng đấu (Track) trước
                 </span>
               )}
+              {tracks.length > 0 &&
+                !teamsList.some(
+                  (t) => t.status === "confirmed" && !t.trackId,
+                ) && (
+                  <span className="text-[9px] text-slate-500 font-mono text-center md:text-right">
+                    * Không có nhóm thi đấu chờ chia bảng
+                  </span>
+                )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Grouped lists */}
@@ -142,22 +146,24 @@ export default function TeamsTab({
                         >
                           {team.repository.repoName}
                         </a>
-                        <button
-                          onClick={() => handleSyncRepo(team.repository._id)}
-                          disabled={loading || syncingRepoId === team.repository._id}
-                          title="Đồng bộ commit và chạy AI đánh giá thủ công ngay lập tức"
-                          className={`text-[9px] font-mono px-1.5 py-0.5 rounded border transition-all inline-flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed ${
-                            syncingRepoId === team.repository._id
-                              ? "bg-cyan-950/40 text-cyan-500 border-cyan-500/20"
-                              : "bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border-cyan-500/20 hover:border-cyan-500/40"
-                          }`}
-                        >
-                          <RefreshCw
-                            size={9}
-                            className={syncingRepoId === team.repository._id ? "animate-spin" : ""}
-                          />
-                          <span>{syncingRepoId === team.repository._id ? "Đang đồng bộ..." : "Đồng bộ AI"}</span>
-                        </button>
+                        {!readOnly && (
+                          <button
+                            onClick={() => handleSyncRepo(team.repository._id)}
+                            disabled={loading || syncingRepoId === team.repository._id}
+                            title="Đồng bộ commit và chạy AI đánh giá thủ công ngay lập tức"
+                            className={`text-[9px] font-mono px-1.5 py-0.5 rounded border transition-all inline-flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed ${
+                              syncingRepoId === team.repository._id
+                                ? "bg-cyan-950/40 text-cyan-500 border-cyan-500/20"
+                                : "bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border-cyan-500/20 hover:border-cyan-500/40"
+                            }`}
+                          >
+                            <RefreshCw
+                              size={9}
+                              className={syncingRepoId === team.repository._id ? "animate-spin" : ""}
+                            />
+                            <span>{syncingRepoId === team.repository._id ? "Đang đồng bộ..." : "Đồng bộ AI"}</span>
+                          </button>
+                        )}
                       </p>
                     ) : (
                       <p className="text-slate-500 italic">
@@ -197,45 +203,47 @@ export default function TeamsTab({
                   </div>
 
                   {/* Assign Track controls */}
-                  <div className="border-t border-slate-800/80 pt-2 flex flex-col gap-1.5">
-                    <p className="text-[9px] font-bold text-cyan-400 uppercase tracking-wider font-mono">
-                      Phân chia / Thay đổi bảng đấu:
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() =>
-                          handleAssignTrack(team._id, "random")
-                        }
-                        disabled={loading || tracks.length === 0}
-                        className="flex-1 bg-cyan-500 hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-slate-500 text-[10px] text-white font-bold py-1.5 px-2 rounded-lg font-mono transition-all flex items-center justify-center gap-1 cursor-pointer disabled:cursor-not-allowed border border-cyan-500/20"
-                      >
-                        Phân ngẫu nhiên
-                      </button>
+                  {!readOnly && (
+                    <div className="border-t border-slate-800/80 pt-2 flex flex-col gap-1.5">
+                      <p className="text-[9px] font-bold text-cyan-400 uppercase tracking-wider font-mono">
+                        Phân chia / Thay đổi bảng đấu:
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() =>
+                            handleAssignTrack(team._id, "random")
+                          }
+                          disabled={loading || tracks.length === 0}
+                          className="flex-1 bg-cyan-500 hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-slate-500 text-[10px] text-white font-bold py-1.5 px-2 rounded-lg font-mono transition-all flex items-center justify-center gap-1 cursor-pointer disabled:cursor-not-allowed border border-cyan-500/20"
+                        >
+                          Phân ngẫu nhiên
+                        </button>
 
-                      {tracks.length > 0 && (
-                        <CustomSelect
-                          value={team.trackId?._id || team.trackId || ""}
-                          onChange={(val) => {
-                            if (val) {
-                              handleAssignTrack(team._id, val);
-                            }
-                          }}
-                          disabled={loading}
-                          options={tracks.map((track: any) => ({
-                            value: track._id,
-                            label: track.name,
-                          }))}
-                          placeholder="-- Chọn Bảng đấu --"
-                          className="flex-1"
-                        />
+                        {tracks.length > 0 && (
+                          <CustomSelect
+                            value={team.trackId?._id || team.trackId || ""}
+                            onChange={(val) => {
+                              if (val) {
+                                handleAssignTrack(team._id, val);
+                              }
+                            }}
+                            disabled={loading}
+                            options={tracks.map((track: any) => ({
+                              value: track._id,
+                              label: track.name,
+                            }))}
+                            placeholder="-- Chọn Bảng đấu --"
+                            className="flex-1"
+                          />
+                        )}
+                      </div>
+                      {tracks.length === 0 && (
+                        <p className="text-[8px] text-rose-400 font-mono italic">
+                          * Cần tạo Bảng đấu (Track) trước
+                        </p>
                       )}
                     </div>
-                    {tracks.length === 0 && (
-                      <p className="text-[8px] text-rose-400 font-mono italic">
-                        * Cần tạo Bảng đấu (Track) trước
-                      </p>
-                    )}
-                  </div>
+                  )}
                 </div>
               ))}
             {teamsList.filter((t) => t.status === "confirmed")

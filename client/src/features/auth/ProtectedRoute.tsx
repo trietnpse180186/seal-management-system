@@ -22,16 +22,18 @@ export default function ProtectedRoute({
   // If role restrictions are specified, check if user satisfies at least one
   if (allowedRoles && allowedRoles.length > 0) {
     const isSystemAdmin = user.isSystemAdmin;
-    const isCoordinator = isSystemAdmin;
+    const isCoordinator = isSystemAdmin || roles.some(r => r.role === 'coordinator');
+    const isAdminView = roles.some(r => r.role === 'admin_view');
     const isJudge = roles.some(r => r.role === 'judge') || isSystemAdmin;
     const isMentor = roles.some(r => r.role === 'mentor') || isSystemAdmin;
     
     const hasAllowedRole = allowedRoles.some(allowedRole => {
-      if (allowedRole === 'coordinator') return isCoordinator;
+      if (allowedRole === 'coordinator') return isCoordinator || isAdminView;
+      if (allowedRole === 'admin_view') return isAdminView || isSystemAdmin;
       if (allowedRole === 'judge') return isJudge;
       if (allowedRole === 'mentor') return isMentor;
       if (allowedRole === 'participant') {
-        return roles.some(r => r.role === 'participant') || (!isSystemAdmin && !isCoordinator && !isJudge && !isMentor);
+        return roles.some(r => r.role === 'participant') || (!isSystemAdmin && !isCoordinator && !isAdminView && !isJudge && !isMentor);
       }
       return roles.some(r => r.role === allowedRole);
     });

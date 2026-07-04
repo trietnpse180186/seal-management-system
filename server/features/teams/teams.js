@@ -99,6 +99,55 @@ async function syncTeamToExternalSimulator(team) {
 
 
 /**
+ * @route   GET /api/teams/check-eligibility
+ * @desc    Check if a user is eligible to join a team for a specific event (not already in a team)
+ * @access  Private (Authenticated Users)
+ */
+router.get('/check-eligibility', authenticateToken, async (req, res) => {
+  const { email, eventId } = req.query;
+
+  if (!email || !eventId) {
+    return res.status(400).json({ message: 'Thiếu thông tin email hoặc eventId.' });
+  }
+
+  try {
+    // Find all active teams (confirmed or pending) in the event
+    const activeTeams = await Team.find({ eventId, status: { $in: ['confirmed', 'pending_confirm'] } });
+    const activeTeamIds = activeTeams.map(t => t._id);
+
+    const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!existingUser) {
+      return res.json({
+        eligible: true,
+        message: 'Hợp lệ (Thành viên chưa có tài khoản, hệ thống sẽ gửi thư mời đăng ký).'
+      });
+    }
+
+    const memberHasTeam = await TeamMember.findOne({
+      teamId: { $in: activeTeamIds },
+      userId: existingUser._id
+    });
+
+    if (memberHasTeam) {
+      const team = await Team.findById(memberHasTeam.teamId);
+      const teamName = team ? team.name : 'nhóm khác';
+      return res.json({
+        eligible: false,
+        message: `Thành viên này đã đăng ký tham gia đội "${teamName}" trong cuộc thi này.`
+      });
+    }
+
+    return res.json({
+      eligible: true,
+      message: 'Hợp lệ (Thành viên chưa có nhóm trong cuộc thi này).'
+    });
+  } catch (err) {
+    console.error('Check eligibility error:', err);
+    return res.status(500).json({ message: 'Lỗi kiểm tra tính hợp lệ của thành viên.' });
+  }
+});
+
+/**
  * @route   POST /api/teams/register
  * @desc    Register a team and invite members
  * @access  Private (Participants)
@@ -854,8 +903,9 @@ router.get('/my-team', authenticateToken, async (req, res) => {
 
     let team = null;
     let activeMemberRecord = null;
+    const foundTeams = [];
 
-    // Find the first confirmed record pointing to an active team that actually exists
+    // Find all confirmed records pointing to active teams that actually exist
     for (const record of memberRecords) {
       const foundTeam = await Team.findById(record.teamId)
         .populate('eventId', 'name semester year status contestEnd registrationClose')
@@ -868,9 +918,28 @@ router.get('/my-team', authenticateToken, async (req, res) => {
           }
         });
       if (foundTeam) {
-        team = foundTeam;
-        activeMemberRecord = record;
-        break;
+        foundTeams.push({ team: foundTeam, record });
+      }
+    }
+
+    if (foundTeams.length > 0) {
+      // Prioritize teams belonging to events that are NOT completed/cancelled, and whose contestEnd has not passed
+      const activeTeams = foundTeams.filter(({ team }) => {
+        const isEnded = team.eventId && (
+          team.eventId.status === 'completed' ||
+          team.eventId.status === 'cancelled' ||
+          (team.eventId.contestEnd && new Date(team.eventId.contestEnd) <= new Date())
+        );
+        return !isEnded;
+      });
+
+      if (activeTeams.length > 0) {
+        team = activeTeams[0].team;
+        activeMemberRecord = activeTeams[0].record;
+      } else {
+        // Fallback to the first found team (e.g. past team)
+        team = foundTeams[0].team;
+        activeMemberRecord = foundTeams[0].record;
       }
     }
 
@@ -1010,7 +1079,7 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
         const coordRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: event._id,
-          role: 'coordinator',
+          role: { $in: ['coordinator', 'admin_view'] },
           status: 'active'
         });
         authorized = !!coordRole;
@@ -1170,7 +1239,7 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
         const coordRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: team.eventId._id,
-          role: 'coordinator',
+          role: { $in: ['coordinator', 'admin_view'] },
           status: 'active'
         });
         authorized = !!coordRole;

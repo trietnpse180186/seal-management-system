@@ -117,6 +117,8 @@ app.use(express.json({
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
+app.use("/NGHIỆM THU ẢNH", express.static(path.join(__dirname, "../client/public/NGHIỆM THU ẢNH")));
+app.use("/NGHI%E1%BB%87M%20THU%20%E1%BA%A2NH", express.static(path.join(__dirname, "../client/public/NGHIỆM THU ẢNH")));
 
 // Routers
 const indexRouter = require('./features/index');
@@ -132,6 +134,7 @@ const githubRepositoriesRouter = require('./features/github-ai/githubRepositorie
 const aiAnalysesRouter = require('./features/github-ai/aiAnalyses');
 const tasksRouter = require('./features/github-ai/tasks');
 const chatRouter = require('./features/chat/chat');
+const galleryRouter = require('./features/events/gallery');
 
 app.use('/api', indexRouter);
 app.use('/api/auth', authRouter);
@@ -146,6 +149,7 @@ app.use('/api/github-repositories', githubRepositoriesRouter);
 app.use('/api/ai-analyses', aiAnalysesRouter);
 app.use('/api/tasks', tasksRouter);
 app.use('/api/chat', chatRouter);
+app.use('/api/gallery', galleryRouter);
 
 // Catch 404 and forward to error handler
 app.use(function (req, res, next) {

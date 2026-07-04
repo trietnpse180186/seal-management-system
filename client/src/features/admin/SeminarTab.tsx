@@ -7,9 +7,10 @@ import { useConform } from "../shared/ModalConform";
 interface SeminarTabProps {
   selectedEvent: any;
   fetchEventDetails: () => Promise<void>;
+  readOnly?: boolean;
 }
 
-export default function SeminarTab({ selectedEvent, fetchEventDetails }: SeminarTabProps) {
+export default function SeminarTab({ selectedEvent, fetchEventDetails, readOnly = false }: SeminarTabProps) {
   const conform = useConform();
   const [scheduledAt, setScheduledAt] = useState("");
   const [scheduledEnd, setScheduledEnd] = useState("");
@@ -139,14 +140,16 @@ export default function SeminarTab({ selectedEvent, fetchEventDetails }: Seminar
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={handleSendEmailNow}
-              disabled={sendingMail}
-              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold font-mono px-4 py-2.5 rounded-xl shadow-lg shadow-cyan-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-            >
-              {sendingMail ? "Đang phát mail..." : "Gửi Mail Ngay"}
-            </button>
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={handleSendEmailNow}
+                disabled={sendingMail}
+                className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold font-mono px-4 py-2.5 rounded-xl shadow-lg shadow-cyan-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {sendingMail ? "Đang phát mail..." : "Gửi Mail Ngay"}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -166,6 +169,7 @@ export default function SeminarTab({ selectedEvent, fetchEventDetails }: Seminar
             <input
               type="text"
               required
+              disabled={readOnly}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500"
@@ -184,6 +188,7 @@ export default function SeminarTab({ selectedEvent, fetchEventDetails }: Seminar
               onEndChange={setScheduledEnd}
               startLabel="Bắt đầu Seminar"
               endLabel="Kết thúc Seminar"
+              disabled={readOnly}
             />
           </div>
 
@@ -195,6 +200,7 @@ export default function SeminarTab({ selectedEvent, fetchEventDetails }: Seminar
               <input
                 type="url"
                 required
+                disabled={readOnly}
                 value={meetUrl}
                 onChange={(e) => setMeetUrl(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-3.5 pr-16 py-2.5 text-xs text-cyan-300 focus:outline-none focus:border-cyan-500 font-mono"
@@ -220,6 +226,7 @@ export default function SeminarTab({ selectedEvent, fetchEventDetails }: Seminar
             </label>
             <textarea
               rows={3}
+              disabled={readOnly}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500"
@@ -227,15 +234,17 @@ export default function SeminarTab({ selectedEvent, fetchEventDetails }: Seminar
             />
           </div>
 
-          <div className="pt-2 flex justify-end">
-            <button
-              type="submit"
-              disabled={saving}
-              className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg shadow-cyan-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50 uppercase tracking-wider font-mono"
-            >
-              {saving ? "Đang lưu..." : "Lưu Cấu Hình Seminar"}
-            </button>
-          </div>
+          {!readOnly && (
+            <div className="pt-2 flex justify-end">
+              <button
+                type="submit"
+                disabled={saving}
+                className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg shadow-cyan-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50 uppercase tracking-wider font-mono"
+              >
+                {saving ? "Đang lưu..." : "Lưu Cấu Hình Seminar"}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Column 3: Attendance Setup & Bonus Features */}
@@ -255,6 +264,7 @@ export default function SeminarTab({ selectedEvent, fetchEventDetails }: Seminar
               </label>
               <input
                 type="url"
+                disabled={readOnly}
                 value={attendanceFormUrl}
                 onChange={(e) => setAttendanceFormUrl(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
@@ -269,6 +279,7 @@ export default function SeminarTab({ selectedEvent, fetchEventDetails }: Seminar
               <div className="flex gap-2">
                 <input
                   type="url"
+                  disabled={readOnly}
                   value={attendanceSpreadsheetUrl}
                   onChange={(e) => setAttendanceSpreadsheetUrl(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-emerald-300 focus:outline-none focus:border-emerald-500"

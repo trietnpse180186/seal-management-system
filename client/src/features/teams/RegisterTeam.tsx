@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { Users, UserPlus, Trash2, Calendar, FolderGit2, CheckCircle } from 'lucide-react';
+import UniversityCombobox from '../shared/UniversityCombobox';
 import CustomSelect from '../shared/CustomSelect';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -11,7 +12,12 @@ interface MemberInput {
   githubUsername: string;
   studentId: string;
   university: string;
+  universityCustom?: string;
+  isUniversityCustom?: boolean;
+  checkingStatus?: 'idle' | 'checking' | 'eligible' | 'conflict';
+  checkingMessage?: string;
 }
+
 
 export default function RegisterTeam() {
   const [searchParams] = useSearchParams();
@@ -146,26 +152,78 @@ export default function RegisterTeam() {
           setLeaderFullName(u.fullName || '');
           setLeaderStudentId(u.studentId || '');
           setLeaderGithubUsername(u.githubUsername || '');
-          setLeaderUniversity(u.university || '');
+          const univ = u.university || '';
+          if (univ) {
+            setLeaderUniversity(univ);
+          }
         }
       })
       .catch(err => console.error('Error fetching user profile:', err));
   }, [token]);
 
-  const handleMemberChange = (index: number, field: keyof MemberInput, value: string) => {
+  const handleMemberChange = (index: number, field: keyof MemberInput, value: any) => {
     const updated = [...members];
-    updated[index][field] = value;
+    (updated[index] as any)[field] = value;
     setMembers(updated);
   };
 
   const addMemberRow = () => {
-    setMembers([...members, { email: '', fullName: '', githubUsername: '', studentId: '', university: '' }]);
+    setMembers([...members, { 
+      email: '', 
+      fullName: '', 
+      githubUsername: '', 
+      studentId: '', 
+      university: '', 
+      universityCustom: '', 
+      isUniversityCustom: false,
+      checkingStatus: 'idle',
+      checkingMessage: ''
+    }]);
   };
 
   const removeMemberRow = (index: number) => {
     const updated = [...members];
     updated.splice(index, 1);
     setMembers(updated);
+  };
+
+  const handleCheckEligibility = async (index: number) => {
+    const member = members[index];
+    if (!member.email.trim()) {
+      toast.warning('Vui lòng nhập email trước khi kiểm tra.');
+      return;
+    }
+    
+    const updated = [...members];
+    updated[index].checkingStatus = 'checking';
+    updated[index].checkingMessage = '';
+    setMembers(updated);
+
+    try {
+      const res = await axios.get(
+        `http://localhost:5000/api/teams/check-eligibility?email=${encodeURIComponent(member.email.trim())}&eventId=${selectedEventId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      const nextUpdated = [...members];
+      if (res.data.eligible) {
+        nextUpdated[index].checkingStatus = 'eligible';
+        nextUpdated[index].checkingMessage = res.data.message || 'Hợp lệ (Chưa có nhóm)';
+      } else {
+        nextUpdated[index].checkingStatus = 'conflict';
+        nextUpdated[index].checkingMessage = res.data.message || 'Đã có nhóm!';
+      }
+      setMembers(nextUpdated);
+    } catch (err: any) {
+      console.error(err);
+      const nextUpdated = [...members];
+      nextUpdated[index].checkingStatus = 'idle';
+      nextUpdated[index].checkingMessage = err.response?.data?.message || 'Lỗi kiểm tra';
+      setMembers(nextUpdated);
+      toast.error(err.response?.data?.message || 'Lỗi khi kiểm tra email.');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -193,7 +251,13 @@ export default function RegisterTeam() {
           eventId: selectedEventId,
           trackId: undefined,
           teamName: teamName.trim(),
-          membersList: members.filter(m => m.email.trim() !== ''),
+          membersList: members.filter(m => m.email.trim() !== '').map(m => ({
+            email: m.email.trim(),
+            fullName: m.fullName.trim(),
+            githubUsername: m.githubUsername.trim(),
+            studentId: m.studentId.trim(),
+            university: m.university.trim()
+          })),
           leaderInfo: {
             fullName: leaderFullName.trim(),
             studentId: leaderStudentId.trim(),
@@ -322,7 +386,7 @@ export default function RegisterTeam() {
                 </label>
                 <CustomSelect
                   value={selectedEventId}
-                  onChange={(val) => setSelectedEventId(val)}
+                  onChange={(val: any) => setSelectedEventId(val)}
                   options={events.map((e) => ({
                     value: e._id,
                     label: `${e.name} (${e.semester} ${e.year})`,
@@ -340,7 +404,7 @@ export default function RegisterTeam() {
                   <div className="flex flex-col sm:flex-row gap-3">
                     <CustomSelect
                       value={selectedPastTeamId}
-                      onChange={(val) => setSelectedPastTeamId(val)}
+                      onChange={(val: any) => setSelectedPastTeamId(val)}
                       options={pastTeams.map((t) => ({
                         value: t._id,
                         label: `${t.name} (Sự kiện: ${t.event?.name || "Không rõ"})`,
@@ -428,17 +492,16 @@ export default function RegisterTeam() {
                   placeholder="github-username của bạn"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
                   Trường Đại học
                 </label>
-                <input
-                  type="text"
-                  required
+                <UniversityCombobox
                   value={leaderUniversity}
-                  onChange={e => setLeaderUniversity(e.target.value)}
-                  className="w-full bg-slate-900/50 border border-slate-800 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(0,240,255,0.05)] transition-all font-mono"
-                  placeholder="Tên trường đại học của bạn"
+                  onChange={setLeaderUniversity}
+                  placeholder="Nhập hoặc chọn trường..."
+                  className="w-full"
+                  inputClassName="bg-slate-900/50 border border-slate-800 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
                 />
               </div>
             </div>
@@ -481,16 +544,40 @@ export default function RegisterTeam() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-slate-300">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">Email</label>
-                      <input
-                        type="email"
-                        required
-                        placeholder="member@student.edu.vn"
-                        value={member.email}
-                        onChange={e => handleMemberChange(index, 'email', e.target.value)}
-                        className="w-full bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
-                      />
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-slate-400">Email</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="email"
+                          required
+                          placeholder="member@student.edu.vn"
+                          value={member.email}
+                          onChange={e => {
+                            handleMemberChange(index, 'email', e.target.value);
+                            const updated = [...members];
+                            updated[index].checkingStatus = 'idle';
+                            updated[index].checkingMessage = '';
+                            setMembers(updated);
+                          }}
+                          className="flex-1 bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleCheckEligibility(index)}
+                          disabled={member.checkingStatus === 'checking'}
+                          className="bg-cyan-500 hover:bg-cyan-600 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-bold px-3 py-2 rounded-lg text-[10px] uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap"
+                        >
+                          {member.checkingStatus === 'checking' ? 'Đang check...' : 'Kiểm tra'}
+                        </button>
+                      </div>
+                      {member.checkingMessage && (
+                        <p className={`text-[10px] font-mono italic mt-1 ${
+                          member.checkingStatus === 'eligible' ? 'text-emerald-400' : 
+                          member.checkingStatus === 'conflict' ? 'text-rose-400' : 'text-slate-400'
+                        }`}>
+                          {member.checkingMessage}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-400 mb-1">Họ Tên</label>
@@ -524,15 +611,18 @@ export default function RegisterTeam() {
                         className="w-full bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
                       />
                     </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">Trường Đại học</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="Tên trường đại học"
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-slate-400">Trường Đại học</label>
+                      <UniversityCombobox
                         value={member.university}
-                        onChange={e => handleMemberChange(index, 'university', e.target.value)}
-                        className="w-full bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                        onChange={(val) => {
+                          const updated = [...members];
+                          updated[index].university = val;
+                          setMembers(updated);
+                        }}
+                        placeholder="Nhập hoặc chọn trường..."
+                        className="w-full"
+                        inputClassName="bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
                       />
                     </div>
                   </div>

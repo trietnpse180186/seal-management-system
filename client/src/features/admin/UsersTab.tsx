@@ -6,9 +6,10 @@ import { useConfirm } from "../shared/ConfirmDialog";
 
 interface UsersTabProps {
   token: string | null;
+  readOnly?: boolean;
 }
 
-export const UsersTab: React.FC<UsersTabProps> = ({ token }) => {
+export const UsersTab: React.FC<UsersTabProps> = ({ token, readOnly = false }) => {
   const confirm = useConfirm();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -168,13 +169,15 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token }) => {
             />
           </div>
 
-          <button
-            onClick={handleOpenCreateModal}
-            className="bg-cyan-500 hover:bg-cyan-400 text-white px-4 py-2 rounded-xl text-xs font-bold font-mono flex items-center gap-2 shadow-lg shadow-cyan-500/20 transition-all cursor-pointer shrink-0"
-          >
-            <UserPlus size={16} />
-            Thêm Tài Khoản Mới
-          </button>
+          {!readOnly && (
+            <button
+              onClick={handleOpenCreateModal}
+              className="bg-cyan-500 hover:bg-cyan-400 text-white px-4 py-2 rounded-xl text-xs font-bold font-mono flex items-center gap-2 shadow-lg shadow-cyan-500/20 transition-all cursor-pointer shrink-0"
+            >
+              <UserPlus size={16} />
+              Thêm Tài Khoản Mới
+            </button>
+          )}
         </div>
       </div>
 
@@ -227,7 +230,10 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token }) => {
                       <td className="p-4">
                         <button
                           onClick={() => handleToggleActive(u)}
-                          className={`text-[10px] font-mono font-bold px-3 py-1 rounded-lg border flex items-center gap-1.5 transition-all cursor-pointer ${
+                          disabled={readOnly}
+                          className={`text-[10px] font-mono font-bold px-3 py-1 rounded-lg border flex items-center gap-1.5 transition-all ${
+                            readOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                          } ${
                             u.isActive
                               ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
                               : 'bg-rose-500/10 border-rose-500/30 text-rose-400 hover:bg-rose-500/20'
@@ -239,20 +245,26 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token }) => {
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleOpenEditModal(u)}
-                            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors cursor-pointer"
-                            title="Sửa thông tin"
-                          >
-                            <Edit2 size={14} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteUser(u._id)}
-                            className="p-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 hover:text-rose-200 border border-rose-800/40 rounded-lg transition-colors cursor-pointer"
-                            title="Xóa tài khoản"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          {!readOnly ? (
+                            <>
+                              <button
+                                onClick={() => handleOpenEditModal(u)}
+                                className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors cursor-pointer"
+                                title="Sửa thông tin"
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteUser(u._id)}
+                                className="p-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 hover:text-rose-200 border border-rose-800/40 rounded-lg transition-colors cursor-pointer"
+                                title="Xóa tài khoản"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </>
+                          ) : (
+                            <span className="text-[10px] text-slate-500 italic">Nguồn xem</span>
+                          )}
                         </div>
                       </td>
                     </tr>

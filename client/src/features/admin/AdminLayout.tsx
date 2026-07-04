@@ -14,12 +14,14 @@ import {
 
 interface AdminLayoutProps {
   user: any;
+  roles: any[];
   onLogout: () => void;
 }
 
-export default function AdminLayout({ user, onLogout }: AdminLayoutProps) {
+export default function AdminLayout({ user, roles, onLogout }: AdminLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const isAdminView = !user?.isSystemAdmin && roles?.some(r => r.role === 'admin_view');
 
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -142,7 +144,7 @@ export default function AdminLayout({ user, onLogout }: AdminLayoutProps) {
           <div className="overflow-hidden">
             <h4 className="text-xs font-bold text-white truncate">{user?.fullName || 'Admin Name'}</h4>
             <p className="text-[9px] text-cyan-400 font-mono uppercase tracking-wider">
-              Admin
+              {isAdminView ? 'Người xem' : 'Admin'}
             </p>
           </div>
         </div>
@@ -266,7 +268,7 @@ export default function AdminLayout({ user, onLogout }: AdminLayoutProps) {
 
         {/* Dynamic Route Content */}
         <main className="flex-1 p-8 relative z-0">
-          <Outlet />
+          <Outlet context={{ readOnly: isAdminView }} />
         </main>
       </div>
     </div>

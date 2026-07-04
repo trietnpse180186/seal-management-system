@@ -56,7 +56,7 @@ router.get('/', async (req, res) => {
         } else {
           const coordinatorRole = await EventRole.findOne({
             userId: user._id,
-            role: 'coordinator',
+            role: { $in: ['coordinator', 'admin_view'] },
             status: 'active'
           });
           if (coordinatorRole) {
@@ -251,7 +251,7 @@ router.get('/all/logs', authenticateToken, async (req, res) => {
     if (!req.user.isSystemAdmin) {
       const coordinatorRole = await EventRole.findOne({
         userId: req.user._id,
-        role: 'coordinator',
+        role: { $in: ['coordinator', 'admin_view'] },
         status: 'active'
       });
       if (!coordinatorRole) {
@@ -271,6 +271,7 @@ router.get('/all/logs', authenticateToken, async (req, res) => {
     res.status(500).json({ message: 'Server error retrieving event logs.' });
   }
 });
+
 
 /**
  * @route   GET /api/events/:id
@@ -306,7 +307,7 @@ router.get('/:id', async (req, res) => {
               const coordinatorRole = await EventRole.findOne({
                 userId: user._id,
                 eventId: event._id,
-                role: 'coordinator',
+                role: { $in: ['coordinator', 'admin_view'] },
                 status: 'active'
               });
               authorized = !!coordinatorRole;
@@ -1733,5 +1734,6 @@ router.post('/:id/seminar/send-email', authenticateToken, async (req, res) => {
     res.status(500).json({ message: 'Server error sending seminar emails.' });
   }
 });
+
 
 module.exports = router;

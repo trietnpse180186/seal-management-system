@@ -1319,7 +1319,7 @@ router.get('/:rubricId/export-criteria', authenticateToken, async (req, res) => 
       const role = await EventRole.findOne({
         userId: req.user._id,
         eventId: rubric.eventId,
-        role: 'coordinator',
+        role: { $in: ['coordinator', 'admin_view'] },
         status: 'active',
       });
       if (!role) {

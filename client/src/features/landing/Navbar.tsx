@@ -182,7 +182,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
   };
 
   const isSystemAdmin = user?.isSystemAdmin;
-  const isCoordinator = !!isSystemAdmin;
+  const isCoordinator = !!isSystemAdmin || roles?.some((r) => r.role === "coordinator") || roles?.some((r) => r.role === "admin_view");
   const isJudge = roles?.some((r) => r.role === "judge") || isSystemAdmin;
   const isMentor = roles?.some((r) => r.role === "mentor");
   const isParticipant =
@@ -226,69 +226,72 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
         </div>
 
         {/* Navigation Items */}
-        {user && (
-          <div className="hidden md:flex items-center gap-2 justify-center">
-            {/* Participant Links */}
-            {isParticipant && (
-              <>
-                <Link to="/guest-portal" className={linkClass("/guest-portal")}>
-                  <Compass size={16} />
-                  <span>Trang chủ</span>
-                </Link>
-                <Link to="/team-area" className={linkClass("/team-area")}>
-                  <GitBranch size={16} />
-                  <span>Khu vực đội thi</span>
-                </Link>
-                <Link to="/my-achievements" className={linkClass("/my-achievements")}>
+        <div className="hidden md:flex items-center gap-2 justify-center">
+
+          {user && (
+            <>
+              {/* Participant Links */}
+              {isParticipant && (
+                <>
+                  <Link to="/guest-portal" className={linkClass("/guest-portal")}>
+                    <Compass size={16} />
+                    <span>Trang chủ</span>
+                  </Link>
+                  <Link to="/team-area" className={linkClass("/team-area")}>
+                    <GitBranch size={16} />
+                    <span>Khu vực đội thi</span>
+                  </Link>
+                  <Link to="/my-achievements" className={linkClass("/my-achievements")}>
+                    <Award size={16} />
+                    <span>Thành tích của tôi</span>
+                  </Link>
+                </>
+              )}
+
+              {/* Coordinator/Admin Links */}
+              {isCoordinator && (
+                <>
+                  <Link to="/admin" className={linkClass("/admin")}>
+                    <ShieldAlert size={16} />
+                    <span>Quản trị viên</span>
+                  </Link>
+                  <Link to="/admin/events" className={linkClass("/admin/events")}>
+                    <Settings2 size={16} />
+                    <span>Thiết lập sự kiện</span>
+                  </Link>
+                  <Link to="/admin/grades" className={linkClass("/admin/grades")}>
+                    <Award size={16} />
+                    <span>Xem chi tiết điểm</span>
+                  </Link>
+                </>
+              )}
+
+              {/* Judge Links */}
+              {isJudge && !isCoordinator && (
+                <Link to="/judge/dashboard" className={linkClass("/judge/dashboard")}>
                   <Award size={16} />
-                  <span>Thành tích của tôi</span>
+                  <span>Bàn chấm điểm</span>
                 </Link>
-              </>
-            )}
+              )}
 
-            {/* Coordinator/Admin Links */}
-            {isCoordinator && (
-              <>
-                <Link to="/admin" className={linkClass("/admin")}>
-                  <ShieldAlert size={16} />
-                  <span>Quản trị viên</span>
+              {/* Mentor Links */}
+              {isMentor && !isCoordinator && !isJudge && (
+                <Link to="/mentor/dashboard" className={linkClass("/mentor/dashboard")}>
+                  <Users size={16} />
+                  <span>Mentor Dashboard</span>
                 </Link>
-                <Link to="/admin/events" className={linkClass("/admin/events")}>
-                  <Settings2 size={16} />
-                  <span>Thiết lập sự kiện</span>
+              )}
+
+              {/* General Links */}
+              {isCoordinator && (
+                <Link to="/leaderboard" className={linkClass("/leaderboard")}>
+                  <BarChart2 size={16} />
+                  <span>Bảng xếp hạng</span>
                 </Link>
-                <Link to="/admin/grades" className={linkClass("/admin/grades")}>
-                  <Award size={16} />
-                  <span>Xem chi tiết điểm</span>
-                </Link>
-              </>
-            )}
-
-            {/* Judge Links */}
-            {isJudge && !isCoordinator && (
-              <Link to="/judge/dashboard" className={linkClass("/judge/dashboard")}>
-                <Award size={16} />
-                <span>Bàn chấm điểm</span>
-              </Link>
-            )}
-
-            {/* Mentor Links */}
-            {isMentor && !isCoordinator && !isJudge && (
-              <Link to="/mentor/dashboard" className={linkClass("/mentor/dashboard")}>
-                <Users size={16} />
-                <span>Mentor Dashboard</span>
-              </Link>
-            )}
-
-            {/* General Links */}
-            {isCoordinator && (
-              <Link to="/leaderboard" className={linkClass("/leaderboard")}>
-                <BarChart2 size={16} />
-                <span>Bảng xếp hạng</span>
-              </Link>
-            )}
-          </div>
-        )}
+              )}
+            </>
+          )}
+        </div>
         {/* User Info & Actions */}
         <div className="flex-1 flex justify-end">
           <div className="flex items-center gap-4">

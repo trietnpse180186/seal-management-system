@@ -4,6 +4,8 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
 import logo from "../../assets/logo.svg";
+import UniversityCombobox from '../shared/UniversityCombobox';
+
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
   <svg
@@ -636,18 +638,12 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 </div>
 
                 <div>
-                  <label className="block font-mono text-xs text-primary-container opacity-80 mb-1" htmlFor="university">Trường Đại học</label>
-                  <div className="relative cyber-input-wrapper rounded overflow-hidden">
-                    <input
-                      type="text"
-                      id="university"
-                      placeholder="Ví dụ: Đại học FPT"
-                      value={university}
-                      onChange={e => setUniversity(e.target.value)}
-                      className="cyber-input relative z-10 w-full rounded py-2 px-3 font-mono text-xs focus:ring-0"
-                    />
-                    <div className="scanline"></div>
-                  </div>
+                  <label className="block font-mono text-xs text-primary-container opacity-80 mb-1">Trường Đại học</label>
+                  <UniversityCombobox
+                    value={university}
+                    onChange={setUniversity}
+                    inputClassName="cyber-input rounded py-2 px-3 font-mono text-xs focus:ring-0"
+                  />
                 </div>
               </div>
 

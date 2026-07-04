@@ -44,7 +44,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
         <Routes>
           <Route path="/" element={
             user ? (
-              user.isSystemAdmin ? (
+              (user.isSystemAdmin || roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view')) ? (
                 <Navigate to="/admin" />
               ) : roles.some((r: any) => r.role === 'judge') ? (
                 <Navigate to="/judge/dashboard" />
@@ -58,7 +58,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
             )
           } />
           <Route path="/login" element={!user ? <Login onLoginSuccess={handleLoginSuccess} /> : <Navigate to="/" />} />
-          
+
           <Route path="/register-team" element={<Navigate to="/team-area" replace />} />
 
           <Route path="/guest-portal" element={
@@ -82,7 +82,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
           {/* Admin Routes under AdminLayout */}
           <Route path="/admin" element={
             <ProtectedRoute user={user} roles={roles} allowedRoles={['coordinator']}>
-              <AdminLayout user={user} onLogout={handleLogout} />
+              <AdminLayout user={user} roles={roles} onLogout={handleLogout} />
             </ProtectedRoute>
           }>
             <Route index element={<AdminDashboard />} />

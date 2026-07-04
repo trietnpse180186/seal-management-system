@@ -1,5 +1,5 @@
-import React from "react";
-import CustomSelect from "../shared/CustomSelect";
+import { useState, useEffect } from "react";
+import { RefreshCw, Clock } from "lucide-react";
 
 const GithubIcon = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
   <svg
@@ -21,33 +21,103 @@ const GithubIcon = ({ size = 20, className = "" }: { size?: number; className?: 
 
 interface GithubTabProps {
   repos: any[];
-  allTeams: any[];
-  linkingTeamId: string;
-  setLinkingTeamId: (id: string) => void;
-  manualRepoName: string;
-  setManualRepoName: (name: string) => void;
-  manualRepoUrl: string;
-  setManualRepoUrl: (url: string) => void;
-  handleCreateRepo: (teamId: string) => Promise<void>;
-  handleLinkRepo: (e: React.FormEvent) => Promise<void>;
   selectedEvent?: any;
+  handleSyncAllRepos: () => Promise<void>;
+  syncingAll: boolean;
+  syncProgress: {
+    total: number;
+    completed: number;
+    syncing: number;
+    queued: number;
+    active: boolean;
+  } | null;
+  loading: boolean;
   handleKickAllCollaborators?: (repoId: string) => Promise<void>;
 }
 
 export default function GithubTab({
   repos,
-  allTeams,
-  linkingTeamId,
-  setLinkingTeamId,
-  manualRepoName,
-  setManualRepoName,
-  manualRepoUrl,
-  setManualRepoUrl,
-  handleCreateRepo,
-  handleLinkRepo,
   selectedEvent,
+  handleSyncAllRepos,
+  syncingAll,
+  syncProgress,
+  loading,
   handleKickAllCollaborators,
 }: GithubTabProps) {
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const intervalMinutes = selectedEvent?.commitSyncInterval || 30;
+
+  const getCountdownText = (lastSyncedAt: string | null, syncStatus: string) => {
+    if (syncStatus === "syncing") return "Đang đồng bộ...";
+    if (syncStatus === "queued") return "Đang chờ...";
+    if (!lastSyncedAt) return "Chưa đồng bộ";
+
+    const nextSyncTime = new Date(lastSyncedAt).getTime() + intervalMinutes * 60 * 1000;
+    const diff = nextSyncTime - currentTime.getTime();
+
+    if (diff <= 0) {
+      return "Đang chờ đồng bộ...";
+    }
+
+    const seconds = Math.floor((diff / 1000) % 60);
+    const minutes = Math.floor((diff / 1000 / 60) % 60);
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+
+    const pad = (num: number) => num.toString().padStart(2, '0');
+
+    if (hours > 0) {
+      return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    }
+    return `${pad(minutes)}:${pad(seconds)}`;
+  };
+
+  const getGlobalCountdown = () => {
+    const eligibleRepos = repos.filter(
+      (r) => r.syncStatus !== "syncing" && r.syncStatus !== "queued" && r.lastSyncedAt
+    );
+
+    if (eligibleRepos.length === 0) {
+      if (repos.some((r) => r.syncStatus === "syncing")) {
+        return "Đang đồng bộ...";
+      }
+      if (repos.some((r) => r.syncStatus === "queued")) {
+        return "Đang chờ...";
+      }
+      return "Đang chờ đồng bộ...";
+    }
+
+    const nextSyncTimes = eligibleRepos.map(
+      (r) => new Date(r.lastSyncedAt).getTime() + intervalMinutes * 60 * 1000
+    );
+    const soonestSyncTime = Math.min(...nextSyncTimes);
+    const diff = soonestSyncTime - currentTime.getTime();
+
+    if (diff <= 0) {
+      return "Đang chờ đồng bộ...";
+    }
+
+    const seconds = Math.floor((diff / 1000) % 60);
+    const minutes = Math.floor((diff / 1000 / 60) % 60);
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+
+    const pad = (num: number) => num.toString().padStart(2, '0');
+
+    if (hours > 0) {
+      return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    }
+    return `${pad(minutes)}:${pad(seconds)}`;
+  };
+
+  const globalCountdown = getGlobalCountdown();
+
   return (
     <div className="glass p-6 rounded-2xl w-full mt-2 space-y-6 font-mono">
       <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -56,12 +126,12 @@ export default function GithubTab({
       </h3>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Repos List */}
+        {/* Left Column (2/3): Repositories List */}
         <div className="lg:col-span-2 space-y-4">
           <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
             Danh sách Repositories ({repos.length})
           </h4>
-          <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
             {repos.map((r: any) => (
               <div
                 key={r._id}
@@ -79,7 +149,7 @@ export default function GithubTab({
                   >
                     {r.repoUrl || r.repoName}
                   </a>
-                  <div className="flex gap-2 text-[10px] text-slate-400">
+                  <div className="flex gap-2 text-[10px] text-slate-400 flex-wrap">
                     <span>
                       Mặc định:{" "}
                       <span className="text-slate-300 font-semibold">
@@ -95,6 +165,17 @@ export default function GithubTab({
                           : "Chưa đồng bộ"}
                       </span>
                     </span>
+                    {r.lastSyncedAt && r.syncStatus !== "syncing" && r.syncStatus !== "queued" && (
+                      <>
+                        <span>•</span>
+                        <span>
+                          Tự động đồng bộ sau:{" "}
+                          <span className="text-emerald-400 font-semibold">
+                            {getCountdownText(r.lastSyncedAt, r.syncStatus)}
+                          </span>
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 self-end sm:self-auto">
@@ -106,6 +187,8 @@ export default function GithubTab({
                         ? "bg-cyan-500/10 text-cyan-400 animate-pulse border border-cyan-500/20"
                         : r.syncStatus === "failed"
                         ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                        : r.syncStatus === "queued"
+                        ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
                         : "bg-slate-800 text-slate-400 border border-slate-700/50"
                     }`}
                   >
@@ -130,90 +213,78 @@ export default function GithubTab({
           </div>
         </div>
 
-        {/* Provision or Link Repo */}
+        {/* Right Column (1/3): Sync Panel + Countdown + Progress */}
         <div className="space-y-6">
-          {/* Auto Provision list */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-              Cấp Repo tự động
+          <div className="bg-slate-900/60 p-5 rounded-2xl border border-slate-800/80 space-y-4">
+            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+              <Clock size={14} className="text-cyan-400" />
+              <span>Tự động đồng bộ (Cron Job)</span>
             </h4>
-            <p className="text-[10px] text-slate-500">
-              Tạo repo riêng tư trong tổ chức GitHub và phân quyền cho các
-              thành viên đã xác nhận.
-            </p>
-            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-              {allTeams
-                .filter((t: any) => !repos.some((r: any) => r.teamId?._id === t._id))
-                .map((t: any) => (
-                  <div
-                    key={t._id}
-                    className="bg-slate-900/30 p-2.5 rounded-xl border border-slate-800/80 flex justify-between items-center text-xs"
-                  >
-                    <span className="font-semibold text-slate-300 truncate max-w-[120px]">
-                      {t.name}
-                    </span>
-                    <button
-                      onClick={() => handleCreateRepo(t._id)}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-lg text-[9px] font-bold cursor-pointer"
-                    >
-                      Tạo Repo
-                    </button>
+
+            <div className="space-y-3">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-400">Chu kỳ quét tự động:</span>
+                <span className="text-white font-bold">{intervalMinutes} phút / lần</span>
+              </div>
+
+              {!syncingAll && (
+                <div className="bg-slate-950/40 p-3 rounded-xl border border-slate-800/60 space-y-1">
+                  <div className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">
+                    Đồng bộ tiếp theo sau
                   </div>
-                ))}
-              {allTeams.filter(
-                (t: any) => !repos.some((r: any) => r.teamId?._id === t._id),
-              ).length === 0 && (
-                <p className="text-[10px] text-slate-500 italic">
-                  Tất cả đội đã xác nhận đã được cấp repo.
-                </p>
+                  <div className="text-2xl font-bold text-emerald-400 font-mono tracking-tight animate-pulse">
+                    {globalCountdown}
+                  </div>
+                </div>
               )}
             </div>
+
+            <button
+              onClick={handleSyncAllRepos}
+              disabled={loading || syncingAll || repos.length === 0}
+              className={`w-full text-xs font-bold py-3 px-4 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed ${
+                syncingAll
+                  ? "bg-slate-800 text-slate-500 border border-slate-700/50"
+                  : repos.length === 0
+                  ? "bg-slate-800/80 text-slate-500 border border-slate-700/50 cursor-not-allowed"
+                  : "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-lg shadow-emerald-600/25 border border-emerald-500/20"
+              }`}
+            >
+              <RefreshCw size={14} className={syncingAll ? "animate-spin" : ""} />
+              <span>{syncingAll ? "Đang đồng bộ chung..." : "Đồng bộ tất cả Repo"}</span>
+            </button>
           </div>
 
-          <hr className="border-slate-800" />
-
-          {/* Manual Link Form */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-              Liên kết repo thủ công
-            </h4>
-            <form onSubmit={handleLinkRepo} className="space-y-2">
-              <CustomSelect
-                value={linkingTeamId}
-                onChange={(val) => setLinkingTeamId(val)}
-                options={allTeams
-                  .filter((t: any) => !repos.some((r: any) => r.teamId?._id === t._id))
-                  .map((t: any) => ({
-                    value: t._id,
-                    label: t.name,
-                  }))}
-                placeholder="Chọn đội..."
-                className="w-full"
-              />
-              <input
-                type="text"
-                placeholder="Tên Repo (e.g. team-alpha-repo)"
-                value={manualRepoName}
-                onChange={(e) => setManualRepoName(e.target.value)}
-                required
-                className="w-full px-3 py-2 rounded-lg text-xs bg-slate-900 border border-slate-800 text-slate-200 focus:outline-none"
-              />
-              <input
-                type="url"
-                placeholder="Link Repo (https://github.com/...)"
-                value={manualRepoUrl}
-                onChange={(e) => setManualRepoUrl(e.target.value)}
-                required
-                className="w-full px-3 py-2 rounded-lg text-xs bg-slate-900 border border-slate-800 text-slate-200 focus:outline-none"
-              />
-              <button
-                type="submit"
-                className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg cursor-pointer"
-              >
-                Liên Kết Repository
-              </button>
-            </form>
-          </div>
+          {/* Sync Progress Bar */}
+          {syncProgress && syncProgress.active && (
+            <div className="bg-slate-950/60 p-4 rounded-xl border border-emerald-500/25 space-y-2.5">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-emerald-400 font-bold flex items-center gap-1.5">
+                  <RefreshCw size={12} className="animate-spin text-emerald-400" />
+                  <span>ĐANG ĐỒNG BỘ ({syncProgress.completed}/{syncProgress.total})</span>
+                </span>
+                <span className="text-slate-400 font-bold">
+                  {Math.round((syncProgress.completed / (syncProgress.total || 1)) * 100)}%
+                </span>
+              </div>
+              {/* Bar track */}
+              <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full transition-all duration-500"
+                  style={{ width: `${(syncProgress.completed / (syncProgress.total || 1)) * 100}%` }}
+                />
+              </div>
+              <div className="flex flex-col gap-1 text-[9px] text-slate-500 font-mono">
+                <div className="flex justify-between">
+                  <span>Hàng đợi: {syncProgress.queued}</span>
+                  <span>Đang xử lý: {syncProgress.syncing}</span>
+                </div>
+                <div className="text-center italic mt-1 border-t border-slate-900/60 pt-1">
+                  Quãng nghỉ 12s mỗi repo để bảo vệ API key
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

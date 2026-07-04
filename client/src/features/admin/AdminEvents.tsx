@@ -232,10 +232,6 @@ export default function AdminEvents({
   // GitHub integration states
   const [githubOrgName, setGithubOrgName] = useState("seal-hackathon-2026");
   const [repos, setRepos] = useState<any[]>([]);
-  const [allTeams, setAllTeams] = useState<any[]>([]);
-  const [linkingTeamId, setLinkingTeamId] = useState("");
-  const [manualRepoName, setManualRepoName] = useState("");
-  const [manualRepoUrl, setManualRepoUrl] = useState("");
 
 
   const formatForDateTimeLocal = (dateString: string | null | undefined) => {
@@ -568,20 +564,6 @@ export default function AdminEvents({
     }
   };
 
-  const fetchAllTeams = async (eventId: string) => {
-    try {
-      const res = await axios.get(
-        `http://localhost:5000/api/teams/all/${eventId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-      setAllTeams(res.data.filter((t: any) => t.status === "confirmed"));
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   const fetchEventDetails = async () => {
     if (!selectedEvent) return;
     try {
@@ -617,7 +599,6 @@ export default function AdminEvents({
       fetchEventRoles();
       fetchTeamsList();
       fetchRepositories(selectedEvent._id);
-      fetchAllTeams(selectedEvent._id);
       fetchEventLogs();
     } catch (err) {
       console.error("Lỗi fetch chi tiết sự kiện:", err);
@@ -1861,58 +1842,6 @@ export default function AdminEvents({
     }
   };
 
-  const handleCreateRepo = async (teamId: string) => {
-    setMessage({ type: "", text: "" });
-    try {
-      const res = await axios.post(
-        "http://localhost:5000/api/github-repositories/create",
-        { teamId },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      setMessage({ type: "success", text: res.data.message });
-      if (selectedEvent) {
-        fetchRepositories(selectedEvent._id);
-        fetchAllTeams(selectedEvent._id);
-      }
-    } catch (err: any) {
-      setMessage({
-        type: "error",
-        text: err.response?.data?.message || "Lỗi khi tạo repository.",
-      });
-    }
-  };
-
-  const handleLinkRepo = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!linkingTeamId || !manualRepoName || !manualRepoUrl) return;
-    setMessage({ type: "", text: "" });
-
-    try {
-      const res = await axios.post(
-        "http://localhost:5000/api/github-repositories/link",
-        {
-          teamId: linkingTeamId,
-          repoName: manualRepoName,
-          repoUrl: manualRepoUrl,
-        },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      setMessage({ type: "success", text: res.data.message });
-      setManualRepoName("");
-      setManualRepoUrl("");
-      setLinkingTeamId("");
-      if (selectedEvent) {
-        fetchRepositories(selectedEvent._id);
-        fetchAllTeams(selectedEvent._id);
-      }
-    } catch (err: any) {
-      setMessage({
-        type: "error",
-        text: err.response?.data?.message || "Lỗi khi liên kết repository.",
-      });
-    }
-  };
-
 
 
   // handleUploadExam removed — Drive upload moved to TracksTab component
@@ -2515,9 +2444,6 @@ export default function AdminEvents({
             handleAssignTrack={handleAssignTrack}
             handleSyncRepo={handleSyncRepo}
             syncingRepoId={syncingRepoId}
-            handleSyncAllRepos={handleSyncAllRepos}
-            syncingAll={syncingAll}
-            syncProgress={syncProgress}
           />
         ) : (
           <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">
@@ -2716,16 +2642,11 @@ export default function AdminEvents({
         (selectedEvent ? (
           <GithubTab
             repos={repos}
-            allTeams={allTeams}
-            linkingTeamId={linkingTeamId}
-            setLinkingTeamId={setLinkingTeamId}
-            manualRepoName={manualRepoName}
-            setManualRepoName={setManualRepoName}
-            manualRepoUrl={manualRepoUrl}
-            setManualRepoUrl={setManualRepoUrl}
-            handleCreateRepo={handleCreateRepo}
-            handleLinkRepo={handleLinkRepo}
             selectedEvent={selectedEvent}
+            handleSyncAllRepos={handleSyncAllRepos}
+            syncingAll={syncingAll}
+            syncProgress={syncProgress}
+            loading={loading}
             handleKickAllCollaborators={handleKickAllCollaborators}
           />
         ) : (

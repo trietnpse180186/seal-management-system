@@ -9,7 +9,7 @@ const mongoose = require('mongoose');
 /**
  * Load team historical memory and context for AI analysis
  */
-async function loadTeamAggregateContext(teamId, commitsLimit = 200, reviewsLimit = 40) {
+async function loadTeamAggregateContext(teamId, commitsLimit = 40, reviewsLimit = 10) {
   const commits = await dbTools.fetchTeamCommits(teamId, commitsLimit);
   const priorReviews = await dbTools.fetchPriorReviews(teamId, reviewsLimit);
 

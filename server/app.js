@@ -117,6 +117,8 @@ app.use(express.json({
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
+app.use("/NGHIỆM THU ẢNH", express.static(path.join(__dirname, "../client/public/NGHIỆM THU ẢNH")));
+app.use("/NGHI%E1%BB%87M%20THU%20%E1%BA%A2NH", express.static(path.join(__dirname, "../client/public/NGHIỆM THU ẢNH")));
 
 // Routers
 const indexRouter = require('./features/index');

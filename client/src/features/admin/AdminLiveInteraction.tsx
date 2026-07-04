@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useOutletContext } from "react-router-dom";
 import axios from "axios";
 import { io, Socket } from "socket.io-client";
 import { 
@@ -14,6 +15,7 @@ import {
 import { toast } from "sonner";
 
 export default function AdminLiveInteraction() {
+  const { readOnly = false } = useOutletContext<{ readOnly?: boolean }>();
   const token = localStorage.getItem("token");
   const socketRef = useRef<Socket | null>(null);
 
@@ -490,21 +492,23 @@ export default function AdminLiveInteraction() {
                 </div>
 
                 {/* Highlight Controller Button */}
-                <button
-                  onClick={() => handleHighlightTeam(selectedTeam.teamId._id)}
-                  className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-lg ${
-                    highlightedTeamId === selectedTeam.teamId._id
-                      ? "bg-amber-500 text-slate-950 hover:bg-amber-400 hover:shadow-[0_0_15px_rgba(245,158,11,0.5)] animate-pulse"
-                      : "bg-slate-900 hover:bg-slate-850 text-amber-500 border border-amber-500/20"
-                  }`}
-                >
-                  <Sparkles size={14} />
-                  <span>
-                    {highlightedTeamId === selectedTeam.teamId._id 
-                      ? "ĐANG HIGHLIGHT" 
-                      : "HIGHLIGHT CHO GIÁM KHẢO"}
-                  </span>
-                </button>
+                {!readOnly && (
+                  <button
+                    onClick={() => handleHighlightTeam(selectedTeam.teamId._id)}
+                    className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-lg ${
+                      highlightedTeamId === selectedTeam.teamId._id
+                        ? "bg-amber-500 text-slate-950 hover:bg-amber-400 hover:shadow-[0_0_15px_rgba(245,158,11,0.5)] animate-pulse"
+                        : "bg-slate-900 hover:bg-slate-850 text-amber-500 border border-amber-500/20"
+                    }`}
+                  >
+                    <Sparkles size={14} />
+                    <span>
+                      {highlightedTeamId === selectedTeam.teamId._id 
+                        ? "BỎ SPOTLIGHT" 
+                        : "SPOTLIGHT"}
+                    </span>
+                  </button>
+                )}
               </div>
 
               {/* LIVE JUDGES SCORES DETAILS CARD */}
@@ -557,7 +561,11 @@ export default function AdminLiveInteraction() {
                   </select>
                 </div>
 
-                {rubric ? (
+                {readOnly ? (
+                  <p className="text-center py-4 text-xs text-slate-500 font-mono italic">
+                    Bạn đang ở chế độ xem. Không có quyền sửa đổi hay ghi đè điểm số.
+                  </p>
+                ) : rubric ? (
                   <div className="space-y-4">
                     {/* CRITERIA SCORES OVERRIDE INPUTS */}
                     <div className="space-y-3.5">

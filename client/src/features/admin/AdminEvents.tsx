@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useOutletContext } from "react-router-dom";
 import axios from "axios";
 import { io, Socket } from "socket.io-client";
 import {
@@ -56,6 +56,7 @@ interface AdminEventsProps {
 export default function AdminEvents({
   defaultTab = "events",
 }: AdminEventsProps) {
+  const { readOnly = false } = useOutletContext<{ readOnly?: boolean }>();
   const token = localStorage.getItem("token");
   const [currentUser, setCurrentUser] = useState<any>(null);
 
@@ -2056,22 +2057,25 @@ export default function AdminEvents({
                     { value: "cancelled", label: "Cancelled" },
                   ]}
                   className="w-48 font-semibold"
+                  disabled={readOnly}
                 />
               </div>
-              <button
-                onClick={() => {
-                  sessionStorage.removeItem("creatingEventId");
-                  setSelectedEvent(null);
-                  setIsWizardMode(true);
-                  setWizardStep(1);
-                  setActiveTab("events");
-                }}
-                className="bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white px-3.5 py-2 rounded-xl border border-slate-800 text-xs font-mono flex items-center gap-1.5 cursor-pointer shrink-0 transition-all shadow-md active:scale-95 z-20"
-              >
-                <CalendarPlus size={14} />
-                Tạo cuộc thi mới
-              </button>
-              {currentUser?.isSystemAdmin && (
+              {!readOnly && (
+                <button
+                  onClick={() => {
+                    sessionStorage.removeItem("creatingEventId");
+                    setSelectedEvent(null);
+                    setIsWizardMode(true);
+                    setWizardStep(1);
+                    setActiveTab("events");
+                  }}
+                  className="bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white px-3.5 py-2 rounded-xl border border-slate-800 text-xs font-mono flex items-center gap-1.5 cursor-pointer shrink-0 transition-all shadow-md active:scale-95 z-20"
+                >
+                  <CalendarPlus size={14} />
+                  Tạo cuộc thi mới
+                </button>
+              )}
+              {!readOnly && currentUser?.isSystemAdmin && (
                 <button
                   onClick={handleDeleteEvent}
                   className="bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 hover:text-rose-200 px-3.5 py-2 rounded-xl border border-rose-800/40 text-xs font-mono flex items-center gap-1.5 cursor-pointer shrink-0 transition-all shadow-md active:scale-95 z-20"
@@ -2292,7 +2296,8 @@ export default function AdminEvents({
                       placeholder="Ví dụ: SEAL Hackathon Spring 2026"
                       value={editEventName}
                       onChange={(e) => setEditEventName(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-slate-200"
+                      className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-slate-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                      disabled={readOnly}
                     />
                   </div>
 
@@ -2308,7 +2313,8 @@ export default function AdminEvents({
                       onChange={(e) =>
                         setEditEventGithubOrgName(e.target.value)
                       }
-                      className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-slate-200"
+                      className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-slate-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                      disabled={readOnly}
                     />
                   </div>
 
@@ -2326,6 +2332,7 @@ export default function AdminEvents({
                           { value: "Fall", label: "Fall" },
                         ]}
                         className="w-full"
+                        disabled={readOnly}
                       />
                     </div>
                     <div>
@@ -2337,7 +2344,8 @@ export default function AdminEvents({
                         required
                         value={editEventYear}
                         onChange={(e) => setEditEventYear(e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-slate-200"
+                        className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-slate-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                        disabled={readOnly}
                       />
                     </div>
                     <div>
@@ -2349,7 +2357,8 @@ export default function AdminEvents({
                         required
                         value={editEventMaxTeams}
                         onChange={(e) => setEditEventMaxTeams(e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-slate-200"
+                        className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-slate-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                        disabled={readOnly}
                       />
                     </div>
                   </div>
@@ -2363,32 +2372,41 @@ export default function AdminEvents({
                       rows={4}
                       value={editEventDesc}
                       onChange={(e) => setEditEventDesc(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-slate-200"
+                      className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-slate-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                      disabled={readOnly}
                     ></textarea>
                   </div>
 
                   <div className="flex justify-between pt-4">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedEvent(null);
-                        setIsWizardMode(true);
-                        setWizardStep(1);
-                      }}
-                      className="bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white px-5 py-2.5 rounded-xl text-sm border border-slate-800 font-mono flex items-center gap-1.5 cursor-pointer"
-                    >
-                      Hủy & Tạo mới
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="bg-cyan-500 hover:bg-cyan-500 font-bold px-6 py-2.5 rounded-xl text-sm transition-all flex items-center gap-2 cursor-pointer font-mono"
-                    >
-                      <span>
-                        {loading ? "Đang cập nhật..." : "Lưu thay đổi"}
-                      </span>
-                      <CalendarPlus size={16} />
-                    </button>
+                    {!readOnly ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedEvent(null);
+                            setIsWizardMode(true);
+                            setWizardStep(1);
+                          }}
+                          className="bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white px-5 py-2.5 rounded-xl text-sm border border-slate-800 font-mono flex items-center gap-1.5 cursor-pointer"
+                        >
+                          Hủy & Tạo mới
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={loading}
+                          className="bg-cyan-500 hover:bg-cyan-500 font-bold px-6 py-2.5 rounded-xl text-sm transition-all flex items-center gap-2 cursor-pointer font-mono"
+                        >
+                          <span>
+                            {loading ? "Đang cập nhật..." : "Lưu thay đổi"}
+                          </span>
+                          <CalendarPlus size={16} />
+                        </button>
+                      </>
+                    ) : (
+                      <div className="text-amber-500/85 text-xs font-mono py-2 bg-amber-500/5 px-4 border border-amber-500/10 rounded-xl w-full text-center">
+                        * Bạn đang xem ở chế độ chỉ đọc. Không có quyền thay đổi thông tin cuộc thi.
+                      </div>
+                    )}
                   </div>
                 </form>
               </>
@@ -2518,6 +2536,7 @@ export default function AdminEvents({
             handleSyncAllRepos={handleSyncAllRepos}
             syncingAll={syncingAll}
             syncProgress={syncProgress}
+            readOnly={readOnly}
           />
         ) : (
           <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">
@@ -2562,6 +2581,7 @@ export default function AdminEvents({
               handleRemoveRole={handleRemoveRole}
               teamsList={teamsList}
               token={token}
+              readOnly={readOnly}
             />
             {isWizardMode && (
               <div className="mt-8 p-4 glass rounded-2xl flex justify-between items-center">
@@ -2677,6 +2697,7 @@ export default function AdminEvents({
               setRubric={setRubric}
               setCriteria={setCriteria}
               fetchRoundsAndRubric={fetchRoundsAndRubric}
+              readOnly={readOnly}
             />
             {isWizardMode && (
               <div className="mt-8 p-4 glass rounded-2xl flex justify-between items-center">
@@ -2852,6 +2873,7 @@ export default function AdminEvents({
                       startLabel="Mở đăng ký"
                       endLabel="Đóng đăng ký"
                       maxDate={editEventContestStart}
+                      disabled={readOnly}
                     />
                   </div>
 
@@ -2867,6 +2889,7 @@ export default function AdminEvents({
                       startLabel="Bắt đầu thi"
                       endLabel="Kết thúc"
                       minDate={editEventRegClose}
+                      disabled={readOnly}
                     />
                   </div>
 
@@ -2880,20 +2903,23 @@ export default function AdminEvents({
                       required
                       value={editCommitSyncInterval}
                       onChange={(e) => setEditCommitSyncInterval(e.target.value)}
-                      className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono"
+                      className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
                       placeholder="Nhập số phút..."
+                      disabled={readOnly}
                     />
                   </div>
 
-                  <div className="pt-4">
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full bg-cyan-500 hover:bg-cyan-600 disabled:bg-slate-800 text-white font-bold text-xs py-3 rounded-xl transition-all uppercase tracking-wider cursor-pointer shadow-lg shadow-cyan-500/20"
-                    >
-                      {loading ? "Đang lưu..." : "Lưu lịch trình cuộc thi"}
-                    </button>
-                  </div>
+                  {!readOnly && (
+                    <div className="pt-4">
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full bg-cyan-500 hover:bg-cyan-600 disabled:bg-slate-800 text-white font-bold text-xs py-3 rounded-xl transition-all uppercase tracking-wider cursor-pointer shadow-lg shadow-cyan-500/20"
+                      >
+                        {loading ? "Đang lưu..." : "Lưu lịch trình cuộc thi"}
+                      </button>
+                    </div>
+                  )}
                 </form>
               </div>
 
@@ -2932,6 +2958,7 @@ export default function AdminEvents({
                           label: `${r.name}`,
                         }))}
                         className="w-full"
+                        disabled={readOnly}
                       />
                     </div>
 
@@ -2950,6 +2977,7 @@ export default function AdminEvents({
                             endLabel="Hạn nộp bài"
                             minDate={editEventContestStart}
                             maxDate={editEventContestEnd}
+                            disabled={readOnly}
                           />
                         </div>
 
@@ -2963,18 +2991,21 @@ export default function AdminEvents({
                             placeholder="Chọn thời gian kết thúc chấm..."
                             minDate={trackEndTime}
                             maxDate={editEventContestEnd}
+                            disabled={readOnly}
                           />
                         </div>
 
-                        <div className="pt-4">
-                          <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full bg-cyan-500 hover:bg-cyan-600 disabled:bg-slate-800 text-white font-bold text-xs py-3 rounded-xl transition-all uppercase tracking-wider cursor-pointer shadow-lg shadow-cyan-500/20"
-                          >
-                            {loading ? "Đang lưu..." : "Lưu lịch trình vòng thi"}
-                          </button>
-                        </div>
+                        {!readOnly && (
+                          <div className="pt-4">
+                            <button
+                              type="submit"
+                              disabled={loading}
+                              className="w-full bg-cyan-500 hover:bg-cyan-600 disabled:bg-slate-800 text-white font-bold text-xs py-3 rounded-xl transition-all uppercase tracking-wider cursor-pointer shadow-lg shadow-cyan-500/20"
+                            >
+                              {loading ? "Đang lưu..." : "Lưu lịch trình vòng thi"}
+                            </button>
+                          </div>
+                        )}
 
                       </>
                     )}
@@ -3039,8 +3070,9 @@ export default function AdminEvents({
                         required
                         value={editMainGoal}
                         onChange={(e) => setEditMainGoal(e.target.value)}
-                        className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono"
+                        className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
                         placeholder="Mục tiêu chính của cuộc thi..."
+                        disabled={readOnly}
                       />
                     </div>
 
@@ -3054,8 +3086,9 @@ export default function AdminEvents({
                           required
                           value={editDurationText}
                           onChange={(e) => setEditDurationText(e.target.value)}
-                          className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono"
+                          className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
                           placeholder="48 GIỜ"
+                          disabled={readOnly}
                         />
                       </div>
                       <div>
@@ -3067,8 +3100,9 @@ export default function AdminEvents({
                           required
                           value={editMemberLimitText}
                           onChange={(e) => setEditMemberLimitText(e.target.value)}
-                          className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono"
+                          className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
                           placeholder="2-4 OPERATORS"
+                          disabled={readOnly}
                         />
                       </div>
                       <div>
@@ -3080,8 +3114,9 @@ export default function AdminEvents({
                           required
                           value={editPrizePoolText}
                           onChange={(e) => setEditPrizePoolText(e.target.value)}
-                          className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono"
+                          className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
                           placeholder="$50,000 USD"
+                          disabled={readOnly}
                         />
                       </div>
                     </div>
@@ -3095,8 +3130,9 @@ export default function AdminEvents({
                         required
                         value={editPhase1Description}
                         onChange={(e) => setEditPhase1Description(e.target.value)}
-                        className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono"
+                        className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
                         placeholder="Mô tả giai đoạn đăng ký..."
+                        disabled={readOnly}
                       />
                     </div>
 
@@ -3109,8 +3145,9 @@ export default function AdminEvents({
                         required
                         value={editPhase2Description}
                         onChange={(e) => setEditPhase2Description(e.target.value)}
-                        className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono"
+                        className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
                         placeholder="Mô tả giai đoạn thi đấu..."
+                        disabled={readOnly}
                       />
                     </div>
 
@@ -3123,8 +3160,9 @@ export default function AdminEvents({
                         required
                         value={editPhase3Description}
                         onChange={(e) => setEditPhase3Description(e.target.value)}
-                        className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono"
+                        className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
                         placeholder="Mô tả giai đoạn tổng kết..."
+                        disabled={readOnly}
                       />
                     </div>
                   </div>
@@ -3140,17 +3178,19 @@ export default function AdminEvents({
                         <div key={idx} className="border border-slate-800 p-4 rounded-xl space-y-3 bg-slate-900/30 animate-fadeIn">
                           <div className="flex justify-between items-center">
                             <span className="text-[10px] font-bold text-cyan-400 font-mono">Quy định #{idx + 1}</span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const updated = [...editRules];
-                                updated.splice(idx, 1);
-                                setEditRules(updated);
-                              }}
-                              className="text-xs text-rose-450 hover:text-rose-450 cursor-pointer font-mono"
-                            >
-                              Xóa
-                            </button>
+                            {!readOnly && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = [...editRules];
+                                  updated.splice(idx, 1);
+                                  setEditRules(updated);
+                                }}
+                                className="text-xs text-rose-450 hover:text-rose-450 cursor-pointer font-mono"
+                              >
+                                Xóa
+                              </button>
+                            )}
                           </div>
                           <div className="space-y-2">
                             <input
@@ -3163,7 +3203,8 @@ export default function AdminEvents({
                                 updated[idx] = { ...updated[idx], title: e.target.value };
                                 setEditRules(updated);
                               }}
-                              className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono"
+                              className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
+                              disabled={readOnly}
                             />
                             <textarea
                               required
@@ -3175,31 +3216,36 @@ export default function AdminEvents({
                                 updated[idx] = { ...updated[idx], description: e.target.value };
                                 setEditRules(updated);
                               }}
-                              className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono"
+                              className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
+                              disabled={readOnly}
                             />
                           </div>
                         </div>
                       ))}
-                      <button
-                        type="button"
-                        onClick={() => setEditRules([...editRules, { title: "", description: "" }])}
-                        className="w-full py-2 border border-dashed border-slate-700 rounded-xl text-slate-400 text-xs hover:text-cyan-400 hover:border-cyan-500/50 transition-colors font-mono cursor-pointer"
-                      >
-                        + Thêm quy định mới
-                      </button>
+                      {!readOnly && (
+                        <button
+                          type="button"
+                          onClick={() => setEditRules([...editRules, { title: "", description: "" }])}
+                          className="w-full py-2 border border-dashed border-slate-700 rounded-xl text-slate-400 text-xs hover:text-cyan-400 hover:border-cyan-500/50 transition-colors font-mono cursor-pointer"
+                        >
+                          + Thêm quy định mới
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                <div className="pt-4">
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full bg-cyan-500 hover:bg-cyan-600 disabled:bg-slate-800 text-white font-bold text-xs py-3 rounded-xl transition-all uppercase tracking-wider cursor-pointer shadow-lg shadow-cyan-500/20"
-                  >
-                    {loading ? "Đang lưu..." : "Lưu nội dung Portal"}
-                  </button>
-                </div>
+                {!readOnly && (
+                  <div className="pt-4">
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full bg-cyan-500 hover:bg-cyan-600 disabled:bg-slate-800 text-white font-bold text-xs py-3 rounded-xl transition-all uppercase tracking-wider cursor-pointer shadow-lg shadow-cyan-500/20"
+                    >
+                      {loading ? "Đang lưu..." : "Lưu nội dung Portal"}
+                    </button>
+                  </div>
+                )}
               </form>
             </div>
           </div>
@@ -3211,7 +3257,7 @@ export default function AdminEvents({
 
       {/* 10. SEMINAR TAB */}
       {activeTab === "seminar" && (
-        <SeminarTab selectedEvent={selectedEvent} fetchEventDetails={fetchEventDetails} />
+        <SeminarTab selectedEvent={selectedEvent} fetchEventDetails={fetchEventDetails} readOnly={readOnly} />
       )}
 
       {/* DETAIL EVENT LOG MODAL */}

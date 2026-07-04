@@ -44,6 +44,7 @@ interface TracksTabProps {
   allUsers?: any[];
   token: string | null;
   fetchEventDetails?: () => Promise<void>;
+  readOnly?: boolean;
 }
 
 export default function TracksTab({
@@ -79,6 +80,7 @@ export default function TracksTab({
   allUsers = [],
   token,
   fetchEventDetails,
+  readOnly = false,
 }: TracksTabProps) {
   const [judgeEmail, setJudgeEmail] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -233,41 +235,45 @@ export default function TracksTab({
                   )}
                 </button>
                 <div className="flex items-center gap-2.5 ml-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingTrack(t);
-                      setTrackRoundId(t.roundId);
-                      setTrackName(t.name);
-                      setTrackMax(t.maxTeams.toString());
-                      setTrackAdvanceTopN(t.advanceTopN ? t.advanceTopN.toString() : "");
-                      setTrackDesc(t.description || "");
-                      setTrackEnvironmentId(t.environmentId || "");
-                    }}
-                    className="text-slate-400 hover:text-cyan-400 transition-colors p-1 cursor-pointer"
-                    title="Chỉnh sửa bảng đấu"
-                  >
-                    <Edit size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      const conformed = await conform({
-                        title: "Xóa bảng đấu",
-                        message: `Bạn có chắc chắn muốn xóa bảng đấu "${t.name}"?`,
-                        variant: "danger",
-                      });
-                      if (conformed) {
-                        handleDeleteTrack(t._id);
-                      }
-                    }}
-                    className="text-slate-400 hover:text-rose-500 transition-colors p-1 cursor-pointer"
-                    title="Xóa bảng đấu"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  {!readOnly && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingTrack(t);
+                          setTrackRoundId(t.roundId);
+                          setTrackName(t.name);
+                          setTrackMax(t.maxTeams.toString());
+                          setTrackAdvanceTopN(t.advanceTopN ? t.advanceTopN.toString() : "");
+                          setTrackDesc(t.description || "");
+                          setTrackEnvironmentId(t.environmentId || "");
+                        }}
+                        className="text-slate-400 hover:text-cyan-400 transition-colors p-1 cursor-pointer"
+                        title="Chỉnh sửa bảng đấu"
+                      >
+                        <Edit size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const conformed = await conform({
+                            title: "Xóa bảng đấu",
+                            message: `Bạn có chắc chắn muốn xóa bảng đấu "${t.name}"?`,
+                            variant: "danger",
+                          });
+                          if (conformed) {
+                            handleDeleteTrack(t._id);
+                          }
+                        }}
+                        className="text-slate-400 hover:text-rose-500 transition-colors p-1 cursor-pointer"
+                        title="Xóa bảng đấu"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </>
+                  )}
                   <ChevronRight size={14} className={selectedTrack?._id === t._id ? "text-cyan-400" : "text-slate-600"} />
                 </div>
               </div>
@@ -280,112 +286,114 @@ export default function TracksTab({
           </div>
         </div>
 
-        <form
-          onSubmit={editingTrack ? handleUpdateTrack : handleCreateTrack}
-          className="space-y-3.5 pt-3 border-t border-slate-800/80"
-        >
-          <p className="text-[10px] font-bold text-slate-300 uppercase font-mono">
-            {editingTrack ? "Cập nhật bảng đấu:" : "Tạo thêm bảng đấu:"}
-          </p>
+        {!readOnly && (
+          <form
+            onSubmit={editingTrack ? handleUpdateTrack : handleCreateTrack}
+            className="space-y-3.5 pt-3 border-t border-slate-800/80"
+          >
+            <p className="text-[10px] font-bold text-slate-300 uppercase font-mono">
+              {editingTrack ? "Cập nhật bảng đấu:" : "Tạo thêm bảng đấu:"}
+            </p>
 
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
-              Chọn Vòng thi
-            </label>
-            <CustomSelect
-              value={trackRoundId}
-              onChange={(val) => setTrackRoundId(val)}
-              options={rounds.map((r: any) => ({
-                value: r._id,
-                label: `${r.name} (Vòng ${r.order})${r.status === 'completed' ? ' - Đã kết thúc' : ''}`,
-                disabled: r.status === 'completed'
-              }))}
-              placeholder="-- Chọn Vòng thi --"
-              className="w-full"
-            />
-          </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
+                Chọn Vòng thi
+              </label>
+              <CustomSelect
+                value={trackRoundId}
+                onChange={(val) => setTrackRoundId(val)}
+                options={rounds.map((r: any) => ({
+                  value: r._id,
+                  label: `${r.name} (Vòng ${r.order})${r.status === 'completed' ? ' - Đã kết thúc' : ''}`,
+                  disabled: r.status === 'completed'
+                }))}
+                placeholder="-- Chọn Vòng thi --"
+                className="w-full"
+              />
+            </div>
 
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
-              Tên bảng đấu
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="Tên bảng đấu (e.g. AI & IoT)"
-              value={trackName}
-              onChange={(e) => setTrackName(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
-            />
-          </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
+                Tên bảng đấu
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Tên bảng đấu (e.g. AI & IoT)"
+                value={trackName}
+                onChange={(e) => setTrackName(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
+              />
+            </div>
 
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
-              Số lượng đội tối đa {maxEventTeams > 0 ? (editingTrack ? `(Còn lại: ${remainingTeams + (editingTrack.maxTeams || 0)} / ${maxEventTeams} đội)` : `(Còn lại: ${remainingTeams} / ${maxEventTeams} đội)`) : ""}
-            </label>
-            <input
-              type="number"
-              required
-              placeholder="Số lượng đội tối đa (e.g. 5)"
-              value={trackMax}
-              onChange={(e) => setTrackMax(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
-            />
-          </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
+                Số lượng đội tối đa {maxEventTeams > 0 ? (editingTrack ? `(Còn lại: ${remainingTeams + (editingTrack.maxTeams || 0)} / ${maxEventTeams} đội)` : `(Còn lại: ${remainingTeams} / ${maxEventTeams} đội)`) : ""}
+              </label>
+              <input
+                type="number"
+                required
+                placeholder="Số lượng đội tối đa (e.g. 5)"
+                value={trackMax}
+                onChange={(e) => setTrackMax(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
+              />
+            </div>
 
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
-              Số đội lấy đi tiếp (N đội cao điểm nhất)
-            </label>
-            <input
-              type="number"
-              required
-              placeholder="Số đội đi tiếp (e.g. 3)"
-              value={trackAdvanceTopN}
-              onChange={(e) => setTrackAdvanceTopN(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
-            />
-          </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
+                Số đội lấy đi tiếp (N đội cao điểm nhất)
+              </label>
+              <input
+                type="number"
+                required
+                placeholder="Số đội đi tiếp (e.g. 3)"
+                value={trackAdvanceTopN}
+                onChange={(e) => setTrackAdvanceTopN(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
+              />
+            </div>
 
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
-              Environment ID (UUID)
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. 6c10dc7a-4021-4299-a12b-215278a89c72"
-              value={trackEnvironmentId}
-              onChange={(e) => setTrackEnvironmentId(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
-            />
-          </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
+                Environment ID (UUID)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. 6c10dc7a-4021-4299-a12b-215278a89c72"
+                value={trackEnvironmentId}
+                onChange={(e) => setTrackEnvironmentId(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
+              />
+            </div>
 
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-semibold py-2 rounded-lg cursor-pointer font-mono transition-colors"
-            >
-              {editingTrack ? "Lưu thay đổi" : "+ Thêm Bảng đấu"}
-            </button>
-            {editingTrack && (
+            <div className="flex gap-2">
               <button
-                type="button"
-                onClick={() => {
-                  setEditingTrack(null);
-                  setTrackRoundId("");
-                  setTrackName("");
-                  setTrackMax("");
-                  setTrackAdvanceTopN("");
-                  setTrackDesc("");
-                  setTrackEnvironmentId("");
-                }}
-                className="px-4 py-2 border border-slate-700 hover:border-slate-600 hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs font-semibold rounded-lg cursor-pointer font-mono transition-all"
+                type="submit"
+                className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-semibold py-2 rounded-lg cursor-pointer font-mono transition-colors"
               >
-                Hủy
+                {editingTrack ? "Lưu thay đổi" : "+ Thêm Bảng đấu"}
               </button>
-            )}
-          </div>
-        </form>
+              {editingTrack && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingTrack(null);
+                    setTrackRoundId("");
+                    setTrackName("");
+                    setTrackMax("");
+                    setTrackAdvanceTopN("");
+                    setTrackDesc("");
+                    setTrackEnvironmentId("");
+                  }}
+                  className="px-4 py-2 border border-slate-700 hover:border-slate-600 hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs font-semibold rounded-lg cursor-pointer font-mono transition-all"
+                >
+                  Hủy
+                </button>
+              )}
+            </div>
+          </form>
+        )}
       </div>
 
       {/* Column 2: Attachments & Judges list stack */}
@@ -438,36 +446,38 @@ export default function TracksTab({
                 )}
 
                 {/* Form upload mới */}
-                <div className="space-y-2.5 pt-2 border-t border-slate-800/60">
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">
-                    {currentUrl ? "Cập nhật link Drive:" : "Gắn link Drive:"}
-                  </p>
-                  <input
-                    type="text"
-                    placeholder="VD: Đề Vòng Sơ loại SU26"
-                    value={driveFileName}
-                    onChange={(e) => setDriveFileName(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl text-xs bg-slate-950 border border-slate-800 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500"
-                  />
-                  <input
-                    type="text"
-                    placeholder="https://drive.google.com/drive/folders/..."
-                    value={driveFileUrl}
-                    onChange={(e) => setDriveFileUrl(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl text-xs bg-slate-950 border border-slate-800 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500"
-                  />
-                  <p className="text-[9px] text-amber-400 font-sans">
-                    Đặt Drive là <strong>"Anyone with the link"</strong> trước khi lưu.
-                  </p>
-                  <button
-                    type="button"
-                    disabled={uploadingDrive || !driveFileName || !driveFileUrl}
-                    onClick={handleUploadDriveForTrack}
-                    className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold text-xs py-2.5 rounded-xl uppercase tracking-wider transition-colors cursor-pointer"
-                  >
-                    {uploadingDrive ? "Đang lưu..." : "Lưu link Drive"}
-                  </button>
-                </div>
+                {!readOnly && (
+                  <div className="space-y-2.5 pt-2 border-t border-slate-800/60">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                      {currentUrl ? "Cập nhật link Drive:" : "Gắn link Drive:"}
+                    </p>
+                    <input
+                      type="text"
+                      placeholder="VD: Đề Vòng Sơ loại SU26"
+                      value={driveFileName}
+                      onChange={(e) => setDriveFileName(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl text-xs bg-slate-950 border border-slate-800 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500"
+                    />
+                    <input
+                      type="text"
+                      placeholder="https://drive.google.com/drive/folders/..."
+                      value={driveFileUrl}
+                      onChange={(e) => setDriveFileUrl(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl text-xs bg-slate-950 border border-slate-800 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500"
+                    />
+                    <p className="text-[9px] text-amber-400 font-sans">
+                      Đặt Drive là <strong>"Anyone with the link"</strong> trước khi lưu.
+                    </p>
+                    <button
+                      type="button"
+                      disabled={uploadingDrive || !driveFileName || !driveFileUrl}
+                      onClick={handleUploadDriveForTrack}
+                      className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold text-xs py-2.5 rounded-xl uppercase tracking-wider transition-colors cursor-pointer"
+                    >
+                      {uploadingDrive ? "Đang lưu..." : "Lưu link Drive"}
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })()}
@@ -514,7 +524,7 @@ export default function TracksTab({
                         )}
                       </div>
                     </div>
-                    {handleRemoveRole && (
+                    {handleRemoveRole && !readOnly && (
                       <button
                         onClick={() => handleRemoveRole(role._id)}
                         className="text-rose-500 hover:text-rose-400 font-bold text-[9px] uppercase font-mono border border-rose-500/10 hover:border-rose-500/30 px-2 py-0.5 rounded bg-rose-500/5 cursor-pointer animate-all"
@@ -533,7 +543,7 @@ export default function TracksTab({
             </div>
 
             {/* Form to add member */}
-            {handleAssignRoleForTrack && (
+            {handleAssignRoleForTrack && !readOnly && (
               <form
                 onSubmit={async (e) => {
                   e.preventDefault();

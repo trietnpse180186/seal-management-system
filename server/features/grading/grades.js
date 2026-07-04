@@ -131,7 +131,7 @@ router.get('/team/:teamId/achievements', authenticateToken, async (req, res) => 
         const coordRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: team.eventId,
-          role: 'coordinator',
+          role: { $in: ['coordinator', 'admin_view'] },
           status: 'active'
         });
         isCoordinatorOrAdmin = !!coordRole;
@@ -149,7 +149,7 @@ router.get('/team/:teamId/achievements', authenticateToken, async (req, res) => 
       const coordRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: team.eventId,
-        role: 'coordinator',
+        role: { $in: ['coordinator', 'admin_view'] },
         status: 'active'
       });
       authorized = !!coordRole;
@@ -215,7 +215,7 @@ router.get('/team/:teamId/round/:roundId', authenticateToken, async (req, res) =
         const coordRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: team.eventId,
-          role: 'coordinator',
+          role: { $in: ['coordinator', 'admin_view'] },
           status: 'active'
         });
         isCoordinatorOrAdmin = !!coordRole;
@@ -229,7 +229,7 @@ router.get('/team/:teamId/round/:roundId', authenticateToken, async (req, res) =
     const coordinatorRole = await EventRole.findOne({
       userId: req.user._id,
       eventId: team.eventId,
-      role: 'coordinator',
+      role: { $in: ['coordinator', 'admin_view'] },
       status: 'active'
     });
     const isCoordinator = req.user.isSystemAdmin || !!coordinatorRole;
@@ -666,7 +666,7 @@ router.get('/leaderboard/:roundId', authenticateToken, async (req, res) => {
       const coordRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: round.eventId,
-        role: 'coordinator',
+        role: { $in: ['coordinator', 'admin_view'] },
         status: 'active'
       });
       isCoordinator = !!coordRole;
@@ -709,7 +709,7 @@ router.get('/live-ranking/:roundId', authenticateToken, async (req, res) => {
       const coordRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: round.eventId,
-        role: 'coordinator',
+        role: { $in: ['coordinator', 'admin_view'] },
         status: 'active'
       });
       isCoordinator = !!coordRole;

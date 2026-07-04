@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import axios from "axios";
 import { io, Socket } from "socket.io-client";
 import { FolderKanban, CalendarPlus, Info, X, Eye, User, Activity } from "lucide-react";
@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const { readOnly } = useOutletContext<{ readOnly?: boolean }>();
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [logs, setLogs] = useState<any[]>([]);
@@ -103,13 +104,15 @@ export default function AdminDashboard() {
             Danh sách các cuộc thi hackathon đang diễn ra và đã kết thúc. Chọn cuộc thi để xem cấu hình chi tiết.
           </p>
         </div>
-        <button
-          onClick={() => navigate("/admin/events?create=true")}
-          className="bg-cyan-500 hover:bg-cyan-400 text-white px-4 py-2.5 rounded-xl border border-cyan-500/20 text-xs font-mono font-semibold flex items-center gap-1.5 cursor-pointer shadow-lg shadow-cyan-500/25 transition-all"
-        >
-          <CalendarPlus size={14} />
-          TẠO CUỘC THI MỚI
-        </button>
+        {!readOnly && (
+          <button
+            onClick={() => navigate("/admin/events?create=true")}
+            className="bg-cyan-500 hover:bg-cyan-400 text-white px-4 py-2.5 rounded-xl border border-cyan-500/20 text-xs font-mono font-semibold flex items-center gap-1.5 cursor-pointer shadow-lg shadow-cyan-500/25 transition-all"
+          >
+            <CalendarPlus size={14} />
+            TẠO CUỘC THI MỚI
+          </button>
+        )}
       </div>
 
       <div className="w-full space-y-4">

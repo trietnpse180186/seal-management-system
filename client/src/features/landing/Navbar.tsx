@@ -183,7 +183,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
   };
 
   const isSystemAdmin = user?.isSystemAdmin;
-  const isCoordinator = !!isSystemAdmin;
+  const isCoordinator = !!isSystemAdmin || roles?.some((r) => r.role === "coordinator") || roles?.some((r) => r.role === "admin_view");
   const isJudge = roles?.some((r) => r.role === "judge") || isSystemAdmin;
   const isMentor = roles?.some((r) => r.role === "mentor");
   const isParticipant =
@@ -228,10 +228,13 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
 
         {/* Navigation Items */}
         <div className="hidden md:flex items-center gap-2 justify-center">
+
+
           <Link to="/album" className={linkClass("/album")}>
             <Camera size={16} />
             <span>Album ảnh</span>
           </Link>
+
 
           {user && (
             <>

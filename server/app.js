@@ -132,6 +132,7 @@ const githubRepositoriesRouter = require('./features/github-ai/githubRepositorie
 const aiAnalysesRouter = require('./features/github-ai/aiAnalyses');
 const tasksRouter = require('./features/github-ai/tasks');
 const chatRouter = require('./features/chat/chat');
+const galleryRouter = require('./features/events/gallery');
 
 app.use('/api', indexRouter);
 app.use('/api/auth', authRouter);
@@ -146,6 +147,7 @@ app.use('/api/github-repositories', githubRepositoriesRouter);
 app.use('/api/ai-analyses', aiAnalysesRouter);
 app.use('/api/tasks', tasksRouter);
 app.use('/api/chat', chatRouter);
+app.use('/api/gallery', galleryRouter);
 
 // Catch 404 and forward to error handler
 app.use(function (req, res, next) {

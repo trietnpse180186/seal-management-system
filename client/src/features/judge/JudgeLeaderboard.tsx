@@ -6,7 +6,8 @@ import {
   Award,
   Users,
   Search,
-  CheckSquare
+  CheckSquare,
+  Download
 } from "lucide-react";
 import CustomSelect from "../shared/CustomSelect";
 
@@ -21,6 +22,7 @@ export default function JudgeLeaderboard() {
 
   const [standings, setStandings] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -93,6 +95,38 @@ export default function JudgeLeaderboard() {
     setSelectedRound(round || null);
   };
 
+  const handleExportGradingSheet = async () => {
+    if (!selectedRoundId) {
+      alert("Vui lòng chọn Vòng thi trước khi xuất bảng điểm.");
+      return;
+    }
+    setExporting(true);
+    
+    // Defaulting to judge's own score sheet (backend resolves the token user automatically!)
+    const url = `http://localhost:5000/api/grades/export-grading-sheet/${selectedRoundId}`;
+
+    try {
+      const res = await axios.get(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+      });
+      const blobUrl = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      const roundName = selectedRound?.name?.replace(/\s+/g, "_") || "Round";
+      link.setAttribute("download", `Grading_Sheet_Judge_${roundName}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Export grading sheet error:", err);
+      alert("Lỗi khi xuất phiếu điểm ra file Excel. Vui lòng thử lại.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const filteredStandings = standings.filter(
     (item) =>
       item.teamId?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -125,6 +159,17 @@ export default function JudgeLeaderboard() {
             <Users size={12} />
             Chế độ Giám khảo
           </span>
+
+          {selectedRoundId && (
+            <button
+              onClick={handleExportGradingSheet}
+              disabled={exporting}
+              className="flex items-center gap-1.5 bg-cyan-950/40 hover:bg-cyan-950/60 text-white border border-cyan-500/25 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download size={12} className="text-cyan-400" />
+              <span>{exporting ? "Đang xuất..." : "Xuất Phiếu Điểm"}</span>
+            </button>
+          )}
 
           <button
             onClick={fetchRankings}

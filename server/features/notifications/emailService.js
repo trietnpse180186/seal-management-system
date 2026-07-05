@@ -437,10 +437,12 @@ async function sendRoundExamOpened(email, fullName, roundName) {
 /**
  * Send Seminar Invitation with Google Meet Link to contestant
  */
-async function sendSeminarInvitation(email, recipientName, eventName, seminarData) {
+async function sendSeminarInvitation(email, recipientName, eventName, seminarData, eventId) {
   const startTimeStr = seminarData.scheduledAt ? new Date(seminarData.scheduledAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Chưa xác định';
   const endTimeStr = seminarData.scheduledEnd ? new Date(seminarData.scheduledEnd).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '';
   const formattedTime = endTimeStr ? `${startTimeStr} - ${endTimeStr}` : startTimeStr;
+  const clientUrl = process.env.CLIENT_URL || 'https://www.seal-hackathon.io.vn';
+  const teamAreaUrl = eventId ? `${clientUrl}/team-area?eventId=${eventId}` : `${clientUrl}/team-area`;
   const mailOptions = {
     from: `"SEAL Hackathon Platform" <${process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@seal-hackathon.com'}>`,
     to: email,
@@ -469,7 +471,7 @@ async function sendSeminarInvitation(email, recipientName, eventName, seminarDat
         </div>
         
         <div style="text-align: center; margin: 30px 0 10px 0;">
-          <a href="${seminarData.meetUrl || '#'}" target="_blank" style="background-color: #22c55e; color: #ffffff; padding: 15px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 0 20px rgba(34, 197, 94, 0.4); text-transform: uppercase; font-size: 14px; letter-spacing: 1px;">👉 Tham Gia Google Meet Ngay</a>
+          <a href="${teamAreaUrl}" target="_blank" style="background-color: #00f0ff; color: #0b1329; padding: 15px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 0 20px rgba(0, 240, 255, 0.4); text-transform: uppercase; font-size: 14px; letter-spacing: 1px;">👉 XÁC NHẬN THAM GIA</a>
         </div>
       </div>
     `

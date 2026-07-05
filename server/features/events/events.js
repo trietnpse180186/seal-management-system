@@ -1897,6 +1897,8 @@ router.get('/:eventId/export-teams', authenticateToken, async (req, res) => {
     ws['!rows'][1] = { hpx: 20 }; // Subtitle row height
     ws['!rows'][3] = { hpx: 26 }; // Table Header row height
 
+    XLSX.utils.book_append_sheet(wb, ws, 'Teams');
+
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
     const filename = `Teams_${event.name.replace(/\s+/g, '_')}.xlsx`;
 

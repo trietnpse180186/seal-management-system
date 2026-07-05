@@ -145,11 +145,6 @@ function startCronJobs() {
 
   // Schedule to run every 1 minute: '* * * * *'
   cron.schedule('* * * * *', async () => {
-    if (mongoose.connection.readyState !== 1) {
-      console.log('[CRON] Database not connected yet. Skipping background tasks.');
-      return;
-    }
-
     try {
       await autoTransitionEvents();
     } catch (error) {

@@ -39,12 +39,22 @@ export default function TeamArea() {
   const showMqttCard = !!(data?.team && data.team.eventId?.status === 'ongoing' && round?.startTime && new Date(round.startTime) <= currentTime && track?.environmentId);
 
   useEffect(() => {
+    const startTimeStr = round?.startTime;
+    if (!startTimeStr) return;
+
+    const startTime = new Date(startTimeStr);
+    if (startTime <= new Date()) return;
+
     const timer = setInterval(() => {
-      setCurrentTime(new Date());
+      const now = new Date();
+      setCurrentTime(now);
+      if (now >= startTime) {
+        clearInterval(timer);
+      }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [round?.startTime]);
 
 
 
@@ -335,21 +345,7 @@ export default function TeamArea() {
                 )}
               </div>
 
-              {team?.eventId?.contestStart && new Date(team.eventId.contestStart) > currentTime ? (
-                <div className="flex flex-col items-center justify-center py-6 space-y-4">
-                  <div className="space-y-1.5 text-center">
-                    <p className="text-xs text-amber-500 font-sans font-semibold uppercase tracking-wider">
-                      Đề bài cuộc thi &quot;{team.eventId.name}&quot; sẽ được mở sau:
-                    </p>
-                    <p className="text-[9px] text-slate-500 font-mono">
-                      Thời gian mở đề: {new Date(team.eventId.contestStart).toLocaleString('vi-VN')}
-                    </p>
-                  </div>
-                  <div className="text-2xl sm:text-3xl font-black text-cyan-400 font-mono bg-slate-950/70 px-6 py-3.5 rounded-xl border border-slate-900 tracking-widest text-cyan-glow">
-                    {getRemainingTimeText(team.eventId.contestStart)}
-                  </div>
-                </div>
-              ) : round?.startTime && new Date(round.startTime) > currentTime ? (
+              {round?.startTime && new Date(round.startTime) > currentTime ? (
                 <div className="flex flex-col items-center justify-center py-6 space-y-4">
                   <div className="space-y-1.5 text-center">
                     <p className="text-xs text-amber-500 font-sans font-semibold uppercase tracking-wider">

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Award, Trophy, Users } from "lucide-react";
+import { Award, Trophy, Users, ArrowRight } from "lucide-react";
 
 interface TeamHistory {
   _id: string;
@@ -224,7 +224,13 @@ export default function MyAchievements() {
                                     </>
                                   )}
 
-
+                                  <button
+                                    onClick={() => navigate(`/leaderboard?eventId=${t.event?._id}&roundId=${ach.roundId?._id}`)}
+                                    className="p-1.5 bg-slate-900/60 hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-400 border border-slate-800 rounded-lg transition-colors cursor-pointer"
+                                    title="Xem toàn bộ bảng xếp hạng vòng này"
+                                  >
+                                    <ArrowRight size={12} />
+                                  </button>
                                 </div>
                               </div>
                             </div>

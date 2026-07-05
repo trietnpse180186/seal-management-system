@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const { readOnly } = useOutletContext<{ readOnly?: boolean }>();
+  const { readOnly, roles } = useOutletContext<{ readOnly?: boolean; roles?: any[] }>();
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [logs, setLogs] = useState<any[]>([]);
@@ -67,7 +67,18 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       const res = await axios.get("http://localhost:5000/api/events");
-      setEvents(res.data);
+      let eventData = res.data;
+
+      // If the user is an admin_view user, filter to only show events where they are assigned as admin_view
+      if (readOnly && roles) {
+        const assignedEventIds = roles
+          .filter((r: any) => r.role === 'admin_view')
+          .map((r: any) => String(r.eventId?._id || r.eventId));
+
+        eventData = eventData.filter((e: any) => assignedEventIds.includes(String(e._id)));
+      }
+
+      setEvents(eventData);
     } catch (err) {
       console.error("Lỗi lấy danh sách sự kiện:", err);
       toast.error("Lỗi khi tải danh sách cuộc thi.");

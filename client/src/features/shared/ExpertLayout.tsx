@@ -3,25 +3,22 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
   LayoutDashboard,
-  Settings2,
-  Award,
-  Trophy,
-  Users,
+  BookOpen,
   LogOut,
   Bell,
-  Tv,
+  Home,
+  Users
 } from 'lucide-react';
 
-interface AdminLayoutProps {
+interface ExpertLayoutProps {
   user: any;
   roles: any[];
   onLogout: () => void;
 }
 
-export default function AdminLayout({ user, roles, onLogout }: AdminLayoutProps) {
+export default function ExpertLayout({ user, roles = [], onLogout }: ExpertLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const isAdminView = !user?.isSystemAdmin && roles?.some(r => r.role === 'admin_view');
 
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -87,44 +84,39 @@ export default function AdminLayout({ user, roles, onLogout }: AdminLayoutProps)
   };
 
   const isActive = (path: string) => {
-    if (path === '/admin') {
-      return location.pathname === '/admin';
+    if (path === '/expert/dashboard') {
+      return location.pathname === '/expert/dashboard' || location.pathname === '/expert';
     }
     return location.pathname.startsWith(path);
   };
 
+  const isSystemAdmin = user?.isSystemAdmin;
+  const isJudge = roles?.some((r: any) => r.role === 'judge') || isSystemAdmin;
+  const isMentor = roles?.some((r: any) => r.role === 'mentor') || isSystemAdmin;
+
   const navItems = [
     {
-      path: '/admin',
-      label: 'Quản lý sự kiện',
+      path: '/expert/dashboard',
+      label: 'Bảng điều khiển',
       icon: LayoutDashboard
-    },
-    {
-      path: '/admin/events',
-      label: 'Thiết lập sự kiện',
-      icon: Settings2
-    },
-    {
-      path: '/admin/users',
-      label: 'Quản lý tài khoản',
-      icon: Users
-    },
-    {
-      path: '/admin/grades',
-      label: 'Xem chi tiết điểm',
-      icon: Award
-    },
-    {
-      path: '/admin/live',
-      label: 'Live Control Center',
-      icon: Tv
-    },
-    {
-      path: '/admin/leaderboard',
-      label: 'Bảng xếp hạng',
-      icon: Trophy
     }
   ];
+
+  if (isJudge) {
+    navItems.push({
+      path: '/expert/projects',
+      label: 'Dự án cần chấm',
+      icon: BookOpen
+    });
+  }
+
+  if (isMentor) {
+    navItems.push({
+      path: '/expert/mentored-teams',
+      label: 'Đội hướng dẫn',
+      icon: Users
+    });
+  }
 
   const handleLogoutClick = () => {
     onLogout();
@@ -135,47 +127,53 @@ export default function AdminLayout({ user, roles, onLogout }: AdminLayoutProps)
     <div className="min-h-screen bg-[#070d1f] text-slate-300 flex font-sans selection:bg-cyan-500/30">
       {/* SideNavBar */}
       <aside className="fixed left-0 top-0 h-full w-[280px] bg-slate-900/40 backdrop-blur-2xl border-r border-white/5 flex flex-col z-20 shadow-2xl">
-
         {/* User Quick Info */}
         <div className="px-6 py-3 border-b border-white/5 flex items-center gap-3 bg-slate-900/20">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-teal-600 text-white flex items-center justify-center font-bold text-sm shadow-[0_0_10px_rgba(6,182,212,0.4)]">
-            {user?.fullName?.charAt(0) || 'A'}
+            {user?.fullName?.charAt(0) || 'E'}
           </div>
           <div className="overflow-hidden">
-            <h4 className="text-xs font-bold text-white truncate">{user?.fullName || 'Admin Name'}</h4>
+            <h4 className="text-xs font-bold text-white truncate">{user?.fullName || 'Expert Name'}</h4>
             <p className="text-[9px] text-cyan-400 font-mono uppercase tracking-wider">
-              {isAdminView ? 'Người xem' : 'Admin'}
+              {isJudge && isMentor ? 'Giám khảo & Mentor' : isJudge ? 'Giám khảo' : 'Mentor'}
             </p>
           </div>
         </div>
 
         {/* Navigation Links */}
         <nav className="flex-1 py-6 space-y-2 overflow-y-auto px-3">
-          {navItems
-            .map((item) => {
-              const Icon = item.icon;
-              const active = isActive(item.path);
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 relative overflow-hidden ${active
-                    ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 shadow-[inset_0_0_20px_rgba(6,182,212,0.1)]'
-                    : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/30 border border-transparent hover:border-white/5'
-                    }`}
-                >
-                  {active && (
-                    <div className="absolute left-0 top-0 h-full w-[3px] bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)]"></div>
-                  )}
-                  <Icon size={16} className={active ? 'text-cyan-400' : 'text-slate-500'} />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.path);
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 relative overflow-hidden ${active
+                  ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 shadow-[inset_0_0_20px_rgba(6,182,212,0.1)]'
+                  : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/30 border border-transparent hover:border-white/5'
+                  }`}
+              >
+                {active && (
+                  <div className="absolute left-0 top-0 h-full w-[3px] bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)]"></div>
+                )}
+                <Icon size={16} className={active ? 'text-cyan-400' : 'text-slate-500'} />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-white/5 bg-slate-900/10">
+        <div className="p-4 border-t border-white/5 bg-slate-900/10 space-y-2">
+          <Link
+            to="/guest-portal"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-850 hover:bg-slate-800 border border-slate-700/50 rounded-lg text-slate-300 text-xs font-bold uppercase tracking-wider transition-all"
+          >
+            <Home size={14} />
+            <span>Về trang chủ</span>
+          </Link>
+          
           <button
             onClick={handleLogoutClick}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-lg text-rose-400 hover:text-rose-300 text-xs font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(244,63,94,0.1)] hover:shadow-[0_0_15px_rgba(244,63,94,0.2)]"
@@ -194,7 +192,7 @@ export default function AdminLayout({ user, roles, onLogout }: AdminLayoutProps)
         {/* TopAppBar */}
         <header className="h-16 w-full px-8 bg-slate-950/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center z-10 sticky top-0 shadow-lg">
           <div className="flex items-center gap-3">
-            <span className="font-extrabold text-cyan-300 text-sm tracking-widest uppercase drop-shadow-[0_0_8px_rgba(6,182,212,0.5)] font-mono">
+            <span className="font-extrabold text-cyan-300 text-sm tracking-widest uppercase drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]">
               Hệ thống SEAL Hackathon
             </span>
           </div>
@@ -218,13 +216,13 @@ export default function AdminLayout({ user, roles, onLogout }: AdminLayoutProps)
               {showNotifications && (
                 <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-slate-900 border border-slate-700 rounded-xl shadow-[0_0_20px_rgba(0,0,0,0.5)] z-50">
                   <div className="flex justify-between items-center p-3 border-b border-slate-800 sticky top-0 bg-slate-900/95 backdrop-blur z-10">
-                    <h4 className="text-sm font-semibold text-white font-mono">
+                    <h4 className="text-sm font-semibold text-white">
                       Thông báo
                     </h4>
                     {unreadCount > 0 && (
                       <button
                         onClick={markAllAsRead}
-                        className="text-xs text-cyan-400 hover:text-cyan-300 font-mono"
+                        className="text-xs text-cyan-400 hover:text-cyan-300"
                       >
                         Đánh dấu đã đọc
                       </button>
@@ -232,7 +230,7 @@ export default function AdminLayout({ user, roles, onLogout }: AdminLayoutProps)
                   </div>
                   <div className="flex flex-col">
                     {notifications.length === 0 ? (
-                      <div className="p-4 text-center text-xs text-slate-500 font-mono">
+                      <div className="p-4 text-center text-xs text-slate-500">
                         Chưa có thông báo nào.
                       </div>
                     ) : (
@@ -268,7 +266,7 @@ export default function AdminLayout({ user, roles, onLogout }: AdminLayoutProps)
 
         {/* Dynamic Route Content */}
         <main className="flex-1 p-8 relative z-0">
-          <Outlet context={{ readOnly: isAdminView, roles }} />
+          <Outlet />
         </main>
       </div>
     </div>

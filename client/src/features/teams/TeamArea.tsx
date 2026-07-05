@@ -429,7 +429,7 @@ export default function TeamArea() {
       </div>
 
       {/* Seminar Widget */}
-      {team?.eventId?.seminar?.scheduledAt && (
+      {team?.eventId?.seminar?.scheduledAt && !isExamVisible && (
         <SeminarWidget seminar={team.eventId.seminar} />
       )}
 

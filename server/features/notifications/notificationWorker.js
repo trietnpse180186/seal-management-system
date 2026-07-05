@@ -1,21 +1,31 @@
 const { Worker } = require('bullmq');
 const mongoose = require('mongoose');
+const IORedis = require('ioredis');
 const emailService = require('./emailService');
-const { getConnection } = require('./notificationQueue');
 
 let worker = null;
+let workerConnection = null;
 
 /**
  * Starts the BullMQ Worker that processes notification jobs.
  * Should be called after MongoDB is connected.
  */
 function startNotificationWorker() {
-  const connection = getConnection();
-
-  if (!connection) {
-    console.warn('[WORKER] Redis connection not available. Notification worker NOT started.');
+  const REDIS_URL = process.env.REDIS_URL;
+  if (!REDIS_URL) {
+    console.warn('[WORKER] REDIS_URL not set. Notification worker NOT started.');
     return;
   }
+
+  workerConnection = new IORedis(REDIS_URL, {
+    maxRetriesPerRequest: null, // Required by BullMQ
+    enableReadyCheck: false,
+    tls: REDIS_URL.startsWith('rediss://') ? {} : undefined,
+  });
+
+  workerConnection.on('error', (err) => {
+    console.error('[WORKER] Redis connection error:', err.message);
+  });
 
   worker = new Worker(
     'notifications',
@@ -31,7 +41,7 @@ function startNotificationWorker() {
       }
     },
     {
-      connection,
+      connection: workerConnection,
       concurrency: 5, // Process up to 5 jobs in parallel
     }
   );
@@ -44,8 +54,19 @@ function startNotificationWorker() {
     console.error(`[WORKER] Job #${job?.id} (${job?.name}) failed after ${job?.attemptsMade} attempt(s): ${err.message}`);
   });
 
+  let isLimitPaused = false;
   worker.on('error', (err) => {
     console.error('[WORKER] Worker error:', err.message);
+    if (err.message.includes('max requests limit exceeded') && !isLimitPaused) {
+      isLimitPaused = true;
+      console.warn('[WORKER] Upstash Redis request limit reached. Pausing worker for 2 minutes to prevent log spam...');
+      worker.pause().catch(e => console.error('[WORKER] Failed to pause:', e.message));
+      setTimeout(() => {
+        isLimitPaused = false;
+        console.log('[WORKER] Resuming worker...');
+        worker.resume().catch(e => console.error('[WORKER] Failed to resume:', e.message));
+      }, 120000);
+    }
   });
 
   console.log('[WORKER] Notification worker started and listening for jobs...');
@@ -126,6 +147,10 @@ async function stopNotificationWorker() {
   if (worker) {
     await worker.close();
     console.log('[WORKER] Notification worker stopped.');
+  }
+  if (workerConnection) {
+    await workerConnection.quit();
+    console.log('[WORKER] Redis connection for notification worker closed.');
   }
 }
 

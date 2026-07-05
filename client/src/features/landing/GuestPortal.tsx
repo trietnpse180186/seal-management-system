@@ -326,8 +326,8 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                 let statusColor: string;
                 switch (e.status) {
                   case "registration":
-                    statusLabel = "[MỞ ĐĂNG KÝ]";
-                    statusColor = "text-cyan-400";
+                    statusLabel = teamCountVal >= maxTeamsVal ? "[ĐĂNG KÝ ĐÃ ĐẦY]" : "[MỞ ĐĂNG KÝ]";
+                    statusColor = teamCountVal >= maxTeamsVal ? "text-rose-500 font-extrabold" : "text-cyan-400";
                     break;
                   case "prepare":
                     statusLabel = "[ĐANG CHUẨN BỊ]";
@@ -396,18 +396,24 @@ export default function GuestPortal({ user }: GuestPortalProps) {
 
                       <div className="pt-2">
                         {e.status === "registration" && (
-                          <button
-                            onClick={() => {
-                              if (hasTeam) {
-                                navigate("/team-area");
-                              } else {
-                                navigate(`/team-area?eventId=${e._id}`);
-                              }
-                            }}
-                            className="w-full py-3 border border-cyan-500/30 rounded-xl bg-cyan-500/10 text-cyan-400 text-sm font-bold hover:bg-cyan-500/20 transition-all uppercase tracking-wider text-center cursor-pointer font-mono"
-                          >
-                            {hasTeam ? "Vào khu vực đội" : "Đăng ký tham gia"}
-                          </button>
+                          teamCountVal >= maxTeamsVal && !hasTeam ? (
+                            <div className="w-full py-3 border border-rose-500/20 rounded-xl bg-rose-500/5 text-rose-400 text-sm font-bold text-center uppercase tracking-wider font-mono">
+                              Đăng ký đã đầy (Đủ số đội)
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                if (hasTeam) {
+                                  navigate("/team-area");
+                                } else {
+                                  navigate(`/team-area?eventId=${e._id}`);
+                                }
+                              }}
+                              className="w-full py-3 border border-cyan-500/30 rounded-xl bg-cyan-500/10 text-cyan-400 text-sm font-bold hover:bg-cyan-500/20 transition-all uppercase tracking-wider text-center cursor-pointer font-mono"
+                            >
+                              {hasTeam ? "Vào khu vực đội" : "Đăng ký tham gia"}
+                            </button>
+                          )
                         )}
 
                         {e.status === "prepare" && (
@@ -456,8 +462,8 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                 let statusColor: string;
                 switch (e.status) {
                   case "registration":
-                    statusLabel = "[MỞ ĐĂNG KÝ]";
-                    statusColor = "text-cyan-400";
+                    statusLabel = teamCountVal >= maxTeamsVal ? "[ĐĂNG KÝ ĐÃ ĐẦY]" : "[MỞ ĐĂNG KÝ]";
+                    statusColor = teamCountVal >= maxTeamsVal ? "text-rose-500 font-extrabold" : "text-cyan-400";
                     break;
                   case "prepare":
                     statusLabel = "[ĐANG CHUẨN BỊ]";
@@ -522,18 +528,24 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                       </div>
 
                       {e.status === "registration" && (
-                        <button
-                          onClick={() => {
-                            if (hasTeam) {
-                              navigate("/team-area");
-                            } else {
-                              navigate(`/team-area?eventId=${e._id}`);
-                            }
-                          }}
-                          className="w-full mt-2 py-2 border border-cyan-500/30 rounded-xl bg-cyan-500/10 text-cyan-400 text-xs font-bold hover:bg-cyan-500/20 transition-all uppercase tracking-wider text-center cursor-pointer font-mono"
-                        >
-                          {hasTeam ? "Vào khu vực đội" : "Đăng ký tham gia"}
-                        </button>
+                        teamCountVal >= maxTeamsVal && !hasTeam ? (
+                          <div className="w-full mt-2 py-2 border border-rose-500/20 rounded-xl bg-rose-500/5 text-rose-400 text-xs font-bold text-center uppercase tracking-wider font-mono">
+                            Đăng ký đã đầy
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              if (hasTeam) {
+                                navigate("/team-area");
+                              } else {
+                                navigate(`/team-area?eventId=${e._id}`);
+                              }
+                            }}
+                            className="w-full mt-2 py-2 border border-cyan-500/30 rounded-xl bg-cyan-500/10 text-cyan-400 text-xs font-bold hover:bg-cyan-500/20 transition-all uppercase tracking-wider text-center cursor-pointer font-mono"
+                          >
+                            {hasTeam ? "Vào khu vực đội" : "Đăng ký tham gia"}
+                          </button>
+                        )
                       )}
 
                       {e.status === "prepare" && (

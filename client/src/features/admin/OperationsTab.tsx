@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { 
-  Play, 
-  Lock, 
-  Unlock, 
-  RefreshCw, 
-  ArrowRight, 
-  AlertTriangle, 
-  Settings, 
+import {
+  Play,
+  Lock,
+  Unlock,
+  RefreshCw,
+  ArrowRight,
+  AlertTriangle,
   ShieldAlert,
   HelpCircle
 } from "lucide-react";
@@ -59,11 +58,10 @@ export default function OperationsTab({
   // Helper to update event status
   const updateEventStatus = async (newStatus: string) => {
     if (!selectedEvent) return;
-    const confirmMsg = `Bạn có chắc chắn muốn chuyển trạng thái cuộc thi sang "${
-      newStatus === "registration" ? "Mở Đăng Ký" :
-      newStatus === "ongoing" ? "Đang Diễn Ra" :
-      newStatus === "completed" ? "Đã Hoàn Thành" : newStatus
-    }"?`;
+    const confirmMsg = `Bạn có chắc chắn muốn chuyển trạng thái cuộc thi sang "${newStatus === "registration" ? "Mở Đăng Ký" :
+        newStatus === "ongoing" ? "Đang Diễn Ra" :
+          newStatus === "completed" ? "Đã Hoàn Thành" : newStatus
+      }"?`;
 
     const isConfirmed = await confirm({
       title: "Chuyển trạng thái cuộc thi",
@@ -102,52 +100,17 @@ export default function OperationsTab({
     }
   };
 
-  // Start Round (activate status)
-  const handleStartRound = async (round: any) => {
-    if (!round) return;
-    const isConfirmed = await confirm({
-      title: `Bắt đầu Vòng thi: ${round.name}`,
-      message: `Bạn có chắc chắn muốn kích hoạt vòng thi này? Trạng thái vòng thi sẽ được chuyển sang "active" và thí sinh có thể bắt đầu nộp bài.`,
-    });
-    if (!isConfirmed) return;
 
-    setUpdatingRoundMap(prev => ({ ...prev, [round._id]: true }));
-    try {
-      await handleUpdateRound(round._id, { status: "active" });
-      toast.success(`Đã kích hoạt Vòng thi "${round.name}" thành công!`);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setUpdatingRoundMap(prev => ({ ...prev, [round._id]: false }));
-    }
-  };
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
-      {/* HUD Header */}
-      <div className="glass p-6 rounded-2xl border border-slate-800 flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-bold text-white flex items-center gap-2 font-mono uppercase tracking-wider">
-            <Settings size={20} className="text-cyan-400" />
-            <span>[BẢNG_ĐIỀU_HÀNH_CUỘC_THI]</span>
-          </h2>
-          <p className="text-xs text-slate-400 mt-1 font-sans">
-            Trung tâm kiểm soát vòng đời sự kiện, quản lý đề thi và các tiến trình đồng bộ tự động/thủ công.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-[10px] font-bold font-mono uppercase px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-slate-400">
-            Sự kiện: {selectedEvent?.status}
-          </span>
-        </div>
-      </div>
 
       {/* Grid Steps */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-        
+
         {/* Left Side (Steps 1 & 2 & 4) */}
         <div className="md:col-span-5 space-y-8">
-          
+
           {/* STEP 1: Registration Control */}
           <div className="glass p-5 rounded-2xl border border-slate-800 space-y-4 relative overflow-hidden">
             <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
@@ -156,12 +119,12 @@ export default function OperationsTab({
               </div>
               <h3 className="text-sm font-bold text-white font-mono uppercase">Điều Phối Đăng Ký</h3>
             </div>
-            
+
             <div className="space-y-3 font-sans text-xs">
               <p className="text-slate-400 leading-relaxed">
                 Mở hoặc đóng cổng đăng ký để cho phép thí sinh tạo tài khoản, thành lập đội và đăng ký các bảng đấu phù hợp.
               </p>
-              
+
               <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-900 space-y-2">
                 <div className="flex justify-between text-[11px]">
                   <span className="text-slate-400">Cổng đăng ký:</span>
@@ -217,7 +180,7 @@ export default function OperationsTab({
               </div>
               <h3 className="text-sm font-bold text-white font-mono uppercase">Cấp Phát Codebase</h3>
             </div>
-            
+
             <div className="space-y-3 font-sans text-xs">
               <p className="text-slate-400 leading-relaxed">
                 Tự động tạo GitHub Repository và cấp quyền cộng tác cho tất cả thành viên trong đội thi đã xác nhận đầy đủ.
@@ -255,7 +218,7 @@ export default function OperationsTab({
                 </div>
                 <h3 className="text-sm font-bold text-rose-400 font-mono uppercase">Kết Thúc Cuộc Thi</h3>
               </div>
-              
+
               <div className="space-y-3 font-sans text-xs">
                 <p className="text-slate-400 leading-relaxed">
                   Kết thúc cuộc thi hackathon. Tất cả các vòng thi sẽ dừng lại, dừng crawl commit, và khóa bảng điểm xếp hạng.
@@ -277,7 +240,7 @@ export default function OperationsTab({
 
         {/* Right Side (STEP 3: Round Operations) */}
         <div className="md:col-span-7 space-y-8">
-          
+
           {/* STEP 3: Round Management */}
           <div className="glass p-6 rounded-2xl border border-slate-800 space-y-6 relative overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3 flex-wrap gap-4">
@@ -287,7 +250,7 @@ export default function OperationsTab({
                 </div>
                 <h3 className="text-sm font-bold text-white font-mono uppercase">Vận Hành Vòng Thi &amp; Mở Đề</h3>
               </div>
-              
+
               {/* Round Selector */}
               {rounds && rounds.length > 0 && (
                 <select
@@ -306,23 +269,22 @@ export default function OperationsTab({
 
             {selectedRound ? (
               <div className="space-y-6 font-sans">
-                
+
                 {/* Selected Round Info Details */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-900 space-y-1.5">
                     <span className="text-[9px] text-slate-550 font-bold block uppercase tracking-wider">Trạng thái Vòng:</span>
-                    <span className={`text-xs font-mono font-bold uppercase ${
-                      selectedRound.status === "active" ? "text-emerald-400 animate-pulse" :
-                      selectedRound.status === "scoring" ? "text-amber-400" :
-                      selectedRound.status === "completed" ? "text-slate-450" : "text-slate-400"
-                    }`}>
+                    <span className={`text-xs font-mono font-bold uppercase ${selectedRound.status === "active" ? "text-emerald-400 animate-pulse" :
+                        selectedRound.status === "scoring" ? "text-amber-400" :
+                          selectedRound.status === "completed" ? "text-slate-450" : "text-slate-400"
+                      }`}>
                       {selectedRound.status === "pending" && "Chưa bắt đầu"}
                       {selectedRound.status === "active" && "Đang diễn ra (Active)"}
                       {selectedRound.status === "scoring" && "Đang chấm điểm (Scoring)"}
                       {selectedRound.status === "completed" && "Đã kết thúc"}
                     </span>
                   </div>
-                  
+
                   <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-900 space-y-1.5">
                     <span className="text-[9px] text-slate-550 font-bold block uppercase tracking-wider">Mở Đề Bài Thủ Công:</span>
                     {selectedRound.isExamManualOpen ? (
@@ -361,109 +323,81 @@ export default function OperationsTab({
                   </span>
 
                   {!readOnly ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                      
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+
                       {/* Button: Manual Exam Toggle */}
                       <button
                         onClick={() => handleToggleManualExam(selectedRound)}
                         disabled={updatingRoundMap[selectedRound._id]}
-                        className={`py-3 px-4 rounded-xl font-mono text-xs font-bold border transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                          selectedRound.isExamManualOpen
-                            ? "bg-slate-900 border-slate-850 text-amber-505 hover:text-amber-400 hover:border-amber-500/20"
+                        className={`py-3 px-1.5 text-[10px] lg:text-xs font-mono font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${selectedRound.isExamManualOpen
+                            ? "bg-slate-900 border-slate-850 text-amber-500 hover:text-amber-450 hover:border-amber-500/20"
                             : "bg-emerald-950/20 border-emerald-900/40 text-emerald-400 hover:text-emerald-350 hover:bg-emerald-900/10 hover:border-emerald-500/30"
-                        }`}
+                          }`}
                       >
                         {selectedRound.isExamManualOpen ? (
                           <>
-                            <Lock size={14} />
-                            ĐÓNG ĐỀ BÀI (HỦY MỞ THỦ CÔNG)
+                            <Lock size={12} />
+                            ĐÓNG ĐỀ BÀI
                           </>
                         ) : (
                           <>
-                            <Unlock size={14} />
-                            MỞ ĐỀ BÀI NGAY LẬP TỨC
+                            <Unlock size={12} />
+                            MỞ ĐỀ THỦ CÔNG
                           </>
                         )}
                       </button>
 
-                      {/* Button: Activate / Start Round */}
-                      {selectedRound.status === "pending" && (
-                        <button
-                          onClick={() => handleStartRound(selectedRound)}
-                          disabled={updatingRoundMap[selectedRound._id]}
-                          className="py-3 px-4 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white border border-cyan-500/20 hover:border-cyan-500/40 transition-all flex items-center justify-center gap-2 cursor-pointer font-mono text-xs font-bold"
-                        >
-                          <Play size={14} />
-                          KÍCH HOẠT VÒNG THI (START)
-                        </button>
-                      )}
-
-                      {/* Button: Sync commits / Evaluate */}
-                      {selectedRound.status === "active" && (
-                        <button
-                          onClick={handleSyncAllRepos}
-                          className="py-3 px-4 rounded-xl bg-slate-900 border border-slate-850 hover:border-cyan-500/20 hover:text-cyan-400 transition-all flex items-center justify-center gap-2 cursor-pointer font-mono text-xs font-bold text-slate-300"
-                        >
-                          <RefreshCw size={14} />
-                          ĐỒNG BỘ NỘP BÀI &amp; CHẤM AI
-                        </button>
-                      )}
-
                       {/* Button: Lock Round */}
-                      {selectedRound.status === "active" && (
-                        <button
-                          onClick={async () => {
-                            const isConfirmed = await confirm({
-                              title: `Khóa nộp bài Vòng thi: ${selectedRound.name}`,
-                              message: `Bạn có chắc chắn muốn khóa nộp bài? Trạng thái vòng thi sẽ được chuyển sang "scoring" và học sinh không thể nộp thêm commit mới.`,
-                            });
-                            if (isConfirmed) {
-                              setUpdatingRoundMap(prev => ({ ...prev, [selectedRound._id]: true }));
-                              try {
-                                await handleLockRound(selectedRound._id);
-                                toast.success(`Đã khóa nộp bài Vòng thi "${selectedRound.name}"!`);
-                              } catch (err) {
-                                console.error(err);
-                              } finally {
-                                setUpdatingRoundMap(prev => ({ ...prev, [selectedRound._id]: false }));
-                              }
+                      <button
+                        onClick={async () => {
+                          const isConfirmed = await confirm({
+                            title: `Khóa và kết thúc Vòng thi: ${selectedRound.name}`,
+                            message: `Bạn có chắc chắn muốn khóa và kết thúc vòng thi này? Trạng thái vòng thi sẽ được chuyển sang "completed", tính toán kết quả xếp hạng và học sinh sẽ không thể sửa điểm hay nộp thêm bài mới.`,
+                          });
+                          if (isConfirmed) {
+                            setUpdatingRoundMap(prev => ({ ...prev, [selectedRound._id]: true }));
+                            try {
+                              await handleLockRound(selectedRound._id);
+                              toast.success(`Đã khóa và kết thúc Vòng thi "${selectedRound.name}" thành công!`);
+                            } catch (err) {
+                              console.error(err);
+                            } finally {
+                              setUpdatingRoundMap(prev => ({ ...prev, [selectedRound._id]: false }));
                             }
-                          }}
-                          disabled={updatingRoundMap[selectedRound._id]}
-                          className="py-3 px-4 rounded-xl bg-amber-950/20 border border-amber-900/40 text-amber-400 hover:bg-amber-900/10 hover:border-amber-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer font-mono text-xs font-bold"
-                        >
-                          <Lock size={14} />
-                          KẾT THÚC &amp; KHÓA VÒNG
-                        </button>
-                      )}
+                          }
+                        }}
+                        disabled={updatingRoundMap[selectedRound._id]}
+                        className="py-3 px-1.5 text-[10px] lg:text-xs font-mono font-bold bg-amber-950/20 border border-amber-900/40 text-amber-400 hover:bg-amber-900/10 hover:border-amber-500/30 transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
+                      >
+                        <Lock size={12} />
+                        KHÓA VÒNG THI
+                      </button>
 
                       {/* Button: Advance teams */}
-                      {selectedRound.status === "scoring" && (
-                        <button
-                          onClick={async () => {
-                            const isConfirmed = await confirm({
-                              title: `Tiến cử đội đi tiếp: ${selectedRound.name}`,
-                              message: `Bạn có chắc chắn muốn tiến cử Top ${selectedRound.advanceTopN || 3} đội sang vòng tiếp theo? Hệ thống sẽ tự động cập nhật bảng xếp hạng và chuyển trạng thái vòng sang "completed".`,
-                            });
-                            if (isConfirmed) {
-                              setUpdatingRoundMap(prev => ({ ...prev, [selectedRound._id]: true }));
-                              try {
-                                await handleAdvanceRound(selectedRound._id);
-                                toast.success(`Đã tiến cử các đội đi tiếp từ Vòng "${selectedRound.name}" thành công!`);
-                              } catch (err) {
-                                console.error(err);
-                              } finally {
-                                setUpdatingRoundMap(prev => ({ ...prev, [selectedRound._id]: false }));
-                              }
+                      <button
+                        onClick={async () => {
+                          const isConfirmed = await confirm({
+                            title: `Tiến cử đội đi tiếp từ Vòng thi: ${selectedRound.name}`,
+                            message: `Bạn có chắc chắn muốn tiến cử Top ${selectedRound.advanceTopN || 3} đội xuất sắc nhất sang vòng tiếp theo? Hệ thống sẽ tự động chuyển các đội thăng hạng vào bảng đấu của vòng thi kế tiếp.`,
+                          });
+                          if (isConfirmed) {
+                            setUpdatingRoundMap(prev => ({ ...prev, [selectedRound._id]: true }));
+                            try {
+                              await handleAdvanceRound(selectedRound._id);
+                              toast.success(`Đã tiến cử các đội đi tiếp từ Vòng "${selectedRound.name}" thành công!`);
+                            } catch (err) {
+                              console.error(err);
+                            } finally {
+                              setUpdatingRoundMap(prev => ({ ...prev, [selectedRound._id]: false }));
                             }
-                          }}
-                          disabled={updatingRoundMap[selectedRound._id]}
-                          className="py-3 px-4 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white border border-cyan-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer font-mono text-xs font-bold shadow-lg shadow-cyan-600/15"
-                        >
-                          <ArrowRight size={14} />
-                          TIẾN CỬ ĐỘI ĐI TIẾP
-                        </button>
-                      )}
+                          }
+                        }}
+                        disabled={updatingRoundMap[selectedRound._id]}
+                        className="py-3 px-1.5 text-[10px] lg:text-xs font-mono font-bold bg-cyan-600 hover:bg-cyan-500 text-white border border-cyan-500/25 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-cyan-600/15 whitespace-nowrap"
+                      >
+                        <ArrowRight size={12} />
+                        TIẾN CỬ ĐỘI ĐI TIẾP
+                      </button>
 
                     </div>
                   ) : (

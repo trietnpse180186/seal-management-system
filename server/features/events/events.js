@@ -25,6 +25,33 @@ const { authenticateToken, requireSystemAdmin, requireEventRole } = require('../
 const { addEmailJob, isQueueAvailable } = require('../notifications/notificationQueue');
 
 /**
+ * Downgrades all active judge/mentor roles of an event to participant when the event completes.
+ */
+async function downgradeEventRolesToParticipant(eventId) {
+  const targetRoles = await EventRole.find({
+    eventId,
+    role: { $in: ['judge', 'mentor'] },
+    status: 'active'
+  });
+
+  for (const roleRecord of targetRoles) {
+    const participantExists = await EventRole.findOne({
+      userId: roleRecord.userId,
+      eventId: roleRecord.eventId,
+      role: 'participant',
+      status: 'active'
+    });
+
+    if (participantExists) {
+      await EventRole.deleteOne({ _id: roleRecord._id });
+    } else {
+      roleRecord.role = 'participant';
+      await roleRecord.save();
+    }
+  }
+}
+
+/**
  * @route   GET /api/events
  * @desc    Get all events (filtered by semester/year/status)
  * @access  Public
@@ -1407,6 +1434,13 @@ router.put('/:id', authenticateToken, async (req, res) => {
       } else if (status === 'completed') {
         action = 'event_completed';
         details = `Sự kiện "${event.name}" đã hoàn thành (completed)`;
+        
+        try {
+          await downgradeEventRolesToParticipant(event._id);
+          console.log(`[EVENT] Downgraded roles for completed event: ${event.name}`);
+        } catch (err) {
+          console.error(`[EVENT ERROR] Failed to downgrade roles for event ${event._id}:`, err.message);
+        }
       } else {
         details = `Thay đổi trạng thái sự kiện "${event.name}" từ ${oldStatus} sang ${status}`;
       }

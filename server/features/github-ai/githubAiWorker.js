@@ -1,7 +1,8 @@
 const { Worker } = require('bullmq');
-const { getConnection } = require('./githubAiQueue');
+const IORedis = require('ioredis');
 
 let worker = null;
+let workerConnection = null;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -10,12 +11,21 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * Should be called after MongoDB is connected.
  */
 function startWorker() {
-  const connection = getConnection();
-
-  if (!connection) {
-    console.warn('[GITHUB AI WORKER] Redis connection not available. GitHub AI worker NOT started.');
+  const REDIS_URL = process.env.REDIS_URL;
+  if (!REDIS_URL) {
+    console.warn('[GITHUB AI WORKER] REDIS_URL not set. GitHub AI worker NOT started.');
     return;
   }
+
+  workerConnection = new IORedis(REDIS_URL, {
+    maxRetriesPerRequest: null, // Required by BullMQ
+    enableReadyCheck: false,
+    tls: REDIS_URL.startsWith('rediss://') ? {} : undefined,
+  });
+
+  workerConnection.on('error', (err) => {
+    console.error('[GITHUB AI WORKER] Redis connection error:', err.message);
+  });
 
   // Require cronService dynamically to avoid circular dependencies and ensure models are loaded first
   const cronService = require('../events/cronService');
@@ -43,7 +53,7 @@ function startWorker() {
       }
     },
     {
-      connection,
+      connection: workerConnection,
       concurrency: 1, // Process 1 repo at a time to stay under Gemini rate limits
     }
   );
@@ -56,8 +66,19 @@ function startWorker() {
     console.error(`[GITHUB AI WORKER] Job #${job?.id} failed after ${job?.attemptsMade} attempt(s): ${err.message}`);
   });
 
+  let isLimitPaused = false;
   worker.on('error', (err) => {
     console.error('[GITHUB AI WORKER] Worker error:', err.message);
+    if (err.message.includes('max requests limit exceeded') && !isLimitPaused) {
+      isLimitPaused = true;
+      console.warn('[GITHUB AI WORKER] Upstash Redis request limit reached. Pausing worker for 2 minutes to prevent log spam...');
+      worker.pause().catch(e => console.error('[GITHUB AI WORKER] Failed to pause:', e.message));
+      setTimeout(() => {
+        isLimitPaused = false;
+        console.log('[GITHUB AI WORKER] Resuming worker...');
+        worker.resume().catch(e => console.error('[GITHUB AI WORKER] Failed to resume:', e.message));
+      }, 120000);
+    }
   });
 
   console.log('[GITHUB AI WORKER] GitHub AI worker started and listening for jobs...');
@@ -70,6 +91,10 @@ async function stopWorker() {
   if (worker) {
     await worker.close();
     console.log('[GITHUB AI WORKER] GitHub AI worker stopped.');
+  }
+  if (workerConnection) {
+    await workerConnection.quit();
+    console.log('[GITHUB AI WORKER] Redis connection for GitHub AI worker closed.');
   }
 }
 

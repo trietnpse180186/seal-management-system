@@ -190,7 +190,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             return;
           }
           onLoginSuccess(token, user, roles || []);
-          if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator'))) {
+          if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view'))) {
             navigate('/admin');
           } else if (roles && roles.some((r: any) => r.role === 'judge')) {
             navigate('/grading');
@@ -237,7 +237,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               return;
             }
             onLoginSuccess(token, user, roles || []);
-            if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator'))) {
+            if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view'))) {
               navigate('/admin');
             } else if (roles && roles.some((r: any) => r.role === 'judge')) {
               navigate('/grading');
@@ -359,7 +359,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             return;
           }
           onLoginSuccess(token, user, roles || []);
-          if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator'))) {
+          if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view'))) {
             navigate('/admin');
           } else {
             navigate('/guest-portal');
@@ -380,7 +380,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         onLoginSuccess(token, user, roles);
 
         // Redirect based on role
-        if (user.isSystemAdmin || roles.some((r: any) => r.role === 'coordinator')) {
+        if (user.isSystemAdmin || roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view')) {
           navigate('/admin');
         } else if (roles.some((r: any) => r.role === 'judge')) {
           navigate('/grading');
@@ -393,6 +393,38 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       fetchCaptcha();
       if (err.response?.status === 403 && err.response?.data?.requiresVerification) {
         setIsVerificationPending(true);
+      } else if (err.response?.status === 409 && err.response?.data?.code === 'ACTIVE_SESSION_EXISTS') {
+        const confirmForce = window.confirm(
+          'Tài khoản của bạn đang được đăng nhập ở một thiết bị hoặc trình duyệt khác. ' +
+          'Bạn có muốn tiếp tục đăng nhập và đóng phiên làm việc cũ không?'
+        );
+        if (confirmForce) {
+          try {
+            setLoading(true);
+            const forceResponse = await axios.post(`${baseUrl}/auth/login`, {
+              email,
+              password,
+              force: true
+            });
+            const { token, user, roles } = forceResponse.data;
+            if (handleMobileRedirect(token, user, roles)) {
+              return;
+            }
+            onLoginSuccess(token, user, roles);
+            if (user.isSystemAdmin || roles.some((r: any) => r.role === 'coordinator')) {
+              navigate('/admin');
+            } else if (roles.some((r: any) => r.role === 'judge')) {
+              navigate('/grading');
+            } else {
+              navigate('/guest-portal');
+            }
+            return;
+          } catch (forceErr: any) {
+            setError(forceErr.response?.data?.message || 'Không thể thực hiện đăng nhập đè.');
+          }
+        } else {
+          setError('Đăng nhập bị hủy do phiên làm việc khác đang hoạt động.');
+        }
       } else {
         setError(err.response?.data?.message || 'Có lỗi xảy ra, vui lòng thử lại.');
       }

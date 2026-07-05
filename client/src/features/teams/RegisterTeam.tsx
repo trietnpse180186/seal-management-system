@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { Users, UserPlus, Trash2, Calendar, FolderGit2, CheckCircle } from 'lucide-react';
 import UniversityCombobox from '../shared/UniversityCombobox';
 import CustomSelect from '../shared/CustomSelect';
+import CaptchaInput from '../shared/CaptchaInput';
 import { Link, useSearchParams } from 'react-router-dom';
 
 interface MemberInput {
@@ -48,6 +49,20 @@ export default function RegisterTeam() {
   const [checkingTeam, setCheckingTeam] = useState(true);
   const [loadingEvents, setLoadingEvents] = useState(true);
 
+  const [captchaId, setCaptchaId] = useState('');
+  const [captchaSvg, setCaptchaSvg] = useState('');
+  const [captchaValue, setCaptchaValue] = useState('');
+
+  const fetchCaptcha = async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/api/auth/captcha');
+      setCaptchaId(res.data.captchaId);
+      setCaptchaSvg(res.data.captchaSvg);
+    } catch (err) {
+      console.error('Error fetching captcha:', err);
+    }
+  };
+
   const setError = (msg: string) => {
     if (msg) toast.error(msg);
   };
@@ -57,6 +72,7 @@ export default function RegisterTeam() {
   };
 
   const token = localStorage.getItem('token');
+  const selectedEvent = events.find(e => e._id === selectedEventId);
 
   useEffect(() => {
     if (!token) {
@@ -106,6 +122,7 @@ export default function RegisterTeam() {
       .finally(() => {
         setLoadingEvents(false);
       });
+    fetchCaptcha();
   }, []);
 
   useEffect(() => {
@@ -252,6 +269,12 @@ export default function RegisterTeam() {
     }
 
     try {
+      if (!captchaValue.trim()) {
+        setError('Vui lòng nhập mã xác thực (CAPTCHA).');
+        setLoading(false);
+        return;
+      }
+
       const response = await axios.post(
         'http://localhost:5000/api/teams/register',
         {
@@ -270,7 +293,9 @@ export default function RegisterTeam() {
             studentId: leaderStudentId.trim(),
             githubUsername: leaderGithubUsername.trim(),
             university: leaderUniversity.trim()
-          }
+          },
+          captchaId,
+          captchaValue
         },
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -288,6 +313,7 @@ export default function RegisterTeam() {
 
     } catch (err: any) {
       console.error(err);
+      fetchCaptcha();
       setError(err.response?.data?.message || 'Có lỗi xảy ra trong quá trình đăng ký.');
     } finally {
       setLoading(false);
@@ -377,8 +403,19 @@ export default function RegisterTeam() {
       ) : (
         <form onSubmit={handleSubmit} className="space-y-8">
 
+          {selectedEvent && selectedEvent.maxTeams && (selectedEvent.teamCount || 0) >= selectedEvent.maxTeams && (
+            <div className="bg-rose-500/10 border border-rose-500/35 p-5 rounded-2xl text-rose-400 text-xs font-mono flex items-center gap-3">
+              <span className="text-xl">⚠️</span>
+              <div>
+                <strong className="text-white block uppercase tracking-wider mb-1">Đăng ký đã đầy!</strong>
+                Cuộc thi "{selectedEvent.name}" đã đạt giới hạn đăng ký tối đa ({selectedEvent.teamCount}/{selectedEvent.maxTeams} đội). 
+                Vui lòng liên hệ Ban tổ chức hoặc chọn một sự kiện khác.
+              </div>
+            </div>
+          )}
+
           {/* Step 1: Event & Team Info */}
-          <div className="glass p-6 rounded-2xl space-y-6 border border-slate-800 hover:border-cyan-500/30 transition-all">
+          <div className="glass p-6 rounded-2xl space-y-6 border border-slate-800 hover:border-cyan-500/30 transition-all relative z-[3]">
             <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2 border-b border-slate-800 pb-3 font-mono-tech">
               <Calendar size={18} className="text-cyan-400" />
               <span className="text-cyan-400">1. THÔNG TIN CHUNG</span>
@@ -451,7 +488,7 @@ export default function RegisterTeam() {
           </div>
 
           {/* Step 2: Leader Profile Capture */}
-          <div className="glass p-6 rounded-2xl space-y-6 border border-slate-800 hover:border-cyan-500/30 transition-all">
+          <div className="glass p-6 rounded-2xl space-y-6 border border-slate-800 hover:border-cyan-500/30 transition-all relative z-[2]">
             <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2 border-b border-slate-800 pb-3 font-mono-tech">
               <Users size={18} className="text-cyan-400" />
               <span className="text-cyan-400">2. THÔNG TIN TRƯỞNG NHÓM</span>
@@ -515,7 +552,7 @@ export default function RegisterTeam() {
           </div>
 
           {/* Step 3: Member invites */}
-          <div className="glass p-6 rounded-2xl space-y-6 border border-slate-800 hover:border-cyan-500/30 transition-all">
+          <div className="glass p-6 rounded-2xl space-y-6 border border-slate-800 hover:border-cyan-500/30 transition-all relative z-[1]">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2 font-mono-tech">
                 <FolderGit2 size={18} className="text-cyan-400" />
@@ -536,8 +573,10 @@ export default function RegisterTeam() {
             </p>
 
             <div className="space-y-4">
-              {members.map((member, index) => (
-                <div key={index} className="glass-light p-4 rounded-xl border border-slate-800/80 relative">
+              {members.map((member, index) => {
+                const cardZIndex = members.length - index;
+                return (
+                  <div key={index} className="glass-light p-4 rounded-xl border border-slate-800/80 relative" style={{ zIndex: cardZIndex }}>
                   <div className="absolute right-4 top-4">
                     {members.length > 0 && (
                       <button
@@ -634,16 +673,30 @@ export default function RegisterTeam() {
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
+
+          {/* CAPTCHA Verification */}
+          {captchaSvg && (
+            <div className="pt-2 max-w-sm ml-auto">
+              <CaptchaInput
+                captchaSvg={captchaSvg}
+                value={captchaValue}
+                onChange={setCaptchaValue}
+                onRefresh={fetchCaptcha}
+                disabled={loading}
+              />
+            </div>
+          )}
 
           {/* Submit button */}
           <div className="flex justify-end">
             <button
               type="submit"
-              disabled={loading}
-              className="btn-primary font-bold text-sm px-12 py-4 uppercase tracking-widest flex items-center gap-2 group"
+              disabled={loading || !!(selectedEvent && selectedEvent.maxTeams && (selectedEvent.teamCount || 0) >= selectedEvent.maxTeams)}
+              className="btn-primary font-bold text-sm px-12 py-4 uppercase tracking-widest flex items-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'ĐANG GỬI THÔNG TIN...' : 'XÁC NHẬN ĐĂNG KÝ'}
             </button>

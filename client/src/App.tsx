@@ -16,8 +16,8 @@ import MyAchievements from './features/teams/MyAchievements';
 import Leaderboard from './features/leaderboard/Leaderboard';
 import ProtectedRoute from './features/auth/ProtectedRoute';
 import GuestPortal from './features/landing/GuestPortal';
-import JudgeLayout from './features/judge/JudgeLayout';
-import JudgeDashboard from './features/judge/JudgeDashboard';
+import ExpertLayout from './features/shared/ExpertLayout';
+import ExpertDashboard from './features/shared/ExpertDashboard';
 import JudgeProjects from './features/judge/JudgeProjects';
 import JudgeScoring from './features/judge/JudgeScoring';
 import JudgeTeamActivity from './features/judge/JudgeTeamActivity';
@@ -34,7 +34,7 @@ import { ConfirmProvider } from './features/shared/ConfirmDialog';
 
 function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
   const location = useLocation();
-  const isJudgeRoute = location.pathname.startsWith('/judge');
+  const isJudgeRoute = location.pathname.startsWith('/judge') || location.pathname.startsWith('/expert');
   const isAdminRoute = location.pathname.startsWith('/admin');
   const isCoordinator = !!user?.isSystemAdmin;
   const showChatWidget = user && !isJudgeRoute && (!isAdminRoute || isCoordinator);
@@ -49,10 +49,8 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
             user ? (
               (user.isSystemAdmin || roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view')) ? (
                 <Navigate to="/admin" />
-              ) : roles.some((r: any) => r.role === 'judge') ? (
-                <Navigate to="/judge/dashboard" />
-              ) : roles.some((r: any) => r.role === 'mentor') ? (
-                <Navigate to="/mentor/dashboard" />
+              ) : (roles.some((r: any) => r.role === 'judge') || roles.some((r: any) => r.role === 'mentor')) ? (
+                <Navigate to="/expert/dashboard" />
               ) : (
                 <Navigate to="/guest-portal" />
               )
@@ -98,31 +96,29 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
             <Route path="leaderboard" element={<Leaderboard user={user} roles={roles} />} />
           </Route>
           
-          {/* Judge Sub-Routes under JudgeLayout */}
-          <Route path="/judge" element={
-            <ProtectedRoute user={user} roles={roles} allowedRoles={['judge']}>
-              <JudgeLayout user={user} roles={roles} onLogout={handleLogout} />
+          {/* Expert Sub-Routes under ExpertLayout (Judge & Mentor combined) */}
+          <Route path="/expert" element={
+            <ProtectedRoute user={user} roles={roles} allowedRoles={['judge', 'mentor']}>
+              <ExpertLayout user={user} roles={roles} onLogout={handleLogout} />
             </ProtectedRoute>
           }>
             <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<JudgeDashboard />} />
+            <Route path="dashboard" element={<ExpertDashboard user={user} roles={roles} />} />
             <Route path="projects" element={<JudgeProjects />} />
             <Route path="score/:teamId" element={<JudgeScoring />} />
             <Route path="activity/:teamId" element={<JudgeTeamActivity />} />
+            <Route path="mentored-teams" element={<MentorDashboard user={user} roles={roles} />} />
+            <Route path="mentored-team/:teamId" element={<MentorTeamDetail />} />
           </Route>
-          
-          {/* Mentor Routes */}
-          <Route path="/mentor/dashboard" element={
-            <ProtectedRoute user={user} roles={roles} allowedRoles={['mentor']}>
-              <MentorDashboard user={user} roles={roles} />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/mentor/team/:teamId" element={
-            <ProtectedRoute user={user} roles={roles} allowedRoles={['mentor']}>
-              <MentorTeamDetail />
-            </ProtectedRoute>
-          } />
+
+          {/* Fallbacks for backward compatibility */}
+          <Route path="/judge" element={<Navigate to="/expert/dashboard" replace />} />
+          <Route path="/judge/dashboard" element={<Navigate to="/expert/dashboard" replace />} />
+          <Route path="/judge/projects" element={<Navigate to="/expert/projects" replace />} />
+          <Route path="/judge/score/:teamId" element={<Navigate to="/expert/score/:teamId" replace />} />
+          <Route path="/judge/activity/:teamId" element={<Navigate to="/expert/activity/:teamId" replace />} />
+          <Route path="/mentor/dashboard" element={<Navigate to="/expert/mentored-teams" replace />} />
+          <Route path="/mentor/team/:teamId" element={<Navigate to="/expert/mentored-team/:teamId" replace />} />
           
           <Route path="/leaderboard" element={<Leaderboard user={user} roles={roles} />} />
           <Route path="/album" element={<Gallery />} />
@@ -256,6 +252,9 @@ export default function App() {
       async (error) => {
         // A. Handle Session Expiry (401) or Account Deactivation (403)
         if (error.response && error.response.status === 401 && error.response.data?.isSessionExpired) {
+          if ((window as any).isLoggingOut) {
+            return Promise.reject(error);
+          }
           localStorage.removeItem('token');
           setUser(null);
           setRoles([]);
@@ -329,7 +328,11 @@ export default function App() {
   };
 
   const handleLogout = async () => {
+    (window as any).isLoggingOut = true;
     const token = localStorage.getItem('token');
+    localStorage.removeItem('token');
+    setUser(null);
+    setRoles([]);
     if (token) {
       try {
         await axios.post('http://localhost:5000/api/auth/logout', {}, {
@@ -339,9 +342,7 @@ export default function App() {
         console.error('Failed to notify backend of logout:', err);
       }
     }
-    localStorage.removeItem('token');
-    setUser(null);
-    setRoles([]);
+    (window as any).isLoggingOut = false;
   };
 
   if (isDuplicateTab) {

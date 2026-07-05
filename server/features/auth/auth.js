@@ -1006,6 +1006,15 @@ router.post('/users', authenticateToken, requireSystemAdmin, async (req, res) =>
       isActive: isActive !== undefined ? !!isActive : true
     });
     await newUser.save();
+
+    try {
+      const emailService = require('../notifications/emailService');
+      const roleLabel = newUser.isSystemAdmin ? 'Admin hệ thống' : 'Thành viên';
+      await emailService.sendAccountProvisionEmail(newUser.email, newUser.fullName, password, roleLabel);
+    } catch (emailErr) {
+      console.error('Failed to send provision email:', emailErr.message);
+    }
+
     res.status(201).json({ message: 'Tạo tài khoản người dùng thành công!', user: newUser });
   } catch (error) {
     console.error('Create User Error:', error.message);
@@ -1248,6 +1257,82 @@ router.post('/users/:id/toggle-mentor', authenticateToken, requireSystemAdmin, a
   } catch (error) {
     console.error('Toggle Mentor Error:', error.message);
     res.status(500).json({ message: 'Server error toggling mentor role.' });
+  }
+});
+
+/**
+ * @route   POST /api/auth/forgot-password
+ * @desc    Request password reset email
+ * @access  Public
+ */
+router.post('/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ message: 'Vui lòng cung cấp email của bạn.' });
+  }
+
+  try {
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      console.log(`[FORGOT PASSWORD] Password reset requested for non-existent email: ${email}`);
+      return res.json({ message: 'Nếu email này đã được đăng ký, một đường dẫn khôi phục mật khẩu sẽ được gửi đến hộp thư của bạn.' });
+    }
+
+    const crypto = require('crypto');
+    const token = crypto.randomBytes(20).toString('hex');
+
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = Date.now() + 3600000;
+    await user.save();
+
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const resetLink = `${clientUrl}/reset-password?token=${token}&email=${encodeURIComponent(user.email)}`;
+
+    const emailService = require('../notifications/emailService');
+    await emailService.sendPasswordResetEmail(user.email, user.fullName, resetLink);
+
+    res.json({ message: 'Nếu email này đã được đăng ký, một đường dẫn khôi phục mật khẩu sẽ được gửi đến hộp thư của bạn.' });
+  } catch (error) {
+    console.error('Forgot Password Error:', error.message);
+    res.status(500).json({ message: 'Có lỗi xảy ra trong quá trình xử lý yêu cầu.' });
+  }
+});
+
+/**
+ * @route   POST /api/auth/reset-password
+ * @desc    Reset password using token
+ * @access  Public
+ */
+router.post('/reset-password', async (req, res) => {
+  const { email, token, newPassword } = req.body;
+  if (!email || !token || !newPassword) {
+    return res.status(400).json({ message: 'Email, token, và mật khẩu mới là bắt buộc.' });
+  }
+
+  try {
+    const user = await User.findOne({
+      email: email.toLowerCase(),
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Đường dẫn khôi phục mật khẩu không hợp lệ hoặc đã hết hạn.' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+
+    user.passwordHash = passwordHash;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    user.activeSessionId = null;
+    await user.save();
+
+    res.json({ message: 'Mật khẩu của bạn đã được đặt lại thành công! Vui lòng đăng nhập lại.' });
+  } catch (error) {
+    console.error('Reset Password Error:', error.message);
+    res.status(500).json({ message: 'Có lỗi xảy ra trong quá trình đặt lại mật khẩu.' });
   }
 });
 

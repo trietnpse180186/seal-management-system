@@ -5,6 +5,8 @@ import errorMessages from './utils/errorMessages';
 import Navbar from './features/landing/Navbar';
 import Footer from './features/landing/Footer';
 import Login from './features/auth/Login';
+import ForgotPassword from './features/auth/ForgotPassword';
+import ResetPassword from './features/auth/ResetPassword';
 import LandingPage from './features/landing/LandingPage';
 import AdminDashboard from './features/admin/AdminDashboard';
 import AdminEvents from './features/admin/AdminEvents';
@@ -59,6 +61,8 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
             )
           } />
           <Route path="/login" element={!user ? <Login onLoginSuccess={handleLoginSuccess} /> : <Navigate to="/" />} />
+          <Route path="/forgot-password" element={!user ? <ForgotPassword /> : <Navigate to="/" />} />
+          <Route path="/reset-password" element={!user ? <ResetPassword /> : <Navigate to="/" />} />
 
           <Route path="/register-team" element={<Navigate to="/team-area" replace />} />
 

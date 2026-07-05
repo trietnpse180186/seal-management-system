@@ -283,7 +283,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
               )}
 
               {/* Mentor Links */}
-              {isMentor && !isCoordinator && !isJudge && (
+              {isMentor && !isCoordinator && (
                 <Link to="/mentor/dashboard" className={linkClass("/mentor/dashboard")}>
                   <Users size={16} />
                   <span>Mentor Dashboard</span>
@@ -393,17 +393,15 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                     {user.fullName}
                   </p>
                   <p className="text-xs text-slate-400">
-                    {isSystemAdmin
-                      ? "Quản trị viên Hệ thống"
-                      : roles[0]?.role
-                        ? roles[0].role === "coordinator"
-                          ? "Ban tổ chức"
-                          : roles[0].role === "judge"
-                            ? "Giám khảo"
-                            : roles[0].role === "mentor"
-                              ? "Mentor"
-                              : "Thí sinh"
-                        : "Thí sinh"}
+                    {(() => {
+                      if (isSystemAdmin) return "Quản trị viên Hệ thống";
+                      const rolesList = [];
+                      if (roles?.some((r: any) => r.role === "coordinator" || r.role === "admin_view")) rolesList.push("Ban tổ chức");
+                      if (roles?.some((r: any) => r.role === "judge")) rolesList.push("Giám khảo");
+                      if (roles?.some((r: any) => r.role === "mentor")) rolesList.push("Mentor");
+                      if (roles?.some((r: any) => r.role === "participant")) rolesList.push("Thí sinh");
+                      return rolesList.length > 0 ? rolesList.join(" & ") : "Thí sinh";
+                    })()}
                   </p>
                 </div>
 

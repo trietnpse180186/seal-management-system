@@ -17,7 +17,9 @@ const UserSchema = new Schema({
   emailVerificationTokenExpiry: { type: Date },
   notificationPrefs: { type: Schema.Types.Mixed, default: {} },
   activeSessionId: { type: String, default: null },
-  lastActiveAt: { type: Date, default: null }
+  lastActiveAt: { type: Date, default: null },
+  resetPasswordToken: { type: String },
+  resetPasswordExpires: { type: Date }
 }, {
   timestamps: true
 });

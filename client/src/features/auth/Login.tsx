@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
@@ -688,7 +688,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             <div className="flex justify-between items-center mb-1">
               <label className="block font-mono text-xs text-primary-container opacity-80" htmlFor="password">Mật khẩu</label>
               {!isRegister && (
-                <a href="#" className="font-mono text-[10px] text-primary-container hover:underline hover:text-[#7df4ff] transition-colors">Quên mật khẩu?</a>
+                <Link to="/forgot-password" className="font-mono text-[10px] text-primary-container hover:underline hover:text-[#7df4ff] transition-colors">Quên mật khẩu?</Link>
               )}
             </div>
             <div className="relative cyber-input-wrapper rounded overflow-hidden">

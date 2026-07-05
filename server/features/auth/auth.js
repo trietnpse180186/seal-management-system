@@ -11,7 +11,19 @@ const { authenticateToken, requireSystemAdmin } = require('./authMiddleware');
 const emailService = require('../notifications/emailService');
 const { addEmailJob, isQueueAvailable } = require('../notifications/notificationQueue');
 
+const captchaService = require('./captchaService');
+
 const JWT_SECRET = process.env.JWT_SECRET || 'seal_hackathon_secret_key_2026';
+
+/**
+ * @route   GET /api/auth/captcha
+ * @desc    Generate an SVG captcha challenge
+ * @access  Public
+ */
+router.get('/captcha', (req, res) => {
+  const challenge = captchaService.createCaptcha();
+  res.json(challenge);
+});
 
 /**
  * @route   POST /api/auth/register
@@ -19,10 +31,15 @@ const JWT_SECRET = process.env.JWT_SECRET || 'seal_hackathon_secret_key_2026';
  * @access  Public
  */
 router.post('/register', async (req, res) => {
-  const { email, password, fullName, studentId, university, githubUsername } = req.body;
+  const { email, password, fullName, studentId, university, githubUsername, captchaId, captchaValue } = req.body;
 
   if (!email || !password || !fullName) {
     return res.status(400).json({ message: 'Email, mật khẩu và họ tên là bắt buộc.' });
+  }
+
+  // Verify CAPTCHA
+  if (!captchaService.verifyCaptcha(captchaId, captchaValue)) {
+    return res.status(400).json({ message: 'Mã xác thực (CAPTCHA) không chính xác hoặc đã hết hạn.' });
   }
 
   try {
@@ -113,10 +130,15 @@ router.post('/register', async (req, res) => {
  * @access  Public
  */
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, captchaId, captchaValue } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ message: 'Vui lòng nhập cả email và mật khẩu.' });
+  }
+
+  // Verify CAPTCHA
+  if (!captchaService.verifyCaptcha(captchaId, captchaValue)) {
+    return res.status(400).json({ message: 'Mã xác thực (CAPTCHA) không chính xác hoặc đã hết hạn.' });
   }
 
   try {
@@ -1280,9 +1302,14 @@ router.post('/users/:id/toggle-mentor', authenticateToken, requireSystemAdmin, a
  * @access  Public
  */
 router.post('/forgot-password', async (req, res) => {
-  const { email } = req.body;
+  const { email, captchaId, captchaValue } = req.body;
   if (!email) {
     return res.status(400).json({ message: 'Vui lòng cung cấp email của bạn.' });
+  }
+
+  // Verify CAPTCHA
+  if (!captchaService.verifyCaptcha(captchaId, captchaValue)) {
+    return res.status(400).json({ message: 'Mã xác thực (CAPTCHA) không chính xác hoặc đã hết hạn.' });
   }
 
   try {

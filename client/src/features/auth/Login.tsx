@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
 import logo from "../../assets/logo.svg";
 import UniversityCombobox from '../shared/UniversityCombobox';
+import CaptchaInput from '../shared/CaptchaInput';
 
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
@@ -40,6 +41,10 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const [studentId, setStudentId] = useState('');
   const [university, setUniversity] = useState('');
   const [githubUsername, setGithubUsername] = useState('');
+  
+  const [captchaId, setCaptchaId] = useState('');
+  const [captchaSvg, setCaptchaSvg] = useState('');
+  const [captchaValue, setCaptchaValue] = useState('');
 
   const [errorMessage, setErrorMessage] = useState(() => {
     return sessionStorage.getItem('login_error_persistent') || '';
@@ -106,6 +111,22 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     }
     return 'http://localhost:5000/api';
   };
+
+  const fetchCaptcha = async () => {
+    try {
+      const baseUrl = getBaseUrl();
+      const res = await axios.get(`${baseUrl}/auth/captcha`);
+      setCaptchaId(res.data.captchaId);
+      setCaptchaSvg(res.data.captchaSvg);
+      setCaptchaValue('');
+    } catch (err) {
+      console.error('Failed to fetch CAPTCHA:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchCaptcha();
+  }, [isRegister]);
 
   const handleMobileRedirect = (token: string, user: any, roles: any[]) => {
     const plat = platform || localStorage.getItem('mobile_platform');
@@ -320,7 +341,9 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           fullName,
           studentId,
           university,
-          githubUsername
+          githubUsername,
+          captchaId,
+          captchaValue
         });
 
         // Auto-login if first user (API returns token directly)
@@ -342,7 +365,9 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       } else {
         const response = await axios.post(`${baseUrl}/auth/login`, {
           email,
-          password
+          password,
+          captchaId,
+          captchaValue
         });
         const { token, user, roles } = response.data;
         if (handleMobileRedirect(token, user, roles)) {
@@ -361,6 +386,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       }
     } catch (err: any) {
       console.error(err);
+      fetchCaptcha();
       if (err.response?.status === 403 && err.response?.data?.requiresVerification) {
         setIsVerificationPending(true);
       } else {
@@ -713,6 +739,19 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               </div>
             </div>
           </div>
+
+          {/* CAPTCHA Verification */}
+          {captchaSvg && (
+            <div className="pt-2">
+              <CaptchaInput
+                captchaSvg={captchaSvg}
+                value={captchaValue}
+                onChange={setCaptchaValue}
+                onRefresh={fetchCaptcha}
+                disabled={loading}
+              />
+            </div>
+          )}
 
           <button
             type="submit"

@@ -1,14 +1,34 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
 import { Mail, ArrowLeft } from "lucide-react";
+import CaptchaInput from "../shared/CaptchaInput";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  
+  const [captchaId, setCaptchaId] = useState("");
+  const [captchaSvg, setCaptchaSvg] = useState("");
+  const [captchaValue, setCaptchaValue] = useState("");
+
+  const fetchCaptcha = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/api/auth/captcha");
+      setCaptchaId(res.data.captchaId);
+      setCaptchaSvg(res.data.captchaSvg);
+      setCaptchaValue("");
+    } catch (err) {
+      console.error("Failed to fetch CAPTCHA:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchCaptcha();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,10 +39,15 @@ export default function ForgotPassword() {
     setErrorMessage("");
 
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/forgot-password", { email });
+      const res = await axios.post("http://localhost:5000/api/auth/forgot-password", { 
+        email,
+        captchaId,
+        captchaValue
+      });
       setSuccessMessage(res.data.message);
       toast.success("Yêu cầu gửi liên kết khôi phục thành công!");
     } catch (err: any) {
+      fetchCaptcha();
       const msg = err.response?.data?.message || "Lỗi khi gửi yêu cầu khôi phục mật khẩu.";
       setErrorMessage(msg);
       toast.error(msg);
@@ -106,6 +131,19 @@ export default function ForgotPassword() {
                 </div>
               </div>
             </div>
+
+            {/* CAPTCHA Verification */}
+            {captchaSvg && (
+              <div className="pt-1">
+                <CaptchaInput
+                  captchaSvg={captchaSvg}
+                  value={captchaValue}
+                  onChange={setCaptchaValue}
+                  onRefresh={fetchCaptcha}
+                  disabled={loading}
+                />
+              </div>
+            )}
 
             <button
               type="submit"

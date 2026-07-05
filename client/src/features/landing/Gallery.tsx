@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { Image as ImageIcon, Search, Download, X, Eye, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -25,43 +25,68 @@ export default function Gallery() {
   const [loading, setLoading] = useState<boolean>(true);
   const [syncing, setSyncing] = useState<boolean>(false);
   const [lightboxPhoto, setLightboxPhoto] = useState<Photo | null>(null);
+  const [visibleCount, setVisibleCount] = useState<number>(16);
 
   const loadGalleryData = (showToast = false) => {
     if (showToast) {
       setSyncing(true);
-      toast.loading("Đang đồng bộ hình ảnh mới từ Google Drive...", { id: "gallery-sync" });
+      toast.loading("Đang đồng bộ: Đang chuẩn bị...", { id: "gallery-sync" });
+
+      const eventSource = new EventSource("http://localhost:5000/api/gallery/sync-progress");
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.status === 'fetching') {
+            toast.loading("Đang đồng bộ: Đang quét danh sách ảnh trên Drive...", { id: "gallery-sync" });
+          } else if (data.status === 'syncing') {
+            toast.loading(`Đang đồng bộ: Tải ảnh (${data.percent}%) [${data.current}/${data.total}]`, { id: "gallery-sync" });
+          } else if (data.success) {
+            toast.success(data.message || "Đồng bộ thành công!", { id: "gallery-sync" });
+            eventSource.close();
+            setSyncing(false);
+            loadGalleryData(false); // Reload items from database
+          } else {
+            toast.error(data.message || "Đồng bộ thất bại.", { id: "gallery-sync" });
+            eventSource.close();
+            setSyncing(false);
+          }
+        } catch (err) {
+          console.error("Failed to parse sync progress event:", err);
+        }
+      };
+
+      eventSource.onerror = (err) => {
+        console.error("EventSource failed:", err);
+        toast.error("Lỗi kết nối thời gian thực khi đồng bộ.", { id: "gallery-sync" });
+        eventSource.close();
+        setSyncing(false);
+      };
     } else {
       setLoading(true);
+      axios
+        .get("http://localhost:5000/api/gallery")
+        .then((res) => {
+          setCategories(res.data.categories || []);
+          setPhotos(res.data.photos || []);
+        })
+        .catch((err) => {
+          console.error("Failed to load photo album:", err);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
     }
-
-    axios
-      .get("http://localhost:5000/api/gallery")
-      .then((res) => {
-        setCategories(res.data.categories || []);
-        setPhotos(res.data.photos || []);
-        if (showToast) {
-          toast.success("Đồng bộ thành công!", { id: "gallery-sync" });
-        }
-      })
-      .catch((err) => {
-        console.error("Failed to load photo album:", err);
-        if (showToast) {
-          toast.error("Lỗi đồng bộ dữ liệu từ Drive.", { id: "gallery-sync" });
-        }
-      })
-      .finally(() => {
-        setLoading(false);
-        setSyncing(false);
-      });
   };
 
   useEffect(() => {
     loadGalleryData(false);
   }, []);
 
-  const handleSync = () => {
-    loadGalleryData(true);
-  };
+  useEffect(() => {
+    setVisibleCount(16);
+  }, [selectedCatId, searchQuery]);
 
   const totalPhotosCount = photos.length;
 
@@ -70,6 +95,36 @@ export default function Gallery() {
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCat && matchesSearch;
   });
+
+  const visiblePhotos = filteredPhotos.slice(0, visibleCount);
+
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (loading) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && visibleCount < filteredPhotos.length) {
+          // Preload next 16 images in background
+          setVisibleCount((prev) => prev + 16);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (sentinelRef.current) {
+      observer.observe(sentinelRef.current);
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [loading, visibleCount, filteredPhotos.length]);
+
+  const handleSync = () => {
+    loadGalleryData(true);
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 space-y-10 min-h-screen">
@@ -154,61 +209,63 @@ export default function Gallery() {
         </div>
       ) : filteredPhotos.length > 0 ? (
         /* Image Grid */
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-fadeIn">
-          {filteredPhotos.map((photo) => (
-            <div
-              key={photo.id}
-              className="group bg-slate-900/20 hover:bg-slate-900/40 border border-slate-800/80 hover:border-slate-700 rounded-2xl p-3 flex flex-col justify-between transition-all duration-300 shadow-md hover:shadow-cyan-950/10"
-            >
-              {/* Photo Box */}
-              <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center border border-slate-800/50 group-hover:border-slate-700/50 transition-colors">
-                {/* Loader placeholder behind image */}
-                <div className="absolute inset-0 bg-slate-900/40 animate-pulse flex items-center justify-center">
-                  <ImageIcon className="text-slate-700" size={24} />
-                </div>
-                <img
-                  src={photo.url}
-                  alt={photo.name}
-                  loading="lazy"
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                {/* Overlay actions */}
-                <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
-                  <button
-                    onClick={() => setLightboxPhoto(photo)}
-                    className="p-2.5 rounded-full bg-cyan-500 hover:bg-cyan-400 text-white transition-all transform scale-90 group-hover:scale-100 hover:scale-105 shadow-lg shadow-cyan-500/20 cursor-pointer"
-                    title="Xem chi tiết"
-                  >
-                    <Eye size={16} />
-                  </button>
-                  <a
-                    href={photo.url}
-                    download={photo.name}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="p-2.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white transition-all transform scale-90 group-hover:scale-100 hover:scale-105 border border-white/5 shadow-lg cursor-pointer"
-                    title="Tải ảnh về"
-                  >
-                    <Download size={16} />
-                  </a>
-                </div>
-              </div>
-
-              {/* Photo Details */}
-              <div className="mt-3.5 space-y-1">
-                <p
-                  className="text-xs font-semibold text-slate-200 truncate font-mono"
-                  title={photo.name}
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-fadeIn">
+            {visiblePhotos.map((photo, index) => {
+              const isSentinel = index === visiblePhotos.length - 5 || (visiblePhotos.length < 5 && index === visiblePhotos.length - 1);
+              return (
+                <div
+                  key={photo.id}
+                  ref={isSentinel ? sentinelRef : null}
+                  className="group bg-slate-900/20 hover:bg-slate-900/40 border border-slate-800/80 hover:border-slate-700 rounded-2xl p-3 flex flex-col justify-between transition-all duration-300 shadow-md hover:shadow-cyan-950/10"
                 >
-                  {photo.name}
-                </p>
-                <p className="text-[10px] text-slate-500 font-mono">
-                  {photo.size}
-                </p>
-              </div>
+                  {/* Photo Box */}
+                  <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center border border-slate-800/50 group-hover:border-slate-700/50 transition-colors">
+                    {/* Loader placeholder behind image */}
+                    <div className="absolute inset-0 bg-slate-900/40 animate-pulse flex items-center justify-center">
+                      <ImageIcon className="text-slate-700" size={24} />
+                    </div>
+                    <img
+                      src={photo.url}
+                      alt={photo.name}
+                      loading="eager"
+                      decoding="async"
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    {/* Overlay actions */}
+                    <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
+                      <button
+                        onClick={() => setLightboxPhoto(photo)}
+                        className="p-2.5 rounded-full bg-cyan-500 hover:bg-cyan-400 text-white transition-all transform scale-90 group-hover:scale-100 hover:scale-105 shadow-lg shadow-cyan-500/20 cursor-pointer"
+                        title="Xem chi tiết"
+                      >
+                        <Eye size={16} />
+                      </button>
+                      <a
+                        href={`https://drive.google.com/uc?export=download&id=${photo.id}`}
+                        download={photo.name}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-2.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white transition-all transform scale-90 group-hover:scale-100 hover:scale-105 border border-white/5 shadow-lg cursor-pointer"
+                        title="Tải ảnh về"
+                      >
+                        <Download size={16} />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Infinite Scroll Sentinel */}
+          {visibleCount < filteredPhotos.length && (
+            <div ref={sentinelRef} className="flex justify-center items-center py-10 space-x-2">
+              <RefreshCw size={16} className="animate-spin text-cyan-400" />
+              <span className="text-xs font-mono text-slate-500 uppercase tracking-widest">Đang tải thêm ảnh...</span>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       ) : (
         /* Empty State */
         <div className="text-center py-24 bg-slate-950/20 border border-slate-900/60 rounded-3xl">
@@ -229,7 +286,7 @@ export default function Gallery() {
             </div>
             <div className="flex items-center gap-3">
               <a
-                href={lightboxPhoto.url}
+                href={`https://drive.google.com/uc?export=download&id=${lightboxPhoto.id}`}
                 download={lightboxPhoto.name}
                 target="_blank"
                 rel="noreferrer"

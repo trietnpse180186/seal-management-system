@@ -1,16 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const { getGalleryData, getAccessToken } = require('./galleryService');
+const { getGalleryData, syncGalleryData, getAccessToken } = require('./galleryService');
 const stream = require('stream');
 
 /**
  * @route   GET /api/gallery
- * @desc    Get photo album categories and photos
+ * @desc    Get photo album categories and photos (read from MongoDB)
  * @access  Public
  */
 router.get('/', async (req, res) => {
   try {
-    const data = await getGalleryData();
+    const backendOrigin = `${req.protocol}://${req.get('host')}`;
+    const data = await getGalleryData(backendOrigin);
     res.json(data);
   } catch (error) {
     console.error('Get Gallery Data Error:', error.message);
@@ -19,15 +20,41 @@ router.get('/', async (req, res) => {
 });
 
 /**
+ * @route   GET /api/gallery/sync-progress
+ * @desc    Sync images from Google Drive to local storage and stream real-time progress via SSE
+ * @access  Public
+ */
+router.get('/sync-progress', async (req, res) => {
+  // Set headers for Server-Sent Events (SSE)
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders(); // Establish connection immediately
+
+  const onProgress = (data) => {
+    // Send standard SSE message format
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  try {
+    await syncGalleryData(onProgress);
+  } catch (error) {
+    console.error('[GALLERY SYNC SSE ERROR]:', error.message);
+    res.write(`data: ${JSON.stringify({ success: false, error: 'Lỗi hệ thống khi đồng bộ.' })}\n\n`);
+  } finally {
+    res.end(); // Terminate SSE stream when done
+  }
+});
+
+/**
  * @route   GET /api/gallery/image/:fileId
- * @desc    Proxy image content stream from Google Drive
+ * @desc    Proxy image content stream from Google Drive (fallback proxy if direct link fails)
  * @access  Public
  */
 router.get('/image/:fileId', async (req, res) => {
   try {
     const fileId = req.params.fileId;
 
-    // Check if it is a mock image id (just in case)
     if (fileId.startsWith('mock_img_')) {
       return res.status(400).send('Mock image should be requested via direct Unsplash/Picsum URL.');
     }
@@ -47,9 +74,7 @@ router.get('/image/:fileId', async (req, res) => {
       res.setHeader('Content-Type', contentType);
     }
     
-    // Support browser caching for gallery images
-    res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
-
+    res.setHeader('Cache-Control', 'public, max-age=86400');
     stream.Readable.fromWeb(driveRes.body).pipe(res);
   } catch (error) {
     console.error('[GALLERY PROXY ERROR]:', error.message);

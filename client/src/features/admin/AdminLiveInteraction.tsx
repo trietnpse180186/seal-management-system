@@ -172,29 +172,22 @@ export default function AdminLiveInteraction() {
       const res = await axios.get(`http://localhost:5000/api/rubrics/round/${selectedRoundId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (res.data && res.data.length > 0) {
-        const activeRubric = res.data[0];
+      if (res.data && res.data.rubric) {
+        const activeRubric = res.data.rubric;
         setRubric(activeRubric);
-        fetchCriteria(activeRubric._id);
+        setCriteria(res.data.criteria || []);
       } else {
         setRubric(null);
         setCriteria([]);
       }
     } catch (err) {
       console.error("Fetch Rubric Error:", err);
+      setRubric(null);
+      setCriteria([]);
     }
   };
 
-  const fetchCriteria = async (rubricId: string) => {
-    try {
-      const res = await axios.get(`http://localhost:5000/api/rubrics/${rubricId}/criteria`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setCriteria(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+
 
   const fetchJudgeScoresForTeam = async () => {
     try {

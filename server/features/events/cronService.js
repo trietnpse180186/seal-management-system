@@ -13,6 +13,34 @@ const Team = mongoose.model('Team');
 const Event = mongoose.model('Event');
 
 /**
+ * Downgrades all active judge/mentor roles of an event to participant when the event completes.
+ */
+async function downgradeEventRolesToParticipant(eventId) {
+  const EventRole = mongoose.model('EventRole');
+  const targetRoles = await EventRole.find({
+    eventId,
+    role: { $in: ['judge', 'mentor'] },
+    status: 'active'
+  });
+
+  for (const roleRecord of targetRoles) {
+    const participantExists = await EventRole.findOne({
+      userId: roleRecord.userId,
+      eventId: roleRecord.eventId,
+      role: 'participant',
+      status: 'active'
+    });
+
+    if (participantExists) {
+      await EventRole.deleteOne({ _id: roleRecord._id });
+    } else {
+      roleRecord.role = 'participant';
+      await roleRecord.save();
+    }
+  }
+}
+
+/**
  * Automatically transitions event status based on scheduled times.
  * Runs every minute.
  */
@@ -64,6 +92,13 @@ async function autoTransitionEvents() {
     event.status = 'completed';
     await event.save();
     console.log(`[CRON] Event "${event.name}" automatically transitioned from ongoing to completed.`);
+    
+    try {
+      await downgradeEventRolesToParticipant(event._id);
+      console.log(`[CRON] Downgraded roles for completed event: ${event.name}`);
+    } catch (err) {
+      console.error(`[CRON ERROR] Failed to downgrade roles for event ${event._id}:`, err.message);
+    }
   }
 }
 

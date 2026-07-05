@@ -13,6 +13,7 @@ const EventRole = mongoose.model('EventRole');
 
 const emailService = require('../notifications/emailService');
 const githubService = require('../github-ai/githubService');
+const captchaService = require('../auth/captchaService');
 const { ensureChatRoomForTeam } = require('../chat/chatRoomService');
 const {
   canUserAccessRoundExam,
@@ -159,7 +160,7 @@ router.get('/check-eligibility', authenticateToken, async (req, res) => {
  * @access  Private (Participants)
  */
 router.post('/register', authenticateToken, async (req, res) => {
-  const { eventId, trackId, teamName, membersList, leaderInfo } = req.body;
+  const { eventId, trackId, teamName, membersList, leaderInfo, captchaId, captchaValue } = req.body;
 
   if (!eventId || !teamName || !membersList || !Array.isArray(membersList)) {
     return res.status(400).json({ message: 'Đã xảy ra lỗi trong quá trình đăng ký.' });
@@ -167,6 +168,11 @@ router.post('/register', authenticateToken, async (req, res) => {
 
   let createdTeamId = null;
   try {
+    // Validate Captcha
+    if (!captchaService.verifyCaptcha(captchaId, captchaValue)) {
+      return res.status(400).json({ message: 'Mã xác thực Captcha không chính xác hoặc đã hết hạn.' });
+    }
+
     // Update leader's profile if provided
     if (leaderInfo) {
       const User = mongoose.model('User');
@@ -400,12 +406,7 @@ router.post('/register', authenticateToken, async (req, res) => {
         await githubService.addCollaborator(slugRepoName, req.user.githubUsername, 'push', actualOrgName);
       }
 
-      // Check capacity
-      const confirmedTeams = await Team.countDocuments({ eventId: team.eventId, status: 'confirmed' });
-      if (event.maxTeams && confirmedTeams >= event.maxTeams) {
-        event.status = 'ongoing';
-        await event.save();
-      }
+
 
       return res.status(201).json({
         message: 'Đăng ký nhóm thành công! Nhóm đã được xác nhận lập tức và khởi tạo kho lưu trữ GitHub.',
@@ -729,14 +730,7 @@ router.get('/confirm-invite', async (req, res) => {
         console.error('Lỗi tự động tạo repo GitHub:', gitErr.message);
       }
 
-      // 3. Auto capacity checking and close form logic
-      const confirmedTeams = await Team.countDocuments({ eventId: team.eventId, status: 'confirmed' });
 
-      if (event && event.maxTeams && confirmedTeams >= event.maxTeams) {
-        event.status = 'ongoing'; // Auto-close registration, lock event
-        await event.save();
-        console.log(`[EVENT] Event "${event.name}" registration automatically CLOSED as it hit max team limit (${event.maxTeams}).`);
-      }
 
       // Notify all team members that team is confirmed
       for (const tm of populatedMembers) {

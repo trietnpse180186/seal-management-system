@@ -15,6 +15,24 @@ const captchaService = require('./captchaService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'seal_hackathon_secret_key_2026';
 
+function mapUserRoles(roles) {
+  return roles.map(r => {
+    const roleObj = r.toObject ? r.toObject() : r;
+    let roleName = roleObj.role;
+    // If the event is completed or cancelled, demote role to participant since contest has ended
+    if (roleObj.eventId && (roleObj.eventId.status === 'completed' || roleObj.eventId.status === 'cancelled')) {
+      roleName = 'participant';
+    }
+    return {
+      id: roleObj._id,
+      eventId: roleObj.eventId ? roleObj.eventId._id : null,
+      eventName: roleObj.eventId ? `${roleObj.eventId.name} (${roleObj.eventId.semester} ${roleObj.eventId.year})` : 'System',
+      role: roleName,
+      trackId: roleObj.trackId
+    };
+  });
+}
+
 /**
  * @route   GET /api/auth/captcha
  * @desc    Generate an SVG captcha challenge
@@ -130,15 +148,10 @@ router.post('/register', async (req, res) => {
  * @access  Public
  */
 router.post('/login', async (req, res) => {
-  const { email, password, captchaId, captchaValue } = req.body;
+  const { email, password } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ message: 'Vui lòng nhập cả email và mật khẩu.' });
-  }
-
-  // Verify CAPTCHA
-  if (!captchaService.verifyCaptcha(captchaId, captchaValue)) {
-    return res.status(400).json({ message: 'Mã xác thực (CAPTCHA) không chính xác hoặc đã hết hạn.' });
   }
 
   try {
@@ -184,7 +197,7 @@ router.post('/login', async (req, res) => {
     await user.save();
 
     // Get event roles
-    const roles = await EventRole.find({ userId: user._id, status: 'active' }).populate('eventId', 'name semester year');
+    const roles = await EventRole.find({ userId: user._id, status: 'active' }).populate('eventId', 'name semester year status');
 
     // Generate JWT (including sessionId)
     const token = jwt.sign({ id: user._id, sessionId: activeSessionId }, JWT_SECRET, { expiresIn: '24h' });
@@ -199,13 +212,7 @@ router.post('/login', async (req, res) => {
         githubUsername: user.githubUsername,
         avatarUrl: user.avatarUrl
       },
-      roles: roles.map(r => ({
-        id: r._id,
-        eventId: r.eventId ? r.eventId._id : null,
-        eventName: r.eventId ? `${r.eventId.name} (${r.eventId.semester} ${r.eventId.year})` : 'System',
-        role: r.role,
-        trackId: r.trackId
-      }))
+      roles: mapUserRoles(roles)
     });
 
   } catch (error) {
@@ -221,7 +228,7 @@ router.post('/login', async (req, res) => {
  */
 router.get('/me', authenticateToken, async (req, res) => {
   try {
-    const roles = await EventRole.find({ userId: req.user._id, status: 'active' }).populate('eventId', 'name semester year');
+    const roles = await EventRole.find({ userId: req.user._id, status: 'active' }).populate('eventId', 'name semester year status');
     res.json({
       user: {
         id: req.user._id,
@@ -232,13 +239,7 @@ router.get('/me', authenticateToken, async (req, res) => {
         githubUsername: req.user.githubUsername,
         isSystemAdmin: req.user.isSystemAdmin
       },
-      roles: roles.map(r => ({
-        id: r._id,
-        eventId: r.eventId ? r.eventId._id : null,
-        eventName: r.eventId ? `${r.eventId.name} (${r.eventId.semester} ${r.eventId.year})` : 'System',
-        role: r.role,
-        trackId: r.trackId
-      }))
+      roles: mapUserRoles(roles)
     });
   } catch (error) {
     console.error('Fetch Profile Error:', error.message);
@@ -267,7 +268,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
 
     await user.save();
 
-    const roles = await EventRole.find({ userId: user._id, status: 'active' }).populate('eventId', 'name semester year');
+    const roles = await EventRole.find({ userId: user._id, status: 'active' }).populate('eventId', 'name semester year status');
 
     res.json({
       message: 'Cập nhật thông tin cá nhân thành công!',
@@ -281,13 +282,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
         isSystemAdmin: user.isSystemAdmin,
         avatarUrl: user.avatarUrl
       },
-      roles: roles.map(r => ({
-        id: r._id,
-        eventId: r.eventId ? r.eventId._id : null,
-        eventName: r.eventId ? `${r.eventId.name} (${r.eventId.semester} ${r.eventId.year})` : 'System',
-        role: r.role,
-        trackId: r.trackId
-      }))
+      roles: mapUserRoles(roles)
     });
   } catch (error) {
     console.error('Update Profile Error:', error.message);
@@ -521,7 +516,7 @@ router.post('/google', async (req, res) => {
     user.lastActiveAt = new Date();
     await user.save();
 
-    const roles = await EventRole.find({ userId: user._id, status: 'active' }).populate('eventId', 'name semester year');
+    const roles = await EventRole.find({ userId: user._id, status: 'active' }).populate('eventId', 'name semester year status');
     const token = jwt.sign({ id: user._id, sessionId: activeSessionId }, JWT_SECRET, { expiresIn: '24h' });
 
     res.json({
@@ -535,13 +530,7 @@ router.post('/google', async (req, res) => {
         githubUsername: user.githubUsername,
         avatarUrl: user.avatarUrl
       },
-      roles: roles.map(r => ({
-        id: r._id,
-        eventId: r.eventId ? r.eventId._id : null,
-        eventName: r.eventId ? `${r.eventId.name} (${r.eventId.semester} ${r.eventId.year})` : 'System',
-        role: r.role,
-        trackId: r.trackId
-      }))
+      roles: mapUserRoles(roles)
     });
 
   } catch (error) {
@@ -712,7 +701,7 @@ router.post('/github', async (req, res) => {
     user.lastActiveAt = new Date();
     await user.save();
 
-    const roles = await EventRole.find({ userId: user._id, status: 'active' }).populate('eventId', 'name semester year');
+    const roles = await EventRole.find({ userId: user._id, status: 'active' }).populate('eventId', 'name semester year status');
     const token = jwt.sign({ id: user._id, sessionId: activeSessionId }, JWT_SECRET, { expiresIn: '24h' });
 
     res.json({
@@ -726,13 +715,7 @@ router.post('/github', async (req, res) => {
         githubUsername: user.githubUsername,
         avatarUrl: user.avatarUrl
       },
-      roles: roles.map(r => ({
-        id: r._id,
-        eventId: r.eventId ? r.eventId._id : null,
-        eventName: r.eventId ? `${r.eventId.name} (${r.eventId.semester} ${r.eventId.year})` : 'System',
-        role: r.role,
-        trackId: r.trackId
-      }))
+      roles: mapUserRoles(roles)
     });
 
   } catch (error) {

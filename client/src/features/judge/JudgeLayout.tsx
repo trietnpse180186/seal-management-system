@@ -6,7 +6,6 @@ import {
   BookOpen,
   LogOut,
   Bell,
-  Home,
   Users
 } from 'lucide-react';
 
@@ -108,12 +107,6 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
     });
   }
 
-  // Back to Main Platform
-  navItems.push({
-    path: '/',
-    label: 'Về Trang Chủ',
-    icon: Home
-  });
 
   const handleLogoutClick = () => {
     onLogout();

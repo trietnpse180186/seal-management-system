@@ -19,7 +19,8 @@ const RoundSchema = new Schema({
   driveSyncedAt: { type: Date },
   driveSyncedEmailCount: { type: Number, default: 0 },
   driveSyncErrors: { type: Schema.Types.Mixed, default: [] },
-  isNotificationSent: { type: Boolean, default: false }
+  isNotificationSent: { type: Boolean, default: false },
+  isExamManualOpen: { type: Boolean, default: false }
 }, {
   timestamps: true
 });

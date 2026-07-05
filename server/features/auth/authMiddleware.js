@@ -88,17 +88,28 @@ function requireEventRole(allowedRoles) {
       const eventRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: eventId,
-        role: { $in: allowedRoles },
         status: 'active'
-      });
+      }).populate('eventId');
 
       if (!eventRole) {
+        return res.status(403).json({ 
+          message: `Access denied. You do not have roles in this event.` 
+        });
+      }
+
+      // If the event is completed or cancelled, demote role to participant
+      let effectiveRole = eventRole.role;
+      if (eventRole.eventId && (eventRole.eventId.status === 'completed' || eventRole.eventId.status === 'cancelled')) {
+        effectiveRole = 'participant';
+      }
+
+      if (!allowedRoles.includes(effectiveRole)) {
         return res.status(403).json({ 
           message: `Access denied. You do not have the required role(s) [${allowedRoles.join(', ')}] in this event.` 
         });
       }
 
-      req.eventRole = eventRole.role;
+      req.eventRole = effectiveRole;
       req.eventTrackId = eventRole.trackId;
       req.eventRoundId = eventRole.roundId;
       next();

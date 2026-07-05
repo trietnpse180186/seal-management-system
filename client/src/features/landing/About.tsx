@@ -80,28 +80,74 @@ export default function About() {
     if (!activeEvent) return null;
 
     const now = currentTime.getTime();
+    const status = activeEvent.status;
     const regOpen = activeEvent.registrationOpen ? new Date(activeEvent.registrationOpen).getTime() : null;
     const regClose = activeEvent.registrationClose ? new Date(activeEvent.registrationClose).getTime() : null;
+    const contestStart = activeEvent.contestStart ? new Date(activeEvent.contestStart).getTime() : null;
+    const contestEnd = activeEvent.contestEnd ? new Date(activeEvent.contestEnd).getTime() : null;
 
-    // 1. If registration hasn't opened yet: countdown to regOpen
-    if (regOpen && now < regOpen) {
+    // 1. Status: completed
+    if (status === 'completed') {
       return {
-        label: "Đăng ký đội thi sẽ mở sau:",
-        timeText: formatRemainingTime(regOpen - now),
-        colorClass: "text-amber-400 bg-amber-950/20 border-amber-900/30 font-mono"
+        label: "Cuộc thi đã kết thúc thành công",
+        timeText: null,
+        colorClass: "text-emerald-400 bg-emerald-950/20 border-emerald-900/30 font-mono"
       };
     }
 
-    // 2. If registration is open: countdown to regClose
-    if (regClose && now >= (regOpen || 0) && now < regClose) {
-      return {
-        label: "Đăng ký đội thi sẽ đóng sau:",
-        timeText: formatRemainingTime(regClose - now),
-        colorClass: "text-cyan-400 bg-cyan-950/20 border-cyan-900/30 font-mono"
-      };
+    // 2. Status: ongoing
+    if (status === 'ongoing') {
+      if (contestEnd && now < contestEnd) {
+        return {
+          label: "Cuộc thi đang diễn ra! Kết thúc sau:",
+          timeText: formatRemainingTime(contestEnd - now),
+          colorClass: "text-cyan-400 bg-cyan-950/20 border-cyan-900/30 font-mono"
+        };
+      } else {
+        return {
+          label: "Cuộc thi đang diễn ra",
+          timeText: null,
+          colorClass: "text-cyan-400 bg-cyan-950/20 border-cyan-900/30 font-mono"
+        };
+      }
     }
 
-    // 3. Otherwise registration is closed
+    // 3. Status: prepare
+    if (status === 'prepare') {
+      if (contestStart && now < contestStart) {
+        return {
+          label: "Cuộc thi sẽ bắt đầu sau:",
+          timeText: formatRemainingTime(contestStart - now),
+          colorClass: "text-cyan-400 bg-cyan-950/20 border-cyan-900/30 font-mono"
+        };
+      } else {
+        return {
+          label: "Đang chuẩn bị cuộc thi",
+          timeText: null,
+          colorClass: "text-cyan-400 bg-cyan-950/20 border-cyan-900/30 font-mono"
+        };
+      }
+    }
+
+    // 4. Status: registration
+    if (status === 'registration') {
+      if (regOpen && now < regOpen) {
+        return {
+          label: "Đăng ký đội thi sẽ mở sau:",
+          timeText: formatRemainingTime(regOpen - now),
+          colorClass: "text-amber-400 bg-amber-950/20 border-amber-900/30 font-mono"
+        };
+      }
+      if (regClose && now < regClose) {
+        return {
+          label: "Đăng ký đội thi sẽ đóng sau:",
+          timeText: formatRemainingTime(regClose - now),
+          colorClass: "text-cyan-400 bg-cyan-950/20 border-cyan-900/30 font-mono"
+        };
+      }
+    }
+
+    // Default Fallback
     return {
       label: "Cổng đăng ký đội thi đã đóng",
       timeText: null,

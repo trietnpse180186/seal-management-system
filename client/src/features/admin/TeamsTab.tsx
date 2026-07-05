@@ -82,7 +82,6 @@ export default function TeamsTab({
           </button>
 
           {!readOnly && (
-            {/* Auto distribute button */}
             <div className="flex flex-col items-stretch md:items-end gap-1">
               <button
                 onClick={handleDistributeTeams}

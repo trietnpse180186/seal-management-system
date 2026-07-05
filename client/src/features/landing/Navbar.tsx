@@ -278,7 +278,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
               {isJudge && !isCoordinator && (
                 <Link to="/judge/dashboard" className={linkClass("/judge/dashboard")}>
                   <Award size={16} />
-                  <span>Bàn chấm điểm</span>
+                  <span>Judge Dashboard</span>
                 </Link>
               )}
 

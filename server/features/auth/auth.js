@@ -130,15 +130,10 @@ router.post('/register', async (req, res) => {
  * @access  Public
  */
 router.post('/login', async (req, res) => {
-  const { email, password, captchaId, captchaValue } = req.body;
+  const { email, password } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ message: 'Vui lòng nhập cả email và mật khẩu.' });
-  }
-
-  // Verify CAPTCHA
-  if (!captchaService.verifyCaptcha(captchaId, captchaValue)) {
-    return res.status(400).json({ message: 'Mã xác thực (CAPTCHA) không chính xác hoặc đã hết hạn.' });
   }
 
   try {

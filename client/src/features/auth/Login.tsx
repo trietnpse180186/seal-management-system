@@ -125,7 +125,13 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   };
 
   useEffect(() => {
-    fetchCaptcha();
+    if (isRegister) {
+      fetchCaptcha();
+    } else {
+      setCaptchaSvg('');
+      setCaptchaId('');
+      setCaptchaValue('');
+    }
   }, [isRegister]);
 
   const handleMobileRedirect = (token: string, user: any, roles: any[]) => {
@@ -365,9 +371,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       } else {
         const response = await axios.post(`${baseUrl}/auth/login`, {
           email,
-          password,
-          captchaId,
-          captchaValue
+          password
         });
         const { token, user, roles } = response.data;
         if (handleMobileRedirect(token, user, roles)) {
@@ -741,7 +745,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           </div>
 
           {/* CAPTCHA Verification */}
-          {captchaSvg && (
+          {isRegister && captchaSvg && (
             <div className="pt-2">
               <CaptchaInput
                 captchaSvg={captchaSvg}

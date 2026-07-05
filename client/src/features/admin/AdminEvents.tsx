@@ -18,6 +18,7 @@ import TeamsTab from "./TeamsTab";
 import TracksTab from "./TracksTab";
 import RoundsTab from "./RoundsTab";
 import SeminarTab from "./SeminarTab";
+import OperationsTab from "./OperationsTab";
 import GithubTab from "../teams/GithubTab";
 import { toast } from "sonner";
 import { useConform } from "../shared/ModalConform";
@@ -130,10 +131,10 @@ export default function AdminEvents({
 
   // Tab management state
   const [activeTab, setActiveTabState] = useState<
-    "admin" | "events" | "teams" | "rounds" | "tracks" | "github" | "logs" | "schedule" | "portal" | "seminar"
+    "admin" | "events" | "teams" | "rounds" | "tracks" | "github" | "logs" | "schedule" | "portal" | "seminar" | "operations"
   >(() => (sessionStorage.getItem("activeTab") as any) || defaultTab);
 
-  const setActiveTab = (tab: "admin" | "events" | "teams" | "rounds" | "tracks" | "github" | "logs" | "schedule" | "portal" | "seminar") => {
+  const setActiveTab = (tab: "admin" | "events" | "teams" | "rounds" | "tracks" | "github" | "logs" | "schedule" | "portal" | "seminar" | "operations") => {
     setActiveTabState(tab);
     sessionStorage.setItem("activeTab", tab);
   };
@@ -2189,6 +2190,21 @@ export default function AdminEvents({
               >
                 Nhật ký hoạt động
               </button>
+              <button
+                onClick={() => {
+                  if (!selectedEvent) {
+                    toast.error("Vui lòng chọn cuộc thi trước!");
+                    return;
+                  }
+                  setActiveTab("operations");
+                }}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${!selectedEvent ? "opacity-40 cursor-not-allowed" : ""} ${activeTab === "operations"
+                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  }`}
+              >
+                Điều hành cuộc thi
+              </button>
             </>
           )}
         </div>
@@ -3179,6 +3195,28 @@ export default function AdminEvents({
       {/* 10. SEMINAR TAB */}
       {activeTab === "seminar" && (
         <SeminarTab selectedEvent={selectedEvent} fetchEventDetails={fetchEventDetails} readOnly={readOnly} />
+      )}
+
+      {/* 11. OPERATIONS TAB */}
+      {activeTab === "operations" && (
+        selectedEvent ? (
+          <OperationsTab
+            selectedEvent={selectedEvent}
+            rounds={rounds}
+            tracks={tracks}
+            teamsList={teamsList}
+            handleAdvanceRound={handleAdvanceRound}
+            handleLockRound={handleLockRound}
+            handleSyncAllRepos={handleSyncAllRepos}
+            handleUpdateRound={handleUpdateRound}
+            fetchEventDetails={fetchEventDetails}
+            readOnly={readOnly}
+          />
+        ) : (
+          <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">
+            Vui lòng chọn cuộc thi từ thanh tiêu đề hoặc trang Quản trị viên để điều hành.
+          </div>
+        )
       )}
 
       {/* DETAIL EVENT LOG MODAL */}

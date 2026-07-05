@@ -790,7 +790,7 @@ router.post('/:eventId/rounds', authenticateToken, async (req, res) => {
  */
 router.put('/:eventId/rounds/:roundId', authenticateToken, async (req, res) => {
   const { eventId, roundId } = req.params;
-  const { name, order, submissionDeadline, advanceTopN, startTime, endTime, gradingEndTime } = req.body;
+  const { name, order, submissionDeadline, advanceTopN, startTime, endTime, gradingEndTime, isExamManualOpen } = req.body;
 
   try {
     if (!req.user.isSystemAdmin) {
@@ -832,6 +832,7 @@ router.put('/:eventId/rounds/:roundId', authenticateToken, async (req, res) => {
     if (startTime !== undefined) round.startTime = startTime ? new Date(startTime) : null;
     if (endTime !== undefined) round.endTime = endTime ? new Date(endTime) : null;
     if (gradingEndTime !== undefined) round.gradingEndTime = gradingEndTime ? new Date(gradingEndTime) : null;
+    if (isExamManualOpen !== undefined) round.isExamManualOpen = !!isExamManualOpen;
 
     // Mirror schedule to tracks in this round for backward compatibility
     if (startTime !== undefined || endTime !== undefined || gradingEndTime !== undefined) {

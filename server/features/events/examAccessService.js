@@ -72,9 +72,10 @@ async function getEligibleUserIdsForRound(roundId) {
 }
 
 function isRoundExamOpen(round) {
-  // Phòng thi mở khi có link Drive (id hoặc url) và đã đến giờ
+  // Phòng thi mở khi có link Drive (id hoặc url) và đã đến giờ hoặc được mở thủ công
   const hasMaterial = !!(round?.driveFileId || round?.driveFileUrl);
   if (!hasMaterial) return false;
+  if (round?.isExamManualOpen) return true;
   if (!round.startTime) return true;
   return new Date() >= new Date(round.startTime);
 }
@@ -102,7 +103,8 @@ function sanitizeRoundForParticipant(round) {
     // Chỉ trả về URL khi được mở — frontend sẽ window.open() trực tiếp
     driveFileUrl: opened ? plain.driveFileUrl : null,
     isDriveAccessSynced: plain.isDriveAccessSynced,
-    driveSyncedEmailCount: plain.driveSyncedEmailCount
+    driveSyncedEmailCount: plain.driveSyncedEmailCount,
+    isExamManualOpen: plain.isExamManualOpen
   };
 }
 
@@ -138,7 +140,7 @@ async function canUserAccessRoundExam(userId, roundId) {
     return { ok: false, reason: 'no_material', message: 'Vòng thi chưa có đề bài được gắn.' };
   }
 
-  if (round.startTime && new Date() < new Date(round.startTime)) {
+  if (round.startTime && new Date() < new Date(round.startTime) && !round.isExamManualOpen) {
     return { ok: false, reason: 'not_started', message: 'Đề bài chưa đến giờ mở.' };
   }
 

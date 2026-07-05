@@ -908,7 +908,7 @@ router.get('/my-team', authenticateToken, async (req, res) => {
     // Find all confirmed records pointing to active teams that actually exist
     for (const record of memberRecords) {
       const foundTeam = await Team.findById(record.teamId)
-        .populate('eventId', 'name semester year status contestEnd registrationClose')
+        .populate('eventId', 'name semester year status contestEnd registrationClose seminar')
         .populate({
           path: 'trackId',
           select: 'name description startTime endTime roundId environmentId',

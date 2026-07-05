@@ -1703,7 +1703,7 @@ router.post('/:id/seminar/send-email', authenticateToken, async (req, res) => {
     let successCount = 0;
     for (const rec of recipients) {
       try {
-        await emailService.sendSeminarInvitation(rec.email, rec.name, event.name, event.seminar);
+        await emailService.sendSeminarInvitation(rec.email, rec.name, event.name, event.seminar, event._id);
         successCount++;
       } catch (err) {
         console.error(`Failed to send seminar email to ${rec.email}:`, err.message);

@@ -22,6 +22,144 @@ const Github = ({ size = 20, className = "" }: { size?: number; className?: stri
   </svg>
 );
 
+interface SeminarWidgetProps {
+  seminar: {
+    scheduledAt?: string;
+    scheduledEnd?: string;
+    meetUrl?: string;
+    title?: string;
+    description?: string;
+    attendanceFormUrl?: string;
+  };
+}
+
+function SeminarWidget({ seminar }: SeminarWidgetProps) {
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  if (!seminar || !seminar.scheduledAt) return null;
+
+  const start = new Date(seminar.scheduledAt);
+  const end = seminar.scheduledEnd ? new Date(seminar.scheduledEnd) : null;
+
+  const isUpcoming = now < start;
+  const isOngoing = now >= start && (!end || now <= end);
+  const isEnded = end ? now > end : false;
+
+  const formatTimeStr = (d: Date) => {
+    return d.toLocaleString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  const getCountdownText = () => {
+    const diff = start.getTime() - now.getTime();
+    if (diff <= 0) return '00:00:00';
+
+    const seconds = Math.floor((diff / 1000) % 60);
+    const minutes = Math.floor((diff / 1000 / 60) % 60);
+    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+    const pad = (num: number) => num.toString().padStart(2, '0');
+
+    if (days > 0) {
+      return `${days} ngày ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    }
+    return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+  };
+
+  return (
+    <div className={`glass p-6 rounded-3xl border transition-all relative overflow-hidden flex flex-col md:flex-row items-stretch md:items-center justify-between gap-6 ${
+      isOngoing 
+        ? 'border-cyan-500/40 glow-cyan bg-slate-900/10 shadow-[inset_0_0_20px_rgba(0,240,255,0.02)] animate-pulse' 
+        : 'border-slate-800 hover:border-cyan-500/30'
+    }`}>
+      {isOngoing && <div className="absolute inset-0 pointer-events-none laser-scan-effect opacity-10"></div>}
+      
+      {/* Left side: Icon, title, description, time */}
+      <div className="flex-1 flex flex-col sm:flex-row items-start gap-4">
+        <div className={`p-4 rounded-2xl bg-cyan-950/50 border border-cyan-800/30 shrink-0 ${isOngoing ? 'animate-pulse' : ''}`}>
+          <BookOpen size={24} className="text-cyan-400" />
+        </div>
+        <div className="space-y-2 min-w-0 text-left">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] text-cyan-400 font-bold border border-cyan-500/30 px-2 py-0.5 rounded bg-cyan-950/20 tracking-widest uppercase">
+              [SEMINAR_HƯỚNG_DẪN]
+            </span>
+            {isOngoing ? (
+              <span className="flex items-center gap-1 text-[9px] font-extrabold px-2.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-450 uppercase tracking-wider animate-pulse">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                Đang diễn ra
+              </span>
+            ) : isUpcoming ? (
+              <span className="text-[9px] font-bold px-2.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400 uppercase tracking-wider">
+                Sắp diễn ra
+              </span>
+            ) : (
+              <span className="text-[9px] font-bold px-2.5 py-0.5 rounded bg-slate-950 border border-slate-900 text-slate-650 uppercase tracking-wider">
+                Đã kết thúc
+              </span>
+            )}
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-white leading-snug">{seminar.title}</h3>
+            {seminar.description && (
+              <p className="text-xs text-slate-400 mt-1 font-sans leading-relaxed">{seminar.description}</p>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-350 font-sans pt-1">
+            <span className="flex items-center gap-1.5">
+              <Clock size={12} className="text-slate-500" />
+              <strong>Lịch:</strong> {formatTimeStr(start)} {end ? ` - ${formatTimeStr(end)}` : ''}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Right side: Countdown or Action button */}
+      <div className="w-full md:w-auto flex flex-col justify-center items-center md:items-end gap-3 shrink-0">
+        {isUpcoming && (
+          <div className="bg-slate-950/60 border border-slate-900 p-3.5 rounded-2xl flex flex-col items-center justify-center min-w-[200px] text-center shadow-inner">
+            <span className="text-[8px] text-slate-500 uppercase tracking-wider font-bold">Thời gian đếm ngược</span>
+            <div className="text-xl font-black text-cyan-400 font-mono tracking-widest text-cyan-glow mt-0.5">
+              {getCountdownText()}
+            </div>
+          </div>
+        )}
+
+        {isOngoing && seminar.meetUrl && (
+          <a
+            href={seminar.meetUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full md:w-auto inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold uppercase py-3.5 px-6 rounded-xl transition-all shadow-lg shadow-emerald-600/20 text-center cursor-pointer hover:-translate-y-0.5 duration-150 whitespace-nowrap font-sans"
+          >
+            <BookOpen size={16} />
+            Tham gia Google Meet
+          </a>
+        )}
+
+        {isEnded && (
+          <div className="text-xs text-slate-500 italic bg-slate-950/30 px-4 py-2 border border-slate-900 rounded-xl text-center">
+            Đã kết thúc
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function TeamArea() {
   const token = localStorage.getItem('token');
   const [data, setData] = useState<any>(null);
@@ -298,6 +436,11 @@ export default function TeamArea() {
 
         </div>
       </div>
+
+      {/* Seminar Widget */}
+      {team?.eventId?.seminar?.scheduledAt && (
+        <SeminarWidget seminar={team.eventId.seminar} />
+      )}
 
       {/* Chat Section */}
       {team && team.eventId?.status === 'ongoing' && (

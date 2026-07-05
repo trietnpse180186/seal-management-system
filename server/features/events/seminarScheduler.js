@@ -46,7 +46,7 @@ function startSeminarScheduler() {
           let successCount = 0;
           for (const rec of recipients) {
             try {
-              await emailService.sendSeminarInvitation(rec.email, rec.name, event.name, event.seminar);
+              await emailService.sendSeminarInvitation(rec.email, rec.name, event.name, event.seminar, event._id);
               successCount++;
             } catch (err) {
               console.error(`[SEMINAR SCHEDULER] Failed email to ${rec.email}:`, err.message);

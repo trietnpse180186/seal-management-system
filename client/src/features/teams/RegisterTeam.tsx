@@ -211,6 +211,13 @@ export default function RegisterTeam() {
       if (res.data.eligible) {
         nextUpdated[index].checkingStatus = 'eligible';
         nextUpdated[index].checkingMessage = res.data.message || 'Hợp lệ (Chưa có nhóm)';
+        if (res.data.user) {
+          const u = res.data.user;
+          if (u.fullName) nextUpdated[index].fullName = u.fullName;
+          if (u.studentId) nextUpdated[index].studentId = u.studentId;
+          if (u.githubUsername) nextUpdated[index].githubUsername = u.githubUsername;
+          if (u.university) nextUpdated[index].university = u.university;
+        }
       } else {
         nextUpdated[index].checkingStatus = 'conflict';
         nextUpdated[index].checkingMessage = res.data.message || 'Đã có nhóm!';

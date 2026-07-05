@@ -139,7 +139,13 @@ router.get('/check-eligibility', authenticateToken, async (req, res) => {
 
     return res.json({
       eligible: true,
-      message: 'Hợp lệ (Thành viên chưa có nhóm trong cuộc thi này).'
+      message: 'Hợp lệ (Thành viên chưa có nhóm trong cuộc thi này).',
+      user: {
+        fullName: existingUser.fullName,
+        studentId: existingUser.studentId,
+        githubUsername: existingUser.githubUsername,
+        university: existingUser.university
+      }
     });
   } catch (err) {
     console.error('Check eligibility error:', err);

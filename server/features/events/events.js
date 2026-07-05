@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
+const XLSX = require('xlsx-js-style');
 
 const Event = mongoose.model('Event');
 const Track = mongoose.model('Track');
@@ -1735,5 +1736,180 @@ router.post('/:id/seminar/send-email', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * @route   GET /api/events/:eventId/export-teams
+ * @desc    Export all confirmed/pending teams in an event as Excel
+ * @access  Coordinator/Admin only
+ */
+router.get('/:eventId/export-teams', authenticateToken, async (req, res) => {
+  try {
+    const eventId = req.params.eventId;
+    
+    // Check permission
+    if (!req.user.isSystemAdmin) {
+      const role = await EventRole.findOne({
+        userId: req.user._id,
+        eventId,
+        role: { $in: ['coordinator', 'admin_view'] },
+        status: 'active'
+      });
+      if (!role) {
+        return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
+      }
+    }
+
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found.' });
+    }
+
+    // Load teams (all statuses to let them view pending and disqualified too)
+    const teams = await Team.find({ eventId })
+      .populate('trackId', 'name')
+      .populate('leaderId', 'fullName email')
+      .populate('mentorId', 'fullName email');
+
+    // Load all confirmed team members for these teams
+    const teamIds = teams.map(t => t._id);
+    const allMembers = await TeamMember.find({ teamId: { $in: teamIds } })
+      .populate('userId', 'fullName studentId email githubUsername university');
+
+    // Load all GitHub Repositories for these teams
+    const repos = await GithubRepository.find({ teamId: { $in: teamIds } });
+
+    const wb = XLSX.utils.book_new();
+    const wsData = [
+      // Title
+      [`DANH SÁCH ĐỘI THI - ${event.name.toUpperCase()}`],
+      [`Kỳ học: Kỳ ${event.semester} ${event.year}`],
+      [], // Empty row
+      // Table Headers
+      ["STT", "Tên Đội", "Trạng thái", "Bảng đấu (Track)", "Github Repository", "Trưởng nhóm", "Email Trưởng nhóm", "Thành viên", "Mentor"]
+    ];
+
+    // Build row data
+    teams.forEach((team, index) => {
+      const members = allMembers.filter(m => m.teamId.toString() === team._id.toString());
+      const memberNames = members.map(m => {
+        let txt = m.userId?.fullName || 'N/A';
+        if (m.userId?.studentId) txt += ` (${m.userId.studentId})`;
+        if (m.role === 'leader') txt += ' [L]';
+        return txt;
+      }).join(', ');
+
+      const statusMap = {
+        'confirmed': 'Đã xác nhận',
+        'pending_confirm': 'Chờ duyệt',
+        'disqualified': 'Đã loại'
+      };
+      
+      const teamRepo = repos.find(rp => rp.teamId.toString() === team._id.toString());
+      const repoUrl = teamRepo ? teamRepo.repoUrl : 'Chưa liên kết';
+
+      wsData.push([
+        index + 1,
+        team.name,
+        statusMap[team.status] || team.status,
+        team.trackId?.name || 'Chưa chia bảng',
+        repoUrl,
+        team.leaderId?.fullName || 'N/A',
+        team.leaderId?.email || 'N/A',
+        memberNames,
+        team.mentorId ? `${team.mentorId.fullName} (${team.mentorId.email})` : 'Chưa gán'
+      ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // Merge title cells
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } }
+    ];
+
+    // Columns width
+    ws['!cols'] = [
+      { wch: 6 },  // STT
+      { wch: 25 }, // Tên Đội
+      { wch: 15 }, // Trạng thái
+      { wch: 20 }, // Bảng đấu
+      { wch: 30 }, // Github Repo
+      { wch: 22 }, // Trưởng nhóm
+      { wch: 25 }, // Email Trưởng nhóm
+      { wch: 50 }, // Thành viên
+      { wch: 25 }  // Mentor
+    ];
+
+    // Styling worksheet using xlsx-js-style
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let r = range.s.r; r <= range.e.r; ++r) {
+      for (let c = range.s.c; c <= range.e.c; ++c) {
+        const cellRef = XLSX.utils.encode_cell({ r, c });
+        if (!ws[cellRef]) continue;
+
+        const cell = ws[cellRef];
+        cell.s = cell.s || {};
+
+        if (r === 0) {
+          // Main Title
+          cell.s.font = { bold: true, size: 14, name: 'Calibri', color: { rgb: '0F172A' } };
+          cell.s.alignment = { horizontal: 'center', vertical: 'center' };
+        } else if (r === 1) {
+          // Subtitle
+          cell.s.font = { italic: true, size: 11, name: 'Calibri', color: { rgb: '475569' } };
+          cell.s.alignment = { horizontal: 'center', vertical: 'center' };
+        } else if (r === 3) {
+          // Table Headers
+          cell.s.font = { bold: true, name: 'Calibri', color: { rgb: 'FFFFFF' } };
+          cell.s.fill = { patternType: 'solid', fgColor: { rgb: '0F172A' } }; // Dark slate header
+          cell.s.alignment = { horizontal: 'center', vertical: 'center', wrapText: true };
+          cell.s.border = {
+            top: { style: 'medium', color: { rgb: '475569' } },
+            bottom: { style: 'medium', color: { rgb: '475569' } },
+            left: { style: 'thin', color: { rgb: 'CBD5E1' } },
+            right: { style: 'thin', color: { rgb: 'CBD5E1' } }
+          };
+        } else if (r > 3) {
+          // Data rows
+          cell.s.font = { name: 'Calibri', size: 10 };
+          cell.s.alignment = { 
+            vertical: 'center', 
+            horizontal: c === 0 || c === 2 || c === 3 ? 'center' : 'left', 
+            wrapText: true 
+          };
+          cell.s.border = {
+            top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+          };
+          // Alternating row background
+          if (r % 2 === 1) {
+            cell.s.fill = { patternType: 'solid', fgColor: { rgb: 'F8FAFC' } };
+          }
+        }
+      }
+    }
+
+    // Set row height for headers
+    ws['!rows'] = [];
+    ws['!rows'][0] = { hpx: 30 }; // Title row height
+    ws['!rows'][1] = { hpx: 20 }; // Subtitle row height
+    ws['!rows'][3] = { hpx: 26 }; // Table Header row height
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Teams');
+
+    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const filename = `Teams_${event.name.replace(/\s+/g, '_')}.xlsx`;
+
+    res.setHeader('Content-Disposition', `attachment; filename=${encodeURIComponent(filename)}`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(Buffer.from(buffer));
+
+  } catch (error) {
+    console.error('Export Teams Error:', error.message);
+    res.status(500).json({ message: 'Server error exporting teams.' });
+  }
+});
 
 module.exports = router;

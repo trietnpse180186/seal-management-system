@@ -1,4 +1,6 @@
-import { Users, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import axios from "axios";
+import { Users, RefreshCw, Download } from "lucide-react";
 import CustomSelect from "../shared/CustomSelect";
 
 interface TeamsTabProps {
@@ -14,6 +16,7 @@ interface TeamsTabProps {
 }
 
 export default function TeamsTab({
+  selectedEvent,
   teamsList,
   tracks,
   loading,
@@ -23,6 +26,37 @@ export default function TeamsTab({
   syncingRepoId,
   readOnly = false,
 }: TeamsTabProps) {
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportTeams = async () => {
+    if (!selectedEvent?._id) return;
+    setExporting(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.get(
+        `http://localhost:5000/api/events/${selectedEvent._id}/export-teams`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: "blob",
+        }
+      );
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      const safeName = selectedEvent.name.replace(/\s+/g, "_");
+      link.setAttribute("download", `Teams_${safeName}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Export teams error:", err);
+      alert("Lỗi khi xuất danh sách đội thi ra file Excel. Vui lòng thử lại.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="glass p-6 rounded-2xl space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-3 border-b border-slate-800">
@@ -37,9 +71,17 @@ export default function TeamsTab({
         </div>
 
         {/* Action Buttons */}
-        {!readOnly && (
-          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-            {/* Auto distribute button */}
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+          <button
+            onClick={handleExportTeams}
+            disabled={exporting || teamsList.length === 0}
+            className="text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 cursor-pointer border border-slate-700/80 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download size={14} className="text-cyan-400" />
+            <span>{exporting ? "Đang xuất..." : "Xuất Excel"}</span>
+          </button>
+
+          {!readOnly && (
             <div className="flex flex-col items-stretch md:items-end gap-1">
               <button
                 onClick={handleDistributeTeams}
@@ -74,8 +116,8 @@ export default function TeamsTab({
                   </span>
                 )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Grouped lists */}

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
+const XLSX = require('xlsx-js-style');
 
 const Score = mongoose.model('Score');
 const ScoreDetail = mongoose.model('ScoreDetail');
@@ -1023,7 +1024,7 @@ router.post('/advance-round', authenticateToken, async (req, res) => {
         await eventObj.save();
       }
 
-      return res.json({
+      res.json({
         message: `Đã chốt thành công Vòng Chung Kết "${currentRound.name}". Sự kiện đã kết thúc và toàn bộ kết quả xếp hạng chung cuộc đã được công bố!`,
         isEventCompleted: true,
         advancedTeamsCount: advancedTeamIds.length
@@ -1033,6 +1034,383 @@ router.post('/advance-round', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Advance Round Error:', error.message);
     res.status(500).json({ message: 'Server error during round advancement.' });
+  }
+});
+
+/**
+ * @route   GET /api/grades/export-grading-sheet/:roundId
+ * @desc    Export scoring excel sheet for a judge or summary for coordinator
+ * @access  Private (Coordinator/Admin/Judge)
+ */
+router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res) => {
+  try {
+    const { roundId } = req.params;
+    const { trackId, judgeId } = req.query;
+
+    const round = await Round.findById(roundId);
+    if (!round) return res.status(404).json({ message: 'Round not found.' });
+
+    const Event = mongoose.model('Event');
+    const event = await Event.findById(round.eventId);
+    if (!event) return res.status(404).json({ message: 'Event not found.' });
+
+    // 1. Get rubric for this round
+    const rubric = await Rubric.findOne({ roundId: round._id, isActive: true });
+    if (!rubric) {
+      return res.status(400).json({ message: 'Vòng thi này chưa được cấu hình Rubric chấm điểm.' });
+    }
+
+    // 2. Get criteria for this rubric
+    const criteria = await Criterion.find({ rubricId: rubric._id }).sort({ order: 1 });
+
+    // 3. Determine Judge and Track
+    let targetJudgeId = judgeId;
+    if (!targetJudgeId) {
+      const roleRecord = await EventRole.findOne({
+        userId: req.user._id,
+        eventId: round.eventId,
+        role: 'judge',
+        status: 'active'
+      });
+      if (roleRecord) {
+        const isCoord = await EventRole.findOne({
+          userId: req.user._id,
+          eventId: round.eventId,
+          role: 'coordinator',
+          status: 'active'
+        });
+        if (!isCoord && !req.user.isSystemAdmin) {
+          targetJudgeId = req.user._id.toString();
+        }
+      }
+    }
+
+    let track = null;
+    if (trackId) {
+      track = await Track.findById(trackId);
+    } else if (targetJudgeId) {
+      const judgeRole = await EventRole.findOne({
+        userId: targetJudgeId,
+        eventId: round.eventId,
+        role: 'judge',
+        status: 'active'
+      });
+      if (judgeRole && judgeRole.trackId) {
+        track = await Track.findById(judgeRole.trackId);
+      }
+    }
+
+    // 4. Get Teams
+    const teamsQuery = { eventId: round.eventId, status: 'confirmed' };
+    if (track) {
+      teamsQuery.trackId = track._id;
+    }
+    const teams = await Team.find(teamsQuery).populate('topicSubmission');
+
+    const wb = XLSX.utils.book_new();
+    let wsData = [];
+    let title = '';
+    let subtitle = '';
+    let metadataRow = '';
+    
+    // Check if we are exporting for a specific judge or summary
+    if (targetJudgeId) {
+      // --- CASE 1: INDIVIDUAL JUDGE SCORING SHEET ---
+      const judge = await User.findById(targetJudgeId);
+      if (!judge) return res.status(404).json({ message: 'Judge not found.' });
+
+      title = `PHIẾU CHẤM ĐIỂM CHI TIẾT - GIÁM KHẢO`;
+      subtitle = event.name.toUpperCase();
+      metadataRow = `Vòng thi: ${round.name} | Bảng đấu: ${track ? track.name : 'Tất cả'} | Giám khảo: ${judge.fullName}`;
+
+      // Build table headers
+      // STT | Tên Đội | Tên Đề Tài | Criteria 1 | ... | Criteria N | Tổng Điểm | Nhận Xét
+      const headers = ["STT", "Tên Đội Thi", "Tên Đề Tài / Dự Án"];
+      criteria.forEach(c => {
+        const weightPercent = c.weight > 1 ? c.weight : c.weight * 100;
+        headers.push(`${c.code}\n(${weightPercent}%)`);
+      });
+      headers.push("Tổng Điểm\n(Hệ 10)", "Ý Kiến / Nhận Xét");
+      
+      wsData.push([title], [subtitle], [metadataRow], [], headers);
+
+      // Fetch judge's scores
+      const scores = await Score.find({
+        roundId: round._id,
+        judgeId: judge._id,
+        teamId: { $in: teams.map(t => t._id) }
+      });
+      const scoreIds = scores.map(s => s._id);
+      const scoreDetails = await ScoreDetail.find({ scoreId: { $in: scoreIds } });
+
+      teams.forEach((team, idx) => {
+        const row = [
+          idx + 1,
+          team.name,
+          team.topicSubmission?.title || 'Chưa đăng ký đề tài'
+        ];
+
+        const teamScore = scores.find(s => s.teamId.toString() === team._id.toString());
+        
+        criteria.forEach(c => {
+          if (teamScore) {
+            const detail = scoreDetails.find(d => 
+              d.scoreId.toString() === teamScore._id.toString() && 
+              d.criterionId.toString() === c._id.toString()
+            );
+            row.push(detail ? detail.scoreValue : 0);
+          } else {
+            row.push(0); // Not graded yet
+          }
+        });
+
+        row.push(teamScore ? teamScore.totalWeightedScore : 0);
+        row.push(teamScore ? (teamScore.overallComment || '') : '');
+        wsData.push(row);
+      });
+
+      // Signature section
+      const signRowStart = wsData.length + 2;
+      wsData.push([]); // blank row
+      wsData.push([]); // blank row
+      
+      // We will place signatures on columns: Column B (index 1) and Column G/H (index 4+N)
+      const sigRow = [];
+      sigRow[1] = "TRƯỞNG BAN TỔ CHỨC";
+      sigRow[3 + criteria.length] = "GIÁM KHẢO XÁC NHẬN";
+      wsData.push(sigRow);
+
+      const subSigRow = [];
+      subSigRow[1] = "(Ký và ghi rõ họ tên)";
+      subSigRow[3 + criteria.length] = "(Ký và ghi rõ họ tên)";
+      wsData.push(subSigRow);
+
+      // Add 4 empty rows for space to sign
+      wsData.push([], [], [], []);
+
+      const nameSigRow = [];
+      nameSigRow[1] = ".......................................";
+      nameSigRow[3 + criteria.length] = judge.fullName;
+      wsData.push(nameSigRow);
+
+    } else {
+      // --- CASE 2: SUMMARY GRADING SHEET (ALL JUDGES) ---
+      title = `BẢNG TỔNG HỢP ĐIỂM ĐÁNH GIÁ`;
+      subtitle = event.name.toUpperCase();
+      metadataRow = `Vòng thi: ${round.name} | Bảng đấu: ${track ? track.name : 'Tất cả'}`;
+
+      // Get all scores for this round and these teams
+      const scores = await Score.find({
+        roundId: round._id,
+        teamId: { $in: teams.map(t => t._id) },
+        status: { $in: ['submitted', 'locked'] }
+      }).populate('judgeId', 'fullName email');
+
+      // Unique judges who graded
+      const uniqueJudgesMap = {};
+      scores.forEach(s => {
+        if (s.judgeId) {
+          uniqueJudgesMap[s.judgeId._id.toString()] = s.judgeId;
+        }
+      });
+      const judges = Object.values(uniqueJudgesMap);
+
+      // Table Headers:
+      // STT | Tên Đội | Tên Đề Tài | Judge 1 Total | ... | Judge M Total | Điểm Trung Bình | Thứ Hạng | Nhận Xét Tổng Hợp
+      const headers = ["STT", "Tên Đội Thi", "Tên Đề Tài / Dự Án"];
+      judges.forEach(j => {
+        headers.push(j.fullName);
+      });
+      headers.push("Điểm Trung Bình", "Thứ Hạng", "Nhận Xét Tổng Hợp");
+      wsData.push([title], [subtitle], [metadataRow], [], headers);
+
+      // Build row data for each team
+      const rowsWithAverages = teams.map((team, idx) => {
+        const teamScores = scores.filter(s => s.teamId.toString() === team._id.toString());
+        const judgeCount = teamScores.length;
+        
+        let averageScore = 0;
+        if (judgeCount > 0) {
+          const sum = teamScores.reduce((acc, s) => acc + s.totalWeightedScore, 0);
+          averageScore = Math.round((sum / judgeCount) * 100) / 100;
+        }
+
+        const judgeScoresList = judges.map(j => {
+          const s = teamScores.find(ts => ts.judgeId._id.toString() === j._id.toString());
+          return s ? s.totalWeightedScore : '-';
+        });
+
+        const comments = teamScores
+          .map(s => s.overallComment ? `${s.judgeId.fullName}: ${s.overallComment}` : '')
+          .filter(Boolean)
+          .join('\n');
+
+        return {
+          teamName: team.name,
+          topic: team.topicSubmission?.title || 'Chưa đăng ký đề tài',
+          judgeScoresList,
+          averageScore,
+          comments
+        };
+      });
+
+      // Sort by averageScore descending to calculate rankings
+      rowsWithAverages.sort((a, b) => b.averageScore - a.averageScore);
+
+      rowsWithAverages.forEach((item, idx) => {
+        wsData.push([
+          idx + 1,
+          item.teamName,
+          item.topic,
+          ...item.judgeScoresList,
+          item.averageScore,
+          idx + 1, // Rank
+          item.comments
+        ]);
+      });
+
+      // Signature section
+      wsData.push([]); // blank row
+      wsData.push([]); // blank row
+      
+      const sigRow = [];
+      sigRow[1] = "ĐẠI DIỆN BAN THƯ KÝ";
+      sigRow[2 + judges.length] = "TRƯỞNG BAN TỔ CHỨC";
+      wsData.push(sigRow);
+
+      const subSigRow = [];
+      subSigRow[1] = "(Ký và ghi rõ họ tên)";
+      subSigRow[2 + judges.length] = "(Ký và ghi rõ họ tên)";
+      wsData.push(subSigRow);
+
+      // Add 4 empty rows for space to sign
+      wsData.push([], [], [], []);
+
+      const nameSigRow = [];
+      nameSigRow[1] = ".......................................";
+      nameSigRow[2 + judges.length] = ".......................................";
+      wsData.push(nameSigRow);
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // Merge title cells
+    const maxCols = wsData[4] ? wsData[4].length : 8;
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: maxCols - 1 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: maxCols - 1 } },
+      { s: { r: 2, c: 0 }, e: { r: 2, c: maxCols - 1 } }
+    ];
+
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 6 },  // STT
+      { wch: 25 }, // Tên Đội Thi
+      { wch: 30 }  // Tên Đề Tài
+    ];
+    for (let c = 3; c < maxCols; c++) {
+      ws['!cols'].push({ wch: 18 });
+    }
+    // Make comment/remark column wider
+    ws['!cols'][maxCols - 1] = { wch: 40 };
+
+    // Apply beautiful styling
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    const numDataRows = teams.length;
+    const headerRowIdx = 4;
+    const dataStartRowIdx = 5;
+    const dataEndRowIdx = 5 + numDataRows - 1;
+
+    for (let r = range.s.r; r <= range.e.r; ++r) {
+      for (let c = range.s.c; c <= range.e.c; ++c) {
+        const cellRef = XLSX.utils.encode_cell({ r, c });
+        if (!ws[cellRef]) continue;
+
+        const cell = ws[cellRef];
+        cell.s = cell.s || {};
+
+        if (r === 0) {
+          // Title
+          cell.s.font = { bold: true, size: 14, name: 'Calibri', color: { rgb: '0F172A' } };
+          cell.s.alignment = { horizontal: 'center', vertical: 'center' };
+        } else if (r === 1) {
+          // Subtitle
+          cell.s.font = { bold: true, size: 11, name: 'Calibri', color: { rgb: '475569' } };
+          cell.s.alignment = { horizontal: 'center', vertical: 'center' };
+        } else if (r === 2) {
+          // Metadata
+          cell.s.font = { italic: true, size: 10, name: 'Calibri', color: { rgb: '475569' } };
+          cell.s.alignment = { horizontal: 'center', vertical: 'center' };
+        } else if (r === headerRowIdx) {
+          // Table Header
+          cell.s.font = { bold: true, name: 'Calibri', color: { rgb: 'FFFFFF' }, size: 10 };
+          cell.s.fill = { patternType: 'solid', fgColor: { rgb: '1E293B' } }; // Dark blue slate
+          cell.s.alignment = { horizontal: 'center', vertical: 'center', wrapText: true };
+          cell.s.border = {
+            top: { style: 'medium', color: { rgb: '475569' } },
+            bottom: { style: 'medium', color: { rgb: '475569' } },
+            left: { style: 'thin', color: { rgb: 'CBD5E1' } },
+            right: { style: 'thin', color: { rgb: 'CBD5E1' } }
+          };
+        } else if (r >= dataStartRowIdx && r <= dataEndRowIdx) {
+          // Table Data
+          cell.s.font = { name: 'Calibri', size: 10 };
+          cell.s.alignment = { 
+            vertical: 'center', 
+            horizontal: c === 0 || (c >= 3 && c < maxCols - 1) ? 'center' : 'left', 
+            wrapText: true 
+          };
+          cell.s.border = {
+            top: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            bottom: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            left: { style: 'thin', color: { rgb: 'E2E8F0' } },
+            right: { style: 'thin', color: { rgb: 'E2E8F0' } }
+          };
+          // Alternating row background
+          if (r % 2 === 1) {
+            cell.s.fill = { patternType: 'solid', fgColor: { rgb: 'F8FAFC' } };
+          }
+        } else if (r > dataEndRowIdx) {
+          // Signature Block
+          cell.s.font = { name: 'Calibri', size: 10 };
+          if (r === dataEndRowIdx + 3) {
+            cell.s.font.bold = true;
+          }
+          if (r === dataEndRowIdx + 4) {
+            cell.s.font.italic = true;
+            cell.s.font.size = 9;
+          }
+          if (r === range.e.r && c !== 1) {
+            cell.s.font.bold = true; // Bold name of judge/secretary at the end
+          }
+          cell.s.alignment = { horizontal: 'center', vertical: 'center' };
+        }
+      }
+    }
+
+    // Set row heights
+    ws['!rows'] = [];
+    ws['!rows'][0] = { hpx: 30 }; // Title
+    ws['!rows'][1] = { hpx: 20 }; // Subtitle
+    ws['!rows'][2] = { hpx: 20 }; // Metadata
+    ws['!rows'][headerRowIdx] = { hpx: 28 }; // Table header
+    for (let r = dataStartRowIdx; r <= dataEndRowIdx; r++) {
+      ws['!rows'][r] = { hpx: 24 }; // Data rows
+    }
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Grading_Sheet');
+
+    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const safeTitle = title.replace(/\s+/g, '_');
+    const filename = `${safeTitle}_${round.name.replace(/\s+/g, '_')}.xlsx`;
+
+    res.setHeader('Content-Disposition', `attachment; filename=${encodeURIComponent(filename)}`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(Buffer.from(buffer));
+
+  } catch (error) {
+    console.error('Export Grading Sheet Error:', error.message);
+    res.status(500).json({ message: 'Server error exporting grading sheet.' });
   }
 });
 

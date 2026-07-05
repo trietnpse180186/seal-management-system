@@ -9,7 +9,8 @@ import {
   BookOpen,
   RefreshCw,
   ExternalLink,
-  MessageSquare
+  MessageSquare,
+  Download
 } from 'lucide-react';
 import CustomSelect from '../shared/CustomSelect';
 
@@ -22,6 +23,8 @@ export default function AdminGradesView() {
   const [tracks, setTracks] = useState<any[]>([]);
   const [selectedRoundName, setSelectedRoundName] = useState('');
   const [selectedTrackId, setSelectedTrackId] = useState('');
+  const [exportingSummary, setExportingSummary] = useState(false);
+  const [exportingJudge, setExportingJudge] = useState(false);
 
   // Compute active round document based on selectedRoundName
   const selectedRound = rounds.find((r: any) => r.name === selectedRoundName) || null;
@@ -250,10 +253,67 @@ export default function AdminGradesView() {
     return Math.round((totalWeightedSum / gradingsData.gradings.length) * 100) / 100;
   };
 
+  const handleExportGradingSheet = async (forActiveJudge: boolean) => {
+    if (!selectedRoundId) {
+      alert("Vui lòng chọn Vòng thi trước khi xuất bảng điểm.");
+      return;
+    }
+    
+    let url = `http://localhost:5000/api/grades/export-grading-sheet/${selectedRoundId}`;
+    const params: string[] = [];
+    
+    if (selectedTrackId) {
+      params.push(`trackId=${selectedTrackId}`);
+    }
+
+    if (forActiveJudge) {
+      const activeJudge = gradingsData?.gradings?.[activeJudgeIndex]?.judge;
+      if (!activeJudge?._id) {
+        alert("Không tìm thấy thông tin Giám khảo đang chọn. Vui lòng chọn Đội thi và Giám khảo tương ứng trước.");
+        return;
+      }
+      params.push(`judgeId=${activeJudge._id}`);
+      setExportingJudge(true);
+    } else {
+      setExportingSummary(true);
+    }
+
+    if (params.length > 0) {
+      url += `?${params.join("&")}`;
+    }
+
+    try {
+      const res = await axios.get(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+      });
+      const blobUrl = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      
+      const roundName = selectedRoundName.replace(/\s+/g, "_");
+      const filename = forActiveJudge 
+        ? `Grading_Sheet_Judge_${roundName}.xlsx`
+        : `Grading_Summary_${roundName}.xlsx`;
+        
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Export grading sheet error:", err);
+      alert("Lỗi khi xuất bảng điểm ra file Excel. Vui lòng thử lại.");
+    } finally {
+      setExportingSummary(false);
+      setExportingJudge(false);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-white">
             <span className="text-cyan-400 text-cyan-glow font-mono-tech">XEM CHI TIẾT ĐIỂM</span>
@@ -261,6 +321,27 @@ export default function AdminGradesView() {
           <p className="text-slate-400 text-xs mt-1">
             Theo dõi chi tiết điểm số của từng giám khảo chấm cho từng đội thi
           </p>
+        </div>
+
+        {/* Export Buttons */}
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => handleExportGradingSheet(false)}
+            disabled={!selectedRoundId || exportingSummary}
+            className="text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 cursor-pointer border border-slate-700/80 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download size={14} className="text-cyan-400" />
+            <span>{exportingSummary ? "Đang xuất..." : "Xuất Điểm Tổng Hợp"}</span>
+          </button>
+
+          <button
+            onClick={() => handleExportGradingSheet(true)}
+            disabled={!selectedRoundId || exportingJudge || !gradingsData?.gradings?.length}
+            className="text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 bg-cyan-950/40 hover:bg-cyan-950/60 cursor-pointer border border-cyan-500/25 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download size={14} className="text-cyan-400" />
+            <span>{exportingJudge ? "Đang xuất..." : "Xuất Phiếu Điểm Giám Khảo"}</span>
+          </button>
         </div>
       </div>
 

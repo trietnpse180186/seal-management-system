@@ -7,6 +7,7 @@ import {
   Lock,
   RefreshCw,
   Radio,
+  Download,
 } from "lucide-react";
 import CustomSelect from "../shared/CustomSelect";
 
@@ -37,6 +38,7 @@ export default function Leaderboard({
   const [isLive, setIsLive] = useState(false);
   const [lockedMessage, setLockedMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Detect if coordinator for selectedEvent
   const isCoordinator =
@@ -44,6 +46,10 @@ export default function Leaderboard({
     roles.some(
       (r: any) => r.eventId === selectedEventId && r.role === "coordinator",
     );
+
+  const isJudge = roles.some(
+    (r: any) => r.eventId === selectedEventId && r.role === "judge",
+  );
 
   const roundName = selectedRound?.name || "";
   const isFinalRound =
@@ -181,6 +187,43 @@ export default function Leaderboard({
     setSelectedRound(round || null);
   };
 
+  const handleExportGradingSheet = async (forJudgeOnly: boolean) => {
+    if (!selectedRoundId) {
+      alert("Vui lòng chọn Vòng thi trước khi xuất bảng điểm.");
+      return;
+    }
+    setExporting(true);
+    
+    let url = `http://localhost:5000/api/grades/export-grading-sheet/${selectedRoundId}`;
+    if (forJudgeOnly && user?._id) {
+      url += `?judgeId=${user._id}`;
+    }
+
+    try {
+      const res = await axios.get(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+      });
+      const blobUrl = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      const roundName = selectedRound?.name?.replace(/\s+/g, "_") || "Round";
+      const filename = forJudgeOnly 
+        ? `Grading_Sheet_Judge_${roundName}.xlsx`
+        : `Grading_Summary_${roundName}.xlsx`;
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Export grading sheet error:", err);
+      alert("Lỗi khi xuất bảng điểm ra file Excel. Vui lòng thử lại.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6 font-mono">
       {/* Page header */}
@@ -205,7 +248,32 @@ export default function Leaderboard({
             </span>
           )}
 
+          {/* Export buttons for Judge / Coordinator */}
+          {selectedRoundId && (
+            <>
+              {isJudge && (
+                <button
+                  onClick={() => handleExportGradingSheet(true)}
+                  disabled={exporting}
+                  className="flex items-center gap-1.5 bg-cyan-950/40 hover:bg-cyan-950/60 text-white border border-cyan-500/25 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Download size={12} className="text-cyan-400" />
+                  <span>{exporting ? "Đang xuất..." : "Xuất Phiếu Điểm"}</span>
+                </button>
+              )}
 
+              {isCoordinator && (
+                <button
+                  onClick={() => handleExportGradingSheet(false)}
+                  disabled={exporting}
+                  className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Download size={12} className="text-cyan-400" />
+                  <span>{exporting ? "Đang xuất..." : "Xuất Điểm Tổng Hợp"}</span>
+                </button>
+              )}
+            </>
+          )}
 
           {/* Manual refresh for coordinator */}
           {isCoordinator && (

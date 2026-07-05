@@ -496,11 +496,104 @@ async function sendSeminarInvitation(email, recipientName, eventName, seminarDat
   }
 }
 
+/**
+ * Sends welcome/provisioning email with temporary password.
+ */
+async function sendAccountProvisionEmail(email, fullName, password, roleLabel = 'Thành viên') {
+  const loginUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const mailOptions = {
+    from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
+    to: email,
+    subject: `[SEAL Hackathon] Tài khoản của bạn đã được khởi tạo`,
+    html: `
+      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #1e293b; border-radius: 12px; background-color: #0b1329; color: #f1f5f9; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <h2 style="color: #00f0ff; text-align: center; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 1.5px; text-shadow: 0 0 15px rgba(0, 240, 255, 0.4); margin-bottom: 25px; font-size: 20px;">TÀI KHOẢN ĐÃ ĐƯỢC KHỞI TẠO</h2>
+        <p style="font-size: 15px; line-height: 1.6;">Xin chào <strong>${fullName}</strong>,</p>
+        <p style="font-size: 15px; line-height: 1.6;">Ban tổ chức SEAL Hackathon đã tạo tài khoản cho bạn trên hệ thống với vai trò: <strong>${roleLabel}</strong>.</p>
+        <p style="font-size: 15px; line-height: 1.6;">Dưới đây là thông tin đăng nhập của bạn:</p>
+        <div style="background-color: #0d1e3d; padding: 20px; border-radius: 8px; margin: 25px 0; border: 1px solid #1e293b; font-family: monospace;">
+          <p style="margin: 0; font-size: 14px; color: #ffffff;">📧 <strong>Email đăng nhập:</strong> ${email}</p>
+          <p style="margin: 8px 0 0 0; font-size: 14px; color: #ffffff;">🔑 <strong>Mật khẩu tạm thời:</strong> ${password}</p>
+        </div>
+        <p style="font-size: 15px; line-height: 1.6; color: #f59e0b;">* Lưu ý: Để bảo mật tài khoản, vui lòng đăng nhập và đổi mật khẩu ngay sau lần đăng nhập đầu tiên.</p>
+        <div style="text-align: center; margin: 35px 0;">
+          <a href="${loginUrl}" style="background-color: #00f0ff; color: #0b1329; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 0 20px rgba(0, 240, 255, 0.5); text-transform: uppercase; font-size: 13px; letter-spacing: 1px;">Đăng Nhập Hệ Thống</a>
+        </div>
+        <hr style="border: 0; border-top: 1px solid #1e293b; margin-top: 30px; margin-bottom: 20px;">
+        <p style="font-size: 12px; color: #64748b; text-align: center;">Hệ thống Quản lý SEAL Hackathon &copy; 2026</p>
+      </div>
+    `
+  };
+
+  if (isMock) {
+    console.log('\n--- [EMAIL MOCK SERVICE: ACCOUNT PROVISION] ---');
+    console.log(`To: ${email}`);
+    console.log(`Subject: ${mailOptions.subject}`);
+    console.log(`Password: ${password}`);
+    console.log('----------------------------------------------\n');
+    return true;
+  }
+
+  try {
+    const info = await sendMailHelper(mailOptions);
+    console.log(`Provision email sent to ${email}: ${info.messageId}`);
+    return true;
+  } catch (error) {
+    console.error('Error sending provision email:', error);
+    throw error;
+  }
+}
+
+/**
+ * Sends a password reset email to the user.
+ */
+async function sendPasswordResetEmail(email, fullName, resetLink) {
+  const mailOptions = {
+    from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
+    to: email,
+    subject: `[SEAL Hackathon] Khôi phục mật khẩu tài khoản của bạn`,
+    html: `
+      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #1e293b; border-radius: 12px; background-color: #0b1329; color: #f1f5f9; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <h2 style="color: #00f0ff; text-align: center; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 1.5px; text-shadow: 0 0 15px rgba(0, 240, 255, 0.4); margin-bottom: 25px; font-size: 20px;">YÊU CẦU KHÔI PHỤC MẬT KHẨU</h2>
+        <p style="font-size: 15px; line-height: 1.6;">Xin chào <strong>${fullName}</strong>,</p>
+        <p style="font-size: 15px; line-height: 1.6;">Bạn (hoặc ai đó) đã gửi yêu cầu khôi phục mật khẩu tài khoản của bạn trên hệ thống Quản lý SEAL Hackathon.</p>
+        <p style="font-size: 15px; line-height: 1.6;">Để tiến hành đặt lại mật khẩu mới, vui lòng nhấn vào liên kết dưới đây:</p>
+        <div style="text-align: center; margin: 35px 0;">
+          <a href="${resetLink}" style="background-color: #00f0ff; color: #0b1329; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 0 20px rgba(0, 240, 255, 0.5); text-transform: uppercase; font-size: 13px; letter-spacing: 1px;">ĐẶT LẠI MẬT KHẨU</a>
+        </div>
+        <p style="margin-top: 30px; font-size: 13px; color: #94a3b8; line-height: 1.6; border-top: 1px solid #1e293b; padding-top: 20px;">* Lưu ý: Liên kết khôi phục này chỉ có hiệu lực trong vòng 1 giờ. Nếu bạn không gửi yêu cầu này, vui lòng bỏ qua email này.</p>
+        <hr style="border: 0; border-top: 1px solid #1e293b; margin-top: 30px; margin-bottom: 20px;">
+        <p style="font-size: 12px; color: #64748b; text-align: center;">Hệ thống Quản lý SEAL Hackathon &copy; 2026</p>
+      </div>
+    `
+  };
+
+  if (isMock) {
+    console.log('\n--- [EMAIL MOCK SERVICE: PASSWORD RESET] ---');
+    console.log(`To: ${email}`);
+    console.log(`Subject: ${mailOptions.subject}`);
+    console.log(`Reset Link: ${resetLink}`);
+    console.log('--------------------------------------------\n');
+    return true;
+  }
+
+  try {
+    const info = await sendMailHelper(mailOptions);
+    console.log(`Password reset email sent to ${email}: ${info.messageId}`);
+    return true;
+  } catch (error) {
+    console.error('Error sending password reset email:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   sendTeamInvitation,
   sendEmailVerification,
   sendEventCreationNotification,
   sendTrackTopicDistribution,
   sendRoundExamOpened,
-  sendSeminarInvitation
+  sendSeminarInvitation,
+  sendAccountProvisionEmail,
+  sendPasswordResetEmail
 };

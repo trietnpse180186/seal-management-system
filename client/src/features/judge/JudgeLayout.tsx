@@ -5,7 +5,9 @@ import {
   LayoutDashboard,
   BookOpen,
   LogOut,
-  Bell
+  Bell,
+  Home,
+  Users
 } from 'lucide-react';
 
 interface JudgeLayoutProps {
@@ -14,7 +16,7 @@ interface JudgeLayoutProps {
   onLogout: () => void;
 }
 
-export default function JudgeLayout({ user, onLogout }: JudgeLayoutProps) {
+export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -83,6 +85,8 @@ export default function JudgeLayout({ user, onLogout }: JudgeLayoutProps) {
 
   const isActive = (path: string) => location.pathname === path;
 
+  const isMentor = roles?.some((r: any) => r.role === 'mentor');
+
   const navItems = [
     {
       path: '/judge/dashboard',
@@ -95,6 +99,21 @@ export default function JudgeLayout({ user, onLogout }: JudgeLayoutProps) {
       icon: BookOpen
     }
   ];
+
+  if (isMentor) {
+    navItems.push({
+      path: '/mentor/dashboard',
+      label: 'Mentor Dashboard',
+      icon: Users
+    });
+  }
+
+  // Back to Main Platform
+  navItems.push({
+    path: '/',
+    label: 'Về Trang Chủ',
+    icon: Home
+  });
 
   const handleLogoutClick = () => {
     onLogout();
@@ -112,7 +131,9 @@ export default function JudgeLayout({ user, onLogout }: JudgeLayoutProps) {
           </div>
           <div className="overflow-hidden">
             <h4 className="text-xs font-bold text-white truncate">{user?.fullName || 'Judge Name'}</h4>
-            <p className="text-[9px] text-cyan-400 font-mono uppercase tracking-wider">Vai trò: Giám khảo</p>
+            <p className="text-[9px] text-cyan-400 font-mono uppercase tracking-wider">
+              Vai trò: {isMentor ? 'Giám khảo & Mentor' : 'Giám khảo'}
+            </p>
           </div>
         </div>
 

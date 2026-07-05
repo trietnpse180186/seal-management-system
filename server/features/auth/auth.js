@@ -286,9 +286,31 @@ router.post('/assign-role', authenticateToken, requireSystemAdmin, async (req, r
   }
 
   try {
-    const targetUser = await User.findOne({ email: userEmail.toLowerCase() });
+    let targetUser = await User.findOne({ email: userEmail.toLowerCase() });
     if (!targetUser) {
-      return res.status(404).json({ message: 'Target user not found.' });
+      if (role === 'judge') {
+        const defaultPassword = 'password123';
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(defaultPassword, salt);
+        
+        targetUser = new User({
+          email: userEmail.toLowerCase(),
+          passwordHash,
+          fullName: userEmail.split('@')[0],
+          isApproved: true,
+          isActive: true
+        });
+        await targetUser.save();
+
+        try {
+          const emailService = require('../notifications/emailService');
+          await emailService.sendAccountProvisionEmail(targetUser.email, targetUser.fullName, defaultPassword, 'Giám khảo');
+        } catch (emailErr) {
+          console.error('Failed to send auto-created judge email:', emailErr.message);
+        }
+      } else {
+        return res.status(404).json({ message: 'Tài khoản người dùng này chưa tồn tại trong hệ thống. Vui lòng tạo tài khoản trước.' });
+      }
     }
 
     // Resolve roundId if trackId is provided
@@ -1006,14 +1028,6 @@ router.post('/users', authenticateToken, requireSystemAdmin, async (req, res) =>
       isActive: isActive !== undefined ? !!isActive : true
     });
     await newUser.save();
-
-    try {
-      const emailService = require('../notifications/emailService');
-      const roleLabel = newUser.isSystemAdmin ? 'Admin hệ thống' : 'Thành viên';
-      await emailService.sendAccountProvisionEmail(newUser.email, newUser.fullName, password, roleLabel);
-    } catch (emailErr) {
-      console.error('Failed to send provision email:', emailErr.message);
-    }
 
     res.status(201).json({ message: 'Tạo tài khoản người dùng thành công!', user: newUser });
   } catch (error) {

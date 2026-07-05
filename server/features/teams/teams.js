@@ -908,7 +908,7 @@ router.get('/my-team', authenticateToken, async (req, res) => {
     // Find all confirmed records pointing to active teams that actually exist
     for (const record of memberRecords) {
       const foundTeam = await Team.findById(record.teamId)
-        .populate('eventId', 'name semester year status contestEnd registrationClose')
+        .populate('eventId', 'name semester year status contestStart contestEnd registrationOpen registrationClose')
         .populate({
           path: 'trackId',
           select: 'name description startTime endTime roundId environmentId',
@@ -952,18 +952,20 @@ router.get('/my-team', authenticateToken, async (req, res) => {
 
     const repo = await GithubRepository.findOne({ teamId: team._id });
 
-    const trackPlain = team.trackId?.toObject ? team.trackId.toObject() : team.trackId;
+    const teamPlain = team.toObject();
+
+    const trackPlain = teamPlain.trackId;
     if (trackPlain?.roundId) {
       trackPlain.roundId = sanitizeRoundForParticipant(trackPlain.roundId);
       delete trackPlain.attachments;
-      team.trackId = trackPlain;
+      teamPlain.trackId = trackPlain;
     } else if (trackPlain) {
       delete trackPlain.attachments;
-      team.trackId = trackPlain;
+      teamPlain.trackId = trackPlain;
     }
 
     res.json({
-      team,
+      team: teamPlain,
       members,
       repository: repo
     });

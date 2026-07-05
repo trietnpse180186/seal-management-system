@@ -8,9 +8,9 @@ function startSeminarScheduler() {
 
   console.log('[SEMINAR SCHEDULER] Background service started. Checking every 2 minutes...');
 
-  // Check every 2 minutes
   schedulerInterval = setInterval(async () => {
     try {
+      if (mongoose.connection.readyState !== 1) return;
       const Event = mongoose.model('Event');
       const TeamMember = mongoose.model('TeamMember');
 

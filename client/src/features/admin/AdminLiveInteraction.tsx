@@ -47,6 +47,18 @@ export default function AdminLiveInteraction() {
     fetchEvents();
   }, []);
 
+  // Refs to avoid stale closures in socket callbacks
+  const selectedRoundIdRef = useRef(selectedRoundId);
+  const selectedTeamRef = useRef(selectedTeam);
+
+  useEffect(() => {
+    selectedRoundIdRef.current = selectedRoundId;
+  }, [selectedRoundId]);
+
+  useEffect(() => {
+    selectedTeamRef.current = selectedTeam;
+  }, [selectedTeam]);
+
   // Fetch rounds and roles when event is selected, and connect to socket room
   useEffect(() => {
     if (!selectedEventId) {
@@ -72,8 +84,19 @@ export default function AdminLiveInteraction() {
 
     socket.on("team_highlighted", (data: any) => {
       console.log("Socket Event: team_highlighted", data);
-      if (!data.roundId || data.roundId === selectedRoundId) {
+      if (!data.roundId || data.roundId === selectedRoundIdRef.current) {
         setHighlightedTeamId(data.teamId);
+      }
+    });
+
+    // Listen for real-time score updates to refresh rankings
+    socket.on("score_updated", (data: any) => {
+      console.log("Socket Event: score_updated in AdminLiveInteraction:", data);
+      if (data.roundId === selectedRoundIdRef.current) {
+        fetchLiveRankings();
+        if (selectedTeamRef.current && selectedTeamRef.current.teamId._id === data.teamId) {
+          fetchJudgeScoresForTeam();
+        }
       }
     });
 
@@ -284,6 +307,17 @@ export default function AdminLiveInteraction() {
     }
   };
 
+  // Group teams by track
+  const groupedTeams: { [trackId: string]: { trackName: string, items: any[] } } = {};
+  teams.forEach((item) => {
+    const trackId = item.trackId?._id || "unassigned";
+    const trackName = item.trackId?.name || "Chưa phân bảng";
+    if (!groupedTeams[trackId]) {
+      groupedTeams[trackId] = { trackName, items: [] };
+    }
+    groupedTeams[trackId].items.push(item);
+  });
+
   return (
     <div className="space-y-6 font-sans text-slate-300">
       {/* HEADER BAR */}
@@ -362,74 +396,89 @@ export default function AdminLiveInteraction() {
               </button>
             </div>
 
-            <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
-              {teams.length > 0 ? (
-                teams.map((item, idx) => {
-                  const isHighlighted = highlightedTeamId === item.teamId._id;
-                  const isSelected = selectedTeam?.teamId._id === item.teamId._id;
-                  return (
-                    <div
-                      key={item.teamId._id}
-                      onClick={() => setSelectedTeam(item)}
-                      className={`relative flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer group ${
-                        isSelected
-                          ? "bg-slate-900/60 border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.1)]"
-                          : isHighlighted
-                          ? "bg-amber-500/10 border-amber-500/40"
-                          : "bg-slate-950/40 border-slate-850 hover:bg-slate-900/30"
-                      }`}
-                    >
-                      {/* Left glowing marker */}
-                      {isHighlighted && (
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500 rounded-l animate-pulse" />
-                      )}
-
-                      <div className="flex items-center gap-3">
-                        {/* Rank Badge */}
-                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold font-mono text-[10px] ${
-                          idx === 0 
-                            ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" 
-                            : idx === 1 
-                            ? "bg-slate-300/20 text-slate-300 border border-slate-300/30" 
-                            : idx === 2 
-                            ? "bg-amber-700/20 text-amber-600 border border-amber-700/30"
-                            : "bg-slate-900 text-slate-500 border border-slate-800"
-                        }`}>
-                          {idx + 1}
-                        </div>
-
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-extrabold text-xs text-white tracking-wide group-hover:text-cyan-300 transition-colors">
-                              {item.teamId.name}
-                            </span>
-                            {isHighlighted && (
-                              <span className="bg-amber-500 text-slate-950 font-black text-[7px] px-1 py-0.5 rounded tracking-widest uppercase animate-pulse">
-                                LIVE
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-[10px] text-slate-500 block truncate max-w-[200px] mt-0.5">
-                            {item.teamId.topicSubmission?.title || "Chưa nộp đề tài"}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Right: Scores */}
-                      <div className="text-right flex items-center gap-4">
-                        <div>
-                          <span className="text-xs font-mono font-bold text-cyan-400 block">
-                            {item.averageScore > 0 ? `${item.averageScore}đ` : "--"}
-                          </span>
-                          <span className="text-[9px] text-slate-500 block font-mono">
-                            {item.judgeCount} Giám khảo
-                          </span>
-                        </div>
-                        <ChevronRight size={14} className="text-slate-600 group-hover:text-cyan-400 transition-colors" />
-                      </div>
+            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
+              {Object.keys(groupedTeams).length > 0 ? (
+                Object.entries(groupedTeams).map(([trackId, group]) => (
+                  <div key={trackId} className="space-y-2">
+                    {/* Track Header Divider */}
+                    <div className="flex items-center gap-2 pt-2 pb-1 sticky top-0 bg-slate-950 z-10">
+                      <span className="text-[10px] uppercase font-bold text-cyan-400 font-mono tracking-wider bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-800/30">
+                        Bảng đấu: {group.trackName}
+                      </span>
+                      <div className="h-px bg-slate-800/60 flex-1"></div>
                     </div>
-                  );
-                })
+
+                    <div className="space-y-2">
+                      {group.items.map((item, idx) => {
+                        const isHighlighted = highlightedTeamId === item.teamId._id;
+                        const isSelected = selectedTeam?.teamId._id === item.teamId._id;
+                        const rank = item.trackRank || (idx + 1);
+                        return (
+                          <div
+                            key={item.teamId._id}
+                            onClick={() => setSelectedTeam(item)}
+                            className={`relative flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer group ${
+                              isSelected
+                                ? "bg-slate-900/60 border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.1)]"
+                                : isHighlighted
+                                ? "bg-amber-500/10 border-amber-500/40"
+                                : "bg-slate-950/40 border-slate-850 hover:bg-slate-900/30"
+                            }`}
+                          >
+                            {/* Left glowing marker */}
+                            {isHighlighted && (
+                              <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500 rounded-l animate-pulse" />
+                            )}
+
+                            <div className="flex items-center gap-3">
+                              {/* Rank Badge */}
+                              <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold font-mono text-[10px] ${
+                                rank === 1 
+                                  ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" 
+                                  : rank === 2 
+                                  ? "bg-slate-300/20 text-slate-300 border border-slate-300/30" 
+                                  : rank === 3 
+                                  ? "bg-amber-700/20 text-amber-600 border border-amber-700/30"
+                                  : "bg-slate-900 text-slate-500 border border-slate-800"
+                              }`}>
+                                {rank}
+                              </div>
+
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-extrabold text-xs text-white tracking-wide group-hover:text-cyan-300 transition-colors">
+                                    {item.teamId.name}
+                                  </span>
+                                  {isHighlighted && (
+                                    <span className="bg-amber-500 text-slate-950 font-black text-[7px] px-1 py-0.5 rounded tracking-widest uppercase animate-pulse">
+                                      LIVE
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[10px] text-slate-500 block truncate max-w-[200px] mt-0.5">
+                                  {item.teamId.topicSubmission?.title || "Chưa nộp đề tài"}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Right: Scores */}
+                            <div className="text-right flex items-center gap-4">
+                              <div>
+                                <span className="text-xs font-mono font-bold text-cyan-400 block">
+                                  {item.averageScore > 0 ? `${item.averageScore}đ` : "--"}
+                                </span>
+                                <span className="text-[9px] text-slate-500 block font-mono">
+                                  {item.judgeCount} Giám khảo
+                                </span>
+                              </div>
+                              <ChevronRight size={14} className="text-slate-600 group-hover:text-cyan-400 transition-colors" />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
               ) : (
                 <p className="text-center py-8 text-slate-500 font-mono text-xs">
                   Không có đội thi nào được ghi nhận trong bảng này.

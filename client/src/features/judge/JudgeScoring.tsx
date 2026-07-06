@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -38,38 +38,6 @@ export default function JudgeScoring() {
   const [isHighlighted, setIsHighlighted] = useState(false);
   const socketRef = useRef<Socket | null>(null);
 
-  // Real-time synchronization for highlighted team
-  useEffect(() => {
-    if (!selectedEventId || !token || !teamId) return;
-
-    const socketUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
-    const socket = io(socketUrl, { query: { token } });
-    socketRef.current = socket;
-
-    socket.on("connect", () => {
-      socket.emit("join_live_room", { eventId: selectedEventId });
-    });
-
-    socket.on("team_highlighted", (data: any) => {
-      console.log("Team highlighted event received on scoring board:", data);
-      if (data.teamId === teamId) {
-        setIsHighlighted(true);
-        toast.info("Đội thi này đang được chọn để trình bày / chấm điểm bởi Coordinator!", {
-          position: "top-center",
-          duration: 5000
-        });
-      } else {
-        setIsHighlighted(false);
-      }
-    });
-
-    return () => {
-      socket.emit("leave_live_room", { eventId: selectedEventId });
-      socket.disconnect();
-      socketRef.current = null;
-    };
-  }, [selectedEventId, teamId, token]);
-  
   const [team, setTeam] = useState<any>(null);
   const [rubric, setRubric] = useState<any>(null);
   const [criteria, setCriteria] = useState<any[]>([]);
@@ -215,7 +183,7 @@ export default function JudgeScoring() {
   }, [teamId, token]);
 
   // Load existing score
-  useEffect(() => {
+  const fetchExistingScore = useCallback(() => {
     if (!teamId || !selectedRoundId || criteria.length === 0) {
       setOverallComment('');
       setIsGraded(false);
@@ -256,6 +224,50 @@ export default function JudgeScoring() {
         console.error('Error fetching existing score:', err);
       });
   }, [teamId, selectedRoundId, criteria, token]);
+
+  useEffect(() => {
+    fetchExistingScore();
+  }, [fetchExistingScore]);
+
+  // Real-time synchronization for highlighted team
+  useEffect(() => {
+    if (!selectedEventId || !token || !teamId) return;
+
+    const socketUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    const socket = io(socketUrl, { query: { token } });
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      socket.emit("join_live_room", { eventId: selectedEventId });
+    });
+
+    socket.on("team_highlighted", (data: any) => {
+      console.log("Team highlighted event received on scoring board:", data);
+      if (data.teamId === teamId) {
+        setIsHighlighted(true);
+        toast.info("Đội thi này đang được chọn để trình bày / chấm điểm bởi Coordinator!", {
+          position: "top-center",
+          duration: 5000
+        });
+      } else {
+        setIsHighlighted(false);
+      }
+    });
+
+    socket.on("score_updated", (data: any) => {
+      console.log("Socket Event score_updated on JudgeScoring:", data);
+      if (data.teamId === teamId && data.roundId === selectedRoundId) {
+        fetchExistingScore();
+        toast.info("Điểm số của đội thi này đã được cập nhật/đồng bộ thời gian thực!");
+      }
+    });
+
+    return () => {
+      socket.emit("leave_live_room", { eventId: selectedEventId });
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [selectedEventId, teamId, selectedRoundId, token, fetchExistingScore]);
 
   const handleScoreChange = (critId: string, field: string, val: any) => {
     setScores((prev: any) => ({

@@ -458,6 +458,23 @@ router.post('/submit', authenticateToken, async (req, res) => {
     });
     await scoreLog.save();
 
+    // Emit real-time score update via Socket.IO
+    try {
+      const socketModule = require('../chat/socket');
+      const io = socketModule.getIO();
+      io.to(`live:${team.eventId}`).emit('score_updated', {
+        teamId: team._id.toString(),
+        roundId: roundId.toString(),
+        judgeId: targetJudgeId.toString(),
+        totalRawScore,
+        totalWeightedScore: score.totalWeightedScore,
+        overallComment,
+        details: preparedDetails
+      });
+    } catch (socketErr) {
+      console.warn('Socket emit score_updated failed:', socketErr.message);
+    }
+
     res.json({
       message: 'Scores submitted successfully!',
       scoreId: score._id,

@@ -407,7 +407,7 @@ export default function AdminEvents({
     if (selectedEvent) {
       fetchEventDetails();
     }
-  }, [selectedEvent]);
+  }, [selectedEvent?._id]);
 
   useEffect(() => {
     if (!sessionStorage.getItem("activeTab")) {
@@ -433,7 +433,7 @@ export default function AdminEvents({
         };
       }
     }
-  }, [activeTab, selectedEvent, token]);
+  }, [activeTab, selectedEvent?._id, token]);
 
   useEffect(() => {
     if (eventIdParam) {
@@ -494,7 +494,7 @@ export default function AdminEvents({
     if (selectedEvent) {
       fetchSyncProgress();
     }
-  }, [selectedEvent]);
+  }, [selectedEvent?._id]);
 
   // Poll sync progress if active
   useEffect(() => {
@@ -585,6 +585,7 @@ export default function AdminEvents({
 
       if (res.data.event) {
         populateEventSchedule(res.data.event);
+        setSelectedEvent(res.data.event);
       }
 
       if (res.data.rounds && res.data.rounds.length > 0) {

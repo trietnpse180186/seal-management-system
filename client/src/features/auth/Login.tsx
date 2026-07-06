@@ -199,7 +199,42 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           }
         } catch (err: any) {
           console.error(err);
-          setError(err.response?.data?.message || 'Lỗi xác thực GitHub bằng code.');
+          if (err.response?.status === 409) {
+            const confirmForce = window.confirm(
+              'Tài khoản của bạn đang được đăng nhập ở một thiết bị hoặc trình duyệt khác. ' +
+              'Bạn có muốn tiếp tục đăng nhập và đóng phiên làm việc cũ không?'
+            );
+            if (confirmForce) {
+              try {
+                setLoading(true);
+                const forceResponse = await axios.post(`${baseUrl}/auth/github`, {
+                  code,
+                  redirectUri: window.location.origin + '/login',
+                  force: true,
+                  isMock: false
+                });
+                const { token, user, roles } = forceResponse.data;
+                if (handleMobileRedirect(token, user, roles || [])) {
+                  return;
+                }
+                onLoginSuccess(token, user, roles || []);
+                if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view'))) {
+                  navigate('/admin');
+                } else if (roles && roles.some((r: any) => r.role === 'judge')) {
+                  navigate('/grading');
+                } else {
+                  navigate('/guest-portal');
+                }
+                return;
+              } catch (forceErr: any) {
+                setError(forceErr.response?.data?.message || 'Không thể thực hiện đăng nhập đè.');
+              }
+            } else {
+              setError('Đăng nhập bị hủy do phiên làm việc khác đang hoạt động.');
+            }
+          } else {
+            setError(err.response?.data?.message || 'Lỗi xác thực GitHub bằng code.');
+          }
           
           // Clear mobile session to prevent auto-redirect loop on error
           localStorage.removeItem('mobile_platform');
@@ -246,7 +281,41 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             }
           } catch (err: any) {
             console.error(err);
-            setError(err.response?.data?.message || 'Lỗi đăng nhập Google.');
+            if (err.response?.status === 409) {
+              const confirmForce = window.confirm(
+                'Tài khoản của bạn đang được đăng nhập ở một thiết bị hoặc trình duyệt khác. ' +
+                'Bạn có muốn tiếp tục đăng nhập và đóng phiên làm việc cũ không?'
+              );
+              if (confirmForce) {
+                try {
+                  setLoading(true);
+                  const forceResponse = await axios.post(`${baseUrl}/auth/google`, {
+                    idToken,
+                    force: true,
+                    isMock: false
+                  });
+                  const { token, user, roles } = forceResponse.data;
+                  if (handleMobileRedirect(token, user, roles || [])) {
+                    return;
+                  }
+                  onLoginSuccess(token, user, roles || []);
+                  if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view'))) {
+                    navigate('/admin');
+                  } else if (roles && roles.some((r: any) => r.role === 'judge')) {
+                    navigate('/grading');
+                  } else {
+                    navigate('/guest-portal');
+                  }
+                  return;
+                } catch (forceErr: any) {
+                  setError(forceErr.response?.data?.message || 'Không thể thực hiện đăng nhập đè.');
+                }
+              } else {
+                setError('Đăng nhập bị hủy do phiên làm việc khác đang hoạt động.');
+              }
+            } else {
+              setError(err.response?.data?.message || 'Lỗi đăng nhập Google.');
+            }
             
             // Clear mobile session to prevent auto-redirect loop on error
             localStorage.removeItem('mobile_platform');
@@ -393,7 +462,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       fetchCaptcha();
       if (err.response?.status === 403 && err.response?.data?.requiresVerification) {
         setIsVerificationPending(true);
-      } else if (err.response?.status === 409 && err.response?.data?.code === 'ACTIVE_SESSION_EXISTS') {
+      } else if (err.response?.status === 409) {
         const confirmForce = window.confirm(
           'Tài khoản của bạn đang được đăng nhập ở một thiết bị hoặc trình duyệt khác. ' +
           'Bạn có muốn tiếp tục đăng nhập và đóng phiên làm việc cũ không?'
@@ -407,13 +476,13 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               force: true
             });
             const { token, user, roles } = forceResponse.data;
-            if (handleMobileRedirect(token, user, roles)) {
+            if (handleMobileRedirect(token, user, roles || [])) {
               return;
             }
-            onLoginSuccess(token, user, roles);
-            if (user.isSystemAdmin || roles.some((r: any) => r.role === 'coordinator')) {
+            onLoginSuccess(token, user, roles || []);
+            if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view'))) {
               navigate('/admin');
-            } else if (roles.some((r: any) => r.role === 'judge')) {
+            } else if (roles && roles.some((r: any) => r.role === 'judge')) {
               navigate('/grading');
             } else {
               navigate('/guest-portal');

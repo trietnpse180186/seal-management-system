@@ -93,7 +93,7 @@ export default function JudgeTeamActivity() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-slate-900/40 backdrop-blur-md border border-white/10 px-6 py-4 rounded-xl shadow-lg gap-4">
         <div className="flex items-center gap-2">
           <button
-            onClick={() => navigate('/judge/dashboard')}
+            onClick={() => navigate('/expert/dashboard')}
             className="text-cyan-400 hover:text-cyan-300 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]"
           >
             <ArrowLeft size={14} />
@@ -104,7 +104,7 @@ export default function JudgeTeamActivity() {
         </div>
 
         <button
-          onClick={() => navigate(`/judge/score/${team._id}`)}
+          onClick={() => navigate(`/expert/score/${team._id}`)}
           className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-white font-bold text-xs px-6 py-3 rounded-xl transition-all uppercase tracking-wider shrink-0 shadow-[0_0_15px_rgba(6,182,212,0.4)] hover:shadow-[0_0_25px_rgba(6,182,212,0.6)]"
         >
           <Award size={14} />

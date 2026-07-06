@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import {
   LogOut,
   Award,
-  Users,
   ShieldAlert,
   GitBranch,
   BarChart2,
@@ -274,19 +273,11 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                 </>
               )}
 
-              {/* Judge Links */}
-              {isJudge && !isCoordinator && (
-                <Link to="/judge/dashboard" className={linkClass("/judge/dashboard")}>
+              {/* Expert Portal Links */}
+              {(isJudge || isMentor) && !isCoordinator && (
+                <Link to="/expert/dashboard" className={linkClass("/expert/dashboard")}>
                   <Award size={16} />
-                  <span>Judge Dashboard</span>
-                </Link>
-              )}
-
-              {/* Mentor Links */}
-              {isMentor && !isCoordinator && (
-                <Link to="/mentor/dashboard" className={linkClass("/mentor/dashboard")}>
-                  <Users size={16} />
-                  <span>Mentor Dashboard</span>
+                  <span>Cổng Chuyên gia</span>
                 </Link>
               )}
 

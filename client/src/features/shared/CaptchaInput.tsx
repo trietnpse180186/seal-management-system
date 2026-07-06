@@ -49,7 +49,7 @@ export default function CaptchaInput({
           value={value}
           onChange={e => onChange(e.target.value)}
           maxLength={6}
-          className="flex-grow min-w-0 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500/50 transition-all font-mono placeholder:text-slate-600 uppercase tracking-widest text-center text-sm"
+          className="flex-grow min-w-0 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500/50 transition-all font-mono placeholder:text-slate-600 tracking-widest text-center text-sm"
           placeholder="MÃ SỐ"
           autoComplete="off"
           autoCorrect="off"

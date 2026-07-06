@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Play,
   Lock,
@@ -49,6 +49,18 @@ export default function OperationsTab({
     }
     return "";
   });
+
+  useEffect(() => {
+    if (rounds && rounds.length > 0) {
+      const hasSelected = rounds.some(r => r._id === selectedRoundId);
+      if (!hasSelected) {
+        const active = rounds.find(r => r.status === "active" || r.status === "pending");
+        setSelectedRoundId(active ? active._id : rounds[0]._id);
+      }
+    } else {
+      setSelectedRoundId("");
+    }
+  }, [rounds, selectedRoundId]);
 
   const token = localStorage.getItem("token");
 

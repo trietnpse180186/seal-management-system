@@ -346,7 +346,7 @@ export default function JudgeDashboard() {
             </div>
           </div>
           <button
-            onClick={() => navigate(`/judge/score/${lastGradedTeamId}?roundId=${selectedRoundId}`)}
+            onClick={() => navigate(`/expert/score/${lastGradedTeamId}?roundId=${selectedRoundId}`)}
             className="bg-cyan-500 hover:bg-cyan-500 text-white font-bold text-xs px-6 py-3 rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.4)] hover:shadow-[0_0_25px_rgba(6,182,212,0.6)] transition-all uppercase tracking-wider shrink-0 relative z-10"
           >
             Vào Bàn Chấm Điểm
@@ -362,7 +362,7 @@ export default function JudgeDashboard() {
             <span className="drop-shadow-[0_0_5px_rgba(255,255,255,0.2)]">Hoạt động Git gần nhất từ các đội ({allCommits.length})</span>
           </h3>
           <button
-            onClick={() => navigate("/judge/projects")}
+            onClick={() => navigate("/expert/projects")}
             className="text-cyan-400 hover:text-cyan-300 font-bold text-[10px] uppercase tracking-wider transition-colors drop-shadow-[0_0_5px_rgba(6,182,212,0.3)]"
           >
             Xem tất cả dự án &rarr;
@@ -409,7 +409,7 @@ export default function JudgeDashboard() {
                 </div>
 
                 <button
-                  onClick={() => navigate(`/judge/activity/${c.teamId}`)}
+                  onClick={() => navigate(`/expert/activity/${c.teamId}`)}
                   className="flex items-center gap-1.5 text-[10px] font-bold text-cyan-300 hover:text-white border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/20 bg-cyan-500/10 px-4 py-2 rounded-lg transition-all uppercase tracking-wider shrink-0 shadow-[0_0_10px_rgba(6,182,212,0.1)]"
                 >
                   <span>Hoạt động</span>

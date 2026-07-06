@@ -14,6 +14,26 @@ const githubAiQueue = require('./githubAiQueue');
 const { authenticateToken } = require('../auth/authMiddleware');
 
 /**
+ * @route   GET /api/github-repositories/search-users
+ * @desc    Search for users on GitHub
+ * @access  Private
+ */
+router.get('/search-users', authenticateToken, async (req, res) => {
+  const { q } = req.query;
+  if (!q) {
+    return res.status(400).json({ message: 'Missing search query q.' });
+  }
+
+  try {
+    const users = await githubService.searchUsers(q);
+    res.json(users);
+  } catch (err) {
+    console.error('Search GitHub users error:', err);
+    res.status(500).json({ message: 'Error searching GitHub users.' });
+  }
+});
+
+/**
  * @route   GET /api/github-repositories
  * @desc    Get all GitHub repositories (filtered by eventId/trackId)
  * @access  Private

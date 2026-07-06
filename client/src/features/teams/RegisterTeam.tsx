@@ -5,6 +5,7 @@ import { Users, UserPlus, Trash2, Calendar, FolderGit2, CheckCircle } from 'luci
 import UniversityCombobox from '../shared/UniversityCombobox';
 import CustomSelect from '../shared/CustomSelect';
 import { Link, useSearchParams } from 'react-router-dom';
+import GithubUserAutocomplete from '../shared/GithubUserAutocomplete';
 
 interface MemberInput {
   email: string;
@@ -490,12 +491,10 @@ export default function RegisterTeam() {
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
                   GitHub Username
                 </label>
-                <input
-                  type="text"
-                  required
+                <GithubUserAutocomplete
                   value={leaderGithubUsername}
-                  onChange={e => setLeaderGithubUsername(e.target.value)}
-                  className="w-full bg-slate-900/50 border border-slate-800 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(0,240,255,0.05)] transition-all font-mono"
+                  onChange={setLeaderGithubUsername}
+                  className="bg-slate-900/50 border border-slate-800 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(0,240,255,0.05)] transition-all font-mono"
                   placeholder="github-username của bạn"
                 />
               </div>
@@ -599,13 +598,11 @@ export default function RegisterTeam() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-400 mb-1">GitHub Username</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="github-username"
+                      <GithubUserAutocomplete
                         value={member.githubUsername}
-                        onChange={e => handleMemberChange(index, 'githubUsername', e.target.value)}
-                        className="w-full bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                        onChange={val => handleMemberChange(index, 'githubUsername', val)}
+                        className="bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                        placeholder="github-username"
                       />
                     </div>
                     <div>

@@ -6,6 +6,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import logo from "../../assets/logo.svg";
 import UniversityCombobox from '../shared/UniversityCombobox';
 import CaptchaInput from '../shared/CaptchaInput';
+import GithubUserAutocomplete from '../shared/GithubUserAutocomplete';
 
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
@@ -677,13 +678,11 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 <label className="block font-mono text-xs text-primary-container opacity-80 mb-1" htmlFor="githubUsername">Tên tài khoản GitHub</label>
                 <div className="relative cyber-input-wrapper rounded overflow-hidden">
                   <div className="relative terminal-prompt">
-                    <input
-                      type="text"
-                      id="githubUsername"
-                      placeholder="Nhập tên tài khoản github"
+                    <GithubUserAutocomplete
                       value={githubUsername}
-                      onChange={e => setGithubUsername(e.target.value)}
+                      onChange={setGithubUsername}
                       className="cyber-input relative z-10 w-full rounded py-2 pl-11 pr-4 font-mono text-xs focus:ring-0"
+                      placeholder="Nhập tên tài khoản github"
                     />
                     <div className="scanline"></div>
                   </div>

@@ -28,11 +28,12 @@ export default function Gallery() {
   const [visibleCount, setVisibleCount] = useState<number>(16);
 
   const loadGalleryData = (showToast = false) => {
+    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000';
     if (showToast) {
       setSyncing(true);
       toast.loading("Đang đồng bộ: Đang chuẩn bị...", { id: "gallery-sync" });
 
-      const eventSource = new EventSource("http://localhost:5000/api/gallery/sync-progress");
+      const eventSource = new EventSource(`${apiBase}/api/gallery/sync-progress`);
 
       eventSource.onmessage = (event) => {
         try {
@@ -66,7 +67,7 @@ export default function Gallery() {
     } else {
       setLoading(true);
       axios
-        .get("http://localhost:5000/api/gallery")
+        .get(`${apiBase}/api/gallery`)
         .then((res) => {
           setCategories(res.data.categories || []);
           setPhotos(res.data.photos || []);

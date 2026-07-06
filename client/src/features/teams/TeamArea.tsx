@@ -464,9 +464,9 @@ export default function TeamArea() {
           {isExamVisible && (
             <div className={`${showMqttCard ? 'lg:col-span-4' : 'lg:col-span-8'
               } glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all relative overflow-hidden`}>
-              {round?.hasExamMaterial && round?.examOpened && (
+              {(round?.hasExamMaterial && round?.examOpened) || team?.trackId?.examAccess?.examOpened ? (
                 <div className="absolute inset-0 pointer-events-none laser-scan-effect opacity-10"></div>
-              )}
+              ) : null}
               <div>
                 <div className="flex justify-between items-center border-b border-slate-800 pb-3 mb-5">
                   <h2 className="text-sm font-bold text-white flex items-center gap-2 font-mono-tech">
@@ -508,33 +508,33 @@ export default function TeamArea() {
                       {getRemainingTimeText(round.startTime)}
                     </div>
                   </div>
-                ) : round?.hasExamMaterial && round?.examOpened ? (
+                ) : team?.trackId?.examAccess?.examOpened ? (
                   <div className="space-y-4 py-1">
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        <p className="text-[10px] font-bold text-emerald-400 uppercase font-mono tracking-wider">ĐỀ BÀI ĐÃ MỞ KHÓA</p>
+                        <p className="text-[10px] font-bold text-emerald-400 uppercase font-mono tracking-wider">ĐỀ BÀI ĐÃ MỞ KHÓA — BẢNG {team.trackId.name?.toUpperCase()}</p>
                       </div>
-                      <h3 className="text-sm font-bold text-white leading-snug font-sans truncate" title={round.driveFileName || `Đề vòng ${round.name}`}>
-                        {round.driveFileName || `Đề thi & Tài liệu hướng dẫn - Vòng ${round.name}`}
+                      <h3 className="text-sm font-bold text-white leading-snug font-sans truncate" title={team.trackId.examAccess.examDriveFileName || `Đề bảng ${team.trackId.name}`}>
+                        {team.trackId.examAccess.examDriveFileName || `Đề thi & Tài liệu hướng dẫn — ${team.trackId.name}`}
                       </h3>
                       <p className="text-[11px] text-slate-400 font-sans leading-relaxed line-clamp-3">
-                        Tài liệu đề bài, sơ đồ kiến trúc hệ thống và dữ liệu mẫu được lưu trữ trên thư mục Google Drive của Ban tổ chức.
+                        Tài liệu đề bài, sơ đồ kiến trúc hệ thống và dữ liệu mẫu được lưu trữ trên thư mục Google Drive riêng của bảng {team.trackId.name}.
                       </p>
                     </div>
                     <div className="pt-2">
                       <a
-                        href={round.driveFileUrl || "#"}
+                        href={team.trackId.examAccess.examDriveFileUrl || "#"}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="w-full flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase py-3 px-5 rounded-xl transition-all shadow-lg shadow-cyan-600/20 text-center cursor-pointer hover:-translate-y-0.5 duration-150"
                       >
                         <BookOpen size={16} />
-                        Mở đề & tài liệu (Google Drive)
+                        Mở đề bảng {team.trackId.name} (Google Drive)
                       </a>
                     </div>
                   </div>
-                ) : round?.hasExamMaterial ? (
+                ) : team?.trackId?.examAccess?.hasExamMaterial ? (
                   <div className="text-center py-6 text-slate-450 font-sans text-xs">
                     <Clock size={32} className="mx-auto text-amber-500 mb-2 animate-pulse" />
                     <p className="font-semibold text-slate-300">Đề thi đang được chuẩn bị</p>

@@ -16,7 +16,12 @@ const TrackSchema = new Schema({
   advanceTopN: { type: Number },
   topicName: { type: String },
   topicLink: { type: String },
-  environmentId: { type: String }
+  environmentId: { type: String },
+  // Per-track exam materials — each track stores its own Drive link
+  examDriveFileId: { type: String },
+  examDriveFileName: { type: String },
+  examDriveFileUrl: { type: String },
+  isExamManualOpen: { type: Boolean, default: false }
 }, {
   timestamps: true
 });

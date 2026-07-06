@@ -928,6 +928,8 @@ router.post('/:eventId/rounds/:roundId/sync-drive-access', authenticateToken, as
 /**
  * @route   POST /api/events/:eventId/upload-exam
  * @desc    Save exam material — Admin pastes a Google Drive URL directly (no OAuth needed).
+ *          Supports per-track links: pass `trackId` to assign a drive link to a specific track (bảng).
+ *          Pass `roundId` (legacy) to assign to the whole round.
  *          The link should already be set to "Anyone with the link" on Drive.
  * @access  Private (Coordinator or Admin)
  */
@@ -948,9 +950,40 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
       if (!isCoord) return res.status(403).json({ message: 'Unauthorized.' });
     }
 
-    // Try to extract Drive ID for display purposes only — not required
     const driveFileId = extractDriveFileId(fileUrl) || null;
 
+    // ── PER-TRACK (bảng riêng): Store link directly on the Track ──
+    if (trackId) {
+      const track = await Track.findById(trackId);
+      if (!track || track.eventId.toString() !== eventId) {
+        return res.status(404).json({ message: 'Không tìm thấy bảng đấu trong event này.' });
+      }
+
+      track.examDriveFileId = driveFileId;
+      track.examDriveFileName = fileName;
+      track.examDriveFileUrl = fileUrl;
+      await track.save();
+
+      const newLog = new EventLog({
+        eventId,
+        actorId: req.user._id,
+        action: 'upload_track_exam',
+        details: `Gắn đề Google Drive riêng cho bảng "${track.name}" (${fileName})`
+      });
+      await newLog.save();
+
+      return res.json({
+        message: `Đã lưu link Drive riêng cho bảng "${track.name}". Thí sinh bảng này sẽ thấy link khi đến giờ mở đề.`,
+        track: {
+          _id: track._id,
+          name: track.name,
+          examDriveFileName: track.examDriveFileName,
+          examDriveFileUrl: track.examDriveFileUrl
+        }
+      });
+    }
+
+    // ── ROUND-LEVEL (legacy / toàn vòng): Store on Round ──
     if (roundId) {
       const round = await Round.findById(roundId);
       if (!round || round.eventId.toString() !== eventId) {
@@ -959,7 +992,7 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
 
       round.driveFileId = driveFileId;
       round.driveFileName = fileName;
-      round.driveFileUrl = fileUrl;   // ← Lưu URL gốc thẳng từ admin
+      round.driveFileUrl = fileUrl;
       round.isDriveAccessSynced = false;
       round.driveSyncedEmailCount = 0;
       round.driveSyncErrors = [];
@@ -989,19 +1022,11 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
       uploadedBy: req.user.fullName
     };
 
-    if (trackId) {
-      const track = await Track.findById(trackId);
-      if (track) {
-        track.attachments.push(fileMeta);
-        await track.save();
-      }
-    } else {
-      event.attachments.push(fileMeta);
-      await event.save();
-    }
+    event.attachments.push(fileMeta);
+    await event.save();
 
     res.json({
-      message: 'Lưu tài liệu (theo track). Nên dùng roundId để gắn link Drive / vòng.',
+      message: 'Lưu tài liệu (event level). Nên dùng trackId để gắn link Drive per bảng.',
       attachment: fileMeta
     });
 

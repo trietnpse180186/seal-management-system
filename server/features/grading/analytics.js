@@ -19,7 +19,7 @@ const { authenticateToken } = require('../auth/authMiddleware');
  */
 router.get('/team/:teamId/commits', authenticateToken, async (req, res) => {
   try {
-    const commits = await Commit.find({ teamId: req.params.teamId }).sort({ committedAt: -1 });
+    const commits = await Commit.find({ teamId: req.params.teamId, message: { $not: /initial commit/i } }).sort({ committedAt: -1 });
     res.json(commits);
   } catch (error) {
     console.error('Fetch Team Commits Error:', error.message);
@@ -56,7 +56,7 @@ router.get('/team/:teamId/summary', authenticateToken, async (req, res) => {
   const { teamId } = req.params;
 
   try {
-    const commits = await Commit.find({ teamId });
+    const commits = await Commit.find({ teamId, message: { $not: /initial commit/i } });
 
     // Aggregate contributions by authorName / authorGithubUsername
     const contributions = {};

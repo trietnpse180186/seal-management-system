@@ -97,7 +97,7 @@ async function fetchActiveRepositories() {
  */
 async function fetchTeamCommits(teamId, limit = 200) {
   const { Commit } = getModels();
-  return await Commit.find({ teamId }).sort({ committedAt: 1 }).limit(limit);
+  return await Commit.find({ teamId, message: { $not: /initial commit/i } }).sort({ committedAt: 1 }).limit(limit);
 }
 
 /**

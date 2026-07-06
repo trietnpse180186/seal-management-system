@@ -111,7 +111,7 @@ router.post('/team/:teamId/aggregate', authenticateToken, async (req, res) => {
     console.log(`[SYNC MANUAL] Running Team Aggregate Review for team: ${teamId}...`);
     
     // Fetch up to 40 commits
-    const commits = await Commit.find({ teamId }).sort({ committedAt: 1 }).limit(40);
+    const commits = await Commit.find({ teamId, message: { $not: /initial commit/i } }).sort({ committedAt: 1 }).limit(40);
     // Fetch up to 10 prior reviews
     const priorReviews = await AiAnalysis.find({
       teamId,

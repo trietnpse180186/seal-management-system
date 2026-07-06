@@ -268,110 +268,141 @@ async function syncRepo(repoId) {
     const newCommits = await githubService.fetchCommits(repo.repoName, sinceDate, repo.orgName);
     console.log(`[SYNC] Found ${newCommits.length} new commits since last sync.`);
 
-    if (newCommits.length === 0) {
-      repo.syncStatus = 'success';
-      repo.lastSyncedAt = new Date();
-      await repo.save();
-      console.log(`[SYNC] No new commits for: ${repo.repoName}`);
-      return true;
-    }
-
-    // Sort new commits by date ascending so we process in order
-    newCommits.sort((a, b) => new Date(a.committedAt).getTime() - new Date(b.committedAt).getTime());
-
     let latestSha = repo.lastCommitSha;
-    const syncedCommits = [];
+    let syncedCommits = [];
 
-    for (const rawCommit of newCommits) {
-      // Check if commit already exists
-      let commitRecord = await Commit.findOne({ repositoryId: repo._id, commitSha: rawCommit.sha });
+    if (newCommits.length === 0) {
+      // Self-healing check: find any recent commits (last 10) that do not have a completed AI review
+      console.log(`[SYNC] No new commits found. Running self-healing check for failed/pending reviews...`);
+      const recentCommits = await Commit.find({
+        repositoryId: repo._id,
+        message: { $not: /initial commit/i }
+      }).sort({ committedAt: -1 }).limit(10);
 
-      if (!commitRecord) {
-        // Create Commit record
-        commitRecord = new Commit({
-          repositoryId: repo._id,
-          teamId: repo.teamId,
-          commitSha: rawCommit.sha,
-          branch: repo.defaultBranch || 'main',
-          authorGithubUsername: rawCommit.authorUsername,
-          authorName: rawCommit.authorName,
-          authorEmail: rawCommit.authorEmail,
-          message: rawCommit.message,
-          commitUrl: rawCommit.commitUrl || '',
-          additions: rawCommit.additions,
-          deletions: rawCommit.deletions,
-          changedFilesCount: rawCommit.changedFilesCount,
-          committedAt: rawCommit.committedAt,
-          pulledAt: new Date(),
-          diffFetched: true
+      for (const commitRecord of recentCommits) {
+        const hasCompletedAnalysis = await AiAnalysis.exists({
+          commitId: commitRecord._id,
+          analysisType: 'commit_review',
+          status: 'completed'
         });
-        await commitRecord.save();
 
-        // Fetch and create CommitFile records
-        const commitFiles = await githubService.fetchCommitFiles(repo.repoName, rawCommit.sha, repo.orgName);
-        const savedFiles = [];
-
-        for (const file of commitFiles) {
-          // Truncate file patch at 3,000 characters
-          let patchContent = file.patch || '';
-          if (patchContent.length > 3000) {
-            patchContent = patchContent.substring(0, 3000) + '\n... [Truncated due to size limits] ...';
-          }
-
-          const fileRecord = new CommitFile({
-            commitId: commitRecord._id,
-            repositoryId: repo._id,
-            filename: file.filename,
-            status: file.status,
-            additions: file.additions,
-            deletions: file.deletions,
-            changes: file.changes,
-            patch: patchContent,
-            rawUrl: file.rawUrl || '',
-            blobUrl: file.blobUrl || ''
-          });
-          await fileRecord.save();
-          savedFiles.push(fileRecord);
+        if (!hasCompletedAnalysis) {
+          console.log(`[SYNC-SELF-HEALING] Found pending/failed AI analysis for commit: ${commitRecord.commitSha}`);
+          const savedFiles = await CommitFile.find({ commitId: commitRecord._id });
+          syncedCommits.push({ commitRecord, savedFiles });
         }
-
-        // Firebase Realtime Database Sync
-        const firebaseData = {
-          team_id: repo.teamId.toString(),
-          commit_sha: commitRecord.commitSha,
-          repo_name: repo.repoName,
-          author: commitRecord.authorName,
-          commit_message: commitRecord.message,
-          committed_at: commitRecord.committedAt,
-          source: 'webhook'
-        };
-
-        if (process.env.FIREBASE_DATABASE_URL) {
-          const cleanFbUrl = process.env.FIREBASE_DATABASE_URL.replace(/\/$/, '');
-          const fbUrl = `${cleanFbUrl}/commit/${commitRecord.commitSha}.json`;
-          console.log(`[FIREBASE] Syncing raw commit to Firebase: ${fbUrl}`);
-
-          fetch(fbUrl, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(firebaseData)
-          })
-            .then(res => {
-              if (!res.ok) console.error(`[FIREBASE ERROR] Failed to write to Firebase: Status ${res.status}`);
-              else console.log(`[FIREBASE] Successfully synced commit ${commitRecord.commitSha.substring(0, 7)} to Firebase`);
-            })
-            .catch(err => {
-              console.error('[FIREBASE ERROR] Connection failed:', err.message);
-            });
-        } else {
-          console.log(`[FIREBASE MOCK] Syncing raw commit thô to Firebase: /commit/${commitRecord.commitSha}.json`);
-        }
-
-        syncedCommits.push({ commitRecord, savedFiles });
       }
 
-      // Track the latest commit SHA
-      if (!latestSha || new Date(rawCommit.committedAt) > (repo.lastSyncedAt || new Date(0))) {
-        latestSha = rawCommit.sha;
+      if (syncedCommits.length === 0) {
+        repo.syncStatus = 'success';
+        repo.lastSyncedAt = new Date();
+        await repo.save();
+        console.log(`[SYNC] No new commits and no pending AI reviews for: ${repo.repoName}`);
+        return true;
+      }
+
+      // Sort pending commits chronologically
+      syncedCommits.sort((a, b) => new Date(a.commitRecord.committedAt).getTime() - new Date(b.commitRecord.committedAt).getTime());
+    } else {
+      // Sort new commits by date ascending so we process in order
+      newCommits.sort((a, b) => new Date(a.committedAt).getTime() - new Date(b.committedAt).getTime());
+
+      for (const rawCommit of newCommits) {
+        // Check if commit already exists
+        let commitRecord = await Commit.findOne({ repositoryId: repo._id, commitSha: rawCommit.sha });
+
+        if (!commitRecord) {
+          // Create Commit record
+          commitRecord = new Commit({
+            repositoryId: repo._id,
+            teamId: repo.teamId,
+            commitSha: rawCommit.sha,
+            branch: repo.defaultBranch || 'main',
+            authorGithubUsername: rawCommit.authorUsername,
+            authorName: rawCommit.authorName,
+            authorEmail: rawCommit.authorEmail,
+            message: rawCommit.message,
+            commitUrl: rawCommit.commitUrl || '',
+            additions: rawCommit.additions,
+            deletions: rawCommit.deletions,
+            changedFilesCount: rawCommit.changedFilesCount,
+            committedAt: rawCommit.committedAt,
+            pulledAt: new Date(),
+            diffFetched: true
+          });
+          await commitRecord.save();
+
+          // Fetch and create CommitFile records
+          const commitFiles = await githubService.fetchCommitFiles(repo.repoName, rawCommit.sha, repo.orgName);
+          const savedFiles = [];
+
+          for (const file of commitFiles) {
+            // Truncate file patch at 3,000 characters
+            let patchContent = file.patch || '';
+            if (patchContent.length > 3000) {
+              patchContent = patchContent.substring(0, 3000) + '\n... [Truncated due to size limits] ...';
+            }
+
+            const fileRecord = new CommitFile({
+              commitId: commitRecord._id,
+              repositoryId: repo._id,
+              filename: file.filename,
+              status: file.status,
+              additions: file.additions,
+              deletions: file.deletions,
+              changes: file.changes,
+              patch: patchContent,
+              rawUrl: file.rawUrl || '',
+              blobUrl: file.blobUrl || ''
+            });
+            await fileRecord.save();
+            savedFiles.push(fileRecord);
+          }
+
+          // Firebase Realtime Database Sync
+          const firebaseData = {
+            team_id: repo.teamId.toString(),
+            commit_sha: commitRecord.commitSha,
+            repo_name: repo.repoName,
+            author: commitRecord.authorName,
+            commit_message: commitRecord.message,
+            committed_at: commitRecord.committedAt,
+            source: 'webhook'
+          };
+
+          if (process.env.FIREBASE_DATABASE_URL) {
+            const cleanFbUrl = process.env.FIREBASE_DATABASE_URL.replace(/\/$/, '');
+            const fbUrl = `${cleanFbUrl}/commit/${commitRecord.commitSha}.json`;
+            console.log(`[FIREBASE] Syncing raw commit to Firebase: ${fbUrl}`);
+
+            fetch(fbUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(firebaseData)
+            })
+              .then(res => {
+                if (!res.ok) console.error(`[FIREBASE ERROR] Failed to write to Firebase: Status ${res.status}`);
+                else console.log(`[FIREBASE] Successfully synced commit ${commitRecord.commitSha.substring(0, 7)} to Firebase`);
+              })
+              .catch(err => {
+                console.error('[FIREBASE ERROR] Connection failed:', err.message);
+              });
+          } else {
+            console.log(`[FIREBASE MOCK] Syncing raw commit thô to Firebase: /commit/${commitRecord.commitSha}.json`);
+          }
+
+          const isInitialCommit = rawCommit.message && rawCommit.message.trim().toLowerCase().includes('initial commit');
+          if (!isInitialCommit) {
+            syncedCommits.push({ commitRecord, savedFiles });
+          } else {
+            console.log(`[SYNC] Skipping AI analysis for initial commit: ${rawCommit.sha}`);
+          }
+        }
+
+        // Track the latest commit SHA
+        if (!latestSha || new Date(rawCommit.committedAt) > (repo.lastSyncedAt || new Date(0))) {
+          latestSha = rawCommit.sha;
+        }
       }
     }
 
@@ -433,7 +464,7 @@ async function syncRepo(repoId) {
         console.log(`[SYNC] Running combined sync AI analysis (commit + team aggregate) for team: ${repo.teamId}...`);
         
         // Fetch up to 40 commits for the team
-        const allTeamCommits = await Commit.find({ teamId: repo.teamId }).sort({ committedAt: 1 }).limit(40);
+        const allTeamCommits = await Commit.find({ teamId: repo.teamId, message: { $not: /initial commit/i } }).sort({ committedAt: 1 }).limit(40);
         // Fetch up to 10 prior reviews
         const priorReviews = await AiAnalysis.find({
           teamId: repo.teamId,
@@ -454,6 +485,13 @@ async function syncRepo(repoId) {
 
         // 1. Save Per-Push Commit Review
         if (aiResult) {
+          // Delete any existing failed analyses for this commit before saving
+          await AiAnalysis.deleteMany({
+            commitId: latestCommit._id,
+            analysisType: 'commit_review',
+            status: 'failed'
+          });
+
           const aiAnalysis = new AiAnalysis({
             repositoryId: repo._id,
             teamId: repo.teamId,
@@ -515,6 +553,13 @@ ${aiResult.assessment?.improvement_areas || 'Không có thông tin.'}
 
         // 2. Save Team Aggregate Review
         if (aggResult) {
+          // Delete any existing failed repository reviews for this team before saving
+          await AiAnalysis.deleteMany({
+            teamId: repo.teamId,
+            analysisType: 'repository_review',
+            status: 'failed'
+          });
+
           const aggAnalysis = new AiAnalysis({
             repositoryId: repo._id,
             teamId: repo.teamId,

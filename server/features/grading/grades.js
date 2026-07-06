@@ -1206,6 +1206,10 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
         status: { $in: ['submitted', 'locked'] }
       }).populate('judgeId', 'fullName email');
 
+      // Fetch all score details for these scores to compute criteria averages
+      const scoreIds = scores.map(s => s._id);
+      const scoreDetails = await ScoreDetail.find({ scoreId: { $in: scoreIds } });
+
       // Unique judges who graded
       const uniqueJudgesMap = {};
       scores.forEach(s => {
@@ -1216,8 +1220,16 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
       const judges = Object.values(uniqueJudgesMap);
 
       // Table Headers:
-      // STT | Tên Đội | Tên Đề Tài | Judge 1 Total | ... | Judge M Total | Điểm Trung Bình | Thứ Hạng | Nhận Xét Tổng Hợp
+      // STT | Tên Đội | Tên Đề Tài | Criteria 1 (TB) | ... | Criteria N (TB) | Judge 1 Total | ... | Judge M Total | Điểm Trung Bình | Thứ Hạng | Nhận Xét Tổng Hợp
       const headers = ["STT", "Tên Đội Thi", "Tên Đề Tài / Dự Án"];
+      
+      // Add criteria headers
+      criteria.forEach(c => {
+        const weightPercent = c.weight > 1 ? c.weight : c.weight * 100;
+        headers.push(`${c.code} (TB)\n(${weightPercent}%)`);
+      });
+
+      // Add judge total headers
       judges.forEach(j => {
         headers.push(j.fullName);
       });
@@ -1235,6 +1247,24 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
           averageScore = Math.round((sum / judgeCount) * 100) / 100;
         }
 
+        // Calculate average score for each criterion
+        const criteriaAverages = criteria.map(c => {
+          if (judgeCount === 0) return 0;
+          let criterionSum = 0;
+          let count = 0;
+          teamScores.forEach(ts => {
+            const detail = scoreDetails.find(d => 
+              d.scoreId.toString() === ts._id.toString() && 
+              d.criterionId.toString() === c._id.toString()
+            );
+            if (detail) {
+              criterionSum += detail.scoreValue;
+              count++;
+            }
+          });
+          return count > 0 ? Math.round((criterionSum / count) * 100) / 100 : 0;
+        });
+
         const judgeScoresList = judges.map(j => {
           const s = teamScores.find(ts => ts.judgeId._id.toString() === j._id.toString());
           return s ? s.totalWeightedScore : '-';
@@ -1248,6 +1278,7 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
         return {
           teamName: team.name,
           topic: team.topicSubmission?.title || 'Chưa đăng ký đề tài',
+          criteriaAverages,
           judgeScoresList,
           averageScore,
           comments
@@ -1262,6 +1293,7 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
           idx + 1,
           item.teamName,
           item.topic,
+          ...item.criteriaAverages,
           ...item.judgeScoresList,
           item.averageScore,
           idx + 1, // Rank
@@ -1275,12 +1307,12 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
       
       const sigRow = [];
       sigRow[1] = "ĐẠI DIỆN BAN THƯ KÝ";
-      sigRow[2 + judges.length] = "TRƯỞNG BAN TỔ CHỨC";
+      sigRow[2 + criteria.length + judges.length] = "TRƯỞNG BAN TỔ CHỨC";
       wsData.push(sigRow);
 
       const subSigRow = [];
       subSigRow[1] = "(Ký và ghi rõ họ tên)";
-      subSigRow[2 + judges.length] = "(Ký và ghi rõ họ tên)";
+      subSigRow[2 + criteria.length + judges.length] = "(Ký và ghi rõ họ tên)";
       wsData.push(subSigRow);
 
       // Add 4 empty rows for space to sign
@@ -1288,7 +1320,7 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
 
       const nameSigRow = [];
       nameSigRow[1] = ".......................................";
-      nameSigRow[2 + judges.length] = ".......................................";
+      nameSigRow[2 + criteria.length + judges.length] = ".......................................";
       wsData.push(nameSigRow);
     }
 

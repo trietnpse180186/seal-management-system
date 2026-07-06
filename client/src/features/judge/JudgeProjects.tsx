@@ -47,6 +47,26 @@ export default function JudgeProjects() {
       }
     });
 
+    socket.on("score_updated", (data: any) => {
+      console.log("Socket Event: score_updated received on JudgeProjects:", data);
+      if (data.roundId === selectedRoundId) {
+        axiosInstance.get(`http://localhost:5000/api/grades/team/${data.teamId}/round/${selectedRoundId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+          .then((res: any) => {
+            setGradedTeams(prev => ({
+              ...prev,
+              [data.teamId]: !!(res.data && res.data.score)
+            }));
+            setTeamScores(prev => ({
+              ...prev,
+              [data.teamId]: res.data?.score || null
+            }));
+          })
+          .catch(err => console.error("Error refreshing team score via socket:", err));
+      }
+    });
+
     return () => {
       socket.emit("leave_live_room", { eventId: selectedEventId });
       socket.disconnect();

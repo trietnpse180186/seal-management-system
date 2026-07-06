@@ -63,12 +63,20 @@ export default function JudgeScoring() {
       }
     });
 
+    socket.on("score_updated", (data: any) => {
+      console.log("Socket Event score_updated on JudgeScoring:", data);
+      if (data.teamId === teamId && data.roundId === selectedRoundId) {
+        fetchExistingScore();
+        toast.info("Điểm số của đội thi này đã được cập nhật/đồng bộ thời gian thực!");
+      }
+    });
+
     return () => {
       socket.emit("leave_live_room", { eventId: selectedEventId });
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [selectedEventId, teamId, token]);
+  }, [selectedEventId, teamId, selectedRoundId, token, fetchExistingScore]);
   
   const [team, setTeam] = useState<any>(null);
   const [rubric, setRubric] = useState<any>(null);
@@ -215,7 +223,7 @@ export default function JudgeScoring() {
   }, [teamId, token]);
 
   // Load existing score
-  useEffect(() => {
+  const fetchExistingScore = useCallback(() => {
     if (!teamId || !selectedRoundId || criteria.length === 0) {
       setOverallComment('');
       setIsGraded(false);
@@ -256,6 +264,10 @@ export default function JudgeScoring() {
         console.error('Error fetching existing score:', err);
       });
   }, [teamId, selectedRoundId, criteria, token]);
+
+  useEffect(() => {
+    fetchExistingScore();
+  }, [fetchExistingScore]);
 
   const handleScoreChange = (critId: string, field: string, val: any) => {
     setScores((prev: any) => ({

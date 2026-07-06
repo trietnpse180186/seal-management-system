@@ -150,13 +150,74 @@ async function canUserAccessRoundExam(userId, roundId) {
   return { ok: true, round, user, accessUrl };
 }
 
+/**
+ * Kiểm tra xem đề của một Track có đang mở không.
+ * Logic: có link Drive của track + (đã đến giờ round.startTime hoặc isExamManualOpen bật)
+ */
+function isTrackExamOpen(track, round) {
+  const hasMaterial = !!(track?.examDriveFileId || track?.examDriveFileUrl);
+  if (!hasMaterial) return false;
+  if (track?.isExamManualOpen) return true;
+  if (!round?.startTime) return true;
+  return new Date() >= new Date(round.startTime);
+}
+
+/**
+ * Sanitize track exam data for participant — chỉ expose examDriveFileUrl khi đã mở.
+ */
+function sanitizeTrackExamForParticipant(track, round) {
+  if (!track) return null;
+  const plain = track.toObject ? track.toObject() : { ...track };
+  const opened = isTrackExamOpen(plain, round);
+
+  return {
+    hasExamMaterial: !!(plain.examDriveFileId || plain.examDriveFileUrl),
+    examOpened: opened,
+    examDriveFileName: opened ? plain.examDriveFileName : null,
+    examDriveFileUrl: opened ? plain.examDriveFileUrl : null,
+  };
+}
+
+/**
+ * Kiểm tra xem user có quyền xem đề bài của Track (bảng) không.
+ * User phải là thành viên đã confirmed của đội trong bảng đó, và đề phải mở.
+ */
+async function canUserAccessTrackExam(userId, trackId) {
+  const user = await User.findById(userId);
+  if (!user || !user.isActive) {
+    return { ok: false, reason: 'inactive', message: 'Tài khoản không hợp lệ hoặc đã bị khóa.' };
+  }
+
+  const track = await Track.findById(trackId).lean();
+  if (!track) {
+    return { ok: false, reason: 'not_found', message: 'Không tìm thấy bảng đấu.' };
+  }
+
+  if (!track.examDriveFileUrl && !track.examDriveFileId) {
+    return { ok: false, reason: 'no_material', message: 'Bảng đấu này chưa có đề bài được gắn.' };
+  }
+
+  // Lấy round để kiểm tra thời gian mở
+  const round = track.roundId ? await Round.findById(track.roundId).lean() : null;
+
+  if (!isTrackExamOpen(track, round)) {
+    return { ok: false, reason: 'not_started', message: 'Đề bài chưa đến giờ mở.' };
+  }
+
+  const accessUrl = track.examDriveFileUrl || buildDriveUrl(track.examDriveFileId);
+  return { ok: true, track, round, user, accessUrl };
+}
+
 module.exports = {
   extractDriveFileId,
   buildDriveUrl,
   getEligibleEmailsForRound,
   getEligibleUserIdsForRound,
   isRoundExamOpen,
+  isTrackExamOpen,
   sanitizeRoundForParticipant,
   sanitizeRoundForAdmin,
-  canUserAccessRoundExam
+  sanitizeTrackExamForParticipant,
+  canUserAccessRoundExam,
+  canUserAccessTrackExam
 };

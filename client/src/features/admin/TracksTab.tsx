@@ -97,25 +97,19 @@ export default function TracksTab({
 
   const handleUploadDriveForTrack = async () => {
     if (!selectedTrack || !driveFileName || !driveFileUrl) return;
-    // Lấy roundId từ track đang chọn
-    const roundId = selectedTrack.roundId;
-    if (!roundId) {
-      toast.error("Bảng đấu này chưa được gắn vòng thi. Hãy gắn Round cho Track trước.");
-      return;
-    }
     setUploadingDrive(true);
     try {
       await axios.post(
         `http://localhost:5000/api/events/${selectedEvent._id}/upload-exam`,
-        { fileName: driveFileName, fileUrl: driveFileUrl, roundId },
+        { fileName: driveFileName, fileUrl: driveFileUrl, trackId: selectedTrack._id },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      toast.success(`Đã gắn link Drive cho bảng “${selectedTrack.name}”!`);
+      toast.success(`Đã lưu link Drive riêng cho bảng "${selectedTrack.name}"!`);
       setDriveFileName("");
       setDriveFileUrl("");
       if (fetchEventDetails) fetchEventDetails();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Lỗi khi gắn link Drive.");
+      toast.error(err.response?.data?.message || "Lỗi khi lưu link Drive.");
     } finally {
       setUploadingDrive(false);
     }
@@ -412,13 +406,12 @@ export default function TracksTab({
 
           {!selectedTrack ? (
             <p className="text-xs text-slate-500 italic text-center py-4 font-sans">
-              Chọn một bảng đấu ở cột bên trái để gắn link Drive.
+              Chọn một bảng đấu ở cột bên trái để gắn link Drive riêng.
             </p>
           ) : (() => {
-            // Lấy round của track đang chọn để hiển thị link hiện tại
-            const round = rounds.find((r: any) => r._id === selectedTrack.roundId);
-            const currentUrl = round?.driveFileUrl;
-            const currentName = round?.driveFileName;
+            // Đọc trực tiếp từ track — mỗi bảng có link riêng
+            const currentUrl = selectedTrack.examDriveFileUrl;
+            const currentName = selectedTrack.examDriveFileName;
             return (
               <div className="space-y-3">
                 {/* Hiển thị link đã gắn */}
@@ -426,7 +419,7 @@ export default function TracksTab({
                   <div className="p-3 bg-emerald-950/30 rounded-xl border border-emerald-800/40 space-y-1">
                     <div className="flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                      <p className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">Đã gắn Drive</p>
+                      <p className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">Drive riêng — Chỉ bảng này</p>
                     </div>
                     <p className="text-xs font-semibold text-white">{currentName}</p>
                     <a
@@ -440,20 +433,22 @@ export default function TracksTab({
                     </a>
                   </div>
                 ) : (
-                  <p className="text-[10px] text-amber-400 italic font-sans">
-                    Bảng này chưa có link Drive nào được gắn.
-                  </p>
+                  <div className="p-3 bg-amber-950/20 rounded-xl border border-amber-800/30">
+                    <p className="text-[10px] text-amber-400 italic font-sans">
+                      Bảng <strong>{selectedTrack.name}</strong> chưa có link Drive riêng nào.
+                    </p>
+                  </div>
                 )}
 
                 {/* Form upload mới */}
                 {!readOnly && (
                   <div className="space-y-2.5 pt-2 border-t border-slate-800/60">
                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">
-                      {currentUrl ? "Cập nhật link Drive:" : "Gắn link Drive:"}
+                      {currentUrl ? "Cập nhật link Drive riêng:" : "Gắn link Drive riêng cho bảng này:"}
                     </p>
                     <input
                       type="text"
-                      placeholder="VD: Đề Vòng Sơ loại SU26"
+                      placeholder="VD: Đề Bảng AI & IoT - Vòng Sơ loại"
                       value={driveFileName}
                       onChange={(e) => setDriveFileName(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl text-xs bg-slate-950 border border-slate-800 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500"
@@ -466,7 +461,7 @@ export default function TracksTab({
                       className="w-full px-3 py-2 rounded-xl text-xs bg-slate-950 border border-slate-800 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500"
                     />
                     <p className="text-[9px] text-amber-400 font-sans">
-                      Đặt Drive là <strong>"Anyone with the link"</strong> trước khi lưu.
+                      Đặt Drive là <strong>"Anyone with the link"</strong> rồi mới paste link vào đây.
                     </p>
                     <button
                       type="button"
@@ -474,7 +469,7 @@ export default function TracksTab({
                       onClick={handleUploadDriveForTrack}
                       className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold text-xs py-2.5 rounded-xl uppercase tracking-wider transition-colors cursor-pointer"
                     >
-                      {uploadingDrive ? "Đang lưu..." : "Lưu link Drive"}
+                      {uploadingDrive ? "Đang lưu..." : "Lưu Link Drive Riêng"}
                     </button>
                   </div>
                 )}

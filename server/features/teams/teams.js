@@ -17,7 +17,10 @@ const captchaService = require('../auth/captchaService');
 const { ensureChatRoomForTeam } = require('../chat/chatRoomService');
 const {
   canUserAccessRoundExam,
+  canUserAccessTrackExam,
   sanitizeRoundForParticipant,
+  sanitizeTrackExamForParticipant,
+  isTrackExamOpen,
   buildDriveUrl
 } = require('../events/examAccessService');
 const { ensureUserDriveAccess } = require('../events/driveAccessService');
@@ -954,11 +957,18 @@ router.get('/my-team', authenticateToken, async (req, res) => {
     const teamPlain = team.toObject();
 
     const trackPlain = teamPlain.trackId;
-    if (trackPlain?.roundId) {
-      trackPlain.roundId = sanitizeRoundForParticipant(trackPlain.roundId);
-      delete trackPlain.attachments;
-      teamPlain.trackId = trackPlain;
-    } else if (trackPlain) {
+    if (trackPlain) {
+      // Sanitize round for participant (strip raw drive url from round)
+      const roundData = trackPlain.roundId;
+      if (roundData) {
+        trackPlain.roundId = sanitizeRoundForParticipant(roundData);
+      }
+      // Attach per-track exam info — only expose link when exam is open
+      trackPlain.examAccess = sanitizeTrackExamForParticipant(trackPlain, roundData);
+      // Remove raw exam fields so participant can't extract url directly from track object
+      delete trackPlain.examDriveFileId;
+      delete trackPlain.examDriveFileUrl;
+      delete trackPlain.examDriveFileName;
       delete trackPlain.attachments;
       teamPlain.trackId = trackPlain;
     }
@@ -992,17 +1002,38 @@ router.get('/my-team/exam-access', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: 'Bạn cần là thành viên đã xác nhận của đội để truy cập đề bài.' });
     }
 
-    const team = await Team.findById(memberRecord.teamId).populate('trackId', 'roundId name');
+    const team = await Team.findById(memberRecord.teamId).populate('trackId', 'roundId name examDriveFileId examDriveFileUrl examDriveFileName isExamManualOpen');
     if (!team || team.status !== 'confirmed') {
       return res.status(403).json({ message: 'Đội của bạn chưa được xác nhận hoàn tất.' });
     }
 
-    const roundId = team.trackId?.roundId;
-    if (!roundId) {
-      return res.status(404).json({ message: 'Đội chưa được gán vòng thi / bảng đấu.' });
+    const trackId = team.trackId?._id;
+    if (!trackId) {
+      return res.status(404).json({ message: 'Đội chưa được gán bảng đấu.' });
     }
 
-    const access = await canUserAccessRoundExam(req.user._id, roundId);
+    // ── Ưu tiên: kiểm tra link đề riêng của bảng (per-track) ──
+    const trackAccess = await canUserAccessTrackExam(req.user._id, trackId);
+    if (trackAccess.ok) {
+      // Có link per-track → trả về luôn
+      return res.json({ accessUrl: trackAccess.accessUrl, source: 'track' });
+    }
+
+    // Nếu bảng chưa có link riêng → fallback sang round-level (backward compat)
+    if (trackAccess.reason === 'no_material') {
+      const roundId = team.trackId?.roundId;
+      if (!roundId) {
+        return res.status(404).json({ message: 'Đội chưa được gán vòng thi / bảng đấu.' });
+      }
+      const access = await canUserAccessRoundExam(req.user._id, roundId);
+      if (!access.ok) {
+        return res.status(403).json({ message: access.message, reason: access.reason });
+      }
+      return res.json({ accessUrl: access.accessUrl, source: 'round' });
+    }
+
+    // Bảng có link nhưng chưa mở
+    const access = trackAccess;
     if (!access.ok) {
       return res.status(403).json({ message: access.message, reason: access.reason });
     }

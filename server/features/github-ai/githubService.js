@@ -389,6 +389,42 @@ async function createIssue(repoName, title, body, customOrgName) {
   }
 }
 
+/**
+ * Searches for users on GitHub.
+ * @param {string} query - Search query (username or email)
+ * @returns {Promise<Array<{username: string, avatarUrl: string}>>}
+ */
+async function searchUsers(query) {
+  if (!query || query.trim().length < 2) return [];
+
+  if (isMock || !octokit) {
+    console.log(`[GITHUB MOCK] Searching users with query: ${query}`);
+    const mockUsers = [
+      { username: 'trietnp', avatarUrl: 'https://avatars.githubusercontent.com/u/583231?v=4' },
+      { username: 'thanhnha', avatarUrl: 'https://avatars.githubusercontent.com/u/583232?v=4' },
+      { username: 'cuongnv', avatarUrl: 'https://avatars.githubusercontent.com/u/583233?v=4' },
+      { username: 'ngocnt', avatarUrl: 'https://avatars.githubusercontent.com/u/583234?v=4' },
+      { username: 'octocat', avatarUrl: 'https://avatars.githubusercontent.com/u/583235?v=4' }
+    ];
+    return mockUsers.filter(u => 
+      u.username.toLowerCase().includes(query.toLowerCase()) || 
+      query.includes('@')
+    );
+  }
+
+  try {
+    const q = query.includes('@') ? `${query} in:email` : query;
+    const response = await octokit.search.users({ q });
+    return (response.data.items || []).map(item => ({
+      username: item.login,
+      avatarUrl: item.avatar_url
+    }));
+  } catch (error) {
+    console.error('Error searching GitHub users:', error.message);
+    return [];
+  }
+}
+
 module.exports = {
   createTeamRepository,
   addCollaborator,
@@ -397,7 +433,8 @@ module.exports = {
   fetchCommitFiles,
   createOrganization,
   linkOrganization,
-  createIssue
+  createIssue,
+  searchUsers
 };
 
 

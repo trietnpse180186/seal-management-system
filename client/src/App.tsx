@@ -75,8 +75,8 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
             )
           } />
           <Route path="/login" element={!user ? <Login onLoginSuccess={handleLoginSuccess} /> : <Navigate to="/" />} />
-          <Route path="/forgot-password" element={!user ? <ForgotPassword /> : <Navigate to="/" />} />
-          <Route path="/reset-password" element={!user ? <ResetPassword /> : <Navigate to="/" />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           <Route path="/register-team" element={<Navigate to="/team-area" replace />} />
 

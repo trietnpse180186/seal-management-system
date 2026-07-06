@@ -55,7 +55,7 @@ async function callN8nWebhook(payload) {
   console.log(`[N8N] Calling n8n webhook: ${n8nUrl} for ${payload.analysisType}...`);
   
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 35000); // 35s timeout
+  const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s timeout
 
   try {
     const response = await fetch(n8nUrl, {

@@ -109,8 +109,7 @@ async function checkAndSyncDueRepositories() {
   const activeRepos = await GithubRepository.find({ isArchived: false });
   const eventIntervals = {}; // cache to avoid multiple queries for the same event
   
-  const concurrencyLimit = 3;
-  const executing = [];
+  const dueRepos = [];
 
   for (const repo of activeRepos) {
     // 1. Skip if already syncing in the last 5 minutes to prevent race conditions
@@ -142,34 +141,33 @@ async function checkAndSyncDueRepositories() {
     const elapsedMinutes = (Date.now() - lastSynced) / (1000 * 60);
 
     if (elapsedMinutes >= commitSyncInterval) {
-      console.log(`[CRON] Repo ${repo.repoName} is due for sync (elapsed: ${elapsedMinutes.toFixed(1)}m, interval: ${commitSyncInterval}m)`);
-      const p = (async () => {
-        try {
-          if (githubAiQueue.isQueueAvailable()) {
-            await githubAiQueue.addSyncJob(repo._id.toString());
-          } else {
-            await syncRepo(repo._id);
-          }
-        } catch (err) {
-          console.error(`[CRON ERROR] Failed syncing repo ID ${repo._id}:`, err.message);
-        }
-      })();
-
-      executing.push(p);
-
-      const clean = () => {
-        const idx = executing.indexOf(p);
-        if (idx > -1) executing.splice(idx, 1);
-      };
-      p.then(clean, clean);
-
-      if (executing.length >= concurrencyLimit) {
-        await Promise.race(executing);
-      }
+      dueRepos.push(repo);
     }
   }
 
-  await Promise.all(executing);
+  if (dueRepos.length > 0) {
+    console.log(`[CRON] Found ${dueRepos.length} repository/repositories due for sync.`);
+    if (githubAiQueue.isQueueAvailable()) {
+      for (const repo of dueRepos) {
+        try {
+          await githubAiQueue.addSyncJob(repo._id.toString());
+        } catch (err) {
+          console.error(`[CRON ERROR] Failed to enqueue repo ID ${repo._id}:`, err.message);
+        }
+      }
+    } else {
+      console.log(`[CRON] Redis queue not active. Executing syncRepo sequentially with 12s cooldown...`);
+      for (const repo of dueRepos) {
+        try {
+          await syncRepo(repo._id);
+          console.log('[CRON] Cooldown sleep for 12 seconds...');
+          await new Promise(resolve => setTimeout(resolve, 12000));
+        } catch (err) {
+          console.error(`[CRON ERROR] Failed syncing repo ID ${repo._id}:`, err.message);
+        }
+      }
+    }
+  }
 }
 
 /**

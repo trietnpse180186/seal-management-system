@@ -86,7 +86,7 @@ function createCaptcha() {
   const captchaSvg = generateSvgCaptcha(text);
   
   // Encrypt the text into captchaId token (expires in 5 minutes)
-  const captchaId = jwt.sign({ text: text.toLowerCase() }, JWT_SECRET, { expiresIn: '5m' });
+  const captchaId = jwt.sign({ text: text }, JWT_SECRET, { expiresIn: '5m' });
   
   return { captchaId, captchaSvg };
 }
@@ -98,7 +98,7 @@ function verifyCaptcha(captchaId, captchaValue) {
   if (!captchaId || !captchaValue) return false;
   try {
     const decoded = jwt.verify(captchaId, JWT_SECRET);
-    return decoded.text === captchaValue.toLowerCase().trim();
+    return decoded.text === captchaValue.trim();
   } catch (err) {
     return false; // Token expired or invalid signature
   }

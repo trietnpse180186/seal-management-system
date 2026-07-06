@@ -347,7 +347,7 @@ export default function JudgeProjects() {
                       <td className="px-6 py-5 whitespace-nowrap text-right">
                         {!isRoundCompleted && (
                           <button
-                            onClick={() => navigate(`/judge/score/${team._id}?roundId=${selectedRoundId}`)}
+                            onClick={() => navigate(`/expert/score/${team._id}?roundId=${selectedRoundId}`)}
                             className={`inline-flex items-center gap-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(6,182,212,0.2)] ${
                               isGraded
                                 ? "bg-slate-800 border border-white/10 text-slate-300 hover:bg-slate-700 hover:text-white"

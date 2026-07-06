@@ -390,7 +390,7 @@ export default function JudgeScoring() {
       <div className="flex justify-between items-center bg-slate-900/40 backdrop-blur-md border border-white/10 px-6 py-4 rounded-xl shadow-lg">
         <div className="flex items-center gap-2">
           <button
-            onClick={() => navigate('/judge/projects')}
+            onClick={() => navigate('/expert/projects')}
             className="text-cyan-400 hover:text-cyan-300 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]"
           >
             <ArrowLeft size={14} />

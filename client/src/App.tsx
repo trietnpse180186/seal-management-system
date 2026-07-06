@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import axios from 'axios';
 import errorMessages from './utils/errorMessages';
 import Navbar from './features/landing/Navbar';
@@ -31,6 +31,22 @@ import Gallery from './features/landing/Gallery';
 import { Toaster } from 'sonner';
 import { ConformProvider } from './features/shared/ModalConform';
 import { ConfirmProvider } from './features/shared/ConfirmDialog';
+
+function RedirectToExpertScore() {
+  const { teamId } = useParams();
+  const location = useLocation();
+  return <Navigate to={`/expert/score/${teamId}${location.search}`} replace />;
+}
+
+function RedirectToExpertActivity() {
+  const { teamId } = useParams();
+  return <Navigate to={`/expert/activity/${teamId}`} replace />;
+}
+
+function RedirectToExpertMentorTeam() {
+  const { teamId } = useParams();
+  return <Navigate to={`/expert/mentored-team/${teamId}`} replace />;
+}
 
 function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
   const location = useLocation();
@@ -115,10 +131,10 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
           <Route path="/judge" element={<Navigate to="/expert/dashboard" replace />} />
           <Route path="/judge/dashboard" element={<Navigate to="/expert/dashboard" replace />} />
           <Route path="/judge/projects" element={<Navigate to="/expert/projects" replace />} />
-          <Route path="/judge/score/:teamId" element={<Navigate to="/expert/score/:teamId" replace />} />
-          <Route path="/judge/activity/:teamId" element={<Navigate to="/expert/activity/:teamId" replace />} />
+          <Route path="/judge/score/:teamId" element={<RedirectToExpertScore />} />
+          <Route path="/judge/activity/:teamId" element={<RedirectToExpertActivity />} />
           <Route path="/mentor/dashboard" element={<Navigate to="/expert/mentored-teams" replace />} />
-          <Route path="/mentor/team/:teamId" element={<Navigate to="/expert/mentored-team/:teamId" replace />} />
+          <Route path="/mentor/team/:teamId" element={<RedirectToExpertMentorTeam />} />
           
           <Route path="/leaderboard" element={<Leaderboard user={user} roles={roles} />} />
           <Route path="/album" element={<Gallery />} />
@@ -252,7 +268,8 @@ export default function App() {
       async (error) => {
         // A. Handle Session Expiry (401) or Account Deactivation (403)
         if (error.response && error.response.status === 401 && error.response.data?.isSessionExpired) {
-          if ((window as any).isLoggingOut) {
+          const currentToken = localStorage.getItem('token');
+          if ((window as any).isLoggingOut || !currentToken) {
             return Promise.reject(error);
           }
           localStorage.removeItem('token');
@@ -322,6 +339,7 @@ export default function App() {
   }, [user]);
 
   const handleLoginSuccess = (token: string, loggedUser: any, userRoles: any[]) => {
+    sessionStorage.removeItem('login_error_persistent');
     localStorage.setItem('token', token);
     setUser(loggedUser);
     setRoles(userRoles || []);
@@ -329,6 +347,7 @@ export default function App() {
 
   const handleLogout = async () => {
     (window as any).isLoggingOut = true;
+    sessionStorage.removeItem('login_error_persistent');
     const token = localStorage.getItem('token');
     localStorage.removeItem('token');
     setUser(null);

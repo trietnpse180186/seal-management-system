@@ -270,10 +270,12 @@ export default function TeamsTab({
                               }
                             }}
                             disabled={loading}
-                            options={tracks.map((track: any) => ({
-                              value: track._id,
-                              label: track.name,
-                            }))}
+                            options={tracks
+                              .filter((track: any) => track.name.toLowerCase() !== "bảng chung kết" && !track.name.toLowerCase().includes("chung kết"))
+                              .map((track: any) => ({
+                                value: track._id,
+                                label: track.name,
+                              }))}
                             placeholder="-- Chọn Bảng đấu --"
                             className="flex-1"
                           />

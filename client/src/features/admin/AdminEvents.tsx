@@ -1459,14 +1459,16 @@ export default function AdminEvents({
   }, [selectedRubricRoundId]);
 
   useEffect(() => {
-    // When selected track or rounds change, auto-select a round for rubric selection
-    if (selectedTrack && rounds.length > 0) {
+    // When selected track or rounds change, auto-select a round for rubric selection if not set
+    if (!selectedRubricRoundId && selectedTrack && rounds.length > 0) {
       const associatedRound = rounds.find(
         (r: any) => r._id === selectedTrack.roundId,
       );
       if (associatedRound) {
         setSelectedRubricRoundId(associatedRound._id);
       }
+    } else if (rounds.length > 0 && !selectedRubricRoundId) {
+      setSelectedRubricRoundId(rounds[rounds.length - 1]._id);
     } else if (rounds.length > 0) {
       const exists = rounds.some((r: any) => r._id === selectedRubricRoundId);
       if (!exists) {

@@ -77,7 +77,7 @@ router.get('/suggestion', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'No GitHub repository associated with this team.' });
     }
 
-    const commits = await Commit.find({ teamId }).sort({ committedAt: -1 }).limit(10);
+    const commits = await Commit.find({ teamId, message: { $not: /initial commit/i } }).sort({ committedAt: -1 }).limit(10);
 
     // 3. Find or create a snapshot representation
     let snapshot = await RepositorySnapshot.findOne({ teamId, roundId });

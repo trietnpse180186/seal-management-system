@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { Award, Trophy, FileText, Sparkles } from 'lucide-react';
+import { Trophy, FileText, Sparkles } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';

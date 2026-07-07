@@ -43,7 +43,6 @@ export default function RegisterTeam() {
   const [infoMessage, setInfoMessage] = useState('');
 
   const [loading, setLoading] = useState(false);
-  const [oldTeamName, setOldTeamName] = useState('');
   const [success, _setSuccess] = useState('');
   const [alreadyHasTeam, setAlreadyHasTeam] = useState(false);
   const [existingTeamName, setExistingTeamName] = useState('');
@@ -142,7 +141,6 @@ export default function RegisterTeam() {
     const team = pastTeams.find(t => t._id === selectedPastTeamId);
     if (!team) return;
 
-    setOldTeamName(team.name);
     setTeamName(team.name);
 
     if (team.members && Array.isArray(team.members)) {

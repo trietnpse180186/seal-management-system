@@ -13,6 +13,16 @@ const cronService = require('../events/cronService');
 const githubAiQueue = require('./githubAiQueue');
 const { authenticateToken } = require('../auth/authMiddleware');
 
+function getSemesterSuffix(event) {
+  if (!event || !event.semester || !event.year) return '';
+  const semLower = event.semester.toLowerCase();
+  let semCode = '';
+  if (semLower === 'spring') semCode = 'sp';
+  else if (semLower === 'summer') semCode = 'su';
+  else if (semLower === 'fall') semCode = 'fa';
+  return semCode ? `_${semCode}${event.year}` : '';
+}
+
 /**
  * @route   GET /api/github-repositories/search-users
  * @desc    Search for users on GitHub
@@ -123,7 +133,8 @@ router.post('/create', authenticateToken, async (req, res) => {
     const orgName = event ? event.githubOrgName : undefined;
 
     // Slugify repo name
-    const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+    const suffix = getSemesterSuffix(event);
+    const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-') + suffix;
     const gitResult = await githubService.createTeamRepository(slugRepoName, 'private', orgName);
 
     const actualOrgName = gitResult.owner || orgName;

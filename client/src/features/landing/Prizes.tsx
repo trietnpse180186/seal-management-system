@@ -1,13 +1,36 @@
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Award, Trophy, FileText, Sparkles } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
+import axios from 'axios';
 
 gsap.registerPlugin(ScrollTrigger);
 
 export default function Prizes() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [activeEvent, setActiveEvent] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const res = await axios.get("http://localhost:5000/api/events");
+        const allEvents = res.data;
+        // Prioritize registration or ongoing events
+        let filtered = allEvents.filter((e: any) => e.status === "registration" || e.status === "ongoing");
+        // Fallback to prepare or others if none of the above exist
+        if (filtered.length === 0) {
+          filtered = allEvents.filter((e: any) => e.status === "prepare" || e.status === "completed");
+        }
+        // Sort by newest
+        const sorted = filtered.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setActiveEvent(sorted[0] || null);
+      } catch (err) {
+        console.error("Lỗi lấy thông tin cuộc thi tại Prizes:", err);
+      }
+    };
+    fetchEvents();
+  }, []);
 
   useGSAP(() => {
     // 1. Header Animation
@@ -27,7 +50,7 @@ export default function Prizes() {
       }
     );
 
-    // 2. Cards Staggered Animation
+    // 2. Card Animation
     gsap.fromTo(
       ".prize-card",
       { y: 50, scale: 0.95, opacity: 0 },
@@ -37,7 +60,6 @@ export default function Prizes() {
         opacity: 1,
         duration: 1,
         ease: "back.out(1.2)",
-        stagger: 0.12,
         scrollTrigger: {
           trigger: ".prize-cards-container",
           start: "top 80%",
@@ -50,7 +72,8 @@ export default function Prizes() {
   return (
     <section ref={containerRef} className="py-24 bg-surface-container-low overflow-hidden" id="prizes">
       {/* Animating LED Neon Border CSS */}
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @keyframes neon-border-rotate {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
@@ -88,6 +111,18 @@ export default function Prizes() {
           width: 100%;
           height: 100%;
         }
+        @keyframes gradient-flow {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .animate-gradient-flow {
+          background-image: linear-gradient(90deg, #00f0ff, #2dd4bf, #00f0ff);
+          background-size: 200% auto;
+          -webkit-background-clip: text;
+          background-clip: text;
+          animation: gradient-flow 3s ease infinite;
+        }
       `}} />
 
       <div className="max-w-7xl mx-auto px-6">
@@ -99,145 +134,62 @@ export default function Prizes() {
               CƠ_CẤU_GIẢI_THƯỞNG
             </span>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white uppercase tracking-tight font-sans mt-1">
-              CƠ CẤU GIẢI THƯỞNG SEAL HACKATHON SPRING 2026
+              GIẢI THƯỞNG CUỘC THI {activeEvent ? activeEvent.name : 'SEAL HACKATHON SPRING 2026'}
             </h2>
           </div>
           <div className="hidden md:block h-px flex-1 mx-8 bg-outline-variant/30"></div>
         </div>
 
         {/* Prizes Cards Container */}
-        <div className="prize-cards-container space-y-12">
-          
-          {/* Top 3 Awards Grid - Bottom Aligned on Desktop */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch md:items-end pt-8">
-            
-            {/* Giải Nhì */}
-            <div className="prize-card border border-white/5 rounded-none flex flex-col items-stretch text-center bg-slate-950/30 backdrop-blur-md overflow-hidden group hover:border-cyan-500/30 hover:-translate-y-2 hover:shadow-[0_15px_30px_rgba(0,240,255,0.08)] active:scale-[0.98] transition-all duration-500 opacity-0 order-2 md:order-1 cursor-pointer min-h-[300px]">
-              {/* Icon Container Frame */}
-              <div className="w-full bg-cyan-500/[0.03] py-6 flex justify-center border-b border-white/5 group-hover:bg-cyan-500/[0.06] transition-colors">
-                <div className="w-16 h-16 rounded-full border border-cyan-500/20 flex items-center justify-center bg-cyan-950/10 text-cyan-400 group-hover:bg-cyan-500/20 group-hover:border-cyan-400/40 group-hover:scale-110 transition-all duration-500 shadow-[0_0_15px_rgba(6,182,212,0.05)]">
-                  <Award size={30} className="group-hover:rotate-6 transition-transform duration-500" />
+        <div className="prize-cards-container flex justify-center mt-8">
+
+          <div className="prize-card led-border-container rounded-none text-center group hover:scale-[1.02] hover:-translate-y-2 hover:shadow-[0_0_50px_rgba(0,240,255,0.2)] active:scale-[0.99] transition-all duration-500 z-10 opacity-0 w-full max-w-3xl cursor-pointer">
+            <div className="led-border-inner p-8 md:p-12 relative overflow-hidden">
+              {/* Glowing Background Radial */}
+              <div className="absolute -inset-px bg-gradient-to-b from-cyan-500/10 to-transparent opacity-50 group-hover:opacity-100 transition-opacity duration-500 -z-10"></div>
+
+              {/* Decorative Tech Grid background */}
+              <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none opacity-40"></div>
+
+              {/* Corner tech accents */}
+              <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-cyan-500/40 group-hover:border-cyan-400 transition-colors"></div>
+              <div className="absolute top-4 right-4 w-4 h-4 border-t-2 border-r-2 border-cyan-500/40 group-hover:border-cyan-400 transition-colors"></div>
+              <div className="absolute bottom-4 left-4 w-4 h-4 border-b-2 border-l-2 border-cyan-500/40 group-hover:border-cyan-400 transition-colors"></div>
+              <div className="absolute bottom-4 right-4 w-4 h-4 border-b-2 border-r-2 border-cyan-500/40 group-hover:border-cyan-400 transition-colors"></div>
+
+              {/* Icon Frame */}
+              <div className="flex justify-center mb-6 relative">
+                <div className="w-24 h-24 rounded-full border-2 border-cyan-500/30 flex items-center justify-center bg-cyan-950/20 shadow-[0_0_30px_rgba(0,240,255,0.15)] group-hover:scale-110 group-hover:border-cyan-400 group-hover:shadow-[0_0_40px_rgba(0,240,255,0.3)] transition-all duration-500">
+                  <Trophy size={48} className="text-cyan-400 group-hover:rotate-12 transition-transform duration-500" />
                 </div>
+                <span className="absolute top-0 right-[42%] text-cyan-400/40 animate-pulse">
+                  <Sparkles size={16} />
+                </span>
               </div>
+
               {/* Details Content */}
-              <div className="p-6 flex flex-col items-center flex-grow justify-between">
-                <span className="font-mono text-[10px] text-cyan-400/60 uppercase font-semibold tracking-wider mb-2">[01_GIẢI]</span>
-                <h3 className="text-lg font-bold text-white mb-2 font-sans tracking-wide">01 GIẢI NHÌ</h3>
-                <p className="text-on-surface-variant text-sm mb-6 leading-relaxed font-sans opacity-80">
-                  giấy chứng nhận + hoa
-                </p>
-                <div className="mt-auto font-mono text-xl font-bold text-cyan-400 group-hover:scale-105 transition-transform duration-500">
-                  x.000.000 đồng
-                </div>
-              </div>
-            </div>
+              <div className="flex flex-col items-center">
+                <span className="font-mono text-[10px] text-cyan-400 mb-4 tracking-widest font-semibold uppercase">[ EVENT_PRIZE_POOL ]</span>
 
-            {/* Giải Nhất (Taller & Larger + LED Neon Border) */}
-            <div className="prize-card led-border-container rounded-none text-center group hover:scale-[1.03] hover:-translate-y-6 hover:shadow-[0_0_40px_rgba(6,182,212,0.3)] active:scale-[0.99] transition-all duration-500 z-10 opacity-0 order-1 md:order-2 cursor-pointer min-h-[380px] md:-translate-y-6">
-              <div className="led-border-inner">
-                {/* Glowing Background Radial */}
-                <div className="absolute -inset-px bg-gradient-to-b from-cyan-500/10 to-transparent opacity-50 group-hover:opacity-100 transition-opacity duration-500 -z-10"></div>
-                
-                {/* Icon Container Frame */}
-                <div className="w-full bg-cyan-400/5 py-8 flex justify-center border-b border-cyan-500/20 group-hover:bg-cyan-400/10 transition-colors relative">
-                  <div className="w-20 h-20 rounded-full border-2 border-cyan-400 flex items-center justify-center bg-cyan-400/15 shadow-[0_0_25px_rgba(0,240,255,0.25)] group-hover:scale-110 group-hover:border-cyan-300 transition-all duration-500">
-                    <Trophy size={40} className="text-cyan-400 group-hover:rotate-12 transition-transform duration-500" />
-                  </div>
-                </div>
-                {/* Details Content */}
-                <div className="p-8 flex flex-col items-center flex-grow justify-between">
-                  <span className="font-mono text-[10px] text-cyan-400 mb-2 tracking-widest font-semibold">[01_GIẢI]</span>
-                  <h3 className="text-xl font-extrabold text-white mb-2 tracking-tight font-sans">01 GIẢI NHẤT</h3>
-                  <p className="text-on-surface-variant text-sm mb-6 leading-relaxed font-sans font-semibold opacity-90">
-                    giấy chứng nhận + hoa
-                  </p>
-                  <div className="mt-auto font-sans text-2xl font-black text-cyan-400 tracking-wider group-hover:scale-105 transition-transform duration-500">
-                    x.000.000 đồng
-                  </div>
-                </div>
-              </div>
-            </div>
+                <h3 className="text-xl md:text-2xl font-extrabold text-white mb-6 tracking-tight font-sans uppercase">
+                  Tổng giá trị giải thưởng
+                </h3>
 
-            {/* Giải Ba */}
-            <div className="prize-card border border-white/5 rounded-none flex flex-col items-stretch text-center bg-slate-950/30 backdrop-blur-md overflow-hidden group hover:border-cyan-500/30 hover:-translate-y-2 hover:shadow-[0_15px_30px_rgba(0,240,255,0.08)] active:scale-[0.98] transition-all duration-500 opacity-0 order-3 md:order-3 cursor-pointer min-h-[300px]">
-              {/* Icon Container Frame */}
-              <div className="w-full bg-cyan-500/[0.03] py-6 flex justify-center border-b border-white/5 group-hover:bg-cyan-500/[0.06] transition-colors">
-                <div className="w-16 h-16 rounded-full border border-cyan-500/20 flex items-center justify-center bg-cyan-950/10 text-cyan-400 group-hover:bg-cyan-500/20 group-hover:border-cyan-400/40 group-hover:scale-110 transition-all duration-500 shadow-[0_0_15px_rgba(6,182,212,0.05)]">
-                  <Award size={30} className="group-hover:rotate-6 transition-transform duration-500" />
-                </div>
-              </div>
-              {/* Details Content */}
-              <div className="p-6 flex flex-col items-center flex-grow justify-between">
-                <span className="font-mono text-[10px] text-cyan-400/60 uppercase font-semibold tracking-wider mb-2">[01_GIẢI]</span>
-                <h3 className="text-lg font-bold text-white mb-2 font-sans tracking-wide">01 GIẢI BA</h3>
-                <p className="text-on-surface-variant text-sm mb-6 leading-relaxed font-sans opacity-80">
-                  giấy chứng nhận + hoa
-                </p>
-                <div className="mt-auto font-mono text-xl font-bold text-cyan-400 group-hover:scale-105 transition-transform duration-500">
-                  x.000.000 đồng
-                </div>
-              </div>
-            </div>
+                <div className="space-y-4 max-w-2xl">
 
-          </div>
-
-          {/* Giải Khuyến Khích - Row 2 (Centered & Wide) */}
-          <div className="flex justify-center">
-            <div className="prize-card border border-white/5 rounded-none flex flex-col items-stretch text-center bg-slate-950/30 backdrop-blur-md overflow-hidden group hover:border-cyan-500/30 hover:-translate-y-2 hover:shadow-[0_15px_30px_rgba(0,240,255,0.08)] active:scale-[0.98] transition-all duration-500 opacity-0 w-full md:max-w-2xl cursor-pointer">
-              {/* Icon Container Frame */}
-              <div className="w-full bg-cyan-500/[0.03] py-5 flex justify-center border-b border-white/5 group-hover:bg-cyan-500/[0.06] transition-colors">
-                <div className="w-12 h-12 rounded-full border border-cyan-500/20 flex items-center justify-center bg-cyan-950/10 text-cyan-400 group-hover:bg-cyan-500/20 group-hover:border-cyan-400/40 group-hover:scale-110 transition-all duration-500 shadow-[0_0_15px_rgba(6,182,212,0.05)]">
-                  <Sparkles size={22} className="group-hover:scale-110 transition-transform duration-500" />
-                </div>
-              </div>
-              {/* Details Content */}
-              <div className="p-6 flex flex-col items-center">
-                <span className="font-mono text-[10px] text-cyan-400/60 uppercase font-semibold tracking-wider mb-2">[01_GIẢI]</span>
-                <h3 className="text-lg font-bold text-white mb-2 font-sans tracking-wide">01 GIẢI KHUYẾN KHÍCH</h3>
-                <p className="text-on-surface-variant text-sm mb-4 leading-relaxed font-sans opacity-80">
-                  giấy chứng nhận
-                </p>
-                <div className="font-mono text-xl font-bold text-cyan-400 group-hover:scale-105 transition-transform duration-500">
-                  x.000.000 đồng
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Divider to separate from Participation Benefits */}
-          <div className="relative py-4 flex items-center">
-            <div className="flex-grow border-t border-white/5"></div>
-            <span className="flex-shrink mx-4 text-xs font-mono text-cyan-500/60 uppercase tracking-widest">
-              Quyền lợi tham gia
-            </span>
-            <div className="flex-grow border-t border-white/5"></div>
-          </div>
-
-          {/* Giấy chứng nhận cho tất cả thí sinh - Full-width Banner style */}
-          <div className="prize-card border border-dashed border-white/10 rounded-none p-8 bg-slate-950/10 backdrop-blur-sm group hover:border-cyan-500/30 hover:bg-slate-950/20 active:scale-[0.995] transition-all duration-500 opacity-0 cursor-pointer">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
-                <div className="w-16 h-16 rounded-full border border-cyan-500/10 flex items-center justify-center bg-cyan-950/5 text-cyan-400/80 group-hover:bg-cyan-500/10 group-hover:border-cyan-400/30 group-hover:text-cyan-400 group-hover:scale-110 transition-all duration-500 shadow-[0_0_15px_rgba(6,182,212,0.02)]">
-                  <FileText size={28} className="group-hover:rotate-3 transition-transform duration-500" />
-                </div>
-                <div>
-                  <div className="flex flex-col sm:flex-row items-center gap-2 mb-1 justify-center md:justify-start">
-                    <h3 className="text-lg font-bold text-white font-sans tracking-wide">GIẤY CHỨNG NHẬN THAM GIA</h3>
-                    <span className="font-mono text-[10px] text-cyan-400 border border-cyan-400/30 px-2 py-0.5 rounded-full bg-cyan-400/5">
-                      [TẤT_CẢ_THÍ_SINH]
+                  <div className="py-2">
+                    <span className="text-4xl md:text-6xl font-black tracking-wider text-cyan-300 group-hover:scale-105 inline-block transition-transform duration-500">
+                      x.000.000 VND
                     </span>
                   </div>
-                  <p className="text-on-surface-variant text-sm leading-relaxed font-sans max-w-xl opacity-80">
-                    Tất cả các thí sinh tham gia cuộc thi và hoàn thành dự án hợp lệ đều được cấp giấy chứng nhận tham gia chính thức từ SEAL Hackathon.
-                  </p>
                 </div>
-              </div>
-              <div className="text-center md:text-right flex-shrink-0">
-                <div className="font-mono text-xs font-semibold text-slate-500 group-hover:text-cyan-400/70 transition-colors">
-                  Ký nhận bởi Ban tổ chức
-                </div>
-                <div className="text-[11px] text-slate-600 mt-1 font-sans">
-                  Digital Certificate
+
+                {/* Additional Premium Badges / Accent */}
+                <div className="mt-8 pt-8 border-t border-white/5 w-full flex flex-col sm:flex-row justify-center items-center gap-6 text-[10px] sm:text-xs text-cyan-400/60 font-mono">
+                  <div className="flex items-center gap-2">
+                    <FileText size={20} className="text-cyan-500" />
+                    <span>Giấy Chứng Nhận Cho Tất Cả Thí Sinh Tham Gia</span>
+                  </div>
                 </div>
               </div>
             </div>

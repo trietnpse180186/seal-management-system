@@ -30,6 +30,8 @@ async function runTest() {
   const TeamMember = mongoose.model('TeamMember');
   const GithubRepository = mongoose.model('GithubRepository');
 
+  const Round = mongoose.model('Round');
+
   // Create mock users (1 Admin, 3 Members)
   console.log('\nCreating mock users in Database...');
   const suffix = Date.now().toString().slice(-4);
@@ -94,6 +96,7 @@ async function runTest() {
 
   const tmLeader = new TeamMember({
     teamId: team._id,
+    eventId: newEvent._id,
     userId: leader._id,
     role: 'leader',
     confirmStatus: 'confirmed',
@@ -103,6 +106,7 @@ async function runTest() {
 
   const tmMember = new TeamMember({
     teamId: team._id,
+    eventId: newEvent._id,
     userId: member._id,
     role: 'member',
     confirmStatus: 'confirmed',
@@ -112,8 +116,16 @@ async function runTest() {
 
   // Create 2 Tracks
   console.log('\nCreating Tracks...');
+  const round = new Round({
+    eventId: newEvent._id,
+    name: 'Round 1',
+    order: 1
+  });
+  await round.save();
+
   const track1 = new Track({
     eventId: newEvent._id,
+    roundId: round._id,
     name: 'Advanced Web Apps',
     description: 'Full-stack React & Node solutions',
     maxTeams: 5
@@ -122,6 +134,7 @@ async function runTest() {
 
   const track2 = new Track({
     eventId: newEvent._id,
+    roundId: round._id,
     name: 'Mobile Development',
     description: 'Flutter & React Native mobile apps',
     maxTeams: 5
@@ -143,7 +156,17 @@ async function runTest() {
   console.log(`Assigned team to random track: ${randomTrack.name}`);
 
   // Provision GitHub Repo
-  const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+  const event = await Event.findById(team.eventId);
+  let semSuffix = '';
+  if (event && event.semester && event.year) {
+    const semLower = event.semester.toLowerCase();
+    let semCode = '';
+    if (semLower === 'spring') semCode = 'sp';
+    else if (semLower === 'summer') semCode = 'su';
+    else if (semLower === 'fall') semCode = 'fa';
+    if (semCode) semSuffix = `_${semCode}${event.year}`;
+  }
+  const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-') + semSuffix;
   const existingRepo = await GithubRepository.findOne({ teamId: team._id });
   if (!existingRepo) {
     console.log(`Provisioning GitHub Repo: ${slugRepoName}`);

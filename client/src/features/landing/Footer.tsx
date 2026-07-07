@@ -11,10 +11,10 @@ export default function Footer() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[10px] text-on-surface-variant">Powered by</span>
+          <span className="font-mono text-[12px] text-on-surface-variant">Powered by</span>
           <img
             alt="FPT Logo"
-            className="h-6"
+            className="h-12"
             src={logoFpt}
           />
         </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare, Cpu, Copy, RefreshCw, Crown } from 'lucide-react';
@@ -161,6 +162,8 @@ function SeminarWidget({ seminar }: SeminarWidgetProps) {
 }
 
 export default function TeamArea() {
+  const [searchParams] = useSearchParams();
+  const eventIdParam = searchParams.get('eventId');
   const token = localStorage.getItem('token');
   const [data, setData] = useState<any>(null);
 
@@ -231,7 +234,10 @@ export default function TeamArea() {
     try {
       setLoading(true);
       setError('');
-      const res = await axios.get('http://localhost:5000/api/teams/my-team', {
+      const url = eventIdParam
+        ? `http://localhost:5000/api/teams/my-team?eventId=${eventIdParam}`
+        : 'http://localhost:5000/api/teams/my-team';
+      const res = await axios.get(url, {
         headers: { Authorization: `Bearer ${token}` }
       });
 

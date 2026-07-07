@@ -143,7 +143,7 @@ export default function RegisterTeam() {
     if (!team) return;
 
     setOldTeamName(team.name);
-    setTeamName('');
+    setTeamName(team.name);
 
     if (team.members && Array.isArray(team.members)) {
       setMembers(team.members.map((m: any) => ({
@@ -155,7 +155,7 @@ export default function RegisterTeam() {
       })));
     }
 
-    setInfoMessage('Đã tải thành viên từ nhóm cũ. Vui lòng nhập tên mới cho đội thi của bạn.');
+    setInfoMessage('Đã tải thông tin và tên nhóm từ đội thi cũ.');
     setTimeout(() => setInfoMessage(''), 5000);
   };
 
@@ -263,11 +263,6 @@ export default function RegisterTeam() {
       return;
     }
 
-    if (oldTeamName && teamName.trim().toLowerCase() === oldTeamName.toLowerCase()) {
-      setError('Vui lòng đặt tên mới cho nhóm (không sử dụng lại tên của nhóm cũ).');
-      setLoading(false);
-      return;
-    }
 
     try {
       if (!captchaValue.trim()) {

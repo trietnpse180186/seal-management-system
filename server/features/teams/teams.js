@@ -15,6 +15,16 @@ const emailService = require('../notifications/emailService');
 const githubService = require('../github-ai/githubService');
 const captchaService = require('../auth/captchaService');
 const { ensureChatRoomForTeam } = require('../chat/chatRoomService');
+
+function getSemesterSuffix(event) {
+  if (!event || !event.semester || !event.year) return '';
+  const semLower = event.semester.toLowerCase();
+  let semCode = '';
+  if (semLower === 'spring') semCode = 'sp';
+  else if (semLower === 'summer') semCode = 'su';
+  else if (semLower === 'fall') semCode = 'fa';
+  return semCode ? `_${semCode}${event.year}` : '';
+}
 const {
   canUserAccessRoundExam,
   canUserAccessTrackExam,
@@ -387,7 +397,8 @@ router.post('/register', authenticateToken, async (req, res) => {
 
       // Automatically create Github Repository
       const orgName = event ? event.githubOrgName : undefined;
-      const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+      const suffix = getSemesterSuffix(event);
+      const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-') + suffix;
       const gitResult = await githubService.createTeamRepository(slugRepoName, 'private', orgName);
 
       const actualOrgName = gitResult.owner || orgName;
@@ -703,7 +714,8 @@ router.get('/confirm-invite', async (req, res) => {
       // 1. Automatically create Github Repository
       const event = await Event.findById(team.eventId);
       const orgName = event ? event.githubOrgName : undefined;
-      const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+      const suffix = getSemesterSuffix(event);
+      const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-') + suffix;
       const populatedMembers = await TeamMember.find({ teamId: team._id }).populate('userId');
 
       try {
@@ -907,6 +919,8 @@ router.get('/my-team', authenticateToken, async (req, res) => {
     let activeMemberRecord = null;
     const foundTeams = [];
 
+    const targetEventId = req.query.eventId;
+
     // Find all confirmed records pointing to active teams that actually exist
     for (const record of memberRecords) {
       const foundTeam = await Team.findById(record.teamId)
@@ -920,6 +934,13 @@ router.get('/my-team', authenticateToken, async (req, res) => {
           }
         });
       if (foundTeam) {
+        if (targetEventId && foundTeam.eventId && foundTeam.eventId._id.toString() !== targetEventId) {
+          continue;
+        }
+        // Skip orphan teams whose event has been deleted/removed
+        if (!foundTeam.eventId) {
+          continue;
+        }
         foundTeams.push({ team: foundTeam, record });
       }
     }
@@ -1362,7 +1383,8 @@ router.put('/:teamId/assign-track', authenticateToken, async (req, res) => {
     await team.save();
 
     // Trigger GitHub Repo creation in the background
-    const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+    const suffix = getSemesterSuffix(event);
+    const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-') + suffix;
 
     // Check if repo already exists for this team
     const existingRepo = await GithubRepository.findOne({ teamId: team._id });

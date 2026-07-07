@@ -14,6 +14,8 @@ import {
   Settings2,
   MessageSquare,
   Camera,
+  Calendar,
+  UserPlus,
 } from "lucide-react";
 
 interface NavbarProps {
@@ -192,15 +194,29 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const linkClass = (path: string) => `
+  const linkClass = (path: string, forceActive?: boolean) => `
     flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 font-mono
-    ${isActive(path)
+    ${(forceActive !== undefined ? forceActive : isActive(path))
       ? "bg-cyan-600/30 text-cyan-400 border border-cyan-500/20 shadow-[0_0_15px_-3px_rgba(6,182,212,0.3)]"
       : "text-slate-300 hover:text-white hover:bg-white/5 border border-transparent"
     }
   `;
 
   const isLandingPage = location.pathname === "/";
+
+  const handleScrollToSchedule = (e: React.MouseEvent) => {
+    if (location.pathname === "/") {
+      e.preventDefault();
+      const element = document.getElementById("schedule");
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+        window.history.pushState(null, "", "#schedule");
+      }
+    }
+  };
+
+  const isScheduleActive = location.pathname === "/" && location.hash === "#schedule";
+  const isRegisterActive = location.pathname === "/team-area" || (location.pathname === "/login" && new URLSearchParams(location.search).get("redirect") === "/team-area");
 
   const navClass = isLandingPage
     ? isScrolled
@@ -227,13 +243,19 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
 
         {/* Navigation Items */}
         <div className="hidden md:flex items-center gap-2 justify-center">
+          {isLandingPage && (
+            <>
+              <Link to="/#schedule" onClick={handleScrollToSchedule} className={linkClass("/#schedule", isScheduleActive)}>
+                <Calendar size={16} />
+                <span>Xem lịch trình</span>
+              </Link>
 
-
-          <Link to="/album" className={linkClass("/album")}>
-            <Camera size={16} />
-            <span>Album ảnh</span>
-          </Link>
-
+              <Link to={user ? "/team-area" : "/login?redirect=/team-area"} className={linkClass(user ? "/team-area" : "/login", isRegisterActive)}>
+                <UserPlus size={16} />
+                <span>Đăng ký thi</span>
+              </Link>
+            </>
+          )}
 
           {user && (
             <>
@@ -277,7 +299,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
               {(isJudge || isMentor) && !isCoordinator && (
                 <Link to="/expert/dashboard" className={linkClass("/expert/dashboard")}>
                   <Award size={16} />
-                  <span>Cổng Chuyên gia</span>
+                  <span>Chọn vai trò</span>
                 </Link>
               )}
 
@@ -290,6 +312,11 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
               )}
             </>
           )}
+
+          <Link to="/album" className={linkClass("/album")}>
+            <Camera size={16} />
+            <span>Album ảnh</span>
+          </Link>
         </div>
         {/* User Info & Actions */}
         <div className="flex-1 flex justify-end">
@@ -340,25 +367,22 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                               onClick={() => {
                                 if (!notif.isRead) markAsRead(notif._id);
                               }}
-                              className={`p-3 border-b border-slate-800/50 cursor-pointer transition-colors flex gap-3 items-start ${
-                                !notif.isRead
-                                  ? "bg-cyan-950/20 hover:bg-cyan-950/30"
-                                  : "hover:bg-slate-800/50"
-                              }`}
+                              className={`p-3 border-b border-slate-800/50 cursor-pointer transition-colors flex gap-3 items-start ${!notif.isRead
+                                ? "bg-cyan-950/20 hover:bg-cyan-950/30"
+                                : "hover:bg-slate-800/50"
+                                }`}
                             >
-                              <div className={`mt-0.5 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm ${
-                                notif.type === 'chat_message'
-                                  ? 'bg-blue-500/20 text-blue-400'
-                                  : 'bg-cyan-500/20 text-cyan-400'
-                              }`}>
+                              <div className={`mt-0.5 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm ${notif.type === 'chat_message'
+                                ? 'bg-blue-500/20 text-blue-400'
+                                : 'bg-cyan-500/20 text-cyan-400'
+                                }`}>
                                 {notif.type === 'chat_message'
                                   ? <MessageSquare size={14} />
                                   : <Bell size={14} />}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className={`text-xs font-semibold truncate ${
-                                  !notif.isRead ? "text-cyan-300" : "text-slate-300"
-                                }`}>
+                                <p className={`text-xs font-semibold truncate ${!notif.isRead ? "text-cyan-300" : "text-slate-300"
+                                  }`}>
                                   {notif.title}
                                 </p>
                                 <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">

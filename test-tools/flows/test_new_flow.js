@@ -31,6 +31,8 @@ async function runTest() {
   const TeamMember = mongoose.model('TeamMember');
   const GithubRepository = mongoose.model('GithubRepository');
 
+  const Round = mongoose.model('Round');
+
   // 1. Create mock users (1 Admin, 3 Members)
   console.log('\n[1] Creating mock users in Database...');
   const suffix = Date.now().toString().slice(-4);
@@ -113,6 +115,7 @@ async function runTest() {
   // Create TeamMember entries
   const tmLeader = new TeamMember({
     teamId: team._id,
+    eventId: newEvent._id,
     userId: leader._id,
     role: 'leader',
     confirmStatus: 'confirmed',
@@ -122,6 +125,7 @@ async function runTest() {
 
   const tmMember = new TeamMember({
     teamId: team._id,
+    eventId: newEvent._id,
     userId: member._id,
     role: 'member',
     confirmStatus: 'confirmed', // Auto-confirm for this test simulation
@@ -141,8 +145,16 @@ async function runTest() {
 
   // 4. Create 2 Tracks for the Event
   console.log('\n[4] Creating 2 Tracks for the Event...');
+  const round = new Round({
+    eventId: newEvent._id,
+    name: 'Round 1',
+    order: 1
+  });
+  await round.save();
+
   const track1 = new Track({
     eventId: newEvent._id,
+    roundId: round._id,
     name: 'Advanced Web Apps',
     description: 'Full-stack React & Node solutions',
     maxTeams: 5
@@ -151,6 +163,7 @@ async function runTest() {
 
   const track2 = new Track({
     eventId: newEvent._id,
+    roundId: round._id,
     name: 'Mobile Development',
     description: 'Flutter & React Native mobile apps',
     maxTeams: 5
@@ -178,7 +191,17 @@ async function runTest() {
 
     // Simulate Repo Provisioning logic
     console.log(`Provisioning GitHub Repo for Team "${t.name}" under Track "${track.name}"...`);
-    const slugRepoName = t.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+    const event = await Event.findById(t.eventId);
+    let semSuffix = '';
+    if (event && event.semester && event.year) {
+      const semLower = event.semester.toLowerCase();
+      let semCode = '';
+      if (semLower === 'spring') semCode = 'sp';
+      else if (semLower === 'summer') semCode = 'su';
+      else if (semLower === 'fall') semCode = 'fa';
+      if (semCode) semSuffix = `_${semCode}${event.year}`;
+    }
+    const slugRepoName = t.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-') + semSuffix;
     const gitResult = await githubService.createTeamRepository(slugRepoName, 'private');
     
     const newRepo = new GithubRepository({

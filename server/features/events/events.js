@@ -16,6 +16,16 @@ const EventLog = mongoose.model('EventLog');
 const emailService = require('../notifications/emailService');
 const githubService = require('../github-ai/githubService');
 const { ensureChatRoomForTeam, ensureChatRoomsForMentorTrack } = require('../chat/chatRoomService');
+
+function getSemesterSuffix(event) {
+  if (!event || !event.semester || !event.year) return '';
+  const semLower = event.semester.toLowerCase();
+  let semCode = '';
+  if (semLower === 'spring') semCode = 'sp';
+  else if (semLower === 'summer') semCode = 'su';
+  else if (semLower === 'fall') semCode = 'fa';
+  return semCode ? `_${semCode}${event.year}` : '';
+}
 const {
   extractDriveFileId,
   sanitizeRoundForAdmin
@@ -1190,7 +1200,8 @@ router.post('/:eventId/distribute-teams', authenticateToken, async (req, res) =>
       await team.save();
 
       // Trigger GitHub Repo creation in the background
-      const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+      const suffix = getSemesterSuffix(event);
+      const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-') + suffix;
 
       githubService.createTeamRepository(slugRepoName, 'private', orgName)
         .then(async (gitResult) => {
@@ -1287,6 +1298,20 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     // Validation for event status change
     if (status && status !== oldStatus) {
+      // CRITICAL SAFETY CHECK: Only one active event (registration or ongoing) can exist at any time.
+      // This check must NEVER be bypassed, even by system admins or force overrides!
+      if (status === 'registration' || status === 'ongoing') {
+        const activeEvent = await Event.findOne({
+          _id: { $ne: event._id },
+          status: { $in: ['registration', 'ongoing'] }
+        });
+        if (activeEvent) {
+          return res.status(400).json({
+            message: `Không thể chuyển sự kiện sang trạng thái "${status}" vì đang có sự kiện khác đang hoạt động: "${activeEvent.name}" (Trạng thái: ${activeEvent.status}). Chỉ khi sự kiện đó được chuyển thành completed hoặc cancelled thì mới có thể mở hoạt động sự kiện khác.`
+          });
+        }
+      }
+
       const isForceOverride = req.body.isForceOverride === true || req.user.isSystemAdmin;
       if (!isForceOverride) {
         // 1. If there is any event currently ongoing, a draft event cannot change its status
@@ -1314,19 +1339,6 @@ router.put('/:id', authenticateToken, async (req, res) => {
           return res.status(400).json({
             message: `Không thể chuyển trạng thái từ "${oldStatus}" sang "${status}". Trạng thái sự kiện phải được nâng theo từng bậc và không thể nhảy vọt.`
           });
-        }
-
-        // 3. Keep safety check to ensure only one active event (registration or ongoing) exists
-        if (status === 'registration') {
-          const activeEvent = await Event.findOne({
-            _id: { $ne: event._id },
-            status: { $in: ['registration', 'ongoing'] }
-          });
-          if (activeEvent) {
-            return res.status(400).json({
-              message: `Không thể chuyển sự kiện từ draft lên registration vì đang có sự kiện khác đang hoạt động: "${activeEvent.name}" (Trạng thái: ${activeEvent.status}). Chỉ khi sự kiện đó được chuyển thành completed hoặc cancelled thì mới có thể đăng ký sự kiện khác.`
-            });
-          }
         }
       } else {
         logDetails.push(`[SUPER-ADMIN OVERRIDE] Ép chuyển trạng thái: "${oldStatus}" -> "${status}"`);

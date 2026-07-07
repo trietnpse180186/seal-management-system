@@ -9,23 +9,7 @@ import CaptchaInput from '../shared/CaptchaInput';
 import GithubUserAutocomplete from '../shared/GithubUserAutocomplete';
 
 
-const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
-    <path d="M9 18c-4.51 2-5-2-7-2" />
-  </svg>
-);
+
 
 interface LoginProps {
   onLoginSuccess: (token: string, user: any, roles: any[]) => void;
@@ -62,6 +46,14 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   };
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [redirectTarget, setRedirectTarget] = useState<string>(() => {
+    return sessionStorage.getItem('login_redirect_target') || '/guest-portal';
+  });
+
+  const handleSuccessRedirect = (target: string) => {
+    sessionStorage.removeItem('login_redirect_target');
+    navigate(target);
+  };
 
   const [platform, setPlatform] = useState<string | null>(null);
   const [mobileRedirect, setMobileRedirect] = useState<string | null>(null);
@@ -78,6 +70,12 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     const redir = params.get('mobile_redirect');
     const apiU = params.get('api_url');
     const prov = params.get('provider');
+    const redirect = params.get('redirect');
+
+    if (redirect) {
+      setRedirectTarget(redirect);
+      sessionStorage.setItem('login_redirect_target', redirect);
+    }
     if (plat) {
       setPlatform(plat);
       localStorage.setItem('mobile_platform', plat);
@@ -96,7 +94,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     }
 
     // Clean query parameters from URL so that on reload/refresh they are gone!
-    if (plat || redir || apiU || prov) {
+    if (plat || redir || apiU || prov || redirect) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
@@ -190,14 +188,14 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           if (handleMobileRedirect(token, user, roles || [])) {
             return;
           }
-          onLoginSuccess(token, user, roles || []);
           if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view'))) {
             navigate('/admin');
           } else if (roles && roles.some((r: any) => r.role === 'judge')) {
             navigate('/grading');
           } else {
-            navigate('/guest-portal');
+            handleSuccessRedirect(redirectTarget);
           }
+          onLoginSuccess(token, user, roles || []);
         } catch (err: any) {
           console.error(err);
           if (err.response?.status === 409) {
@@ -218,14 +216,14 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 if (handleMobileRedirect(token, user, roles || [])) {
                   return;
                 }
-                onLoginSuccess(token, user, roles || []);
                 if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view'))) {
                   navigate('/admin');
                 } else if (roles && roles.some((r: any) => r.role === 'judge')) {
                   navigate('/grading');
                 } else {
-                  navigate('/guest-portal');
+                  handleSuccessRedirect(redirectTarget);
                 }
+                onLoginSuccess(token, user, roles || []);
                 return;
               } catch (forceErr: any) {
                 setError(forceErr.response?.data?.message || 'Không thể thực hiện đăng nhập đè.');
@@ -272,14 +270,14 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             if (handleMobileRedirect(token, user, roles || [])) {
               return;
             }
-            onLoginSuccess(token, user, roles || []);
             if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view'))) {
               navigate('/admin');
             } else if (roles && roles.some((r: any) => r.role === 'judge')) {
               navigate('/grading');
             } else {
-              navigate('/guest-portal');
+              handleSuccessRedirect(redirectTarget);
             }
+            onLoginSuccess(token, user, roles || []);
           } catch (err: any) {
             console.error(err);
             if (err.response?.status === 409) {
@@ -299,14 +297,14 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                   if (handleMobileRedirect(token, user, roles || [])) {
                     return;
                   }
-                  onLoginSuccess(token, user, roles || []);
                   if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view'))) {
                     navigate('/admin');
                   } else if (roles && roles.some((r: any) => r.role === 'judge')) {
                     navigate('/grading');
                   } else {
-                    navigate('/guest-portal');
+                    handleSuccessRedirect(redirectTarget);
                   }
+                  onLoginSuccess(token, user, roles || []);
                   return;
                 } catch (forceErr: any) {
                   setError(forceErr.response?.data?.message || 'Không thể thực hiện đăng nhập đè.');
@@ -339,7 +337,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     if (provider === 'google') {
       const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '901479860432-9ejc1a1d1r71r9r8gm6bnftvkgb866ge.apps.googleusercontent.com';
       const nonce = Math.random().toString(36).substring(2) + Date.now().toString(36);
-      const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=id_token&scope=openid%20email%20profile&nonce=${nonce}`;
+      const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=id_token&scope=openid%20email%20profile&nonce=${nonce}&prompt=select_account`;
       window.location.href = googleAuthUrl;
     } else {
       const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID || 'Ov23liz8uHIFRtgdwDwE';
@@ -386,14 +384,14 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       if (handleMobileRedirect(token, user, roles || [])) {
         return;
       }
-      onLoginSuccess(token, user, roles || []);
       if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator'))) {
         navigate('/admin');
       } else if (roles && roles.some((r: any) => r.role === 'judge')) {
         navigate('/grading');
       } else {
-        navigate('/guest-portal');
+        handleSuccessRedirect(redirectTarget);
       }
+      onLoginSuccess(token, user, roles || []);
     } catch (err: any) {
       console.error(err);
       setError(err.response?.data?.message || 'Lỗi đăng nhập Google giả lập.');
@@ -428,12 +426,12 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           if (handleMobileRedirect(token, user, roles || [])) {
             return;
           }
-          onLoginSuccess(token, user, roles || []);
           if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view'))) {
             navigate('/admin');
           } else {
-            navigate('/guest-portal');
+            handleSuccessRedirect(redirectTarget);
           }
+          onLoginSuccess(token, user, roles || []);
         } else {
           setRegistrationSuccess(true);
           toast.success("Đăng ký tài khoản thành công! Vui lòng kiểm tra email để xác thực.");
@@ -447,16 +445,15 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         if (handleMobileRedirect(token, user, roles)) {
           return;
         }
-        onLoginSuccess(token, user, roles);
-
         // Redirect based on role
         if (user.isSystemAdmin || roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view')) {
           navigate('/admin');
         } else if (roles.some((r: any) => r.role === 'judge')) {
           navigate('/grading');
         } else {
-          navigate('/guest-portal');
+          handleSuccessRedirect(redirectTarget);
         }
+        onLoginSuccess(token, user, roles);
       }
     } catch (err: any) {
       console.error(err);
@@ -480,14 +477,14 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             if (handleMobileRedirect(token, user, roles || [])) {
               return;
             }
-            onLoginSuccess(token, user, roles || []);
             if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view'))) {
               navigate('/admin');
             } else if (roles && roles.some((r: any) => r.role === 'judge')) {
               navigate('/grading');
             } else {
-              navigate('/guest-portal');
+              handleSuccessRedirect(redirectTarget);
             }
+            onLoginSuccess(token, user, roles || []);
             return;
           } catch (forceErr: any) {
             setError(forceErr.response?.data?.message || 'Không thể thực hiện đăng nhập đè.');
@@ -875,7 +872,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           </span>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1">
           <button
             type="button"
             onClick={() => handleOAuthClick('google')}
@@ -888,15 +885,6 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
             </svg>
             Google
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleOAuthClick('github')}
-            className="btn-secondary flex items-center justify-center gap-2 py-2 font-mono text-xs cursor-pointer"
-          >
-            <Github size={16} />
-            GitHub
           </button>
         </div>
 

@@ -7,6 +7,7 @@ interface TeamsTabProps {
   selectedEvent: any;
   teamsList: any[];
   tracks: any[];
+  rounds?: any[];
   loading: boolean;
   handleDistributeTeams: () => Promise<void>;
   handleAssignTrack: (teamId: string, trackId: string) => Promise<void>;
@@ -19,6 +20,7 @@ export default function TeamsTab({
   selectedEvent,
   teamsList,
   tracks,
+  rounds = [],
   loading,
   handleDistributeTeams,
   handleAssignTrack,
@@ -107,14 +109,7 @@ export default function TeamsTab({
                   * Cần tạo Bảng đấu (Track) trước
                 </span>
               )}
-              {tracks.length > 0 &&
-                !teamsList.some(
-                  (t) => t.status === "confirmed" && !t.trackId,
-                ) && (
-                  <span className="text-[9px] text-slate-500 font-mono text-center md:text-right">
-                    * Không có nhóm thi đấu chờ chia bảng
-                  </span>
-                )}
+
             </div>
           )}
         </div>
@@ -148,15 +143,29 @@ export default function TeamsTab({
                         {team.name}
                       </h5>
                     </div>
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${team.trackId
-                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                        : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                        }`}
-                    >
-                      {team.trackId?.name ||
-                        (team.trackId ? "Đã gán" : "Chưa chia bảng")}
-                    </span>
+                    <div className="flex flex-col items-end gap-1">
+                      {selectedEvent?.status !== "registration" && selectedEvent?.status !== "upcoming" && team.currentRoundId && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                          {(() => {
+                            if (typeof team.currentRoundId === "object") {
+                              return team.currentRoundId?.name || "";
+                            }
+                            const rObj = (rounds || []).find((r: any) => r._id === team.currentRoundId);
+                            return rObj ? rObj.name : team.currentRoundId;
+                          })()}
+                        </span>
+                      )}
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${team.trackId
+                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                          : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                          }`}
+                      >
+                        {team.trackId?.name
+                          ? (team.trackId.name.startsWith("Bảng") ? team.trackId.name : `Bảng ${team.trackId.name}`)
+                          : (team.trackId ? "Đã gán" : "Chưa chia bảng")}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Leader & Repo Info */}
@@ -193,11 +202,10 @@ export default function TeamsTab({
                             onClick={() => handleSyncRepo(team.repository._id)}
                             disabled={loading || syncingRepoId === team.repository._id}
                             title="Đồng bộ commit và chạy AI đánh giá thủ công ngay lập tức"
-                            className={`text-[9px] font-mono px-1.5 py-0.5 rounded border transition-all inline-flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed ${
-                              syncingRepoId === team.repository._id
+                            className={`text-[9px] font-mono px-1.5 py-0.5 rounded border transition-all inline-flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed ${syncingRepoId === team.repository._id
                                 ? "bg-cyan-950/40 text-cyan-500 border-cyan-500/20"
                                 : "bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border-cyan-500/20 hover:border-cyan-500/40"
-                            }`}
+                              }`}
                           >
                             <RefreshCw
                               size={9}
@@ -271,10 +279,14 @@ export default function TeamsTab({
                             }}
                             disabled={loading}
                             options={tracks
-                              .filter((track: any) => track.name.toLowerCase() !== "bảng chung kết" && !track.name.toLowerCase().includes("chung kết"))
+                              .filter((track: any) => {
+                                const currentTrackId = team.trackId?._id || team.trackId;
+                                const isCurrentTrack = track._id === currentTrackId;
+                                return isCurrentTrack || (track.name.toLowerCase() !== "bảng chung kết" && !track.name.toLowerCase().includes("chung kết"));
+                              })
                               .map((track: any) => ({
                                 value: track._id,
-                                label: track.name,
+                                label: track.name.startsWith("Bảng") ? track.name : `Bảng ${track.name}`,
                               }))}
                             placeholder="-- Chọn Bảng đấu --"
                             className="flex-1"

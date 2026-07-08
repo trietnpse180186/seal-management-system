@@ -113,8 +113,21 @@ export default function Leaderboard({
             const found = res.data.rounds.find((r: any) => r._id === queryRoundId);
             setSelectedRound(found);
           } else {
-            setSelectedRoundId(res.data.rounds[0]._id);
-            setSelectedRound(res.data.rounds[0]);
+            const activeRound = res.data.rounds.find((r: any) => r.status === 'active');
+            if (activeRound) {
+              setSelectedRoundId(activeRound._id);
+              setSelectedRound(activeRound);
+            } else {
+              const completedRounds = res.data.rounds.filter((r: any) => r.status === 'completed');
+              if (completedRounds.length > 0) {
+                const lastCompleted = completedRounds.sort((a: any, b: any) => b.order - a.order)[0];
+                setSelectedRoundId(lastCompleted._id);
+                setSelectedRound(lastCompleted);
+              } else {
+                setSelectedRoundId(res.data.rounds[0]._id);
+                setSelectedRound(res.data.rounds[0]);
+              }
+            }
           }
         } else {
           setSelectedRoundId("");

@@ -243,7 +243,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
 
         {/* Navigation Items */}
         <div className="hidden md:flex items-center gap-2 justify-center">
-          {isLandingPage && (
+          {(isLandingPage || (!user && location.pathname === "/album")) && (
             <>
               <Link to="/#schedule" onClick={handleScrollToSchedule} className={linkClass("/#schedule", isScheduleActive)}>
                 <Calendar size={16} />

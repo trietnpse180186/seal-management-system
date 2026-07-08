@@ -96,6 +96,7 @@ async function syncTeamToExternalSimulator(team) {
     if (result) {
       team.externalTeamId = result.team?.id || '';
       team.externalTeamCode = code;
+      team.accessCode = result.accessCode || '';
       team.testApiKey = result.testApiKey || '';
       team.judgeApiKey = result.judgeApiKey || '';
       team.mqttUsername = result.mqttUsername || '';
@@ -924,10 +925,10 @@ router.get('/my-team', authenticateToken, async (req, res) => {
     // Find all confirmed records pointing to active teams that actually exist
     for (const record of memberRecords) {
       const foundTeam = await Team.findById(record.teamId)
-        .populate('eventId', 'name semester year status contestStart contestEnd registrationOpen registrationClose seminar')
+        .populate('eventId', 'name semester year status contestStart contestEnd registrationOpen registrationClose seminar commitSyncInterval')
         .populate({
           path: 'trackId',
-          select: 'name description startTime endTime roundId environmentId',
+          select: 'name description startTime endTime roundId environmentId examDriveFileId examDriveFileName examDriveFileUrl isExamManualOpen',
           populate: {
             path: 'roundId',
             model: 'Round'
@@ -1212,6 +1213,18 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
       }
     }
 
+    // Kiểm tra xem người dùng có phải là Admin hoặc Ban tổ chức (Coordinator) không
+    let isCoordinator = req.user.isSystemAdmin;
+    if (!isCoordinator) {
+      const coordRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId: req.params.eventId,
+        role: { $in: ['coordinator', 'admin_view'] },
+        status: 'active'
+      });
+      isCoordinator = !!coordRole;
+    }
+
     // Support historical and current track/round query matching
     const Ranking = mongoose.model('Ranking');
     let effectiveRoundIdForRanking = req.query.roundId;
@@ -1232,21 +1245,28 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
     }
 
     let finalQuery = { ...query };
-    if (query.trackId) {
-      delete finalQuery.trackId;
-      finalQuery.$or = [
-        { trackId: query.trackId },
-        { _id: { $in: teamIdsFromRankings } }
-      ];
-    } else if (effectiveRoundIdForRanking) {
-      finalQuery.$or = [
-        { currentRoundId: effectiveRoundIdForRanking },
-        { _id: { $in: teamIdsFromRankings } }
-      ];
+    const isFilterRequested = !!req.query.roundId || !!req.query.trackId;
+
+    // Chỉ áp dụng bộ lọc giới hạn vòng đấu/bảng đấu nếu người dùng KHÔNG phải Admin/BTC, 
+    // HOẶC nếu họ chủ động truyền tham số bộ lọc (roundId/trackId) từ giao diện.
+    if (isFilterRequested || !isCoordinator) {
+      if (query.trackId) {
+        delete finalQuery.trackId;
+        finalQuery.$or = [
+          { trackId: query.trackId },
+          { _id: { $in: teamIdsFromRankings } }
+        ];
+      } else if (effectiveRoundIdForRanking) {
+        finalQuery.$or = [
+          { currentRoundId: effectiveRoundIdForRanking },
+          { _id: { $in: teamIdsFromRankings } }
+        ];
+      }
     }
 
     const teams = await Team.find(finalQuery)
       .populate('trackId', 'name')
+      .populate('currentRoundId', 'name order status')
       .populate('leaderId', 'fullName email')
       .populate('mentorId', 'fullName email');
 
@@ -1689,6 +1709,7 @@ router.post('/:teamId/sync-mqtt', authenticateToken, async (req, res) => {
       if (result) {
         team.externalTeamId = result.team?.id || '';
         team.externalTeamCode = code;
+        team.accessCode = result.accessCode || '';
         team.testApiKey = result.testApiKey || '';
         team.judgeApiKey = result.judgeApiKey || '';
         team.mqttUsername = result.mqttUsername || '';

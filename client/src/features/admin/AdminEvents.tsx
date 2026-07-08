@@ -65,7 +65,7 @@ export default function AdminEvents({
     if (token) {
       axios.get("http://localhost:5000/api/auth/me", {
         headers: { Authorization: `Bearer ${token}` }
-      }).then(res => setCurrentUser(res.data.user)).catch(() => {});
+      }).then(res => setCurrentUser(res.data.user)).catch(() => { });
     }
   }, [token]);
 
@@ -232,7 +232,7 @@ export default function AdminEvents({
   const [levelDesc, setLevelDesc] = useState("");
 
   // GitHub integration states
-  const [githubOrgName, setGithubOrgName] = useState("seal-hackathon-2026");
+  const [githubOrgName, setGithubOrgName] = useState("sealhackathon-2026");
   const [repos, setRepos] = useState<any[]>([]);
 
 
@@ -306,7 +306,7 @@ export default function AdminEvents({
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       setSelectedEvent(res.data.event);
       toast.success("Đã cập nhật lịch trình sự kiện thành công!");
       setMessage({ type: "success", text: "Đã cập nhật lịch trình sự kiện thành công!" });
@@ -525,7 +525,7 @@ export default function AdminEvents({
       setSelectedEvent(null);
       setIsWizardMode(true);
       setWizardStep(1);
-      
+
       const newParams = new URLSearchParams(searchParams);
       newParams.delete("create");
       setSearchParams(newParams, { replace: true });
@@ -576,11 +576,15 @@ export default function AdminEvents({
       const fetchedRounds = res.data.rounds || [];
       setRounds(fetchedRounds);
 
-      if (res.data.tracks && res.data.tracks.length > 0 && !selectedTrack) {
-        setSelectedTrack(res.data.tracks[0]);
-      }
-      if (res.data.tracks && res.data.tracks.length > 0 && !selectedTrack) {
-        setSelectedTrack(res.data.tracks[0]);
+      if (res.data.tracks && res.data.tracks.length > 0) {
+        if (selectedTrack) {
+          const updatedTrack = res.data.tracks.find((t: any) => t._id === selectedTrack._id);
+          if (updatedTrack) {
+            setSelectedTrack(updatedTrack);
+          }
+        } else {
+          setSelectedTrack(res.data.tracks[0]);
+        }
       }
 
       if (res.data.event) {
@@ -936,7 +940,7 @@ export default function AdminEvents({
 
       setEventName("");
       setDesc("");
-      setGithubOrgName("seal-hackathon-2026");
+      setGithubOrgName("sealhackathon-2026");
       setMessage({
         type: "success",
         text: "Khởi tạo Cuộc thi thành công! Chi tiết cuộc thi hiển thị bên dưới.",
@@ -1107,7 +1111,7 @@ export default function AdminEvents({
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       setSelectedEvent(res.data.event);
       toast.success("Đã cập nhật nội dung Guest Portal thành công!");
       setMessage({ type: "success", text: "Đã cập nhật nội dung Guest Portal thành công!" });
@@ -1398,7 +1402,7 @@ export default function AdminEvents({
 
       setMessage({
         type: "success",
-        text: rubricCreated 
+        text: rubricCreated
           ? `Tạo vòng đấu "${newRound.name}" và Rubric thành công!`
           : `Tạo vòng đấu "${newRound.name}" thành công (chưa tạo được Rubric).`,
       });
@@ -1847,6 +1851,39 @@ export default function AdminEvents({
     }
   };
 
+  const handleUnlockRound = async (roundId: string) => {
+    if (!selectedEvent || !roundId) return;
+
+    setMessage({ type: "", text: "" });
+    setLoading(true);
+
+    try {
+      const res = await axios.post(
+        "http://localhost:5000/api/grades/unlock-round",
+        {
+          eventId: selectedEvent._id,
+          roundId: roundId
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setMessage({ type: "success", text: res.data.message });
+
+      // Reload event details and rounds
+      await fetchEventDetails();
+      await fetchRoundsAndRubric();
+    } catch (err: any) {
+      console.error(err);
+      setMessage({
+        type: "error",
+        text: err.response?.data?.message || "Lỗi khi mở khóa điểm vòng đấu."
+      });
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
 
   // handleUploadExam removed — Drive upload moved to TracksTab component
@@ -2187,8 +2224,8 @@ export default function AdminEvents({
               <button
                 onClick={() => setActiveTab("logs")}
                 className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "logs"
-                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
                   }`}
               >
                 Nhật ký hoạt động
@@ -2202,8 +2239,8 @@ export default function AdminEvents({
                   setActiveTab("operations");
                 }}
                 className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${!selectedEvent ? "opacity-40 cursor-not-allowed" : ""} ${activeTab === "operations"
-                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
                   }`}
               >
                 Điều hành cuộc thi
@@ -2256,7 +2293,7 @@ export default function AdminEvents({
                     <input
                       type="text"
                       required
-                      placeholder="Ví dụ: seal-hackathon-2026"
+                      placeholder="Ví dụ: sealhackathon-2026"
                       value={editEventGithubOrgName}
                       onChange={(e) =>
                         setEditEventGithubOrgName(e.target.value)
@@ -2388,7 +2425,7 @@ export default function AdminEvents({
                     <input
                       type="text"
                       required
-                      placeholder="Ví dụ: seal-hackathon-2026"
+                      placeholder="Ví dụ: sealhackathon-2026"
                       value={githubOrgName}
                       onChange={(e) => setGithubOrgName(e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-slate-200"
@@ -2476,6 +2513,7 @@ export default function AdminEvents({
             selectedEvent={selectedEvent}
             teamsList={teamsList}
             tracks={tracks}
+            rounds={rounds}
             loading={loading}
             handleDistributeTeams={handleDistributeTeams}
             handleAssignTrack={handleAssignTrack}
@@ -2730,7 +2768,7 @@ export default function AdminEvents({
                             aria-hidden="true"
                           />
                         ) : null}
-                        <div 
+                        <div
                           onClick={() => setSelectedLog(log)}
                           className="relative flex space-x-3 cursor-pointer group hover:bg-slate-800/30 p-3 -m-3 rounded-2xl transition-all"
                         >
@@ -2965,14 +3003,12 @@ export default function AdminEvents({
                 <button
                   type="button"
                   onClick={() => {
-                    sessionStorage.removeItem("creatingEventId");
-                    setIsWizardMode(false);
-                    toast.success("Chúc mừng! Bạn đã hoàn tất toàn bộ các bước khởi tạo cuộc thi mới!");
-                    setActiveTab("events");
+                    setWizardStep((prev) => Math.max(prev, 5));
+                    setActiveTab("seminar");
                   }}
-                  className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-mono text-xs font-bold shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 cursor-pointer"
+                  className="px-6 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white font-mono text-xs font-bold shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-2 cursor-pointer"
                 >
-                  Hoàn tất khởi tạo cuộc thi ✓
+                  Tiếp tục: Seminar &amp; Thông báo →
                 </button>
               </div>
             )}
@@ -3197,7 +3233,19 @@ export default function AdminEvents({
 
       {/* 10. SEMINAR TAB */}
       {activeTab === "seminar" && (
-        <SeminarTab selectedEvent={selectedEvent} fetchEventDetails={fetchEventDetails} readOnly={readOnly} />
+        <SeminarTab
+          selectedEvent={selectedEvent}
+          fetchEventDetails={fetchEventDetails}
+          readOnly={readOnly}
+          isWizardMode={isWizardMode}
+          onPrevStep={() => setActiveTab("schedule")}
+          onCompleteWizard={() => {
+            sessionStorage.removeItem("creatingEventId");
+            setIsWizardMode(false);
+            toast.success("Chúc mừng! Bạn đã hoàn tất toàn bộ các bước khởi tạo cuộc thi mới!");
+            setActiveTab("events");
+          }}
+        />
       )}
 
       {/* 11. OPERATIONS TAB */}
@@ -3210,6 +3258,7 @@ export default function AdminEvents({
             teamsList={teamsList}
             handleAdvanceRound={handleAdvanceRound}
             handleLockRound={handleLockRound}
+            handleUnlockRound={handleUnlockRound}
             handleSyncAllRepos={handleSyncAllRepos}
             handleUpdateRound={handleUpdateRound}
             fetchEventDetails={fetchEventDetails}
@@ -3228,7 +3277,7 @@ export default function AdminEvents({
           <div className="relative w-full max-w-lg border border-slate-800/80 bg-slate-950 p-6 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] space-y-6 font-sans text-slate-200 animate-in fade-in zoom-in-95 duration-200">
             {/* Top decorative line */}
             <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
-            
+
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
               <div className="flex items-center gap-2">
@@ -3250,14 +3299,13 @@ export default function AdminEvents({
               {/* Action Badge */}
               <div className="flex justify-between items-center bg-slate-900/50 p-3 rounded-xl border border-slate-800/50">
                 <span className="text-xs text-slate-400 font-mono">Loại hành động:</span>
-                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold font-mono tracking-wide ${
-                  selectedLog.action.includes('event') ? 'bg-blue-500/10 border border-blue-500/30 text-blue-400' :
-                  selectedLog.action.includes('role') ? 'bg-purple-500/10 border border-purple-500/30 text-purple-400' :
-                  selectedLog.action.includes('track') || selectedLog.action.includes('team') ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' :
-                  selectedLog.action.includes('rubric') || selectedLog.action.includes('criterion') ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400' :
-                  selectedLog.action.includes('results') ? 'bg-rose-500/10 border border-rose-500/30 text-rose-400' :
-                  'bg-slate-500/10 border border-slate-500/30 text-slate-400'
-                }`}>
+                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold font-mono tracking-wide ${selectedLog.action.includes('event') ? 'bg-blue-500/10 border border-blue-500/30 text-blue-400' :
+                    selectedLog.action.includes('role') ? 'bg-purple-500/10 border border-purple-500/30 text-purple-400' :
+                      selectedLog.action.includes('track') || selectedLog.action.includes('team') ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' :
+                        selectedLog.action.includes('rubric') || selectedLog.action.includes('criterion') ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400' :
+                          selectedLog.action.includes('results') ? 'bg-rose-500/10 border border-rose-500/30 text-rose-400' :
+                            'bg-slate-500/10 border border-slate-500/30 text-slate-400'
+                  }`}>
                   {selectedLog.action}
                 </span>
               </div>

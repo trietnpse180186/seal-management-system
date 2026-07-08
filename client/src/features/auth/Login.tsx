@@ -7,15 +7,14 @@ import logo from "../../assets/logo.svg";
 import UniversityCombobox from '../shared/UniversityCombobox';
 import CaptchaInput from '../shared/CaptchaInput';
 import GithubUserAutocomplete from '../shared/GithubUserAutocomplete';
-
-
-
+import { useConfirm } from '../shared/ConfirmDialog';
 
 interface LoginProps {
   onLoginSuccess: (token: string, user: any, roles: any[]) => void;
 }
 
 export default function Login({ onLoginSuccess }: LoginProps) {
+  const confirm = useConfirm();
   const [isRegister, setIsRegister] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [isVerificationPending, setIsVerificationPending] = useState(false);
@@ -26,7 +25,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const [studentId, setStudentId] = useState('');
   const [university, setUniversity] = useState('');
   const [githubUsername, setGithubUsername] = useState('');
-  
+
   const [captchaId, setCaptchaId] = useState('');
   const [captchaSvg, setCaptchaSvg] = useState('');
   const [captchaValue, setCaptchaValue] = useState('');
@@ -104,8 +103,8 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     if (localUrl) return localUrl;
 
     // Fallback based on client hostname
-    if (window.location.hostname.includes('seal-hackathon.io.vn') || 
-        window.location.hostname.includes('vercel.app')) {
+    if (window.location.hostname.includes('seal-hackathon.io.vn') ||
+      window.location.hostname.includes('vercel.app')) {
       return 'https://seal-management-system.onrender.com/api';
     }
     return 'http://localhost:5000/api';
@@ -199,10 +198,13 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         } catch (err: any) {
           console.error(err);
           if (err.response?.status === 409) {
-            const confirmForce = window.confirm(
-              'Tài khoản của bạn đang được đăng nhập ở một thiết bị hoặc trình duyệt khác. ' +
-              'Bạn có muốn tiếp tục đăng nhập và đóng phiên làm việc cũ không?'
-            );
+            const confirmForce = await confirm({
+              title: 'Xác nhận đăng nhập',
+              message: 'Tài khoản của bạn đang được đăng nhập ở một thiết bị hoặc trình duyệt khác. Bạn có muốn tiếp tục đăng nhập và đóng phiên làm việc cũ không?',
+              confirmText: 'Đồng ý',
+              cancelText: 'Hủy',
+              variant: 'warning'
+            });
             if (confirmForce) {
               try {
                 setLoading(true);
@@ -234,7 +236,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           } else {
             setError(err.response?.data?.message || 'Lỗi xác thực GitHub bằng code.');
           }
-          
+
           // Clear mobile session to prevent auto-redirect loop on error
           localStorage.removeItem('mobile_platform');
           localStorage.removeItem('mobile_redirect');
@@ -281,10 +283,13 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           } catch (err: any) {
             console.error(err);
             if (err.response?.status === 409) {
-              const confirmForce = window.confirm(
-                'Tài khoản của bạn đang được đăng nhập ở một thiết bị hoặc trình duyệt khác. ' +
-                'Bạn có muốn tiếp tục đăng nhập và đóng phiên làm việc cũ không?'
-              );
+              const confirmForce = await confirm({
+                title: 'Xác nhận đăng nhập',
+                message: 'Tài khoản của bạn đang được đăng nhập ở một thiết bị hoặc trình duyệt khác. Bạn có muốn tiếp tục đăng nhập và đóng phiên làm việc cũ không?',
+                confirmText: 'Đồng ý',
+                cancelText: 'Hủy',
+                variant: 'warning'
+              });
               if (confirmForce) {
                 try {
                   setLoading(true);
@@ -315,7 +320,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             } else {
               setError(err.response?.data?.message || 'Lỗi đăng nhập Google.');
             }
-            
+
             // Clear mobile session to prevent auto-redirect loop on error
             localStorage.removeItem('mobile_platform');
             localStorage.removeItem('mobile_redirect');
@@ -354,11 +359,11 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
     if (plat === 'mobile' && !isCallback) {
       if (prov === 'google') {
-        const isLocal = window.location.hostname === 'localhost' || 
-                        window.location.hostname === '127.0.0.1' || 
-                        window.location.hostname.includes('192.168.') || 
-                        window.location.hostname.includes('10.') || 
-                        window.location.hostname.includes('172.');
+        const isLocal = window.location.hostname === 'localhost' ||
+          window.location.hostname === '127.0.0.1' ||
+          window.location.hostname.includes('192.168.') ||
+          window.location.hostname.includes('10.') ||
+          window.location.hostname.includes('172.');
         if (isLocal) {
           setShowMockGoogle(true);
         } else {
@@ -461,10 +466,13 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       if (err.response?.status === 403 && err.response?.data?.requiresVerification) {
         setIsVerificationPending(true);
       } else if (err.response?.status === 409) {
-        const confirmForce = window.confirm(
-          'Tài khoản của bạn đang được đăng nhập ở một thiết bị hoặc trình duyệt khác. ' +
-          'Bạn có muốn tiếp tục đăng nhập và đóng phiên làm việc cũ không?'
-        );
+        const confirmForce = await confirm({
+          title: 'Xác nhận đăng nhập',
+          message: 'Tài khoản của bạn đang được đăng nhập ở một thiết bị hoặc trình duyệt khác. Bạn có muốn tiếp tục đăng nhập và đóng phiên làm việc cũ không?',
+          confirmText: 'Đồng ý',
+          cancelText: 'Hủy',
+          variant: 'warning'
+        });
         if (confirmForce) {
           try {
             setLoading(true);
@@ -553,7 +561,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     return (
       <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-12 font-sans bg-[#f0f4f9] text-gray-800">
         <div className="w-full max-w-[450px] bg-white rounded-3xl p-10 border border-gray-200 shadow-sm flex flex-col items-center">
-          
+
           {/* Google Logo */}
           <div className="mb-4">
             <svg className="w-10 h-10" viewBox="0 0 24 24" fill="currentColor">
@@ -585,9 +593,8 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                     key={acc.email}
                     onClick={() => handleMockGoogleLogin(acc.email, acc.name)}
                     disabled={loading}
-                    className={`w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors text-left ${
-                      index > 0 ? 'border-t border-gray-100' : ''
-                    }`}
+                    className={`w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors text-left ${index > 0 ? 'border-t border-gray-100' : ''
+                      }`}
                   >
                     <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-semibold text-sm">
                       {acc.name[0]}
@@ -712,7 +719,6 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         {errorMessage && (
           <div className="mb-5 p-3.5 bg-rose-950/90 border border-rose-500/80 rounded-xl text-rose-200 text-xs font-mono flex items-center justify-between shadow-xl animate-in fade-in zoom-in-95">
             <div className="flex items-center gap-2.5">
-              <span className="text-rose-400 font-bold text-base">⚠️</span>
               <span className="leading-relaxed">{errorMessage}</span>
             </div>
             <button

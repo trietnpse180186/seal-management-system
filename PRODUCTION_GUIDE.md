@@ -60,7 +60,7 @@ Hệ thống sử dụng GitHub API để tự động tạo repository riêng t
    ```env
    GITHUB_SERVICE_MOCK=false
    GITHUB_TOKEN=ghp_your_personal_access_token_here
-   GITHUB_ORG=ten-organization-github-cua-cuoc-thi # Ví dụ: seal-hackathon-2026
+   GITHUB_ORG=ten-organization-github-cua-cuoc-thi # Ví dụ: sealhackathon-2026
    ```
 
 ### 2.3 Cấu hình Trợ lý AI Google Gemini (`GEMINI_API_KEY`)

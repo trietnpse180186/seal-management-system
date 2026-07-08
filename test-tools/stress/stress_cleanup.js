@@ -75,7 +75,7 @@ async function main() {
 
   // 2. Clean Database Records
   console.log('[CLEANUP] Deleting MongoDB records...');
-  
+
   // Find teams to delete their commits and analyses
   const teams = await Team.find({ eventId });
   const teamIds = teams.map(t => t._id);
@@ -91,7 +91,7 @@ async function main() {
   // Delete Rubric and Criteria
   const rounds = await Round.find({ eventId });
   const roundIds = rounds.map(r => r._id);
-  
+
   const rubrics = await Rubric.find({ roundId: { $in: roundIds } });
   const rubricIds = rubrics.map(ru => ru._id);
 

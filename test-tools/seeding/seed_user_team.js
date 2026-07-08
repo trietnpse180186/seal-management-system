@@ -120,9 +120,9 @@ async function setupUserTeam() {
     teamId: team._id,
     eventId: event._id,
     repoName: 'operators-repo',
-    repoUrl: 'https://github.com/seal-hackathon-2026/operators-repo',
+    repoUrl: 'https://github.com/sealhackathon-2026/operators-repo',
     githubRepoId: 'mock-repo-id-123456',
-    orgName: 'seal-hackathon-2026'
+    orgName: 'sealhackathon-2026'
   });
   await repo.save();
   console.log(`- Đã tạo mock Github Repository: ${repo.repoUrl}`);

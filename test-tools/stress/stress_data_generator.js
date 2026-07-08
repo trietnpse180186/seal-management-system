@@ -131,7 +131,7 @@ async function main() {
   const oldEvent = await Event.findOne({ semester: 'Summer', year: 2026 });
   if (oldEvent) {
     const eventId = oldEvent._id;
-    
+
     // Delete rubrics and criteria first before deleting rounds
     const rounds = await Round.find({ eventId });
     for (const r of rounds) {
@@ -370,7 +370,7 @@ client.on('message', (topic, message) => {
     // Create GitHub Repository under 'sealhackathon-2026' org
     let repoUrl = `https://github.com/${orgName}/${repoName}`;
     let githubRepoId = `stress-${Date.now()}-${i}`;
-    
+
     try {
       console.log(`[GITHUB] Checking if repository ${repoName} exists...`);
       let repoExists = false;
@@ -393,7 +393,7 @@ client.on('message', (topic, message) => {
         githubRepoId = createRes.data.id.toString();
         repoUrl = createRes.data.html_url;
         console.log(`[GITHUB] Repository created: ${repoUrl}`);
-        
+
         // Wait 1.5s for GitHub initialization
         await sleep(1500);
       }
@@ -402,14 +402,14 @@ client.on('message', (topic, message) => {
       const templates = filesMap[ragType];
 
       console.log(`[GITHUB] Pushing ${ragType} RAG files to ${repoName} (creating commits)...`);
-      
+
       let commitIdx = 1;
       for (const [filePath, content] of Object.entries(templates)) {
         console.log(`[GITHUB] Writing file ${filePath} (Commit #${commitIdx})...`);
-        const commitMsg = commitIdx === 1 
+        const commitMsg = commitIdx === 1
           ? `feat: Initialize project setup and default express server`
           : `feat: Implement ${ragType} RAG pipeline with database search`;
-        
+
         await octokit.repos.createOrUpdateFileContents({
           owner: orgName,
           repo: repoName,
@@ -417,7 +417,7 @@ client.on('message', (topic, message) => {
           message: commitMsg,
           content: Buffer.from(content).toString('base64'),
         });
-        
+
         commitIdx++;
         await sleep(500); // Avoid rate limit trigger
       }
@@ -452,7 +452,7 @@ client.on('message', (topic, message) => {
   console.log(`[COMPLETED] Database states set up successfully at "scoring ready".`);
   console.log(`[COMPLETED] Run "node test-tools/stress_sync_runner.js" to start load testing.`);
   console.log(`============================================`);
-  
+
   await mongoose.disconnect();
 }
 

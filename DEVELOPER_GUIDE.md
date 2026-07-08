@@ -55,7 +55,7 @@ Hệ thống sử dụng GitHub API để tự động tạo repository riêng t
 9. Điền vào `.env`:
    ```env
    GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-   GITHUB_ORG=ten-org-github-cua-cuoc-thi # Ví dụ: seal-hackathon-2026
+   GITHUB_ORG=ten-org-github-cua-cuoc-thi # Ví dụ: sealhackathon-2026
    ```
 
 ### 2.3. Lấy Google Gemini API Key (`GEMINI_API_KEY`)
@@ -153,7 +153,7 @@ JWT_SECRET=supersecretkey123456789!@#
 
 # Cấu hình GitHub API (Không có sẽ tự động dùng Mock Simulator)
 GITHUB_TOKEN=ghp_your_github_personal_access_token_here
-GITHUB_ORG=seal-hackathon-2026
+GITHUB_ORG=sealhackathon-2026
 
 # Cấu hình Google Gemini AI (Không có sẽ tự động dùng Mock Simulator)
 GEMINI_API_KEY=your_gemini_api_key_here

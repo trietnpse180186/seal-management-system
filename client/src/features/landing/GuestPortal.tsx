@@ -10,6 +10,12 @@ import {
   Users,
   DollarSign,
   Download,
+  Calendar,
+  Clock,
+  GitBranch,
+  Award,
+  FileText,
+  Target,
 } from "lucide-react";
 
 interface GuestPortalProps {
@@ -610,7 +616,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                   Mục tiêu chính
                 </h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  {activeEvent?.mainGoal || "Phát triển các giải pháp sáng tạo để giải quyết bài toán thực tế và xây dựng hệ thống phần mềm chất lượng. Các đội thi cần tối ưu mã nguồn, liên kết repository và tối ưu hóa hệ thống dưới sự hỗ trợ của AI."}
+                  {activeEvent?.mainGoal || "Các đội thi sẽ xây dựng sản phẩm ứng dụng AI để tiếp nhận và phân tích dữ liệu IoT theo thời gian thực, phát hiện bất thường, dự đoán rủi ro và đề xuất phương án xử lý phù hợp."}
                 </p>
               </div>
 
@@ -620,7 +626,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                     THỜI GIAN
                   </div>
                   <div className="text-sm font-bold text-white">
-                    {activeEvent?.durationText || "48 GIỜ"}
+                    {activeEvent?.durationText || "Theo quy định"}
                   </div>
                 </div>
                 <div className="border border-slate-800 p-3 bg-slate-900/30 rounded-xl">
@@ -637,7 +643,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                       QUỸ GIẢI THƯỞNG
                     </div>
                     <div className="text-sm font-bold text-cyan-400">
-                      {activeEvent?.prizePoolText || "Tiền mặt và chứng nhận"}
+                      {activeEvent?.prizePoolText || "Tiền thưởng và chứng nhận"}
                     </div>
                   </div>
                   <DollarSign size={20} className="text-cyan-400/40" />
@@ -745,86 +751,197 @@ export default function GuestPortal({ user }: GuestPortalProps) {
         const displayRules = activeEvent?.rules?.length > 0 ? activeEvent.rules : defaultRules;
 
         return (
-          <section className="glass p-6 rounded-2xl border border-slate-800 space-y-6">
-            <div className="border-b border-slate-800 pb-3 flex justify-between items-center flex-wrap gap-4">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Scale size={18} className="text-cyan-400" />
-                <span>Điều lệ & Quy định cuộc thi</span>
+          <section className="glass p-6 sm:p-8 rounded-2xl border border-slate-800 space-y-8">
+            <div className="border-b border-slate-800 pb-4 flex justify-between items-center flex-wrap gap-4">
+              <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-3">
+                <Scale size={24} className="text-cyan-400" />
+                <span className="font-mono-tech tracking-wide">Điều lệ & Quy định cuộc thi</span>
               </h2>
               <a
                 href="http://localhost:5000/THÔNG%20TIN%20VỀ%20CUỘC%20THI.pdf"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-4 py-2 border border-cyan-500/30 hover:border-cyan-400/80 bg-cyan-950/20 hover:bg-cyan-950/40 rounded-xl text-xs font-mono font-bold text-cyan-400 hover:text-cyan-300 transition-all cursor-pointer shadow-lg shadow-cyan-500/5"
+                className="flex items-center gap-2 px-5 py-2.5 border border-cyan-500/30 hover:border-cyan-400/80 bg-cyan-950/20 hover:bg-cyan-950/40 rounded-xl text-xs font-mono font-bold text-cyan-400 hover:text-cyan-300 transition-all cursor-pointer shadow-lg shadow-cyan-500/5 hover:scale-[1.02]"
               >
-                <Download size={12} />
+                <Download size={14} />
                 <span>[TẢI_THỂ_LỆ_PDF]</span>
               </a>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 text-left items-start">
-              {/* Left: 10 Info Cards */}
-              <div className="lg:col-span-7 space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                {displayRules.map((r: any, idx: number) => (
-                  <div key={idx} className="p-5 border border-slate-850 bg-slate-900/10 rounded-2xl space-y-2 hover:border-cyan-500/30 transition-all">
-                    <h3 className="text-xs text-cyan-400 font-extrabold uppercase font-mono tracking-wider">
-                      {r.title}
-                    </h3>
-                    <p className="text-[11px] text-slate-350 font-sans leading-relaxed whitespace-pre-line">
-                      {r.description}
-                    </p>
+            {/* Highlights Dashboard Grid */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 text-left">
+              {/* Left Highlight (Điều 8: Tiêu chí chấm điểm) - Spans 7 cols on XL */}
+              <div className="xl:col-span-7 bg-slate-900/20 p-6 rounded-2xl border border-slate-800/60 space-y-5 flex flex-col justify-between">
+                <div className="space-y-4">
+                  <h3 className="text-sm text-cyan-400 font-extrabold uppercase font-mono tracking-widest flex items-center gap-2.5 pb-2 border-b border-slate-800/80">
+                    <Award size={18} className="text-cyan-400" />
+                    <span>Tiêu chí chấm điểm</span>
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm font-sans">
+                    <div className="space-y-3.5 bg-slate-950/30 p-4 rounded-xl border border-slate-850/80">
+                      <span className="text-xs text-slate-400 font-extrabold block uppercase border-b border-slate-800 pb-2 font-mono tracking-wider">
+                        1. Vòng bảng
+                      </span>
+                      <div className="space-y-3">
+                        {[
+                          { label: "Xử lý dữ liệu thực tế", val: "25%" },
+                          { label: "Hiệu quả ứng dụng AI", val: "25%" },
+                          { label: "Kiến trúc & Tích hợp", val: "20%" },
+                          { label: "Phù hợp Domain & UX", val: "15%" },
+                          { label: "Ý tưởng & Pitching", val: "15%" },
+                        ].map((item, i) => (
+                          <div key={i} className="space-y-1">
+                            <div className="flex justify-between text-xs text-slate-300">
+                              <span>{item.label}</span>
+                              <span className="text-cyan-400 font-mono font-bold">{item.val}</span>
+                            </div>
+                            <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full shadow-[0_0_8px_rgba(6,182,212,0.4)]"
+                                style={{ width: item.val }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-3.5 bg-slate-950/30 p-4 rounded-xl border border-slate-850/80">
+                      <span className="text-xs text-slate-400 font-extrabold block uppercase border-b border-slate-800 pb-2 font-mono tracking-wider">
+                        2. Vòng chung kết
+                      </span>
+                      <div className="space-y-3">
+                        {[
+                          { label: "Độ hoàn thiện & Ổn định", val: "25%" },
+                          { label: "Năng lực phân tích AI", val: "25%" },
+                          { label: "Độ tin cậy & An toàn", val: "20%" },
+                          { label: "Sáng tạo & Thực tế", val: "15%" },
+                          { label: "Trình bày & Phản biện", val: "15%" },
+                        ].map((item, i) => (
+                          <div key={i} className="space-y-1">
+                            <div className="flex justify-between text-xs text-slate-300">
+                              <span>{item.label}</span>
+                              <span className="text-cyan-400 font-mono font-bold">{item.val}</span>
+                            </div>
+                            <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full shadow-[0_0_8px_rgba(6,182,212,0.4)]"
+                                style={{ width: item.val }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                ))}
+                </div>
               </div>
 
-              {/* Right: Scoring Criteria & AI guidelines */}
-              <div className="lg:col-span-5 space-y-6">
-                {/* Scoring Criteria details */}
-                <div className="p-5 bg-slate-900/30 rounded-2xl border border-slate-850 space-y-4">
-                  <h3 className="text-xs text-cyan-400 font-extrabold uppercase font-mono tracking-widest flex items-center gap-2">
-                    <Terminal size={14} />
-                    <span>Tiêu chí chấm điểm (Điều 8)</span>
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4 text-[11px] font-sans">
-                    <div className="space-y-1.5">
-                      <span className="text-[10px] text-slate-400 font-bold block uppercase border-b border-slate-800 pb-1 font-mono">1. Vòng bảng</span>
-                      <ul className="space-y-1 text-slate-300">
-                        <li>• Xử lý dữ liệu: <strong className="text-cyan-400">25%</strong></li>
-                        <li>• Hiệu quả ứng dụng AI: <strong className="text-cyan-400">25%</strong></li>
-                        <li>• Kiến trúc &amp; Tích hợp: <strong className="text-cyan-400">20%</strong></li>
-                        <li>• Phù hợp Domain &amp; UX: <strong className="text-cyan-400">15%</strong></li>
-                        <li>• Ý tưởng &amp; Pitching: <strong className="text-cyan-400">15%</strong></li>
-                      </ul>
-                    </div>
-                    <div className="space-y-1.5">
-                      <span className="text-[10px] text-slate-400 font-bold block uppercase border-b border-slate-800 pb-1 font-mono">2. Vòng chung kết</span>
-                      <ul className="space-y-1 text-slate-300">
-                        <li>• Độ hoàn thiện &amp; Ổn định: <strong className="text-cyan-400">25%</strong></li>
-                        <li>• Năng lực phân tích AI: <strong className="text-cyan-400">25%</strong></li>
-                        <li>• Độ tin cậy &amp; An toàn: <strong className="text-cyan-400">20%</strong></li>
-                        <li>• Sáng tạo &amp; Thực tế: <strong className="text-cyan-400">15%</strong></li>
-                        <li>• Trình bày &amp; Phản biện: <strong className="text-cyan-400">15%</strong></li>
-                      </ul>
-                    </div>
-                  </div>
-                  <p className="text-[10px] text-slate-500 font-mono leading-relaxed pt-1.5 border-t border-slate-800">
-                    * Ghi chú: Các giải pháp chỉ đơn thuần hiển thị hoặc cảnh báo điều kiện tĩnh sẽ không được tính điểm ứng dụng AI.
-                  </p>
-                </div>
-
-                {/* General Info */}
-                <div className="p-5 bg-slate-900/30 rounded-2xl border border-slate-850 space-y-4">
-                  <h3 className="text-xs text-cyan-400 font-extrabold uppercase font-mono tracking-widest flex items-center gap-2">
-                    <Terminal size={14} />
+              {/* Right Highlight (Quy chế thi đấu cốt lõi) - Spans 5 cols on XL */}
+              <div className="xl:col-span-5 bg-slate-900/20 p-6 rounded-2xl border border-slate-800/60 space-y-5 flex flex-col justify-between">
+                <div className="space-y-4 w-full">
+                  <h3 className="text-sm text-cyan-400 font-extrabold uppercase font-mono tracking-widest flex items-center gap-2.5 pb-2 border-b border-slate-800/80">
+                    <Terminal size={18} className="text-cyan-400" />
                     <span>Quy chế thi đấu cốt lõi</span>
                   </h3>
-                  <ul className="space-y-2 text-[11px] text-slate-300 font-sans leading-relaxed list-disc list-inside">
-                    <li><strong>Thời gian thi đấu</strong>: <span className="text-cyan-400 font-mono font-bold">07h00 – 15h00</span>. Trễ quá 60 phút sẽ bị hủy quyền tham gia.</li>
-                    <li><strong>Lưu trữ mã nguồn</strong>: Phải đẩy lên GitHub/GitLab chính thức.</li>
-                    <li><strong>Hồ sơ tài liệu</strong>: Quản lý qua Jira, Confluence hoặc Notion.</li>
-                    <li><strong>Sản phẩm báo cáo</strong>: Thuyết trình bằng Slide (không dùng tài liệu).</li>
-                  </ul>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm font-sans">
+                    {[
+                      {
+                        icon: <Clock className="text-cyan-400" size={16} />,
+                        title: "Thời gian thi đấu",
+                        desc: "Theo quy định",
+                        detail: "Trễ quá 60 phút sẽ bị hủy quyền tham gia.",
+                      },
+                      {
+                        icon: <GitBranch className="text-cyan-400" size={16} />,
+                        title: "Lưu trữ mã nguồn",
+                        desc: "GitHub",
+                        detail: "Bắt buộc phải đẩy mã nguồn lên kho lưu trữ chính thức.",
+                      },
+                      {
+                        icon: <Terminal className="text-cyan-400" size={16} />,
+                        title: "Hồ sơ tài liệu",
+                        desc: "Jira, Confluence, Notion",
+                        detail: "Quản lý tiến độ dự án qua các công cụ quy định.",
+                      },
+                      {
+                        icon: <FileText className="text-cyan-400" size={16} />,
+                        title: "Sản phẩm báo cáo",
+                        desc: "Thuyết trình Slide",
+                        detail: "Trực tiếp chấm tại bàn và không dùng tài liệu giấy.",
+                      },
+                    ].map((item, i) => (
+                      <div
+                        key={i}
+                        className="bg-slate-950/30 p-4 rounded-xl border border-slate-855 flex flex-col space-y-1.5 hover:border-cyan-500/20 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="p-1 rounded bg-cyan-950/40 border border-cyan-500/20">
+                            {item.icon}
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase font-mono tracking-wider">
+                            {item.title}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-cyan-400 font-bold text-xs font-mono">{item.desc}</p>
+                          <p className="text-slate-400 text-[11px] mt-1 leading-normal">{item.detail}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+                <div className="h-0 xl:h-2" />
+              </div>
+            </div>
+
+            {/* All Rules Grid (Fully visible, no nested scrolling) */}
+            <div className="space-y-5 text-left pt-4">
+              <h3 className="text-base text-cyan-400 font-extrabold uppercase font-mono tracking-widest flex items-center gap-2.5 pb-2 border-b border-slate-800/80">
+                <Compass size={18} className="text-cyan-400" />
+                <span>Chi tiết các Điều lệ &amp; Quy định</span>
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {displayRules.map((r: any, idx: number) => {
+                  const getRuleIcon = (index: number) => {
+                    switch (index) {
+                      case 0: return <Target size={18} />;
+                      case 1: return <Users size={18} />;
+                      case 2: return <Compass size={18} />;
+                      case 3: return <Calendar size={18} />;
+                      case 4: return <Clock size={18} />;
+                      case 5: return <GitBranch size={18} />;
+                      case 6: return <Award size={18} />;
+                      case 7: return <Scale size={18} />;
+                      case 8: return <Shield size={18} />;
+                      default: return <FileText size={18} />;
+                    }
+                  };
+
+                  return (
+                    <div
+                      key={idx}
+                      className="p-6 border border-slate-800 hover:border-cyan-500/30 bg-slate-900/10 hover:bg-slate-900/20 rounded-2xl flex flex-col space-y-3 hover:shadow-[0_0_20px_-5px_rgba(6,182,212,0.15)] transition-all duration-300 group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-xl bg-cyan-950/30 border border-cyan-500/20 text-cyan-400 group-hover:scale-110 transition-transform duration-300">
+                          {getRuleIcon(idx)}
+                        </div>
+                        <span className="text-[10px] sm:text-xs font-mono font-bold px-2.5 py-1 bg-cyan-950/50 border border-cyan-500/20 text-cyan-400 rounded-full uppercase tracking-wider">
+                          Điều {idx + 1}
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="text-sm sm:text-base font-extrabold text-white group-hover:text-cyan-400 transition-colors leading-snug">
+                          {r.title.replace(/^Điều\s+\d+\.\s*/i, '')}
+                        </h4>
+                        <p className="text-xs sm:text-sm text-slate-400 leading-relaxed font-sans font-normal">
+                          {r.description}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </section>

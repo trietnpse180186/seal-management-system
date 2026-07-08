@@ -86,7 +86,7 @@ export default function RegisterTeam() {
         const team = res.data?.team;
         console.log('DEBUG [RegisterTeam]: team =', team);
         const isEventEnded = team && (
-          team.eventId?.status === 'completed' || 
+          team.eventId?.status === 'completed' ||
           team.eventId?.status === 'cancelled' ||
           (team.eventId?.contestEnd && new Date(team.eventId.contestEnd) <= new Date())
         );
@@ -184,13 +184,13 @@ export default function RegisterTeam() {
   };
 
   const addMemberRow = () => {
-    setMembers([...members, { 
-      email: '', 
-      fullName: '', 
-      githubUsername: '', 
-      studentId: '', 
-      university: '', 
-      universityCustom: '', 
+    setMembers([...members, {
+      email: '',
+      fullName: '',
+      githubUsername: '',
+      studentId: '',
+      university: '',
+      universityCustom: '',
       isUniversityCustom: false,
       checkingStatus: 'idle',
       checkingMessage: ''
@@ -209,7 +209,7 @@ export default function RegisterTeam() {
       toast.warning('Vui lòng nhập email trước khi kiểm tra.');
       return;
     }
-    
+
     const updated = [...members];
     updated[index].checkingStatus = 'checking';
     updated[index].checkingMessage = '';
@@ -222,7 +222,7 @@ export default function RegisterTeam() {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
-      
+
       const nextUpdated = [...members];
       if (res.data.eligible) {
         nextUpdated[index].checkingStatus = 'eligible';
@@ -399,10 +399,9 @@ export default function RegisterTeam() {
 
           {selectedEvent && selectedEvent.maxTeams && (selectedEvent.teamCount || 0) >= selectedEvent.maxTeams && (
             <div className="bg-rose-500/10 border border-rose-500/35 p-5 rounded-2xl text-rose-400 text-xs font-mono flex items-center gap-3">
-              <span className="text-xl">⚠️</span>
               <div>
                 <strong className="text-white block uppercase tracking-wider mb-1">Đăng ký đã đầy!</strong>
-                Cuộc thi "{selectedEvent.name}" đã đạt giới hạn đăng ký tối đa ({selectedEvent.teamCount}/{selectedEvent.maxTeams} đội). 
+                Cuộc thi "{selectedEvent.name}" đã đạt giới hạn đăng ký tối đa ({selectedEvent.teamCount}/{selectedEvent.maxTeams} đội).
                 Vui lòng liên hệ Ban tổ chức hoặc chọn một sự kiện khác.
               </div>
             </div>
@@ -569,100 +568,99 @@ export default function RegisterTeam() {
                 const cardZIndex = members.length - index;
                 return (
                   <div key={index} className="glass-light p-4 rounded-xl border border-slate-800/80 relative" style={{ zIndex: cardZIndex }}>
-                  <div className="absolute right-4 top-4">
-                    {members.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => removeMemberRow(index)}
-                        className="text-slate-500 hover:text-rose-400 p-1 rounded-md transition-colors"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-slate-300">
-                    <div className="space-y-1">
-                      <label className="block text-xs font-semibold text-slate-400">Email</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="email"
-                          required
-                          placeholder="member@student.edu.vn"
-                          value={member.email}
-                          onChange={e => {
-                            handleMemberChange(index, 'email', e.target.value);
-                            const updated = [...members];
-                            updated[index].checkingStatus = 'idle';
-                            updated[index].checkingMessage = '';
-                            setMembers(updated);
-                          }}
-                          className="flex-1 bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
-                        />
+                    <div className="absolute right-4 top-4">
+                      {members.length > 0 && (
                         <button
                           type="button"
-                          onClick={() => handleCheckEligibility(index)}
-                          disabled={member.checkingStatus === 'checking'}
-                          className="bg-cyan-500 hover:bg-cyan-600 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-bold px-3 py-2 rounded-lg text-[10px] uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap"
+                          onClick={() => removeMemberRow(index)}
+                          className="text-slate-500 hover:text-rose-400 p-1 rounded-md transition-colors"
                         >
-                          {member.checkingStatus === 'checking' ? 'Đang check...' : 'Kiểm tra'}
+                          <Trash2 size={16} />
                         </button>
-                      </div>
-                      {member.checkingMessage && (
-                        <p className={`text-[10px] font-mono italic mt-1 ${
-                          member.checkingStatus === 'eligible' ? 'text-emerald-400' : 
-                          member.checkingStatus === 'conflict' ? 'text-rose-400' : 'text-slate-400'
-                        }`}>
-                          {member.checkingMessage}
-                        </p>
                       )}
                     </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">Họ Tên</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="Họ và Tên"
-                        value={member.fullName}
-                        onChange={e => handleMemberChange(index, 'fullName', e.target.value)}
-                        className="w-full bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">GitHub Username</label>
-                      <GithubUserAutocomplete
-                        value={member.githubUsername}
-                        onChange={val => handleMemberChange(index, 'githubUsername', val)}
-                        className="bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
-                        placeholder="github-username"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">MSSV (Mã số sinh viên)</label>
-                      <input
-                        type="text"
-                        placeholder="SE18XXXX"
-                        value={member.studentId}
-                        onChange={e => handleMemberChange(index, 'studentId', e.target.value)}
-                        className="w-full bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="block text-xs font-semibold text-slate-400">Trường Đại học</label>
-                      <UniversityCombobox
-                        value={member.university}
-                        onChange={(val) => {
-                          const updated = [...members];
-                          updated[index].university = val;
-                          setMembers(updated);
-                        }}
-                        placeholder="Nhập hoặc chọn trường..."
-                        className="w-full"
-                        inputClassName="bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
-                      />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-slate-300">
+                      <div className="space-y-1">
+                        <label className="block text-xs font-semibold text-slate-400">Email</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="email"
+                            required
+                            placeholder="member@student.edu.vn"
+                            value={member.email}
+                            onChange={e => {
+                              handleMemberChange(index, 'email', e.target.value);
+                              const updated = [...members];
+                              updated[index].checkingStatus = 'idle';
+                              updated[index].checkingMessage = '';
+                              setMembers(updated);
+                            }}
+                            className="flex-1 bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleCheckEligibility(index)}
+                            disabled={member.checkingStatus === 'checking'}
+                            className="bg-cyan-500 hover:bg-cyan-600 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-bold px-3 py-2 rounded-lg text-[10px] uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap"
+                          >
+                            {member.checkingStatus === 'checking' ? 'Đang check...' : 'Kiểm tra'}
+                          </button>
+                        </div>
+                        {member.checkingMessage && (
+                          <p className={`text-[10px] font-mono italic mt-1 ${member.checkingStatus === 'eligible' ? 'text-emerald-400' :
+                              member.checkingStatus === 'conflict' ? 'text-rose-400' : 'text-slate-400'
+                            }`}>
+                            {member.checkingMessage}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1">Họ Tên</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Họ và Tên"
+                          value={member.fullName}
+                          onChange={e => handleMemberChange(index, 'fullName', e.target.value)}
+                          className="w-full bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1">GitHub Username</label>
+                        <GithubUserAutocomplete
+                          value={member.githubUsername}
+                          onChange={val => handleMemberChange(index, 'githubUsername', val)}
+                          className="bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                          placeholder="github-username"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1">MSSV (Mã số sinh viên)</label>
+                        <input
+                          type="text"
+                          placeholder="SE18XXXX"
+                          value={member.studentId}
+                          onChange={e => handleMemberChange(index, 'studentId', e.target.value)}
+                          className="w-full bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="block text-xs font-semibold text-slate-400">Trường Đại học</label>
+                        <UniversityCombobox
+                          value={member.university}
+                          onChange={(val) => {
+                            const updated = [...members];
+                            updated[index].university = val;
+                            setMembers(updated);
+                          }}
+                          placeholder="Nhập hoặc chọn trường..."
+                          className="w-full"
+                          inputClassName="bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
                 );
               })}
             </div>

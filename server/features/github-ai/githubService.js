@@ -1,7 +1,7 @@
 const { Octokit } = require('@octokit/rest');
 
 const isMock = process.env.GITHUB_SERVICE_MOCK === 'true';
-const orgName = process.env.GITHUB_ORGANIZATION || 'seal-hackathon-2026';
+const orgName = process.env.GITHUB_ORGANIZATION || 'sealhackathon-2026';
 
 let octokit;
 if (!isMock && process.env.GITHUB_PERSONAL_ACCESS_TOKEN) {
@@ -48,7 +48,7 @@ async function createTeamRepository(repoName, visibility = 'private', customOrgN
     };
   } catch (error) {
     console.error('Error creating GitHub repository in org:', error.message);
-    
+
     // Attempt to fall back to creating in the authenticated user's account
     try {
       console.log(`[GITHUB FALLBACK] Attempting to create repository "${repoName}" under authenticated user's account...`);
@@ -201,7 +201,7 @@ async function fetchCommits(repoName, sinceDate, customOrgName) {
     }
 
     const { data } = await octokit.repos.listCommits(params);
-    
+
     // Map response to our commit schema format
     const commitsPromises = data.map(async (c) => {
       // Get detailed commit to get additions/deletions
@@ -406,8 +406,8 @@ async function searchUsers(query) {
       { username: 'ngocnt', avatarUrl: 'https://avatars.githubusercontent.com/u/583234?v=4' },
       { username: 'octocat', avatarUrl: 'https://avatars.githubusercontent.com/u/583235?v=4' }
     ];
-    return mockUsers.filter(u => 
-      u.username.toLowerCase().includes(query.toLowerCase()) || 
+    return mockUsers.filter(u =>
+      u.username.toLowerCase().includes(query.toLowerCase()) ||
       query.includes('@')
     );
   }

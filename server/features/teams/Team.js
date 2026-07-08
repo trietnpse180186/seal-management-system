@@ -13,6 +13,7 @@ const TeamSchema = new Schema({
   mentorId: { type: Schema.Types.ObjectId, ref: 'User' },
   externalTeamId: { type: String },
   externalTeamCode: { type: String },
+  accessCode: { type: String },
   testApiKey: { type: String },
   judgeApiKey: { type: String },
   mqttUsername: { type: String },

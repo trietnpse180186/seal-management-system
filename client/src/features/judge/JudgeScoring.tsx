@@ -24,6 +24,16 @@ import {
   Server,
   Database
 } from 'lucide-react';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
+} from 'recharts';
+import CustomSelect from '../shared/CustomSelect';
 
 export default function JudgeScoring() {
   const { teamId } = useParams();
@@ -62,6 +72,17 @@ export default function JudgeScoring() {
   const [aiLoading, setAiLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   
+  // Judge environment states
+  const [isJudgeActive, setIsJudgeActive] = useState(false);
+  const [currentScenario, setCurrentScenario] = useState('NORMAL');
+  const [environmentCode, setEnvironmentCode] = useState('');
+  const [togglingActive, setTogglingActive] = useState(false);
+  const [liveDialogOpen, setLiveDialogOpen] = useState(false);
+  const [liveData, setLiveData] = useState<any>(null);
+  const [historyData, setHistoryData] = useState<Record<string, any[]>>({});
+  const [scenariosMap, setScenariosMap] = useState<Record<string, { code: string; name: string }[]>>({});
+  const [changingScenario, setChangingScenario] = useState(false);
+  
   const setMessage = (msg: { type: string; text: string }) => {
     if (msg.text) {
       if (msg.type === 'success') {
@@ -85,6 +106,9 @@ export default function JudgeScoring() {
         const teamData = res.data.team || res.data;
         if (teamData) {
           setTeam(teamData);
+          setIsJudgeActive(!!teamData.isJudgeActive);
+          setCurrentScenario(teamData.currentScenario || 'NORMAL');
+          setEnvironmentCode(teamData.environmentCode || '');
           const evId = teamData.eventId?._id || teamData.eventId;
           if (evId) {
             setSelectedEventId(evId);
@@ -93,6 +117,103 @@ export default function JudgeScoring() {
       })
       .catch((err: any) => console.error('Error fetching team details:', err));
   }, [teamId, token]);
+
+  // Fetch judge scenarios
+  useEffect(() => {
+    axios.get(`http://localhost:5000/api/teams/judge/scenarios`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then((res: any) => {
+        setScenariosMap(res.data);
+      })
+      .catch((err: any) => console.error('Error fetching scenarios:', err));
+  }, [token]);
+
+  // Poll live telemetry data
+  useEffect(() => {
+    if (!liveDialogOpen) {
+      setLiveData(null);
+      setHistoryData({});
+      return;
+    }
+
+    const maxPoints = 30;
+    let lastEpoch = 0;
+    
+    const fetchLive = () => {
+      axios.get(`http://localhost:5000/api/teams/judge/live`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then((res: any) => {
+          const data = res.data;
+          if (!data) return;
+          setLiveData(data);
+          
+          if (data.epoch === lastEpoch) return;
+          lastEpoch = data.epoch;
+
+          const label = new Date(data.epoch * 1000).toLocaleTimeString('vi-VN', {
+            hour12: false
+          });
+
+          setHistoryData((prev) => {
+            const next = { ...prev };
+            for (const d of data.devices) {
+              const frame: any = { t: label };
+              if (d.metrics) {
+                for (const [k, v] of Object.entries(d.metrics)) {
+                  frame[k] = typeof v === 'boolean' ? (v ? 1 : 0) : v;
+                }
+              }
+              next[d.deviceCode] = [...(next[d.deviceCode] || []), frame].slice(-maxPoints);
+            }
+            return next;
+          });
+        })
+        .catch((err: any) => console.error('Error fetching live telemetry:', err));
+    };
+
+    fetchLive();
+    const interval = setInterval(fetchLive, 1500);
+    return () => clearInterval(interval);
+  }, [liveDialogOpen, token]);
+
+  const handleToggleJudgeActive = async () => {
+    if (!team) return;
+    setTogglingActive(true);
+    const newActive = !isJudgeActive;
+    try {
+      await axios.patch(`http://localhost:5000/api/teams/${team._id}/judge`, 
+        { active: newActive },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setIsJudgeActive(newActive);
+      toast.success(newActive ? 'Đã kích hoạt môi trường chấm thi!' : 'Đã tắt môi trường chấm thi.');
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Không thể thay đổi trạng thái môi trường.');
+    } finally {
+      setTogglingActive(false);
+    }
+  };
+
+  const handleChangeScenario = async (newScenario: string) => {
+    if (!team) return;
+    setChangingScenario(true);
+    try {
+      await axios.patch(`http://localhost:5000/api/teams/${team._id}/judge-scenario`, 
+        { scenario: newScenario },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setCurrentScenario(newScenario);
+      toast.success('Đã cập nhật kịch bản chấm thi!');
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Không thể đổi kịch bản.');
+    } finally {
+      setChangingScenario(false);
+    }
+  };
 
   // Fetch event details (rounds, tracks)
   useEffect(() => {
@@ -424,6 +545,65 @@ export default function JudgeScoring() {
           )}
         </div>
       </div>
+
+      {/* Phân hệ Môi Trường Chấm Thi (Simulator Judge Panel) */}
+      {team.externalTeamCode && (
+        <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 p-5 rounded-xl flex flex-wrap items-center justify-between gap-4 shadow-md animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+              <Activity size={20} className={isJudgeActive ? "animate-pulse" : ""} />
+            </div>
+            <div>
+              <h4 className="text-xs font-black text-slate-200 uppercase tracking-wider font-mono">
+                MÔI TRƯỜNG CHẤM THI (SIMULATOR)
+              </h4>
+              <p className="text-[11px] text-slate-450 mt-0.5">
+                Kích hoạt luồng dữ liệu đánh giá và các kịch bản lỗi thiết bị của đội thi qua MQTT.
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {/* Toggle Switch */}
+            <div className="flex items-center gap-2 bg-slate-950/40 px-3.5 py-2 rounded-xl border border-white/5">
+              <span className="text-[10px] text-slate-450 font-bold uppercase tracking-widest font-mono">
+                Môi trường:
+              </span>
+              <button
+                type="button"
+                onClick={handleToggleJudgeActive}
+                disabled={togglingActive}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  isJudgeActive ? 'bg-cyan-500' : 'bg-slate-800'
+                } ${togglingActive ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    isJudgeActive ? 'translate-x-4' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+              <span className={`text-[10px] font-black uppercase font-mono w-6 ${
+                isJudgeActive ? 'text-cyan-400' : 'text-slate-500'
+              }`}>
+                {isJudgeActive ? 'ON' : 'OFF'}
+              </span>
+            </div>
+
+            {/* Live data button */}
+            {isJudgeActive && (
+              <button
+                type="button"
+                onClick={() => setLiveDialogOpen(true)}
+                className="flex items-center gap-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] px-4 py-2 rounded-xl text-[11px] font-bold transition-all uppercase tracking-wider cursor-pointer"
+              >
+                <Activity size={12} className="animate-pulse" />
+                <span>Xem dữ liệu LIVE</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Main Tabs Navigation */}
       <div className="flex gap-4 border-b border-white/10 pb-1">
@@ -1266,6 +1446,132 @@ export default function JudgeScoring() {
 
           </div>
 
+        </div>
+      )}
+
+      {/* Live Data Modal */}
+      {liveDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-5xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto flex flex-col space-y-4">
+            
+            {/* Modal Header */}
+            <div className="flex justify-between items-start border-b border-white/5 pb-3">
+              <div>
+                <h3 className="text-base font-black text-slate-100 uppercase tracking-wide font-mono">
+                  SỐ LIỆU LIVE — {team.name} ({team.externalTeamCode})
+                </h3>
+                <p className="text-xs text-slate-400 mt-1 font-sans">
+                  Dữ liệu phát trực tiếp từ server (cập nhật ~1.5s). Thay đổi kịch bản dữ liệu bên dưới để giả lập các sự cố lỗi thiết bị.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLiveDialogOpen(false)}
+                className="text-slate-450 hover:text-white transition-colors p-1"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Controls Row */}
+            <div className="flex flex-wrap items-center gap-4 bg-slate-950/20 p-3 rounded-xl border border-white/5">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-400 font-mono">BỘ DATA:</span>
+                <CustomSelect
+                  value={currentScenario}
+                  disabled={changingScenario || !(scenariosMap[environmentCode] && scenariosMap[environmentCode].length > 0)}
+                  onChange={handleChangeScenario}
+                  options={(scenariosMap[environmentCode] || []).map((s) => ({
+                    value: s.code,
+                    label: s.name
+                  }))}
+                  className="w-[210px]"
+                />
+              </div>
+              <div className="text-[11px] text-slate-500 font-mono flex-1 text-right">
+                {liveData ? `UTC ${liveData.timestamp}` : 'Đang chờ dữ liệu…'}
+              </div>
+            </div>
+
+            {/* Graphs Grid */}
+            {!liveData ? (
+              <div className="py-20 text-center text-xs text-slate-500 font-mono animate-pulse">
+                [ĐANG CHỜ DỮ LIỆU TELEMETRY TỪ SIMULATOR...]
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {liveData.devices.map((d: any) => {
+                  const series = historyData[d.deviceCode] || [];
+                  const keys = d.metrics ? Object.keys(d.metrics) : [];
+                  const isError = d.status === 'error';
+                  const colors = ['#06b6d4', '#10b981', '#ef4444', '#f59e0b', '#8b5cf6', '#ec4899'];
+                  
+                  return (
+                    <div
+                      key={d.deviceCode}
+                      className={`rounded-xl border border-white/5 bg-slate-950/40 p-4 space-y-2 flex flex-col ${
+                        isError ? 'border-red-500/20 bg-red-500/5' : ''
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-200 font-mono">{d.deviceCode}</span>
+                        {isError ? (
+                          <span className="rounded bg-red-500/10 border border-red-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-red-400">
+                            ⚠ LỖI / MẤT TÍN HIỆU
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-mono text-slate-500 truncate max-w-[70%]">
+                            {keys.map((k) => `${k}=${String(d.metrics[k])}`).join(' · ')}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="h-44 w-full bg-slate-950/60 rounded-lg p-2 border border-white/5">
+                        {isError || keys.length === 0 ? (
+                          <div className="flex h-full items-center justify-center text-xs text-slate-500 font-mono">
+                            — KHÔNG CÓ SỐ LIỆU —
+                          </div>
+                        ) : (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart
+                              data={series}
+                              margin={{ top: 10, right: 10, bottom: 5, left: -25 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                              <XAxis dataKey="t" tick={{ fontSize: 9, fill: '#64748b' }} minTickGap={20} />
+                              <YAxis tick={{ fontSize: 9, fill: '#64748b' }} width={35} />
+                              <Tooltip
+                                contentStyle={{
+                                  background: '#0f172a',
+                                  border: '1px solid rgba(255,255,255,0.1)',
+                                  borderRadius: 8,
+                                  fontSize: 10,
+                                  color: '#f1f5f9'
+                                }}
+                              />
+                              {keys.map((k, idx) => (
+                                <Line
+                                  key={k}
+                                  type="monotone"
+                                  dataKey={k}
+                                  stroke={colors[idx % colors.length]}
+                                  strokeWidth={2}
+                                  dot={false}
+                                  isAnimationActive={false}
+                                />
+                              ))}
+                            </LineChart>
+                          </ResponsiveContainer>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

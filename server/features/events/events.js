@@ -179,7 +179,7 @@ router.get('/', async (req, res) => {
     res.json(eventsWithTeamCount);
   } catch (error) {
     console.error('Fetch Events Error:', error.message);
-    res.status(500).json({ message: 'Server error retrieving events.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi lấy danh sách sự kiện.' });
   }
 });
 
@@ -192,7 +192,7 @@ router.post('/', authenticateToken, requireSystemAdmin, async (req, res) => {
   const { name, semester, year, description, bannerUrl, maxTeams, githubOrgName, commitSyncInterval } = req.body;
 
   if (!name || !semester || !year) {
-    return res.status(400).json({ message: 'Event name, semester, and year are required.' });
+    return res.status(400).json({ message: 'Tên sự kiện, học kỳ và năm là bắt buộc.' });
   }
 
   try {
@@ -200,7 +200,7 @@ router.post('/', authenticateToken, requireSystemAdmin, async (req, res) => {
     const existing = await Event.findOne({ semester, year, isArchived: { $ne: true } });
     if (existing) {
       return res.status(400).json({
-        message: `An event already exists for semester "${semester}" and year "${year}".`
+        message: `Sự kiện cho học kỳ "${semester}" và năm "${year}" đã tồn tại.`
       });
     }
 
@@ -276,13 +276,13 @@ router.post('/', authenticateToken, requireSystemAdmin, async (req, res) => {
     await newLog.save();
 
     res.status(201).json({
-      message: 'Event created successfully!',
+      message: 'Tạo sự kiện thành công!',
       event: newEvent
     });
 
   } catch (error) {
     console.error('Create Event Error:', error.message);
-    res.status(500).json({ message: 'Server error creating event.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi tạo sự kiện.' });
   }
 });
 
@@ -332,7 +332,7 @@ router.get('/judge/active-contest', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Fetch Active Contest for Judge Error:', error.message);
-    res.status(500).json({ message: 'Server error retrieving active contest details.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi lấy thông tin cuộc thi đang hoạt động.' });
   }
 });
 
@@ -350,7 +350,7 @@ router.get('/all/logs', authenticateToken, async (req, res) => {
         status: 'active'
       });
       if (!coordinatorRole) {
-        return res.status(403).json({ message: 'Unauthorized. Only coordinators or system administrators can view event logs.' });
+        return res.status(403).json({ message: 'Không có quyền truy cập. Chỉ có coordinator hoặc quản trị viên hệ thống mới có thể xem nhật ký sự kiện.' });
       }
     }
 
@@ -363,7 +363,7 @@ router.get('/all/logs', authenticateToken, async (req, res) => {
     res.json(logs);
   } catch (error) {
     console.error('Fetch All Event Logs Error:', error.message);
-    res.status(500).json({ message: 'Server error retrieving event logs.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi lấy nhật ký sự kiện.' });
   }
 });
 
@@ -377,7 +377,7 @@ router.get('/:id', async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
     if (!event) {
-      return res.status(404).json({ message: 'Event not found.' });
+      return res.status(404).json({ message: 'Không tìm thấy sự kiện.' });
     }
 
     if (event.isArchived) {
@@ -481,7 +481,7 @@ router.get('/:id', async (req, res) => {
     });
   } catch (error) {
     console.error('Fetch Event Details Error:', error.message);
-    res.status(500).json({ message: 'Server error retrieving event details.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi lấy chi tiết sự kiện.' });
   }
 });
 
@@ -495,18 +495,18 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
   const { name, description, maxTeams, roundId, startTime, endTime, gradingEndTime, advanceTopN, topicName, topicLink, environmentId } = req.body;
 
   if (!name || !roundId) {
-    return res.status(400).json({ message: 'Track name and roundId are required.' });
+    return res.status(400).json({ message: 'Tên bảng đấu và vòng thi là bắt buộc.' });
   }
 
   try {
     const event = await Event.findById(eventId);
     if (!event) {
-      return res.status(404).json({ message: 'Event not found.' });
+      return res.status(404).json({ message: 'Không tìm thấy sự kiện.' });
     }
 
     const round = await Round.findById(roundId);
     if (!round) {
-      return res.status(404).json({ message: 'Round not found.' });
+      return res.status(404).json({ message: 'Không tìm thấy vòng thi.' });
     }
 
     if (round.status === 'completed') {
@@ -522,7 +522,7 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
         status: 'active'
       });
       if (!coordinatorRole) {
-        return res.status(403).json({ message: 'Only coordinators or system administrators can create tracks.' });
+        return res.status(403).json({ message: 'Chỉ có coordinator hoặc quản trị viên hệ thống mới có thể tạo bảng đấu.' });
       }
     }
 
@@ -577,7 +577,7 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('Create Track Error:', error.message);
-    res.status(500).json({ message: 'Server error creating track.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi tạo bảng đấu.' });
   }
 });
 
@@ -593,18 +593,18 @@ router.put('/:eventId/tracks/:trackId', authenticateToken, async (req, res) => {
   try {
     const event = await Event.findById(eventId);
     if (!event) {
-      return res.status(404).json({ message: 'Event not found.' });
+      return res.status(404).json({ message: 'Không tìm thấy sự kiện.' });
     }
 
     const track = await Track.findOne({ _id: trackId, eventId });
     if (!track) {
-      return res.status(404).json({ message: 'Track not found.' });
+      return res.status(404).json({ message: 'Không tìm thấy bảng đấu.' });
     }
 
     const finalRoundId = roundId || track.roundId;
     const round = await Round.findById(finalRoundId);
     if (!round) {
-      return res.status(404).json({ message: 'Round not found.' });
+      return res.status(404).json({ message: 'Không tìm thấy vòng thi.' });
     }
 
     if (round.status === 'completed') {
@@ -620,7 +620,7 @@ router.put('/:eventId/tracks/:trackId', authenticateToken, async (req, res) => {
         status: 'active'
       });
       if (!coordinatorRole) {
-        return res.status(403).json({ message: 'Only coordinators or system administrators can update tracks.' });
+        return res.status(403).json({ message: 'Chỉ có coordinator hoặc quản trị viên hệ thống mới có thể cập nhật bảng đấu.' });
       }
     }
 
@@ -740,7 +740,7 @@ router.put('/:eventId/tracks/:trackId', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('Update Track Error:', error.message);
-    res.status(500).json({ message: 'Server error updating track.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi cập nhật bảng đấu.' });
   }
 });
 
@@ -755,12 +755,12 @@ router.delete('/:eventId/tracks/:trackId', authenticateToken, async (req, res) =
   try {
     const event = await Event.findById(eventId);
     if (!event) {
-      return res.status(404).json({ message: 'Event not found.' });
+      return res.status(404).json({ message: 'Không tìm thấy sự kiện.' });
     }
 
     const track = await Track.findOne({ _id: trackId, eventId });
     if (!track) {
-      return res.status(404).json({ message: 'Track not found.' });
+      return res.status(404).json({ message: 'Không tìm thấy bảng đấu.' });
     }
 
     // Check if there is a round associated and if it's completed
@@ -778,7 +778,7 @@ router.delete('/:eventId/tracks/:trackId', authenticateToken, async (req, res) =
         status: 'active'
       });
       if (!coordinatorRole) {
-        return res.status(403).json({ message: 'Only coordinators or system administrators can delete tracks.' });
+        return res.status(403).json({ message: 'Chỉ có coordinator hoặc quản trị viên hệ thống mới có thể xóa bảng đấu.' });
       }
     }
 
@@ -800,11 +800,11 @@ router.delete('/:eventId/tracks/:trackId', authenticateToken, async (req, res) =
     });
     await newLog.save();
 
-    res.json({ message: 'Track deleted successfully!' });
+    res.json({ message: 'Xóa bảng đấu thành công!' });
 
   } catch (error) {
     console.error('Delete Track Error:', error.message);
-    res.status(500).json({ message: 'Server error deleting track.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi xóa bảng đấu.' });
   }
 });
 
@@ -818,7 +818,7 @@ router.post('/:eventId/rounds', authenticateToken, async (req, res) => {
   const { name, order, submissionDeadline, advanceTopN } = req.body;
 
   if (!name) {
-    return res.status(400).json({ message: 'Round name is required.' });
+    return res.status(400).json({ message: 'Tên vòng thi là bắt buộc.' });
   }
 
   try {
@@ -831,7 +831,7 @@ router.post('/:eventId/rounds', authenticateToken, async (req, res) => {
         status: 'active'
       });
       if (!coordinatorRole) {
-        return res.status(403).json({ message: 'Unauthorized.' });
+        return res.status(403).json({ message: 'Không có quyền truy cập.' });
       }
     }
 
@@ -873,7 +873,7 @@ router.post('/:eventId/rounds', authenticateToken, async (req, res) => {
     if (error.code === 11000) {
       return res.status(400).json({ message: `Thứ tự vòng thi (${order}) đã tồn tại trong cuộc thi này. Vui lòng chọn thứ tự khác.` });
     }
-    res.status(500).json({ message: 'Server error creating round.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi tạo vòng thi.' });
   }
 });
 
@@ -889,11 +889,11 @@ router.put('/:eventId/rounds/:roundId', authenticateToken, async (req, res) => {
   try {
     if (!req.user.isSystemAdmin) {
       const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator', status: 'active' });
-      if (!isCoord) return res.status(403).json({ message: 'Unauthorized to edit round.' });
+      if (!isCoord) return res.status(403).json({ message: 'Không có quyền chỉnh sửa vòng thi.' });
     }
 
     const round = await Round.findById(roundId);
-    if (!round) return res.status(404).json({ message: 'Round not found.' });
+    if (!round) return res.status(404).json({ message: 'Không tìm thấy vòng thi.' });
 
     // Validate Final Round constraints
     if (round.advanceTopN === 0) {
@@ -952,7 +952,7 @@ router.put('/:eventId/rounds/:roundId', authenticateToken, async (req, res) => {
     res.json(sanitizeRoundForAdmin(round));
   } catch (error) {
     console.error('Update Round Error:', error.message);
-    res.status(500).json({ message: 'Server error updating round.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi cập nhật vòng thi.' });
   }
 });
 
@@ -967,11 +967,11 @@ router.post('/:eventId/rounds/:roundId/sync-drive-access', authenticateToken, as
   try {
     if (!req.user.isSystemAdmin) {
       const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator', status: 'active' });
-      if (!isCoord) return res.status(403).json({ message: 'Unauthorized.' });
+      if (!isCoord) return res.status(403).json({ message: 'Không có quyền truy cập.' });
     }
 
     const round = await Round.findById(roundId);
-    if (!round) return res.status(404).json({ message: 'Round not found.' });
+    if (!round) return res.status(404).json({ message: 'Không tìm thấy vòng thi.' });
     if (!round.driveFileId) {
       return res.status(400).json({ message: 'Vòng thi chưa có link Google Drive. Hãy upload đề trước.' });
     }
@@ -1010,11 +1010,11 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
 
   try {
     const event = await Event.findById(eventId);
-    if (!event) return res.status(404).json({ message: 'Event not found.' });
+    if (!event) return res.status(404).json({ message: 'Không tìm thấy sự kiện.' });
 
     if (!req.user.isSystemAdmin) {
       const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator' });
-      if (!isCoord) return res.status(403).json({ message: 'Unauthorized.' });
+      if (!isCoord) return res.status(403).json({ message: 'Không có quyền truy cập.' });
     }
 
     const driveFileId = extractDriveFileId(fileUrl) || null;
@@ -1054,7 +1054,7 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
     if (roundId) {
       const round = await Round.findById(roundId);
       if (!round || round.eventId.toString() !== eventId) {
-        return res.status(404).json({ message: 'Round not found for this event.' });
+        return res.status(404).json({ message: 'Không tìm thấy vòng thi của sự kiện này.' });
       }
 
       round.driveFileId = driveFileId;
@@ -1099,7 +1099,7 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('Upload Exam Details Error:', error.message);
-    res.status(500).json({ message: 'Server error saving exam attachments.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi lưu tài liệu đề bài.' });
   }
 });
 
@@ -1120,7 +1120,7 @@ router.get('/:eventId/roles', authenticateToken, async (req, res) => {
         role: 'coordinator',
         status: 'active'
       });
-      if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
+      if (!coordinatorRole) return res.status(403).json({ message: 'Không có quyền truy cập. Yêu cầu quyền Coordinator.' });
     }
 
     const roles = await EventRole.find({ eventId, status: 'active' })
@@ -1130,7 +1130,7 @@ router.get('/:eventId/roles', authenticateToken, async (req, res) => {
     res.json(roles);
   } catch (error) {
     console.error('Fetch Event Roles Error:', error.message);
-    res.status(500).json({ message: 'Server error retrieving roles.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi lấy vai trò người dùng.' });
   }
 });
 
@@ -1151,11 +1151,11 @@ router.delete('/:eventId/roles/:roleId', authenticateToken, async (req, res) => 
         role: 'coordinator',
         status: 'active'
       });
-      if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized.' });
+      if (!coordinatorRole) return res.status(403).json({ message: 'Không có quyền truy cập.' });
     }
 
     const roleToUpdate = await EventRole.findById(roleId);
-    if (!roleToUpdate) return res.status(404).json({ message: 'Role assignment not found.' });
+    if (!roleToUpdate) return res.status(404).json({ message: 'Không tìm thấy phân công vai trò.' });
 
     // Mark status as removed
     roleToUpdate.status = 'removed';
@@ -1181,10 +1181,10 @@ router.delete('/:eventId/roles/:roleId', authenticateToken, async (req, res) => 
     });
     await newLog.save();
 
-    res.json({ message: 'Successfully removed role assignment.' });
+    res.json({ message: 'Xóa phân công vai trò thành công.' });
   } catch (error) {
     console.error('Remove Role Error:', error.message);
-    res.status(500).json({ message: 'Server error removing role.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi xóa vai trò.' });
   }
 });
 
@@ -1205,7 +1205,7 @@ router.post('/:eventId/distribute-teams', authenticateToken, async (req, res) =>
         role: 'coordinator',
         status: 'active'
       });
-      if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator or Admin role required.' });
+      if (!coordinatorRole) return res.status(403).json({ message: 'Không có quyền truy cập. Yêu cầu quyền Coordinator hoặc Admin.' });
     }
 
     // Fetch Event to get org name
@@ -1321,7 +1321,7 @@ router.post('/:eventId/distribute-teams', authenticateToken, async (req, res) =>
 
   } catch (error) {
     console.error('Distribute Teams Error:', error.message);
-    res.status(500).json({ message: 'Server error during team distribution.' });
+    res.status(500).json({ message: 'Lỗi hệ thống trong quá trình chia bảng đấu.' });
   }
 });
 
@@ -1334,7 +1334,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
   const { name, semester, year, description, bannerUrl, maxTeams, githubOrgName, status, registrationOpen, registrationClose, contestStart, contestEnd, commitSyncInterval, mainGoal, durationText, memberLimitText, prizePoolText, phase1Description, phase2Description, phase3Description, rules } = req.body;
   try {
     const event = await Event.findById(req.params.id);
-    if (!event) return res.status(404).json({ message: 'Event not found.' });
+    if (!event) return res.status(404).json({ message: 'Không tìm thấy sự kiện.' });
 
     const oldStatus = event.status;
     let logDetails = [];
@@ -1349,7 +1349,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         status: 'active'
       });
       if (!coordinatorRole) {
-        return res.status(403).json({ message: 'Only coordinators or system administrators can update events.' });
+        return res.status(403).json({ message: 'Chỉ có coordinator hoặc quản trị viên hệ thống mới có thể cập nhật sự kiện.' });
       }
     }
 
@@ -1592,10 +1592,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
       }).catch(err => console.error('Error fetching users for event registration notification:', err.message));
     }
 
-    res.json({ message: 'Event updated successfully!', event });
+    res.json({ message: 'Cập nhật sự kiện thành công!', event });
   } catch (error) {
     console.error('Update Event Error:', error.message);
-    res.status(500).json({ message: 'Server error updating event.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi cập nhật sự kiện.' });
   }
 });
 
@@ -1617,7 +1617,7 @@ router.get('/:eventId/logs', authenticateToken, async (req, res) => {
         status: 'active'
       });
       if (!coordinatorRole) {
-        return res.status(403).json({ message: 'Unauthorized. Only coordinators or system administrators can view event logs.' });
+        return res.status(403).json({ message: 'Không có quyền truy cập. Chỉ có coordinator hoặc quản trị viên hệ thống mới có thể xem nhật ký sự kiện.' });
       }
     }
 
@@ -1628,7 +1628,7 @@ router.get('/:eventId/logs', authenticateToken, async (req, res) => {
     res.json(logs);
   } catch (error) {
     console.error('Fetch Event Logs Error:', error.message);
-    res.status(500).json({ message: 'Server error retrieving event logs.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi lấy nhật ký sự kiện.' });
   }
 });
 
@@ -1704,14 +1704,14 @@ router.delete('/:eventId/rounds/:roundId', authenticateToken, async (req, res) =
   const { eventId, roundId } = req.params;
   try {
     const event = await Event.findById(eventId);
-    if (!event) return res.status(404).json({ message: 'Event not found.' });
+    if (!event) return res.status(404).json({ message: 'Không tìm thấy sự kiện.' });
 
     if (!req.user.isSystemAdmin) {
       return res.status(403).json({ message: 'Quyền truy cập bị từ chối. Chỉ System Admin mới có quyền xóa vòng thi.' });
     }
 
     const round = await Round.findById(roundId);
-    if (!round) return res.status(404).json({ message: 'Round not found.' });
+    if (!round) return res.status(404).json({ message: 'Không tìm thấy vòng thi.' });
 
     const Rubric = mongoose.model('Rubric');
     await Round.findByIdAndDelete(roundId);
@@ -1730,7 +1730,7 @@ router.delete('/:eventId/rounds/:roundId', authenticateToken, async (req, res) =
     res.json({ message: 'Đã xóa vòng thi thành công!' });
   } catch (error) {
     console.error('Delete Round Error:', error.message);
-    res.status(500).json({ message: 'Server error deleting round.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi xóa vòng thi.' });
   }
 });
 
@@ -1745,10 +1745,10 @@ router.put('/:id/seminar', authenticateToken, async (req, res) => {
 
   try {
     const event = await Event.findById(eventId);
-    if (!event) return res.status(404).json({ message: 'Event not found.' });
+    if (!event) return res.status(404).json({ message: 'Không tìm thấy sự kiện.' });
 
     if (!req.user.isSystemAdmin) {
-      return res.status(403).json({ message: 'Access denied. Only system admins can configure seminar.' });
+      return res.status(403).json({ message: 'Quyền truy cập bị từ chối. Chỉ System Admin mới có quyền cấu hình seminar.' });
     }
 
     if (scheduledAt) {
@@ -1792,7 +1792,7 @@ router.put('/:id/seminar', authenticateToken, async (req, res) => {
     res.json({ message: 'Cập nhật cấu hình Seminar thành công!', seminar: event.seminar, event });
   } catch (error) {
     console.error('Update Seminar Error:', error.message);
-    res.status(500).json({ message: 'Server error updating seminar.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi cập nhật Seminar.' });
   }
 });
 
@@ -1806,10 +1806,10 @@ router.post('/:id/seminar/send-email', authenticateToken, async (req, res) => {
 
   try {
     const event = await Event.findById(eventId);
-    if (!event) return res.status(404).json({ message: 'Event not found.' });
+    if (!event) return res.status(404).json({ message: 'Không tìm thấy sự kiện.' });
 
     if (!req.user.isSystemAdmin) {
-      return res.status(403).json({ message: 'Access denied. Only system admins can send seminar emails.' });
+      return res.status(403).json({ message: 'Quyền truy cập bị từ chối. Chỉ System Admin mới có quyền gửi email Seminar.' });
     }
 
     if (!event.seminar || !event.seminar.meetUrl) {
@@ -1868,7 +1868,7 @@ router.post('/:id/seminar/send-email', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Send Seminar Email Error:', error.message);
-    res.status(500).json({ message: 'Server error sending seminar emails.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi gửi email thông báo Seminar.' });
   }
 });
 
@@ -1890,13 +1890,13 @@ router.get('/:eventId/export-teams', authenticateToken, async (req, res) => {
         status: 'active'
       });
       if (!role) {
-        return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
+        return res.status(403).json({ message: 'Không có quyền truy cập. Yêu cầu quyền Coordinator.' });
       }
     }
 
     const event = await Event.findById(eventId);
     if (!event) {
-      return res.status(404).json({ message: 'Event not found.' });
+      return res.status(404).json({ message: 'Không tìm thấy sự kiện.' });
     }
 
     // Load teams (all statuses to let them view pending and disqualified too)
@@ -2044,7 +2044,7 @@ router.get('/:eventId/export-teams', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('Export Teams Error:', error.message);
-    res.status(500).json({ message: 'Server error exporting teams.' });
+    res.status(500).json({ message: 'Lỗi hệ thống khi xuất dữ liệu đội thi.' });
   }
 });
 

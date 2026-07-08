@@ -167,7 +167,7 @@ export default function ExpertLayout({ user, roles = [], onLogout }: ExpertLayou
         {/* Sidebar Footer */}
         <div className="p-4 border-t border-white/5 bg-slate-900/10 space-y-2">
           <Link
-            to="/guest-portal"
+            to="/expert/dashboard"
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-850 hover:bg-slate-800 border border-slate-700/50 rounded-lg text-slate-300 text-xs font-bold uppercase tracking-wider transition-all"
           >
             <Home size={14} />

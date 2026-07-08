@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { io } from 'socket.io-client';
 import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare, Cpu, Copy, RefreshCw, Crown, ExternalLink } from 'lucide-react';
 import RegisterTeam from './RegisterTeam';
 
@@ -322,6 +323,46 @@ export default function TeamArea() {
     fetchTeamData();
   }, []);
 
+  useEffect(() => {
+    const teamId = data?.team?._id;
+    if (!token || !teamId) return;
+
+    const socketUrl = 'http://localhost:5000';
+    const socket = io(socketUrl, { query: { token } });
+
+    socket.on('connect', () => {
+      console.log('DEBUG [TeamArea] Connected to socket server');
+    });
+
+    socket.on('judge_active_toggled', (payload: any) => {
+      console.log('DEBUG [TeamArea] judge_active_toggled:', payload);
+      if (payload.teamId === teamId) {
+        setData((prev: any) => {
+          if (!prev || !prev.team) return prev;
+          return {
+            ...prev,
+            team: {
+              ...prev.team,
+              isJudgeActive: payload.isJudgeActive,
+              judgeApiKey: payload.judgeApiKey,
+              judgeTopic: payload.judgeTopic
+            }
+          };
+        });
+        
+        if (payload.isJudgeActive) {
+          toast.info('Môi trường chấm thi đã được kích hoạt! Hãy sao chép API Key và Topic kết nối.');
+        } else {
+          toast.warning('Môi trường chấm thi đã bị tắt.');
+        }
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [token, data?.team?._id]);
+
 
 
 
@@ -592,6 +633,34 @@ export default function TeamArea() {
                   </div>
                 ) : (
                   <div className="space-y-2.5 text-xs sm:text-[13px] font-mono">
+                    {team.isJudgeActive && (
+                      <div className="space-y-2 border border-rose-500/30 bg-rose-500/5 p-3 rounded-xl animate-pulse">
+                        <span className="text-[10px] text-rose-400 font-bold block uppercase tracking-wider">
+                          [MÔI TRƯỜNG CHẤM THI ĐANG BẬT]
+                        </span>
+                        
+                        <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900">
+                          <span className="text-[10px] text-rose-400 font-bold block uppercase tracking-wider">JUDGE API Key</span>
+                          <div className="flex justify-between items-center text-rose-350 font-mono">
+                            <span className="truncate max-w-[85%]">{team.judgeApiKey || '---'}</span>
+                            <button onClick={() => handleCopy(team.judgeApiKey || "", "JUDGE API Key")} className="text-slate-500 hover:text-rose-400 cursor-pointer p-1" title="Sao chép JUDGE API Key">
+                              {copiedField === "JUDGE API Key" ? <CheckCircle size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900">
+                          <span className="text-[10px] text-rose-400 font-bold block uppercase tracking-wider">JUDGE Topic</span>
+                          <div className="flex justify-between items-center text-rose-350 font-mono">
+                            <span className="truncate max-w-[85%]">{team.judgeTopic || '---'}</span>
+                            <button onClick={() => handleCopy(team.judgeTopic || "", "JUDGE Topic")} className="text-slate-500 hover:text-rose-400 cursor-pointer p-1" title="Sao chép JUDGE Topic">
+                              {copiedField === "JUDGE Topic" ? <CheckCircle size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900">
                       <span className="text-[10px] text-slate-500 font-bold block uppercase tracking-wider">Access Code (Simulator)</span>
                       <div className="flex justify-between items-center text-cyan-400 font-bold">
@@ -603,11 +672,11 @@ export default function TeamArea() {
                     </div>
 
                     <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900">
-                      <span className="text-[10px] text-slate-550 font-bold block uppercase tracking-wider">MQTT Broker</span>
+                      <span className="text-[10px] text-slate-500 font-bold block uppercase tracking-wider">Test Topic</span>
                       <div className="flex justify-between items-center text-slate-300">
-                        <span>mqtt-hackathon.lexatek.vn</span>
-                        <button onClick={() => handleCopy("mqtt-hackathon.lexatek.vn", "Broker")} className="text-slate-500 hover:text-cyan-400 cursor-pointer p-1">
-                          {copiedField === "Broker" ? <CheckCircle size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                        <span className="truncate max-w-[85%]">{team.testTopic || '---'}</span>
+                        <button onClick={() => handleCopy(team.testTopic || "", "Test Topic")} className="text-slate-500 hover:text-cyan-400 cursor-pointer p-1" title="Sao chép Test Topic">
+                          {copiedField === "Test Topic" ? <CheckCircle size={13} className="text-emerald-400" /> : <Copy size={13} />}
                         </button>
                       </div>
                     </div>

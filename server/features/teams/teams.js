@@ -995,6 +995,21 @@ router.get('/my-team', authenticateToken, async (req, res) => {
       teamPlain.trackId = trackPlain;
     }
 
+    // Fetch active judge status from simulator
+    let isJudgeActive = false;
+    if (teamPlain.externalTeamCode) {
+      const { getJudgeActive } = require('./externalTeamService');
+      try {
+        const activeInfo = await getJudgeActive();
+        if (activeInfo && activeInfo.teamCode === teamPlain.externalTeamCode) {
+          isJudgeActive = true;
+        }
+      } catch (err) {
+        console.warn('[SIMULATOR] Failed to fetch active judge status for my-team:', err.message);
+      }
+    }
+    teamPlain.isJudgeActive = isJudgeActive;
+
     res.json({
       team: teamPlain,
       members,
@@ -1297,7 +1312,7 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
 router.get('/:teamId', authenticateToken, async (req, res) => {
   try {
     const team = await Team.findById(req.params.teamId)
-      .populate('trackId', 'name attachments')
+      .populate('trackId', 'name attachments environmentId')
       .populate('leaderId', 'fullName email')
       .populate('eventId', 'name status isArchived');
 
@@ -1342,8 +1357,38 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
 
     const repo = await GithubRepository.findOne({ teamId: team._id });
 
+    const teamPlain = team.toObject();
+
+    // Fetch environment code and active judge status if team has external code
+    if (team.externalTeamCode) {
+      const { getJudgeActive, getEnvironment } = require('./externalTeamService');
+      
+      let isJudgeActive = false;
+      let currentScenario = 'NORMAL';
+      try {
+        const activeInfo = await getJudgeActive();
+        if (activeInfo && activeInfo.teamCode === team.externalTeamCode) {
+          isJudgeActive = true;
+          currentScenario = activeInfo.scenario;
+        }
+      } catch (err) {
+        console.warn('[SIMULATOR] Failed to fetch active judge status:', err.message);
+      }
+      teamPlain.isJudgeActive = isJudgeActive;
+      teamPlain.currentScenario = currentScenario;
+
+      if (team.trackId && team.trackId.environmentId) {
+        try {
+          const envInfo = await getEnvironment(team.trackId.environmentId);
+          teamPlain.environmentCode = envInfo.code;
+        } catch (err) {
+          console.warn('[SIMULATOR] Failed to fetch environment code:', err.message);
+        }
+      }
+    }
+
     const responseData = {
-      ...team.toObject(),
+      ...teamPlain,
       members,
       repository: repo
     };
@@ -1727,6 +1772,162 @@ router.post('/:teamId/sync-mqtt', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Manual Sync Error:', error.message);
     res.status(500).json({ message: 'Lỗi hệ thống khi đồng bộ khóa MQTT.' });
+  }
+});
+
+/**
+ * @route   PATCH /api/teams/:teamId/judge
+ * @desc    Toggle active status of the judge environment for a team
+ * @access  Private (System Admin or Event Judge/Coordinator)
+ */
+router.patch('/:teamId/judge', authenticateToken, async (req, res) => {
+  const { teamId } = req.params;
+  const { active } = req.body;
+
+  try {
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return res.status(404).json({ message: 'Không tìm thấy đội thi.' });
+    }
+
+    if (!team.externalTeamId) {
+      return res.status(400).json({ message: 'Đội thi chưa được đồng bộ với hệ thống Simulator.' });
+    }
+
+    // Auth check: System Admin, or Event Coordinator/Judge
+    let hasAccess = req.user.isSystemAdmin;
+    if (!hasAccess) {
+      const role = await EventRole.findOne({
+        userId: req.user._id,
+        eventId: team.eventId,
+        role: { $in: ['coordinator', 'judge'] },
+        status: 'active'
+      });
+      if (role) {
+        hasAccess = true;
+      }
+    }
+
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Bạn không có quyền thực hiện hành động này.' });
+    }
+
+    const { toggleJudgeActive } = require('./externalTeamService');
+    await toggleJudgeActive(team.externalTeamId, active);
+
+    // Emit real-time status change to team members and live room
+    try {
+      const socketModule = require('../chat/socket');
+      const io = socketModule.getIO();
+      
+      // Emit to live room (for judges/admins)
+      io.to(`live:${team.eventId}`).emit('judge_active_toggled', {
+        teamId: team._id.toString(),
+        isJudgeActive: active,
+        judgeApiKey: active ? team.judgeApiKey : null,
+        judgeTopic: active ? team.judgeTopic : null
+      });
+
+      // Emit to each team member
+      const TeamMember = mongoose.model('TeamMember');
+      const members = await TeamMember.find({ teamId: team._id });
+      for (const member of members) {
+        if (member.userId) {
+          io.to(`user:${member.userId.toString()}`).emit('judge_active_toggled', {
+            teamId: team._id.toString(),
+            isJudgeActive: active,
+            judgeApiKey: active ? team.judgeApiKey : null,
+            judgeTopic: active ? team.judgeTopic : null
+          });
+        }
+      }
+    } catch (socketErr) {
+      console.warn('Socket emit judge_active_toggled failed:', socketErr.message);
+    }
+
+    res.json({ message: active ? 'Đã bật môi trường chấm thi.' : 'Đã tắt môi trường chấm thi.' });
+  } catch (error) {
+    console.error('Toggle Judge Active Error:', error.message);
+    res.status(error.status || 500).json({ message: `Lỗi kết nối simulator: ${error.message}` });
+  }
+});
+
+/**
+ * @route   PATCH /api/teams/:teamId/judge-scenario
+ * @desc    Update judge scenario for a team
+ * @access  Private (System Admin or Event Judge/Coordinator)
+ */
+router.patch('/:teamId/judge-scenario', authenticateToken, async (req, res) => {
+  const { teamId } = req.params;
+  const { scenario } = req.body;
+
+  try {
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return res.status(404).json({ message: 'Không tìm thấy đội thi.' });
+    }
+
+    if (!team.externalTeamId) {
+      return res.status(400).json({ message: 'Đội thi chưa được đồng bộ với hệ thống Simulator.' });
+    }
+
+    // Auth check: System Admin, or Event Coordinator/Judge
+    let hasAccess = req.user.isSystemAdmin;
+    if (!hasAccess) {
+      const role = await EventRole.findOne({
+        userId: req.user._id,
+        eventId: team.eventId,
+        role: { $in: ['coordinator', 'judge'] },
+        status: 'active'
+      });
+      if (role) {
+        hasAccess = true;
+      }
+    }
+
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Bạn không có quyền thực hiện hành động này.' });
+    }
+
+    const { updateJudgeScenario } = require('./externalTeamService');
+    await updateJudgeScenario(team.externalTeamId, scenario);
+
+    res.json({ message: 'Đã cập nhật kịch bản chấm thi.' });
+  } catch (error) {
+    console.error('Update Judge Scenario Error:', error.message);
+    res.status(error.status || 500).json({ message: `Lỗi kết nối simulator: ${error.message}` });
+  }
+});
+
+/**
+ * @route   GET /api/teams/judge/scenarios
+ * @desc    Get all judge scenarios
+ * @access  Private (System Admin or Event Judge/Coordinator)
+ */
+router.get('/judge/scenarios', authenticateToken, async (req, res) => {
+  try {
+    const { getJudgeScenarios } = require('./externalTeamService');
+    const result = await getJudgeScenarios();
+    res.json(result);
+  } catch (error) {
+    console.error('Get Judge Scenarios Error:', error.message);
+    res.status(error.status || 500).json({ message: `Lỗi kết nối simulator: ${error.message}` });
+  }
+});
+
+/**
+ * @route   GET /api/teams/judge/live
+ * @desc    Get live sensors data
+ * @access  Private (System Admin or Event Judge/Coordinator)
+ */
+router.get('/judge/live', authenticateToken, async (req, res) => {
+  try {
+    const { getJudgeLive } = require('./externalTeamService');
+    const result = await getJudgeLive();
+    res.json(result);
+  } catch (error) {
+    console.error('Get Judge Live Error:', error.message);
+    res.status(error.status || 500).json({ message: `Lỗi kết nối simulator: ${error.message}` });
   }
 });
 

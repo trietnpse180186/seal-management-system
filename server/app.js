@@ -103,7 +103,7 @@ mongoose
 app.use(
   cors({
     origin: "*", // For development, allow all. In production, restrict as needed.
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );

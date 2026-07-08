@@ -1182,7 +1182,11 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
       }
 
       if (userRole && userRole.role === 'mentor') {
-        query.mentorId = req.user._id;
+        if (userRole.trackId) {
+          query.trackId = userRole.trackId;
+        } else {
+          query.mentorId = req.user._id;
+        }
       } else if (userRole && userRole.role === 'judge') {
         let isFinalRound = false;
         if (roundId && mongoose.Types.ObjectId.isValid(roundId)) {

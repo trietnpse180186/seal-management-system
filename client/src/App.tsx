@@ -53,7 +53,13 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
   const isJudgeRoute = location.pathname.startsWith('/judge') || location.pathname.startsWith('/expert');
   const isAdminRoute = location.pathname.startsWith('/admin');
   const isCoordinator = !!user?.isSystemAdmin;
-  const showChatWidget = user && !isJudgeRoute && (!isAdminRoute || isCoordinator);
+  const isMentor = roles?.some((r: any) => r.role === 'mentor') || user?.isSystemAdmin;
+  const isExpertMentorRoute = location.pathname.startsWith('/expert/mentored-team') || location.pathname.startsWith('/expert/mentored-teams');
+  
+  const showChatWidget = user && (
+    (!isJudgeRoute && (!isAdminRoute || isCoordinator)) ||
+    (isExpertMentorRoute && isMentor)
+  );
 
   return (
     <div className="min-h-screen bg-gradient-dark flex flex-col">

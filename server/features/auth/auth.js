@@ -1309,7 +1309,18 @@ router.post('/forgot-password', async (req, res) => {
     user.resetPasswordExpires = Date.now() + 3600000;
     await user.save();
 
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    let fallbackClientUrl = 'http://localhost:5173';
+    if (req.headers.origin) {
+      fallbackClientUrl = req.headers.origin;
+    } else if (req.headers.referer) {
+      try {
+        const parsed = new URL(req.headers.referer);
+        fallbackClientUrl = `${parsed.protocol}//${parsed.host}`;
+      } catch (err) {
+        // ignore
+      }
+    }
+    const clientUrl = process.env.CLIENT_URL || fallbackClientUrl;
     const resetLink = `${clientUrl}/reset-password?token=${token}&email=${encodeURIComponent(user.email)}`;
 
     const emailService = require('../notifications/emailService');

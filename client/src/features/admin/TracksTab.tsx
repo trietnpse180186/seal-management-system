@@ -33,7 +33,7 @@ interface TracksTabProps {
   setCriteria: (criteria: any[]) => void;
 
   loading: boolean;
-  
+
   // Event roles and judge assignment props
   eventRoles?: any[];
   handleAssignRoleForTrack?: (email: string, trackId: string, role?: "judge" | "mentor", teamId?: string) => Promise<void>;
@@ -81,7 +81,7 @@ export default function TracksTab({
   setSelectedRubricRoundId,
   setRubric,
   setCriteria,
-  
+
   eventRoles = [],
   handleAssignRoleForTrack,
   handleRemoveRole,
@@ -201,11 +201,10 @@ export default function TracksTab({
             {tracks.map((t: any) => (
               <div
                 key={t._id}
-                className={`w-full p-3 rounded-xl border text-xs flex justify-between items-center transition-all ${
-                  selectedTrack?._id === t._id
-                    ? "bg-cyan-500/10 border-cyan-500/50 text-white"
-                    : "border-slate-800/80 bg-slate-900/10 hover:border-slate-700 text-slate-400"
-                }`}
+                className={`w-full p-3 rounded-xl border text-xs flex justify-between items-center transition-all ${selectedTrack?._id === t._id
+                  ? "bg-cyan-500/10 border-cyan-500/50 text-white"
+                  : "border-slate-800/80 bg-slate-900/10 hover:border-slate-700 text-slate-400"
+                  }`}
               >
                 <button
                   type="button"
@@ -364,7 +363,7 @@ export default function TracksTab({
 
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
-                Environment ID (UUID)
+                Environment ID (UUID) CHO CUỘC THI LIÊN QUAN ĐẾN MQTT (OPTIONAL)
               </label>
               <input
                 type="text"

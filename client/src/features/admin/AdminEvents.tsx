@@ -2564,6 +2564,7 @@ export default function AdminEvents({
               handleRemoveRole={handleRemoveRole}
               teamsList={teamsList}
               token={token}
+              fetchEventDetails={fetchEventDetails}
               readOnly={readOnly}
             />
             {isWizardMode && (

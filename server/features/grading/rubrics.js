@@ -60,22 +60,22 @@ async function getCriteriaSum(rubricId) {
 function styleWorksheet(ws, headerRowsCount = 2) {
   if (!ws['!ref']) return;
   const range = XLSX.utils.decode_range(ws['!ref']);
-  
+
   // Expand range to 100 rows (index 99) and 9 columns (index 8) to allow editing
   range.e.r = Math.max(range.e.r, 99);
   range.e.c = Math.max(range.e.c, 8);
   ws['!ref'] = XLSX.utils.encode_range(range);
-  
+
   for (let r = range.s.r; r <= range.e.r; ++r) {
     for (let c = range.s.c; c <= range.e.c; ++c) {
       const cellRef = XLSX.utils.encode_cell({ r, c });
       if (!ws[cellRef]) {
         ws[cellRef] = { t: 's', v: '' };
       }
-      
+
       const cell = ws[cellRef];
       const isHeader = r < headerRowsCount;
-      
+
       cell.s = {
         border: {
           top: { style: 'thin', color: { rgb: '000000' } },
@@ -89,7 +89,7 @@ function styleWorksheet(ws, headerRowsCount = 2) {
           wrapText: true
         }
       };
-      
+
       if (isHeader) {
         cell.s.font = { bold: true, name: 'Calibri' };
         cell.s.fill = {
@@ -443,7 +443,7 @@ router.post("/:rubricId/lock", authenticateToken, async (req, res) => {
 
     if (Math.abs(weightSum - rubric.totalWeight) > 0.01) {
       return res.status(400).json({
-        message: `Cannot lock rubric. The sum of criteria weights (${weightSum}) must match the rubric totalWeight (${rubric.totalWeight}).`,
+        message: `Không thể khóa rubric. Tổng trọng số tiêu chí (${weightSum}) phải bằng trọng số rubric (${rubric.totalWeight}).`,
       });
     }
 
@@ -625,7 +625,7 @@ router.get('/', authenticateToken, async (req, res) => {
       .populate('eventId', 'name')
       .populate('trackId', 'name')
       .populate('roundId', 'name');
-    
+
     // Fetch criteria for each rubric
     const rubricsWithCriteria = await Promise.all(
       rubrics.map(async (r) => {
@@ -636,7 +636,7 @@ router.get('/', authenticateToken, async (req, res) => {
         };
       })
     );
-    
+
     res.json(rubricsWithCriteria);
   } catch (error) {
     console.error('Fetch All Rubrics Error:', error.message);
@@ -1365,8 +1365,8 @@ router.get('/:rubricId/export-criteria', authenticateToken, async (req, res) => 
       for (const def of gradingLevelDefs) {
         const match = c.gradingLevels && c.gradingLevels.find(
           lvl => lvl.label === def.label &&
-                 Math.abs(lvl.minScore - def.minScore) < 0.01 &&
-                 Math.abs(lvl.maxScore - def.maxScore) < 0.01
+            Math.abs(lvl.minScore - def.minScore) < 0.01 &&
+            Math.abs(lvl.maxScore - def.maxScore) < 0.01
         );
         row.push(match ? match.description : '');
       }

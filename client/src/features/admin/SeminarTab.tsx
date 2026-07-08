@@ -8,9 +8,19 @@ interface SeminarTabProps {
   selectedEvent: any;
   fetchEventDetails: () => Promise<void>;
   readOnly?: boolean;
+  isWizardMode?: boolean;
+  onPrevStep?: () => void;
+  onCompleteWizard?: () => void;
 }
 
-export default function SeminarTab({ selectedEvent, fetchEventDetails, readOnly = false }: SeminarTabProps) {
+export default function SeminarTab({
+  selectedEvent,
+  fetchEventDetails,
+  readOnly = false,
+  isWizardMode = false,
+  onPrevStep,
+  onCompleteWizard,
+}: SeminarTabProps) {
   const conform = useConform();
   const [scheduledAt, setScheduledAt] = useState("");
   const [scheduledEnd, setScheduledEnd] = useState("");
@@ -307,6 +317,52 @@ export default function SeminarTab({ selectedEvent, fetchEventDetails, readOnly 
           </div>
         </div>
       </form>
+
+      {isWizardMode && (
+        <div className="mt-8 p-4 glass rounded-2xl flex justify-between items-center">
+          <button
+            type="button"
+            onClick={onPrevStep}
+            className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
+          >
+            ← Quay lại: Thiết lập thời gian
+          </button>
+          <button
+            type="button"
+            onClick={async () => {
+              setSaving(true);
+              try {
+                const res = await axios.put(
+                  `http://localhost:5000/api/events/${selectedEvent._id}/seminar`,
+                  {
+                    scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
+                    scheduledEnd: scheduledEnd ? new Date(scheduledEnd).toISOString() : null,
+                    meetUrl,
+                    title,
+                    description,
+                    attendanceFormUrl,
+                    attendanceSpreadsheetUrl,
+                  },
+                  { headers: { Authorization: `Bearer ${token}` } }
+                );
+                toast.success(res.data.message || "Đã lưu cấu hình Seminar thành công!");
+                await fetchEventDetails();
+                if (onCompleteWizard) {
+                  onCompleteWizard();
+                }
+              } catch (err: any) {
+                toast.error(err.response?.data?.message || "Lỗi khi lưu cấu hình Seminar.");
+              } finally {
+                setSaving(false);
+              }
+            }}
+            disabled={saving}
+            className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-mono text-xs font-bold shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+          >
+            {saving ? "Đang lưu & hoàn tất..." : "Hoàn tất khởi tạo cuộc thi ✓"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

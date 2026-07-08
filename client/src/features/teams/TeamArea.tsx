@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare, Cpu, Copy, RefreshCw, Crown } from 'lucide-react';
+import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare, Cpu, Copy, RefreshCw, Crown, ExternalLink } from 'lucide-react';
 import RegisterTeam from './RegisterTeam';
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
@@ -81,13 +81,12 @@ function SeminarWidget({ seminar }: SeminarWidgetProps) {
   };
 
   return (
-    <div className={`glass p-6 rounded-3xl border transition-all relative overflow-hidden flex flex-col md:flex-row items-stretch md:items-center justify-between gap-6 ${
-      isOngoing 
-        ? 'border-cyan-500/40 glow-cyan bg-slate-900/10 shadow-[inset_0_0_20px_rgba(0,240,255,0.02)] animate-pulse' 
+    <div className={`glass p-6 rounded-3xl border transition-all relative overflow-hidden flex flex-col md:flex-row items-stretch md:items-center justify-between gap-6 ${isOngoing
+        ? 'border-cyan-500/40 glow-cyan bg-slate-900/10 shadow-[inset_0_0_20px_rgba(0,240,255,0.02)] animate-pulse'
         : 'border-slate-800 hover:border-cyan-500/30'
-    }`}>
+      }`}>
       {isOngoing && <div className="absolute inset-0 pointer-events-none laser-scan-effect opacity-10"></div>}
-      
+
       {/* Left side: Icon, title, description, time */}
       <div className="flex-1 flex flex-col sm:flex-row items-start gap-4">
         <div className={`p-4 rounded-2xl bg-cyan-950/50 border border-cyan-800/30 shrink-0 ${isOngoing ? 'animate-pulse' : ''}`}>
@@ -435,7 +434,7 @@ export default function TeamArea() {
       </div>
 
       {/* Seminar Widget */}
-      {team?.eventId?.seminar?.scheduledAt && !isExamVisible && (
+      {team?.eventId?.seminar?.scheduledAt && !isExamVisible && team?.eventId?.status !== 'ongoing' && team?.eventId?.status !== 'completed' && (
         <SeminarWidget seminar={team.eventId.seminar} />
       )}
 
@@ -515,28 +514,30 @@ export default function TeamArea() {
                     </div>
                   </div>
                 ) : team?.trackId?.examAccess?.examOpened ? (
-                  <div className="space-y-4 py-1">
-                    <div className="space-y-2">
+                  <div className="space-y-6 py-2">
+                    <div className="space-y-3">
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                         <p className="text-[10px] font-bold text-emerald-400 uppercase font-mono tracking-wider">ĐỀ BÀI ĐÃ MỞ KHÓA — BẢNG {team.trackId.name?.toUpperCase()}</p>
                       </div>
-                      <h3 className="text-sm font-bold text-white leading-snug font-sans truncate" title={team.trackId.examAccess.examDriveFileName || `Đề bảng ${team.trackId.name}`}>
+                      <h3 className="text-sm sm:text-base font-extrabold text-white leading-snug font-sans flex items-center gap-2" title={team.trackId.examAccess.examDriveFileName || `Đề bảng ${team.trackId.name}`}>
+                        <BookOpen size={18} className="text-cyan-400 shrink-0" />
                         {team.trackId.examAccess.examDriveFileName || `Đề thi & Tài liệu hướng dẫn — ${team.trackId.name}`}
                       </h3>
-                      <p className="text-[11px] text-slate-400 font-sans leading-relaxed line-clamp-3">
-                        Tài liệu đề bài, sơ đồ kiến trúc hệ thống và dữ liệu mẫu được lưu trữ trên thư mục Google Drive riêng của bảng {team.trackId.name}.
+                      <p className="text-xs text-slate-400 font-sans leading-relaxed">
+                        Tài liệu đề bài, sơ đồ kiến trúc hệ thống và dữ liệu mẫu được lưu trữ trên thư mục Google Drive riêng của bảng {team.trackId.name}. Thí sinh vui lòng tải về để bắt đầu nghiên cứu và thiết lập thiết bị làm bài.
                       </p>
                     </div>
+
                     <div className="pt-2">
                       <a
                         href={team.trackId.examAccess.examDriveFileUrl || "#"}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-full flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase py-3 px-5 rounded-xl transition-all shadow-lg shadow-cyan-600/20 text-center cursor-pointer hover:-translate-y-0.5 duration-150"
+                        className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-bold uppercase py-2.5 px-4 rounded-xl transition-all shadow-md shadow-cyan-900/20 text-center cursor-pointer hover:-translate-y-0.5 duration-150 animate-pulse-subtle"
                       >
-                        <BookOpen size={16} />
-                        Mở đề bảng {team.trackId.name} (Google Drive)
+                        <BookOpen size={14} />
+                        Mở đề thi bảng {team.trackId.name}
                       </a>
                     </div>
                   </div>
@@ -590,56 +591,60 @@ export default function TeamArea() {
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-2 text-[10px] font-mono">
-                    <div className="space-y-0.5 bg-slate-950/40 p-2 rounded border border-slate-900">
-                      <span className="text-[8px] text-slate-550 font-bold block uppercase tracking-wider">MQTT Broker</span>
+                  <div className="space-y-2.5 text-xs sm:text-[13px] font-mono">
+                    <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900">
+                      <span className="text-[10px] text-slate-500 font-bold block uppercase tracking-wider">Access Code (Simulator)</span>
+                      <div className="flex justify-between items-center text-cyan-400 font-bold">
+                        <span>{team.accessCode || '---'}</span>
+                        <button onClick={() => handleCopy(team.accessCode || "", "Access Code")} className="text-slate-500 hover:text-cyan-400 cursor-pointer p-1" title="Sao chép Access Code">
+                          {copiedField === "Access Code" ? <CheckCircle size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900">
+                      <span className="text-[10px] text-slate-550 font-bold block uppercase tracking-wider">MQTT Broker</span>
                       <div className="flex justify-between items-center text-slate-300">
                         <span>mqtt-hackathon.lexatek.vn</span>
-                        <button onClick={() => handleCopy("mqtt-hackathon.lexatek.vn", "Broker")} className="text-slate-500 hover:text-cyan-400 cursor-pointer">
-                          {copiedField === "Broker" ? <CheckCircle size={10} className="text-emerald-400" /> : <Copy size={10} />}
+                        <button onClick={() => handleCopy("mqtt-hackathon.lexatek.vn", "Broker")} className="text-slate-500 hover:text-cyan-400 cursor-pointer p-1">
+                          {copiedField === "Broker" ? <CheckCircle size={13} className="text-emerald-400" /> : <Copy size={13} />}
                         </button>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <div className="space-y-0.5 bg-slate-950/40 p-2 rounded border border-slate-900">
-                        <span className="text-[8px] text-slate-550 font-bold block uppercase tracking-wider">Username</span>
-                        <div className="flex justify-between items-center text-slate-300">
-                          <span className="truncate max-w-[50px]">{team.mqttUsername}</span>
-                          <button onClick={() => handleCopy(team.mqttUsername, "Username")} className="text-slate-500 hover:text-cyan-400 cursor-pointer shrink-0">
-                            {copiedField === "Username" ? <CheckCircle size={10} className="text-emerald-400" /> : <Copy size={10} />}
-                          </button>
-                        </div>
-                      </div>
-                      <div className="space-y-0.5 bg-slate-950/40 p-2 rounded border border-slate-900">
-                        <span className="text-[8px] text-slate-550 font-bold block uppercase tracking-wider">Password</span>
-                        <div className="flex justify-between items-center text-slate-300">
-                          <span className="truncate max-w-[40px]" title={team.mqttPassword}>••••••••</span>
-                          <button onClick={() => handleCopy(team.mqttPassword, "Password")} className="text-slate-500 hover:text-cyan-400 cursor-pointer shrink-0">
-                            {copiedField === "Password" ? <CheckCircle size={10} className="text-emerald-400" /> : <Copy size={10} />}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-0.5 bg-slate-950/40 p-2 rounded border border-slate-900">
-                      <span className="text-[8px] text-slate-550 font-bold block uppercase tracking-wider">Test API Key</span>
+                    <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900">
+                      <span className="text-[10px] text-slate-550 font-bold block uppercase tracking-wider">Username</span>
                       <div className="flex justify-between items-center text-slate-300">
-                        <span className="truncate max-w-[150px]" title={team.testApiKey}>{team.testApiKey}</span>
-                        <button onClick={() => handleCopy(team.testApiKey, "Test API Key")} className="text-slate-500 hover:text-cyan-400 cursor-pointer">
-                          {copiedField === "Test API Key" ? <CheckCircle size={10} className="text-emerald-400" /> : <Copy size={10} />}
+                        <span>{team.mqttUsername}</span>
+                        <button onClick={() => handleCopy(team.mqttUsername, "Username")} className="text-slate-500 hover:text-cyan-400 cursor-pointer p-1">
+                          {copiedField === "Username" ? <CheckCircle size={13} className="text-emerald-400" /> : <Copy size={13} />}
                         </button>
                       </div>
                     </div>
 
-                    <div className="space-y-0.5 bg-slate-950/40 p-2 rounded border border-slate-900">
-                      <span className="text-[8px] text-slate-550 font-bold block uppercase tracking-wider">Judge API Key</span>
+                    <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900">
+                      <span className="text-[10px] text-slate-550 font-bold block uppercase tracking-wider">Password</span>
                       <div className="flex justify-between items-center text-slate-300">
-                        <span className="truncate max-w-[150px]" title={team.judgeApiKey}>{team.judgeApiKey}</span>
-                        <button onClick={() => handleCopy(team.judgeApiKey, "Judge API Key")} className="text-slate-500 hover:text-cyan-400 cursor-pointer">
-                          {copiedField === "Judge API Key" ? <CheckCircle size={10} className="text-emerald-400" /> : <Copy size={10} />}
+                        <span>••••••••</span>
+                        <button onClick={() => handleCopy(team.mqttPassword, "Password")} className="text-slate-500 hover:text-cyan-400 cursor-pointer p-1">
+                          {copiedField === "Password" ? <CheckCircle size={13} className="text-emerald-400" /> : <Copy size={13} />}
                         </button>
                       </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <p className="text-[10px] sm:text-[11px] text-amber-500 font-sans leading-normal mb-2 text-center">
+                        Sao chép <b>Access Code</b> ở trên, sau đó bấm nút để mở trang simulator làm bài.
+                      </p>
+                      <a
+                        href="https://hackathon.lexatek.vn/team-access"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-bold uppercase py-2.5 px-4 rounded-xl transition-all shadow-md shadow-cyan-900/30 text-center cursor-pointer hover:-translate-y-0.5 duration-150"
+                      >
+                        <ExternalLink size={14} />
+                        Mở trang Simulator
+                      </a>
                     </div>
                   </div>
                 )}
@@ -734,7 +739,9 @@ export default function TeamArea() {
                     </button>
                   ))}
                   {commits.length === 0 && (
-                    <p className="text-xs text-slate-500 italic text-center py-6">Chưa crawl được commit nào. Nhấn đồng bộ phía trên.</p>
+                    <p className="text-xs text-slate-500 italic text-center py-6">
+                      Chưa crawl được commit nào. Commit sẽ được đồng bộ mỗi {team?.eventId?.commitSyncInterval || 30} phút.
+                    </p>
                   )}
                 </div>
               </div>

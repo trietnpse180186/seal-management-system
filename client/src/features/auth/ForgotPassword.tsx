@@ -10,7 +10,7 @@ export default function ForgotPassword() {
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  
+
   const [captchaId, setCaptchaId] = useState("");
   const [captchaSvg, setCaptchaSvg] = useState("");
   const [captchaValue, setCaptchaValue] = useState("");
@@ -39,7 +39,7 @@ export default function ForgotPassword() {
     setErrorMessage("");
 
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/forgot-password", { 
+      const res = await axios.post("http://localhost:5000/api/auth/forgot-password", {
         email,
         captchaId,
         captchaValue
@@ -76,7 +76,6 @@ export default function ForgotPassword() {
         {errorMessage && (
           <div className="mb-5 p-3.5 bg-rose-950/90 border border-rose-500/80 rounded-xl text-rose-200 text-xs font-mono flex items-center justify-between shadow-xl animate-in fade-in zoom-in-95">
             <div className="flex items-center gap-2.5">
-              <span className="text-rose-400 font-bold text-base">⚠️</span>
               <span className="leading-relaxed">{errorMessage}</span>
             </div>
             <button

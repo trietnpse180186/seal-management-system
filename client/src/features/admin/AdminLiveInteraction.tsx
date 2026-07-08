@@ -13,6 +13,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import { toast } from "sonner";
+import CustomSelect from "../shared/CustomSelect";
 
 export default function AdminLiveInteraction() {
   const { readOnly = false } = useOutletContext<{ readOnly?: boolean }>();
@@ -318,10 +319,19 @@ export default function AdminLiveInteraction() {
     groupedTeams[trackId].items.push(item);
   });
 
+  const eventOptions = events.map((ev) => ({
+    value: ev._id,
+    label: `${ev.name} (${ev.semester})`
+  }));
+
+  const roundOptions = rounds.length > 0
+    ? rounds.map((rd) => ({ value: rd._id, label: rd.name }))
+    : [];
+
   return (
     <div className="space-y-6 font-sans text-slate-300">
       {/* HEADER BAR */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-950 p-6 rounded-2xl border border-slate-800/80 shadow-2xl gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-950 p-6 rounded-2xl border border-slate-800/80 shadow-2xl gap-4 relative z-20">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 drop-shadow-[0_0_15px_rgba(6,182,212,0.3)]">
             <Tv size={24} className="animate-pulse" />
@@ -338,41 +348,30 @@ export default function AdminLiveInteraction() {
         </div>
 
         {/* SELECTORS */}
-        <div className="flex flex-wrap gap-3 items-center w-full md:w-auto">
+        <div className="flex flex-wrap gap-3 items-center w-full md:w-auto relative z-30">
           {/* Event Selector */}
-          <div className="flex flex-col gap-1 w-full sm:w-48">
+          <div className="flex flex-col gap-1 w-full sm:w-64">
             <span className="text-[10px] uppercase font-bold text-slate-500 font-mono tracking-widest">Cuộc thi</span>
-            <select
+            <CustomSelect
               value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
-              className="bg-slate-900 border border-slate-800 text-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-cyan-500 w-full"
-            >
-              {events.map((ev) => (
-                <option key={ev._id} value={ev._id}>
-                  {ev.name} ({ev.semester})
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedEventId}
+              options={eventOptions}
+              className="w-full font-sans"
+              placeholder="Chọn cuộc thi..."
+            />
           </div>
 
           {/* Round Selector */}
-          <div className="flex flex-col gap-1 w-full sm:w-40">
+          <div className="flex flex-col gap-1 w-full sm:w-48">
             <span className="text-[10px] uppercase font-bold text-slate-500 font-mono tracking-widest">Vòng thi</span>
-            <select
+            <CustomSelect
               value={selectedRoundId}
-              onChange={(e) => setSelectedRoundId(e.target.value)}
-              className="bg-slate-900 border border-slate-800 text-slate-200 text-xs px-3 py-2 rounded-xl focus:outline-none focus:ring-1 focus:ring-cyan-500 w-full"
-            >
-              {rounds.length > 0 ? (
-                rounds.map((rd) => (
-                  <option key={rd._id} value={rd._id}>
-                    {rd.name}
-                  </option>
-                ))
-              ) : (
-                <option value="">Trống</option>
-              )}
-            </select>
+              onChange={setSelectedRoundId}
+              options={roundOptions}
+              className="w-full font-sans"
+              placeholder="Chọn vòng thi..."
+              disabled={rounds.length === 0}
+            />
           </div>
         </div>
       </div>

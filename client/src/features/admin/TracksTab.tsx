@@ -47,6 +47,15 @@ interface TracksTabProps {
   readOnly?: boolean;
 }
 
+const formatTrackName = (name: string) => {
+  if (!name) return "";
+  const trimmed = name.trim();
+  if (/^bảng\s+/i.test(trimmed)) {
+    return trimmed;
+  }
+  return `Bảng ${trimmed}`;
+};
+
 export default function TracksTab({
   selectedEvent,
   tracks,
@@ -107,7 +116,7 @@ export default function TracksTab({
       toast.success(`Đã lưu link Drive riêng cho bảng "${selectedTrack.name}"!`);
       setDriveFileName("");
       setDriveFileUrl("");
-      if (fetchEventDetails) fetchEventDetails();
+      if (fetchEventDetails) await fetchEventDetails();
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Lỗi khi lưu link Drive.");
     } finally {
@@ -217,7 +226,12 @@ export default function TracksTab({
                   className="text-left flex-1"
                 >
                   <span className="font-semibold block">
-                    {t.name} (Tối đa {t.maxTeams} đội)
+                    <span className="text-cyan-400 drop-shadow-[0_0_4px_rgba(34,211,238,0.35)]">
+                      {formatTrackName(t.name)}
+                    </span>
+                    {!t.name.toLowerCase().includes("chung kết") && (
+                      <span className="text-slate-400 font-normal"> (Tối đa {t.maxTeams} đội)</span>
+                    )}
                   </span>
                   <span className="text-[10px] text-slate-500 font-mono block">
                     Vòng: {rounds.find((r) => r._id === t.roundId)?.name || "Chưa gán"}
@@ -398,8 +412,8 @@ export default function TracksTab({
             <BookOpen size={16} className="text-cyan-400" />
             <span>Đề bài & Tài liệu</span>
             {selectedTrack && (
-              <span className="ml-auto text-[9px] text-cyan-400 border border-cyan-500/30 bg-cyan-950/30 px-2 py-0.5 rounded font-mono uppercase tracking-wider">
-                {selectedTrack.name}
+              <span className="ml-auto text-xs font-bold text-cyan-400 border border-cyan-500/30 bg-cyan-950/30 px-3 py-1 rounded font-mono uppercase tracking-wider">
+                {formatTrackName(selectedTrack.name)}
               </span>
             )}
           </h3>
@@ -483,7 +497,7 @@ export default function TracksTab({
           <div className="glass p-6 rounded-2xl space-y-4">
             <h3 className="text-md font-bold text-white flex items-center gap-1.5 font-mono border-b border-slate-800/80 pb-3">
               <Users size={16} className="text-cyan-400" />
-              <span>Ban chuyên môn ({selectedTrack.name})</span>
+              <span>Ban chuyên môn (<span className="text-cyan-400 drop-shadow-[0_0_4px_rgba(34,211,238,0.35)]">{formatTrackName(selectedTrack.name)}</span>)</span>
             </h3>
 
             {/* List of judges and mentors */}
@@ -568,36 +582,6 @@ export default function TracksTab({
                   </label>
                 </div>
 
-                {/* Team selection dropdown if adding Mentor */}
-                {memberRole === "mentor" && (
-                  <div className="space-y-1.5 text-left">
-                    <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-400 font-mono">
-                      Chọn Đội thi phụ trách:
-                    </label>
-                    {(() => {
-                      const trackTeams = teamsList.filter(
-                        (team: any) =>
-                          team.status === "confirmed" &&
-                          ((team.trackId?._id || team.trackId) === selectedTrack._id) &&
-                          !team.mentorId
-                      );
-                      return (
-                        <CustomSelect
-                          value={selectedTeamId}
-                          onChange={setSelectedTeamId}
-                          options={[
-                            { value: "", label: "-- Tất cả / Chưa gán đội cụ thể --" },
-                            ...trackTeams.map((team: any) => ({
-                              value: team._id,
-                              label: team.name,
-                            })),
-                          ]}
-                          className="w-full"
-                        />
-                      );
-                    })()}
-                  </div>
-                )}
 
                 <div className="flex gap-2 relative">
                   <div className="flex-1 relative">

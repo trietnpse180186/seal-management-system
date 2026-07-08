@@ -7,7 +7,7 @@ import { KeyRound, ArrowLeft, Eye, EyeOff } from "lucide-react";
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  
+
   const token = searchParams.get("token") || "";
   const email = searchParams.get("email") || "";
 
@@ -79,7 +79,6 @@ export default function ResetPassword() {
         {errorMessage && (
           <div className="mb-5 p-3.5 bg-rose-950/90 border border-rose-500/80 rounded-xl text-rose-200 text-xs font-mono flex items-center justify-between shadow-xl animate-in fade-in zoom-in-95">
             <div className="flex items-center gap-2.5">
-              <span className="text-rose-400 font-bold text-base">⚠️</span>
               <span className="leading-relaxed">{errorMessage}</span>
             </div>
             <button

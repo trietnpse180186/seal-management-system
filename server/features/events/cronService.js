@@ -41,6 +41,67 @@ async function downgradeEventRolesToParticipant(eventId) {
 }
 
 /**
+ * Automatically kicks all student team members and mentors from GitHub repositories
+ * associated with a completed event.
+ */
+async function autoKickAllRepoCollaborators(eventId) {
+  try {
+    const GithubRepository = mongoose.model('GithubRepository');
+    const TeamMember = mongoose.model('TeamMember');
+    const EventRole = mongoose.model('EventRole');
+    const EventLog = mongoose.model('EventLog');
+
+    const repos = await GithubRepository.find({ eventId });
+    if (repos.length === 0) return;
+
+    // Get all mentors for this event
+    const mentors = await EventRole.find({ eventId, role: 'mentor', status: 'active' }).populate('userId');
+
+    for (const repo of repos) {
+      try {
+        // Get all confirmed team members for the repository's team
+        const members = await TeamMember.find({ teamId: repo.teamId }).populate('userId');
+
+        // Extract unique github usernames
+        const usernames = new Set();
+        members.forEach(m => {
+          if (m.userId && m.userId.githubUsername) {
+            usernames.add(m.userId.githubUsername);
+          }
+        });
+        mentors.forEach(m => {
+          if (m.userId && m.userId.githubUsername) {
+            usernames.add(m.userId.githubUsername);
+          }
+        });
+
+        const kickedList = [];
+        for (const username of usernames) {
+          const success = await githubService.removeCollaborator(repo.repoName, username, repo.orgName);
+          if (success) {
+            kickedList.push(username);
+          }
+        }
+
+        if (kickedList.length > 0) {
+          const newLog = new EventLog({
+            eventId,
+            action: 'kick_collaborators',
+            type: 'system',
+            details: `[CRON-AUTO-COMPLETE] Tự động thu hồi quyền truy cập repository ${repo.repoName} của các thành viên và mentor: ${kickedList.join(', ')}`
+          });
+          await newLog.save();
+        }
+      } catch (repoErr) {
+        console.error(`[CRON-AUTO-KICK ERROR] Failed to kick collaborators for repo ${repo.repoName}:`, repoErr.message);
+      }
+    }
+  } catch (err) {
+    console.error(`[CRON-AUTO-KICK ERROR] Failed during auto-kick query for event ${eventId}:`, err.message);
+  }
+}
+
+/**
  * Automatically transitions event status based on scheduled times.
  * Runs every minute.
  */
@@ -98,6 +159,13 @@ async function autoTransitionEvents() {
       console.log(`[CRON] Downgraded roles for completed event: ${event.name}`);
     } catch (err) {
       console.error(`[CRON ERROR] Failed to downgrade roles for event ${event._id}:`, err.message);
+    }
+
+    try {
+      await autoKickAllRepoCollaborators(event._id);
+      console.log(`[CRON] Automatically kicked all repository collaborators for completed event: ${event.name}`);
+    } catch (err) {
+      console.error(`[CRON ERROR] Failed to auto-kick collaborators:`, err.message);
     }
   }
 }

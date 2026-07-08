@@ -144,7 +144,7 @@ router.get('/team/:teamId/achievements', authenticateToken, async (req, res) => 
 
     // 1. Auth check
     let authorized = req.user.isSystemAdmin;
-    
+
     // Check if system coordinator
     if (!authorized) {
       const coordRole = await EventRole.findOne({
@@ -667,6 +667,70 @@ router.post('/lock-round', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @route   POST /api/grades/unlock-round
+ * @desc    Unlock all scores for a round to allow editing again
+ * @access  Private (Coordinator or Admin)
+ */
+router.post('/unlock-round', authenticateToken, async (req, res) => {
+  const { eventId, roundId } = req.body;
+
+  if (!eventId || !roundId) {
+    return res.status(400).json({ message: 'Event ID and Round ID are required.' });
+  }
+
+  try {
+    // Auth Check
+    if (!req.user.isSystemAdmin) {
+      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator' });
+      if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
+    }
+
+    const round = await Round.findById(roundId);
+    if (!round) {
+      return res.status(404).json({ message: 'Round not found.' });
+    }
+
+    // Safety check: is there a next round that is active or completed?
+    const nextRound = await Round.findOne({ eventId, order: { $gt: round.order } }).sort({ order: 1 });
+    if (nextRound && (nextRound.status === 'active' || nextRound.status === 'completed')) {
+      return res.status(400).json({
+        message: `Không thể mở khóa vòng "${round.name}" vì vòng thi tiếp theo "${nextRound.name}" đã được bắt đầu hoặc hoàn thành. Bạn cần thu hồi vòng thi tiếp theo trước.`
+      });
+    }
+
+    // 1. Delete generated rankings for this round
+    await Ranking.deleteMany({ roundId });
+
+    // 2. Unlock all scores (set status back to 'submitted')
+    await Score.updateMany({ roundId }, { status: 'submitted', $unset: { lockedAt: 1 } });
+
+    // 3. Set round status back to 'active'
+    round.status = 'active';
+    await round.save();
+
+    // Create EventLog
+    const EventLog = mongoose.model('EventLog');
+    const newLog = new EventLog({
+      eventId,
+      actorId: req.user._id,
+      action: 'unlock_results',
+      type: 'grading',
+      details: `Mở khóa điểm và thu hồi xếp hạng vòng thi: ${round.name}`
+    });
+    await newLog.save();
+
+    res.json({
+      message: 'Mở khóa điểm vòng thi thành công. Giám khảo bây giờ có thể tiếp tục chấm điểm và chỉnh sửa.',
+      round
+    });
+
+  } catch (error) {
+    console.error('Unlock Round Grades Error:', error.message);
+    res.status(500).json({ message: 'Server error unlocking round grades.' });
+  }
+});
+
+/**
  * @route   GET /api/grades/leaderboard/:roundId
  * @desc    Get team rankings leaderboard for a round
  * @access  Private
@@ -972,8 +1036,8 @@ router.post('/advance-round', authenticateToken, async (req, res) => {
         const rankingsExist = await Ranking.exists({ roundId: currentRoundId, trackId });
         if (!rankingsExist) {
           const track = tracks.find(t => t._id.toString() === trackId.toString());
-          return res.status(400).json({ 
-            message: `Bảng đấu "${track ? track.name : trackId}" chưa được khóa điểm. Vui lòng khóa điểm và công bố tất cả bảng đấu trước khi chốt vòng.` 
+          return res.status(400).json({
+            message: `Bảng đấu "${track ? track.name : trackId}" chưa được khóa điểm. Vui lòng khóa điểm và công bố tất cả bảng đấu trước khi chốt vòng.`
           });
         }
       }
@@ -981,7 +1045,7 @@ router.post('/advance-round', authenticateToken, async (req, res) => {
 
     // 2. Find the next round in order
     const nextRound = await Round.findOne({ eventId, order: currentRound.order + 1 });
-    
+
     // 3. Get all advanced teams in the current round
     const advancedRankings = await Ranking.find({ roundId: currentRoundId, isAdvanced: true });
     const advancedTeamIds = advancedRankings.map(r => r.teamId);
@@ -1010,9 +1074,9 @@ router.post('/advance-round', authenticateToken, async (req, res) => {
       // Promote teams to next round and assign to the consolidated track
       await Team.updateMany(
         { _id: { $in: advancedTeamIds } },
-        { 
-          currentRoundId: nextRound._id, 
-          trackId: nextRoundTrack._id 
+        {
+          currentRoundId: nextRound._id,
+          trackId: nextRoundTrack._id
         }
       );
 
@@ -1129,7 +1193,7 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
     let title = '';
     let subtitle = '';
     let metadataRow = '';
-    
+
     // Check if we are exporting for a specific judge or summary
     if (targetJudgeId) {
       // --- CASE 1: INDIVIDUAL JUDGE SCORING SHEET ---
@@ -1148,7 +1212,7 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
         headers.push(`${c.code}\n(${weightPercent}%)`);
       });
       headers.push("Tổng Điểm\n(Hệ 10)", "Ý Kiến / Nhận Xét");
-      
+
       wsData.push([title], [subtitle], [metadataRow], [], headers);
 
       // Fetch judge's scores
@@ -1168,11 +1232,11 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
         ];
 
         const teamScore = scores.find(s => s.teamId.toString() === team._id.toString());
-        
+
         criteria.forEach(c => {
           if (teamScore) {
-            const detail = scoreDetails.find(d => 
-              d.scoreId.toString() === teamScore._id.toString() && 
+            const detail = scoreDetails.find(d =>
+              d.scoreId.toString() === teamScore._id.toString() &&
               d.criterionId.toString() === c._id.toString()
             );
             row.push(detail ? detail.scoreValue : 0);
@@ -1190,7 +1254,7 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
       const signRowStart = wsData.length + 2;
       wsData.push([]); // blank row
       wsData.push([]); // blank row
-      
+
       // We will place signatures on columns: Column B (index 1) and Column G/H (index 4+N)
       const sigRow = [];
       sigRow[1] = "TRƯỞNG BAN TỔ CHỨC";
@@ -1239,7 +1303,7 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
       // Table Headers:
       // STT | Tên Đội | Tên Đề Tài | Criteria 1 (TB) | ... | Criteria N (TB) | Judge 1 Total | ... | Judge M Total | Điểm Trung Bình | Thứ Hạng | Nhận Xét Tổng Hợp
       const headers = ["STT", "Tên Đội Thi", "Tên Đề Tài / Dự Án"];
-      
+
       // Add criteria headers
       criteria.forEach(c => {
         const weightPercent = c.weight > 1 ? c.weight : c.weight * 100;
@@ -1257,7 +1321,7 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
       const rowsWithAverages = teams.map((team, idx) => {
         const teamScores = scores.filter(s => s.teamId.toString() === team._id.toString());
         const judgeCount = teamScores.length;
-        
+
         let averageScore = 0;
         if (judgeCount > 0) {
           const sum = teamScores.reduce((acc, s) => acc + s.totalWeightedScore, 0);
@@ -1270,8 +1334,8 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
           let criterionSum = 0;
           let count = 0;
           teamScores.forEach(ts => {
-            const detail = scoreDetails.find(d => 
-              d.scoreId.toString() === ts._id.toString() && 
+            const detail = scoreDetails.find(d =>
+              d.scoreId.toString() === ts._id.toString() &&
               d.criterionId.toString() === c._id.toString()
             );
             if (detail) {
@@ -1321,7 +1385,7 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
       // Signature section
       wsData.push([]); // blank row
       wsData.push([]); // blank row
-      
+
       const sigRow = [];
       sigRow[1] = "ĐẠI DIỆN BAN THƯ KÝ";
       sigRow[2 + criteria.length + judges.length] = "TRƯỞNG BAN TỔ CHỨC";
@@ -1404,10 +1468,10 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
         } else if (r >= dataStartRowIdx && r <= dataEndRowIdx) {
           // Table Data
           cell.s.font = { name: 'Calibri', size: 10 };
-          cell.s.alignment = { 
-            vertical: 'center', 
-            horizontal: c === 0 || (c >= 3 && c < maxCols - 1) ? 'center' : 'left', 
-            wrapText: true 
+          cell.s.alignment = {
+            vertical: 'center',
+            horizontal: c === 0 || (c >= 3 && c < maxCols - 1) ? 'center' : 'left',
+            wrapText: true
           };
           cell.s.border = {
             top: { style: 'thin', color: { rgb: 'E2E8F0' } },

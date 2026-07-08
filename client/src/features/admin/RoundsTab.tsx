@@ -1313,8 +1313,8 @@ export default function RoundsTab({
                         : "bg-slate-900/60 border-slate-800 text-slate-400"
                         }`}>
                         Trọng số hiện tại: {currentSum}% | Trọng số sau đồng bộ: <strong className={exceeds ? "text-rose-300" : "text-emerald-400"}>{totalAfter}%</strong> / {rubric?.totalWeight || 100}%
-                        {exceeds && " ⚠️ Vượt quá giới hạn!"}
-                        {hasIssues && " ⚠️ Có lỗi trong dữ liệu!"}
+                        {exceeds && "Vượt quá giới hạn!"}
+                        {hasIssues && "Có lỗi trong dữ liệu!"}
                       </div>
 
                       {/* Action buttons */}

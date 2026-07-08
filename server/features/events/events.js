@@ -62,6 +62,63 @@ async function downgradeEventRolesToParticipant(eventId) {
 }
 
 /**
+ * Automatically kicks all student team members and mentors from GitHub repositories
+ * associated with a completed event.
+ */
+async function autoKickAllRepoCollaborators(eventId, actorId) {
+  try {
+    const repos = await GithubRepository.find({ eventId });
+    if (repos.length === 0) return;
+
+    // Get all mentors for this event
+    const mentors = await EventRole.find({ eventId, role: 'mentor', status: 'active' }).populate('userId');
+
+    for (const repo of repos) {
+      try {
+        // Get all confirmed team members for the repository's team
+        const members = await TeamMember.find({ teamId: repo.teamId }).populate('userId');
+
+        // Extract unique github usernames
+        const usernames = new Set();
+        members.forEach(m => {
+          if (m.userId && m.userId.githubUsername) {
+            usernames.add(m.userId.githubUsername);
+          }
+        });
+        mentors.forEach(m => {
+          if (m.userId && m.userId.githubUsername) {
+            usernames.add(m.userId.githubUsername);
+          }
+        });
+
+        const kickedList = [];
+        for (const username of usernames) {
+          const success = await githubService.removeCollaborator(repo.repoName, username, repo.orgName);
+          if (success) {
+            kickedList.push(username);
+          }
+        }
+
+        if (kickedList.length > 0) {
+          const newLog = new EventLog({
+            eventId,
+            actorId,
+            action: 'kick_collaborators',
+            type: 'system',
+            details: `[AUTO-COMPLETE] Tự động thu hồi quyền truy cập repository ${repo.repoName} của các thành viên và mentor: ${kickedList.join(', ')}`
+          });
+          await newLog.save();
+        }
+      } catch (repoErr) {
+        console.error(`[AUTO-KICK ERROR] Failed to kick collaborators for repo ${repo.repoName}:`, repoErr.message);
+      }
+    }
+  } catch (err) {
+    console.error(`[AUTO-KICK ERROR] Failed during auto-kick query for event ${eventId}:`, err.message);
+  }
+}
+
+/**
  * @route   GET /api/events
  * @desc    Get all events (filtered by semester/year/status)
  * @access  Public
@@ -154,7 +211,7 @@ router.post('/', authenticateToken, requireSystemAdmin, async (req, res) => {
       description,
       bannerUrl,
       maxTeams: maxTeams ? parseInt(maxTeams) : 20,
-      githubOrgName: githubOrgName || 'seal-hackathon-2026',
+      githubOrgName: githubOrgName || 'sealhackathon-2026',
       commitSyncInterval: commitSyncInterval ? parseInt(commitSyncInterval) : 30,
       status: 'draft',
       registrationOpen: null,
@@ -182,7 +239,7 @@ router.post('/', authenticateToken, requireSystemAdmin, async (req, res) => {
       roundId: newRound._id,
       name: 'Bảng Chung Kết',
       description: 'Bảng đấu tập trung dành cho các đội xuất sắc nhất vượt qua các vòng thi trước',
-      maxTeams: 10,
+      maxTeams: 6,
       topicSubmissionOpen: true
     });
     await finalTrack.save();
@@ -400,7 +457,7 @@ router.get('/:id', async (req, res) => {
         roundId: finalRound._id,
         name: 'Bảng Chung Kết',
         description: 'Bảng đấu tập trung dành cho các đội xuất sắc nhất vượt qua các vòng thi trước',
-        maxTeams: 10,
+        maxTeams: 6,
         topicSubmissionOpen: true
       });
       await finalTrack.save();
@@ -1163,7 +1220,7 @@ router.post('/:eventId/distribute-teams', authenticateToken, async (req, res) =>
       .filter(r => r.name.toLowerCase().includes('chung kết') || r.name.toLowerCase() === 'final' || r.advanceTopN === 0)
       .map(r => r._id.toString());
 
-    const tracks = await Track.find({ 
+    const tracks = await Track.find({
       eventId,
       roundId: { $nin: finalRoundIds }
     });
@@ -1324,11 +1381,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
           }
         }
 
-        // 2. Define valid transitions mapping (supports legacy 'prepare' to 'ongoing' transition)
+        // 2. Define valid transitions mapping (supports prepare and ongoing transition)
         const validTransitions = {
           draft: ['registration', 'cancelled'],
-          registration: ['ongoing', 'cancelled'],
-          prepare: ['ongoing'],
+          registration: ['prepare', 'ongoing', 'cancelled'],
+          prepare: ['ongoing', 'cancelled'],
           ongoing: ['completed'],
           completed: [],
           cancelled: []
@@ -1471,12 +1528,19 @@ router.put('/:id', authenticateToken, async (req, res) => {
       } else if (status === 'completed') {
         action = 'event_completed';
         details = `Sự kiện "${event.name}" đã hoàn thành (completed)`;
-        
+
         try {
           await downgradeEventRolesToParticipant(event._id);
           console.log(`[EVENT] Downgraded roles for completed event: ${event.name}`);
         } catch (err) {
           console.error(`[EVENT ERROR] Failed to downgrade roles for event ${event._id}:`, err.message);
+        }
+
+        try {
+          await autoKickAllRepoCollaborators(event._id, req.user._id);
+          console.log(`[EVENT] Automatically kicked all repository collaborators for completed event: ${event.name}`);
+        } catch (err) {
+          console.error(`[EVENT ERROR] Failed to auto-kick collaborators:`, err.message);
         }
       } else {
         details = `Thay đổi trạng thái sự kiện "${event.name}" từ ${oldStatus} sang ${status}`;
@@ -1816,7 +1880,7 @@ router.post('/:id/seminar/send-email', authenticateToken, async (req, res) => {
 router.get('/:eventId/export-teams', authenticateToken, async (req, res) => {
   try {
     const eventId = req.params.eventId;
-    
+
     // Check permission
     if (!req.user.isSystemAdmin) {
       const role = await EventRole.findOne({
@@ -1874,7 +1938,7 @@ router.get('/:eventId/export-teams', authenticateToken, async (req, res) => {
         'pending_confirm': 'Chờ duyệt',
         'disqualified': 'Đã loại'
       };
-      
+
       const teamRepo = repos.find(rp => rp.teamId.toString() === team._id.toString());
       const repoUrl = teamRepo ? teamRepo.repoUrl : 'Chưa liên kết';
 
@@ -1944,10 +2008,10 @@ router.get('/:eventId/export-teams', authenticateToken, async (req, res) => {
         } else if (r > 3) {
           // Data rows
           cell.s.font = { name: 'Calibri', size: 10 };
-          cell.s.alignment = { 
-            vertical: 'center', 
-            horizontal: c === 0 || c === 2 || c === 3 ? 'center' : 'left', 
-            wrapText: true 
+          cell.s.alignment = {
+            vertical: 'center',
+            horizontal: c === 0 || c === 2 || c === 3 ? 'center' : 'left',
+            wrapText: true
           };
           cell.s.border = {
             top: { style: 'thin', color: { rgb: 'E2E8F0' } },

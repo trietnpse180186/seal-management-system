@@ -14,7 +14,7 @@ const octokit = new Octokit({ auth: githubToken });
 
 async function main() {
   console.log(`[GITHUB CLEANUP] Listing all repositories for organization "${orgName}"...`);
-  
+
   try {
     let repos = [];
     let page = 1;

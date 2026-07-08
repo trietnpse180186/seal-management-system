@@ -43,7 +43,7 @@ async function runTest() {
       name: 'TEST_SYNC_EVENT',
       semester: 'Spring',
       year: 2027,
-      githubOrgName: 'seal-hackathon-2026-test',
+      githubOrgName: 'sealhackathon-2026-test',
       status: 'draft'
     });
     await event.save();
@@ -96,7 +96,7 @@ async function runTest() {
       trackId: track._id,
       teamId: team._id,
       repoName: 'test-sync-team',
-      repoUrl: 'https://github.com/seal-hackathon-2026-test/test-sync-team',
+      repoUrl: 'https://github.com/sealhackathon-2026-test/test-sync-team',
       githubRepoId: 'test-repo-id-12345',
       syncStatus: 'not_synced'
     });

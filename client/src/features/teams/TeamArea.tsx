@@ -327,7 +327,7 @@ export default function TeamArea() {
     const teamId = data?.team?._id;
     if (!token || !teamId) return;
 
-    const socketUrl = 'http://localhost:5000';
+    const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
     const socket = io(socketUrl, { query: { token } });
 
     socket.on('connect', () => {

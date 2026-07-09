@@ -27,17 +27,67 @@ const MONTHS = [
 
 const WEEKDAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 
-
-const getCombinedDate = (date: Date | null, hr12: number, min: number, ampm: "AM" | "PM"): Date | null => {
+const getCombinedDate = (date: Date | null, hr24: number, min: number): Date | null => {
   if (!date) return null;
   const newDate = new Date(date);
-  let hr24 = hr12 % 12;
-  if (ampm === "PM") {
-    hr24 += 12;
-  }
   newDate.setHours(hr24, min, 0, 0);
   return newDate;
 };
+
+// Custom scrollable picker (replaces native select to control dropdown height)
+function TimeSelect({
+  value,
+  onChange,
+  options,
+  disabledOptions = [],
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  options: number[];
+  disabledOptions?: number[];
+}) {
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Scroll selected item into center on mount/value change
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const idx = options.indexOf(value);
+    if (idx < 0) return;
+    const itemH = 32; // h-8
+    el.scrollTop = idx * itemH - el.clientHeight / 2 + itemH / 2;
+  }, [value, options]);
+
+  return (
+    <div
+      ref={listRef}
+      className="w-16 h-[128px] overflow-y-auto scrollbar-none bg-slate-900 border border-slate-700 rounded-lg"
+      style={{ scrollbarWidth: "none" }}
+    >
+      {options.map((o) => {
+        const active = o === value;
+        const isDisabled = disabledOptions.includes(o);
+        return (
+          <button
+            key={o}
+            type="button"
+            disabled={isDisabled}
+            onClick={() => onChange(o)}
+            className={`w-full h-8 flex items-center justify-center text-xs font-mono font-semibold transition-all ${
+              isDisabled
+                ? "text-slate-800 opacity-20 cursor-not-allowed"
+                : active
+                ? "bg-cyan-500 text-slate-950 font-bold cursor-pointer"
+                : "text-slate-400 hover:bg-slate-800 hover:text-white cursor-pointer"
+            }`}
+          >
+            {String(o).padStart(2, "0")}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function CustomDateTimePicker({
   value,
@@ -54,13 +104,9 @@ export default function CustomDateTimePicker({
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  // Time state (12-hour format)
-  const [selectedHour, setSelectedHour] = useState(() => {
-    const hr = new Date().getHours() % 12;
-    return hr === 0 ? 12 : hr;
-  });
+  // Time state (24-hour format)
+  const [selectedHour, setSelectedHour] = useState(() => new Date().getHours());
   const [selectedMinute, setSelectedMinute] = useState(() => new Date().getMinutes());
-  const [selectedAmpm, setSelectedAmpm] = useState<"AM" | "PM">(() => new Date().getHours() >= 12 ? "PM" : "AM");
   const [timeError, setTimeError] = useState("");
 
   // Parse initial value
@@ -71,16 +117,10 @@ export default function CustomDateTimePicker({
         setSelectedDate(parsed);
         setCurrentMonth(parsed);
         
-        let hr = parsed.getHours();
-        const ampmVal = hr >= 12 ? "PM" : "AM";
-        setSelectedAmpm(ampmVal);
-        
-        hr = hr % 12;
-        const hr12 = hr === 0 ? 12 : hr;
-        setSelectedHour(hr12);
+        setSelectedHour(parsed.getHours());
         setSelectedMinute(parsed.getMinutes());
         
-        const err = validate(parsed, hr12, parsed.getMinutes(), ampmVal);
+        const err = validate(parsed, parsed.getHours(), parsed.getMinutes());
         setTimeError(err);
         return;
       }
@@ -95,45 +135,37 @@ export default function CustomDateTimePicker({
       }
       setCurrentMonth(new Date(defaultDate.getFullYear(), defaultDate.getMonth(), 1));
       
-      let hr = defaultDate.getHours();
-      const ampmVal = hr >= 12 ? "PM" : "AM";
-      setSelectedAmpm(ampmVal);
-      hr = hr % 12;
-      setSelectedHour(hr === 0 ? 12 : hr);
+      setSelectedHour(defaultDate.getHours());
       setSelectedMinute(defaultDate.getMinutes());
       setTimeError("");
     }
   }, [value, isOpen, minDate, maxDate]);
 
-  // Helper to check if a specific hour is disabled under a given AM/PM
-  const isHourDisabled = (hr: number, ap: "AM" | "PM" = selectedAmpm) => {
-    if (!selectedDate) return false;
-    let hr24 = hr % 12;
-    if (ap === "PM") hr24 += 12;
-    const dateToCheck = new Date(selectedDate);
+  // Helper to check if a specific hour is disabled
+  const isHourDisabled = (hr: number, customDate: Date | null = selectedDate) => {
+    if (!customDate) return false;
+    const dateToCheck = new Date(customDate);
     if (minDate) {
       const minD = new Date(minDate);
-      dateToCheck.setHours(hr24, 59, 59, 999);
+      dateToCheck.setHours(hr, 59, 59, 999);
       if (dateToCheck <= minD) return true;
     }
     if (maxDate) {
       const maxD = new Date(maxDate);
-      dateToCheck.setHours(hr24, 0, 0, 0);
+      dateToCheck.setHours(hr, 0, 0, 0);
       if (dateToCheck > maxD) return true;
     }
     const now = new Date();
-    dateToCheck.setHours(hr24, 59, 59, 999);
+    dateToCheck.setHours(hr, 59, 59, 999);
     if (dateToCheck < now) return true;
     return false;
   };
 
-  // Helper to check if a specific minute is disabled under a given hour and AM/PM
-  const isMinuteDisabled = (min: number, h: number = selectedHour, ap: "AM" | "PM" = selectedAmpm) => {
-    if (!selectedDate) return false;
-    let hr24 = h % 12;
-    if (ap === "PM") hr24 += 12;
-    const dateToCheck = new Date(selectedDate);
-    dateToCheck.setHours(hr24, min, 0, 0);
+  // Helper to check if a specific minute is disabled under a given hour
+  const isMinuteDisabled = (min: number, h: number = selectedHour, customDate: Date | null = selectedDate) => {
+    if (!customDate) return false;
+    const dateToCheck = new Date(customDate);
+    dateToCheck.setHours(h, min, 0, 0);
     if (minDate) {
       const minD = new Date(minDate);
       if (dateToCheck <= minD) return true;
@@ -147,67 +179,52 @@ export default function CustomDateTimePicker({
     return false;
   };
 
-  // Helper to check if AM/PM is disabled
-  const isAmpmDisabled = (ap: "AM" | "PM") => {
-    if (!selectedDate) return false;
-
-    const checkDisabled = (apVal: "AM" | "PM") => {
-      const dateToCheck = new Date(selectedDate);
-      if (apVal === "AM") {
-        if (minDate) {
-          const minD = new Date(minDate);
-          dateToCheck.setHours(11, 59, 59, 999);
-          if (dateToCheck <= minD) return true;
-        }
-        const now = new Date();
-        dateToCheck.setHours(11, 59, 59, 999);
-        if (dateToCheck < now) return true;
-      } else {
-        if (maxDate) {
-          const maxD = new Date(maxDate);
-          dateToCheck.setHours(12, 0, 0, 0);
-          if (dateToCheck > maxD) return true;
-        }
-      }
-      return false;
-    };
-
-    const amDisabled = checkDisabled("AM");
-    const pmDisabled = checkDisabled("PM");
-
-    if (amDisabled && pmDisabled) {
-      // If both are disabled, keep both enabled to avoid infinite loop
-      return false;
-    }
-
-    return ap === "AM" ? amDisabled : pmDisabled;
-  };
-
-  // Time clamping effect to ensure selected hour/min/ampm are always valid
+  // Time clamping effect to ensure selected hour/min are always valid
   useEffect(() => {
-    if (!selectedDate) return;
+    if (!value || !selectedDate) return;
 
-    let currentAmpm = selectedAmpm;
-    if (isAmpmDisabled(currentAmpm)) {
-      currentAmpm = currentAmpm === "AM" ? "PM" : "AM";
+    let dateObj = selectedDate;
+    if (isDateDisabled(selectedDate) && minDate) {
+      const minD = new Date(minDate);
+      dateObj = minD;
     }
 
     let currentHour = selectedHour;
-    if (isHourDisabled(currentHour, currentAmpm)) {
-      const validHr = hoursArray.find((h) => !isHourDisabled(h, currentAmpm));
-      if (validHr) currentHour = validHr;
+    if (isHourDisabled(currentHour, dateObj)) {
+      const validHr = hoursArray.find((h) => !isHourDisabled(h, dateObj));
+      if (validHr !== undefined) currentHour = validHr;
     }
 
     let currentMin = selectedMinute;
-    if (isMinuteDisabled(currentMin, currentHour, currentAmpm)) {
-      const validMin = minutesArray.find((m) => !isMinuteDisabled(m, currentHour, currentAmpm));
+    if (isMinuteDisabled(currentMin, currentHour, dateObj)) {
+      const validMin = minutesArray.find((m) => !isMinuteDisabled(m, currentHour, dateObj));
       if (validMin !== undefined) currentMin = validMin;
     }
 
-    if (currentAmpm !== selectedAmpm) setSelectedAmpm(currentAmpm);
-    if (currentHour !== selectedHour) setSelectedHour(currentHour);
-    if (currentMin !== selectedMinute) setSelectedMinute(currentMin);
-  }, [selectedDate, minDate, maxDate, selectedAmpm, selectedHour, selectedMinute]);
+    const isDateChanged = dateObj.getTime() !== selectedDate.getTime();
+    const isChanged =
+      currentHour !== selectedHour ||
+      currentMin !== selectedMinute ||
+      isDateChanged;
+
+    if (isChanged) {
+      if (isDateChanged) setSelectedDate(dateObj);
+      if (currentHour !== selectedHour) setSelectedHour(currentHour);
+      if (currentMin !== selectedMinute) setSelectedMinute(currentMin);
+
+      // Notify parent of the auto-clamped valid date time value
+      const newDate = new Date(dateObj);
+      newDate.setHours(currentHour, currentMin, 0, 0);
+
+      const y = newDate.getFullYear();
+      const m = String(newDate.getMonth() + 1).padStart(2, "0");
+      const d = String(newDate.getDate()).padStart(2, "0");
+      const h = String(newDate.getHours()).padStart(2, "0");
+      const mi = String(newDate.getMinutes()).padStart(2, "0");
+
+      onChange(`${y}-${m}-${d}T${h}:${mi}`);
+    }
+  }, [value, selectedDate, minDate, maxDate, selectedHour, selectedMinute]);
 
   // Click outside listener
   useEffect(() => {
@@ -243,13 +260,9 @@ export default function CustomDateTimePicker({
     return `${m}/${d}/${y} ${hrStr}:${minStr} ${ampmStr}`;
   };
 
-  const validate = (date: Date | null, hr12: number, min: number, ampm: "AM" | "PM"): string => {
+  const validate = (date: Date | null, hr24: number, min: number): string => {
     if (!date) return "";
     const newDate = new Date(date);
-    let hr24 = hr12 % 12;
-    if (ampm === "PM") {
-      hr24 += 12;
-    }
     newDate.setHours(hr24, min, 0, 0);
 
     const now = new Date();
@@ -276,25 +289,19 @@ export default function CustomDateTimePicker({
 
   const handleSelectDay = (date: Date) => {
     setSelectedDate(date);
-    const err = validate(date, selectedHour, selectedMinute, selectedAmpm);
+    const err = validate(date, selectedHour, selectedMinute);
     setTimeError(err);
   };
 
   const handleSelectHour = (hr: number) => {
     setSelectedHour(hr);
-    const err = validate(selectedDate, hr, selectedMinute, selectedAmpm);
+    const err = validate(selectedDate, hr, selectedMinute);
     setTimeError(err);
   };
 
   const handleSelectMinute = (min: number) => {
     setSelectedMinute(min);
-    const err = validate(selectedDate, selectedHour, min, selectedAmpm);
-    setTimeError(err);
-  };
-
-  const handleSelectAmpm = (ampm: "AM" | "PM") => {
-    setSelectedAmpm(ampm);
-    const err = validate(selectedDate, selectedHour, selectedMinute, ampm);
+    const err = validate(selectedDate, selectedHour, min);
     setTimeError(err);
   };
 
@@ -326,33 +333,23 @@ export default function CustomDateTimePicker({
     setSelectedDate(today);
     setCurrentMonth(today);
     
-    let hr = today.getHours();
-    const ampmVal = hr >= 12 ? "PM" : "AM";
-    setSelectedAmpm(ampmVal);
-    
-    hr = hr % 12;
-    const hr12 = hr === 0 ? 12 : hr;
-    setSelectedHour(hr12);
+    setSelectedHour(today.getHours());
     setSelectedMinute(today.getMinutes());
     
-    const err = validate(today, hr12, today.getMinutes(), ampmVal);
+    const err = validate(today, today.getHours(), today.getMinutes());
     setTimeError(err);
   };
 
   const handleConfirm = () => {
     if (!selectedDate) return;
-    const err = validate(selectedDate, selectedHour, selectedMinute, selectedAmpm);
+    const err = validate(selectedDate, selectedHour, selectedMinute);
     if (err) {
       setTimeError(err);
       return;
     }
     
     const newDate = new Date(selectedDate);
-    let hr24 = selectedHour % 12;
-    if (selectedAmpm === "PM") {
-      hr24 += 12;
-    }
-    newDate.setHours(hr24, selectedMinute, 0, 0);
+    newDate.setHours(selectedHour, selectedMinute, 0, 0);
     
     const y = newDate.getFullYear();
     const m = String(newDate.getMonth() + 1).padStart(2, "0");
@@ -430,7 +427,7 @@ export default function CustomDateTimePicker({
     return false;
   };
 
-  const hoursArray = Array.from({ length: 12 }, (_, i) => i + 1);
+  const hoursArray = Array.from({ length: 24 }, (_, i) => i);
   const minutesArray = Array.from({ length: 60 }, (_, i) => i);
 
   return (
@@ -443,14 +440,14 @@ export default function CustomDateTimePicker({
         } ${isOpen ? "border-cyan-500/80 shadow-[0_0_10px_rgba(0,240,255,0.1)]" : ""}`}
       >
         <span className={value ? "text-white font-mono" : "text-slate-500"}>
-          {value ? displayFormat(getCombinedDate(selectedDate, selectedHour, selectedMinute, selectedAmpm)) : placeholder}
+          {value ? displayFormat(getCombinedDate(selectedDate, selectedHour, selectedMinute)) : placeholder}
         </span>
         <Calendar size={16} className="text-cyan-300 hover:text-cyan-400 shrink-0 cursor-pointer transition-colors" />
       </div>
 
       {/* Popover DateTime Picker Dropdown */}
       {isOpen && (
-        <div className="absolute z-50 mt-2 p-4 bg-slate-950 border border-slate-800 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8),0_0_15px_rgba(0,240,255,0.05)] flex gap-4 animate-fadeIn select-none right-0 md:left-0 md:right-auto min-w-[520px]">
+        <div className="absolute z-50 mt-2 p-4 bg-slate-950 border border-slate-800 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8),0_0_15px_rgba(0,240,255,0.05)] flex gap-4 animate-fadeIn select-none right-0 md:left-0 md:right-auto min-w-[500px]">
           {/* LEFT: Calendar Section */}
           <div className="w-[260px] border-r border-slate-800/80 pr-4">
             {/* Header: Prev, Month/Year, Next */}
@@ -537,93 +534,34 @@ export default function CustomDateTimePicker({
           </div>
 
           {/* RIGHT: Time Selection Section */}
-          <div className="flex-1 flex flex-col justify-between">
-            <div className="border-b border-slate-800/80 pb-2 mb-2 flex items-center gap-1.5">
-              <Clock size={12} className="text-cyan-400" />
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Thời gian</span>
-            </div>
-
-            <div className="flex gap-2 h-[168px]">
-              {/* Hour Scroll Column */}
-              <div className="flex-1 flex flex-col overflow-y-auto scrollbar-none pr-1">
-                {hoursArray.map((hr) => {
-                  const active = selectedHour === hr;
-                  const disabledOption = isHourDisabled(hr);
-                  return (
-                    <button
-                      key={hr}
-                      type="button"
-                      disabled={disabledOption}
-                      onClick={() => handleSelectHour(hr)}
-                      className={`w-full py-1.5 mb-1 rounded-lg text-center text-xs font-mono font-semibold transition-all ${
-                        disabledOption
-                          ? "text-slate-800 opacity-20 cursor-not-allowed"
-                          : active
-                          ? "bg-cyan-500 text-slate-950 font-bold cursor-pointer"
-                          : "text-slate-400 hover:bg-slate-900 hover:text-white cursor-pointer"
-                      }`}
-                    >
-                      {String(hr).padStart(2, "0")}
-                    </button>
-                  );
-                })}
+          <div className="flex-grow flex flex-col justify-between pl-4">
+            <div>
+              <div className="border-b border-slate-800/80 pb-2 mb-3 flex items-center gap-1.5">
+                <Clock size={12} className="text-cyan-400" />
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Thời gian</span>
               </div>
 
-              {/* Minute Scroll Column */}
-              <div className="flex-1 flex flex-col overflow-y-auto scrollbar-none pr-1">
-                {minutesArray.map((min) => {
-                  const active = selectedMinute === min;
-                  const disabledOption = isMinuteDisabled(min);
-                  return (
-                    <button
-                      key={min}
-                      type="button"
-                      disabled={disabledOption}
-                      onClick={() => handleSelectMinute(min)}
-                      className={`w-full py-1.5 mb-1 rounded-lg text-center text-xs font-mono font-semibold transition-all ${
-                        disabledOption
-                          ? "text-slate-800 opacity-20 cursor-not-allowed"
-                          : active
-                          ? "bg-cyan-500 text-slate-950 font-bold cursor-pointer"
-                          : "text-slate-400 hover:bg-slate-900 hover:text-white cursor-pointer"
-                      }`}
-                    >
-                      {String(min).padStart(2, "0")}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* AM/PM Column */}
-              <div className="w-[50px] flex flex-col justify-start">
-                {(["AM", "PM"] as const).map((ap) => {
-                  const active = selectedAmpm === ap;
-                  const disabledOption = isAmpmDisabled(ap);
-                  return (
-                    <button
-                      key={ap}
-                      type="button"
-                      disabled={disabledOption}
-                      onClick={() => handleSelectAmpm(ap)}
-                      className={`w-full py-2 mb-1.5 rounded-lg text-center text-xs font-mono font-bold transition-all ${
-                        disabledOption
-                          ? "text-slate-800 opacity-20 cursor-not-allowed"
-                          : active
-                          ? "bg-cyan-500 text-slate-950 font-bold cursor-pointer"
-                          : "text-slate-400 hover:bg-slate-900 hover:text-white cursor-pointer"
-                      }`}
-                    >
-                      {ap}
-                    </button>
-                  );
-                })}
+              <div className="flex items-center justify-center gap-2 h-[128px] mb-4">
+                <TimeSelect
+                  value={selectedHour}
+                  onChange={handleSelectHour}
+                  options={hoursArray}
+                  disabledOptions={hoursArray.filter(hr => isHourDisabled(hr))}
+                />
+                <span className="text-slate-400 font-mono font-bold text-lg self-center">:</span>
+                <TimeSelect
+                  value={selectedMinute}
+                  onChange={handleSelectMinute}
+                  options={minutesArray}
+                  disabledOptions={minutesArray.filter(min => isMinuteDisabled(min))}
+                />
               </div>
             </div>
 
             {/* OK Button */}
-            <div className="pt-2 border-t border-slate-900 flex justify-between items-center">
+            <div className="pt-2 border-t border-slate-900 flex flex-col gap-2">
               {timeError && (
-                <span className="text-[10px] text-rose-450 font-bold font-mono">
+                <span className="text-[10px] text-rose-500 font-bold font-mono text-center">
                   {timeError}
                 </span>
               )}
@@ -631,7 +569,7 @@ export default function CustomDateTimePicker({
                 type="button"
                 onClick={handleConfirm}
                 disabled={!!timeError || !selectedDate}
-                className="px-4 py-1.5 bg-cyan-950/40 border border-cyan-500/30 text-cyan-400 text-[10px] font-bold uppercase tracking-wider rounded-lg hover:bg-cyan-500/20 hover:border-cyan-500 transition-all cursor-pointer disabled:opacity-55 disabled:cursor-not-allowed ml-auto"
+                className="w-full py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold uppercase tracking-wider font-mono rounded-xl transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_16px_rgba(0,240,255,0.25)]"
               >
                 Xác nhận
               </button>

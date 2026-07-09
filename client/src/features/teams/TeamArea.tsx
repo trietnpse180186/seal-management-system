@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { io } from 'socket.io-client';
-import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare, Cpu, Copy, RefreshCw, Crown, ExternalLink } from 'lucide-react';
+import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare, Cpu, Copy, RefreshCw, Crown, ExternalLink, Trophy } from 'lucide-react';
 import RegisterTeam from './RegisterTeam';
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
@@ -474,13 +474,26 @@ export default function TeamArea() {
         </div>
       </div>
 
+      {/* Active Round Banner */}
+      {team?.currentEventRound && (
+        <div className="glass p-5 rounded-2xl border border-cyan-500/20 bg-gradient-to-r from-cyan-950/40 via-slate-900/40 to-cyan-950/40 flex items-center gap-3 shadow-[0_0_15px_rgba(6,182,212,0.05)]">
+          <div className="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></div>
+          <div>
+            <span className="text-[10px] text-slate-500 block uppercase font-mono tracking-wider font-bold">Trạng thái giải đấu</span>
+            <p className="text-xs sm:text-sm font-bold text-slate-200">
+              Cuộc thi đang diễn ra tại: <span className="text-cyan-400 font-extrabold uppercase font-mono">{team.currentEventRound}</span>
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Seminar Widget */}
-      {team?.eventId?.seminar?.scheduledAt && !isExamVisible && team?.eventId?.status !== 'ongoing' && team?.eventId?.status !== 'completed' && (
+      {team?.eventId?.seminar?.scheduledAt && !isExamVisible && team?.eventId?.status !== 'ongoing' && team?.eventId?.status !== 'completed' && !team?.isEliminated && (
         <SeminarWidget seminar={team.eventId.seminar} />
       )}
 
       {/* Chat Section */}
-      {team && team.eventId?.status === 'ongoing' && (
+      {team && team.eventId?.status === 'ongoing' && !team.isEliminated && (
         <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-cyan-950 text-cyan-400 rounded-xl">
@@ -503,7 +516,7 @@ export default function TeamArea() {
       )}
 
       {/* Row 1: Exam, MQTT Connection & Members */}
-      {team && (
+      {team && !team.isEliminated && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
 
           {/* Left: Exam & Materials Card */}
@@ -672,16 +685,6 @@ export default function TeamArea() {
                     </div>
 
                     <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900">
-                      <span className="text-[10px] text-slate-500 font-bold block uppercase tracking-wider">Test Topic</span>
-                      <div className="flex justify-between items-center text-slate-300">
-                        <span className="truncate max-w-[85%]">{team.testTopic || '---'}</span>
-                        <button onClick={() => handleCopy(team.testTopic || "", "Test Topic")} className="text-slate-500 hover:text-cyan-400 cursor-pointer p-1" title="Sao chép Test Topic">
-                          {copiedField === "Test Topic" ? <CheckCircle size={13} className="text-emerald-400" /> : <Copy size={13} />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900">
                       <span className="text-[10px] text-slate-550 font-bold block uppercase tracking-wider">Username</span>
                       <div className="flex justify-between items-center text-slate-300">
                         <span>{team.mqttUsername}</span>
@@ -776,7 +779,7 @@ export default function TeamArea() {
         </div>
       )}
 
-      {isExamVisible && (
+      {isExamVisible && !team?.isEliminated && (
         <div className="w-full space-y-8 mt-8">
 
           {/* GitHub Integration & AI Commit Reviews */}
@@ -856,6 +859,48 @@ export default function TeamArea() {
             </div>
           )}
 
+        </div>
+      )}
+
+      {team?.isEliminated && (
+        <div className="glass p-8 rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-cyan-950/20 via-slate-900/60 to-slate-950/30 text-center space-y-6 max-w-2xl mx-auto shadow-[0_0_30px_rgba(6,182,212,0.05)] mt-4">
+          <div className="w-16 h-16 rounded-full bg-cyan-950/80 border border-cyan-500/30 text-cyan-400 flex items-center justify-center mx-auto shadow-[0_0_15px_rgba(34,211,238,0.2)]">
+            <Trophy size={28} />
+          </div>
+
+          <div className="space-y-2 font-sans">
+            <h2 className="text-xl font-black text-white uppercase tracking-wider font-mono-tech">
+              Kết Quả Đạt Được
+            </h2>
+            <p className="text-xs text-slate-400">
+              Thành tích chính thức của đội thi <strong className="text-slate-200">{team.name}</strong> ghi nhận tại cuộc thi.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 max-w-md mx-auto pt-2">
+            <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-2xl space-y-1">
+              <span className="text-[10px] text-slate-500 block uppercase font-mono tracking-wider font-bold">Thứ hạng (Bảng)</span>
+              <p className="text-2xl font-black text-cyan-400 font-mono text-cyan-glow">
+                {team.achievedResult?.rank ? `Top ${team.achievedResult.rank}` : '---'}
+              </p>
+            </div>
+            <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-2xl space-y-1">
+              <span className="text-[10px] text-slate-500 block uppercase font-mono tracking-wider font-bold">Điểm trung bình</span>
+              <p className="text-2xl font-black text-emerald-400 font-mono text-cyan-glow">
+                {team.achievedResult?.score ? `${team.achievedResult.score.toFixed(2)}` : '---'}
+              </p>
+            </div>
+          </div>
+
+          {team.achievedResult && (
+            <div className="text-[11px] text-slate-500 font-mono pt-2 border-t border-slate-850/60 max-w-sm mx-auto">
+              <span>Ghi nhận tại: {team.achievedResult.roundName} ({team.achievedResult.trackName})</span>
+            </div>
+          )}
+
+          <p className="text-xs text-slate-400 leading-relaxed font-sans max-w-md mx-auto pt-2">
+            Cảm ơn bạn đã cống hiến hết mình tại giải đấu năm nay! Chúc đội thi <strong className="text-slate-200">{team.name}</strong> gặt hái được nhiều thành công hơn nữa trên con đường phát triển công nghệ sắp tới.
+          </p>
         </div>
       )}
 

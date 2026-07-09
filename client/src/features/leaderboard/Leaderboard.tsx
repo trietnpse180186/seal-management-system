@@ -39,6 +39,26 @@ export default function Leaderboard({
   const [lockedMessage, setLockedMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [activeTrackId, setActiveTrackId] = useState<string>("");
+
+  const assignRanksWithTies = (list: any[]) => {
+    if (!list || list.length === 0) return [];
+    const sortedList = [...list].sort((a, b) => (b.averageScore ?? 0) - (a.averageScore ?? 0));
+    let currentRank = 1;
+    return sortedList.map((item, idx) => {
+      if (idx > 0) {
+        const prevItem = sortedList[idx - 1];
+        const scoreDiff = Math.abs((item.averageScore ?? 0) - (prevItem.averageScore ?? 0));
+        if (scoreDiff > 0.0001) {
+          currentRank = idx + 1;
+        }
+      }
+      return {
+        ...item,
+        displayRank: currentRank
+      };
+    });
+  };
 
   // Detect if coordinator for selectedEvent
   const isCoordinator =
@@ -56,6 +76,24 @@ export default function Leaderboard({
     roundName.toLowerCase() === "chung kết" ||
     roundName.toLowerCase().includes("chung kết") ||
     roundName.toLowerCase() === "final";
+
+  const standingsByTrack = (() => {
+    if (isFinalRound) return [];
+    const groups: { [trackId: string]: { trackId: string; trackName: string; list: any[] } } = {};
+    standings.forEach((s: any) => {
+      const tId = s.trackId?._id || 'unknown';
+      const tName = s.trackId?.name || 'Bảng đấu chưa xác định';
+      if (!groups[tId]) {
+        groups[tId] = { trackId: tId, trackName: tName, list: [] };
+      }
+      groups[tId].list.push(s);
+    });
+    const result = Object.values(groups);
+    result.forEach(g => {
+      g.list.sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999));
+    });
+    return result;
+  })();
 
   useEffect(() => {
     axios
@@ -183,6 +221,15 @@ export default function Leaderboard({
     fetchRankings();
   }, [fetchRankings]);
 
+  useEffect(() => {
+    if (standingsByTrack && standingsByTrack.length > 0) {
+      const exists = standingsByTrack.some((g: any) => g.trackId === activeTrackId);
+      if (!exists || !activeTrackId) {
+        setActiveTrackId(standingsByTrack[0].trackId);
+      }
+    }
+  }, [standingsByTrack, activeTrackId]);
+
   // Auto-refresh every 30s for coordinator (real-time) when the tab is active
   useEffect(() => {
     if (!isCoordinator || !selectedRoundId) return;
@@ -198,6 +245,7 @@ export default function Leaderboard({
     setSelectedRoundId(roundId);
     const round = rounds.find((r: any) => r._id === roundId);
     setSelectedRound(round || null);
+    setActiveTrackId("");
   };
 
   const handleExportGradingSheet = async (forJudgeOnly: boolean) => {
@@ -363,137 +411,207 @@ export default function Leaderboard({
         )}
       </div>
 
-      {/* Standings Grid Table */}
-      <div className="glass p-6 rounded-3xl relative overflow-hidden border border-slate-800 hover:border-cyan-500/30 transition-all z-5">
-        {/* Coordinator live header */}
-        {isCoordinator && isLive && standings.length > 0 && (
-          <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-800">
-            <Radio size={14} className="text-rose-400 animate-pulse" />
-            <span className="text-xs font-bold text-slate-300">
-              Bảng xếp hạng tạm thời (Live) —{" "}
-              <span className="text-rose-400">{standings.length} đội</span> —
-              Điểm TB từ{" "}
-              {standings.reduce(
-                (max: number, s: any) => Math.max(max, s.judgeCount),
-                0,
-              )}{" "}
-              giám khảo (tối đa)
-            </span>
-          </div>
-        )}
-
-        {loading ? (
-          <p className="text-center text-slate-500 py-12 text-xs">
-            Đang tải bảng điểm xếp hạng...
+      {loading ? (
+        <div className="glass p-6 rounded-3xl border border-slate-800 text-center py-12 text-slate-500 text-xs">
+          Đang tải bảng điểm xếp hạng...
+        </div>
+      ) : isLocked ? (
+        /* Locked state for non-coordinator */
+        <div className="glass p-6 rounded-3xl relative overflow-hidden border border-slate-800 hover:border-cyan-500/30 transition-all text-center text-slate-500 py-16 z-5">
+          <Lock size={36} className="mx-auto text-slate-700 mb-3" />
+          <p className="text-sm font-semibold text-slate-400">
+            Bảng xếp hạng chưa được công bố
           </p>
-        ) : isLocked ? (
-          /* Locked state for non-coordinator */
-          <div className="text-center text-slate-500 py-16 z-5">
-            <Lock size={36} className="mx-auto text-slate-700 mb-3" />
-            <p className="text-sm font-semibold text-slate-400">
-              Bảng xếp hạng chưa được công bố
-            </p>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto mt-2 leading-relaxed">
-              {lockedMessage ||
-                "Bảng xếp hạng sẽ tự động hiển thị sau khi ban tổ chức tiến hành chốt khóa điểm thi và xếp hạng cuối cùng."}
-            </p>
-          </div>
-        ) : standings.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px] font-bold">
-                  <th className="py-4 px-4 w-[12%] text-center">Thứ Hạng</th>
-                  <th className={isFinalRound ? "py-4 px-4 w-[63%]" : "py-4 px-4 w-[38%]"}>Tên Đội Thi</th>
-                  {!isFinalRound && <th className="py-4 px-4 w-[20%]">Bảng Đấu</th>}
-                  <th className="py-4 px-4 w-[15%] text-center">Điểm Trung Bình</th>
-                  {!isFinalRound && <th className="py-4 px-4 w-[15%] text-center">Trạng Thái</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {standings.map((row: any, idx: number) => {
-                  const rank = row.rank ?? idx + 1;
-                  const rankStyles =
-                    rank === 1
-                      ? "text-amber-400 bg-amber-500/10"
-                      : rank === 2
-                        ? "text-slate-300 bg-slate-300/10"
-                        : rank === 3
-                          ? "text-amber-600 bg-amber-700/10"
-                          : "text-slate-400 bg-slate-800/40";
+          <p className="text-xs text-slate-500 max-w-sm mx-auto mt-2 leading-relaxed">
+            {lockedMessage ||
+              "Bảng xếp hạng sẽ tự động hiển thị sau khi ban tổ chức tiến hành chốt khóa điểm thi và xếp hạng cuối cùng."}
+          </p>
+        </div>
+      ) : standings.length > 0 ? (
+        isFinalRound ? (
+          <div className="glass p-6 rounded-3xl relative overflow-hidden border border-slate-800 hover:border-cyan-500/30 transition-all z-5">
+            {/* Coordinator live header */}
+            {isCoordinator && isLive && standings.length > 0 && (
+              <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-800">
+                <Radio size={14} className="text-rose-400 animate-pulse" />
+                <span className="text-xs font-bold text-slate-300">
+                  Bảng xếp hạng tạm thời (Live) —{" "}
+                  <span className="text-rose-400">{standings.length} đội</span> —
+                  Điểm TB từ{" "}
+                  {standings.reduce(
+                    (max: number, s: any) => Math.max(max, s.judgeCount),
+                    0,
+                  )}{" "}
+                  giám khảo (tối đa)
+                </span>
+              </div>
+            )}
 
-                  return (
-                    <tr
-                      key={row._id || row.teamId?._id || idx}
-                      className="border-b border-slate-800/60 hover:bg-white/2 transition-colors"
-                    >
-                      <td className="py-4 px-4 text-center font-black">
-                        <span
-                          className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${rankStyles}`}
-                        >
-                          {rank}
-                        </span>
-                        {isCoordinator && isLive && (
-                          <span className="block text-[8px] text-rose-400 font-bold mt-0.5">
-                            LIVE
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px] font-bold">
+                    <th className="py-4 px-4 w-[12%] text-center">Thứ Hạng</th>
+                    <th className="py-4 px-4 w-[73%]">Tên Đội Thi</th>
+                    <th className="py-4 px-4 w-[15%] text-center">Điểm Trung Bình</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {assignRanksWithTies(standings).map((row: any, idx: number) => {
+                    const rank = row.displayRank;
+                    const rankStyles =
+                      rank === 1
+                        ? "text-amber-400 bg-amber-500/10"
+                        : rank === 2
+                          ? "text-slate-300 bg-slate-300/10"
+                          : rank === 3
+                            ? "text-amber-600 bg-amber-700/10"
+                            : "text-slate-400 bg-slate-800/40";
+
+                    return (
+                      <tr
+                        key={row._id || row.teamId?._id || idx}
+                        className="border-b border-slate-800/60 hover:bg-white/2 transition-colors"
+                      >
+                        <td className="py-4 px-4 text-center font-black">
+                          <span
+                            className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${rankStyles}`}
+                          >
+                            {rank}
                           </span>
-                        )}
-                      </td>
-                      <td className="py-4 px-4 font-bold text-slate-100 text-sm">
-                        {row.teamId?.name}
-                      </td>
-
-                      {!isFinalRound && (
-                        <td className="py-4 px-4 text-slate-300 font-mono text-xs">
-                          {row.trackId?.name || "—"}
                         </td>
-                      )}
-
-                      <td className="py-4 px-4 text-center font-black text-cyan-400 text-sm font-mono-tech">
-                        {row.averageScore != null
-                          ? row.averageScore.toFixed(2)
-                          : "—"}
-                        {isCoordinator && isLive && row.judgeCount === 0 && (
-                          <span className="block text-[9px] text-slate-500 font-normal font-sans">
-                            Chưa có điểm
-                          </span>
-                        )}
-                      </td>
-
-                      {!isFinalRound && (
-                        <td className="py-4 px-4 text-center">
-                          {selectedRound?.status !==
-                            "completed" ? // Round not finalized: leave status cell empty
-                            null : // Round finalized: show official advancement status
-                            row.isAdvanced ? (
-                              <span className="inline-flex items-center gap-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded-md text-[10px] font-bold">
-                                <CheckSquare size={10} /> ĐÃ ĐI TIẾP
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-0.5 bg-slate-800 text-slate-500 border border-slate-700 px-2 py-1 rounded-md text-[10px]">
-                                Bị loại
-                              </span>
-                            )}
+                        <td className="py-4 px-4 font-bold text-slate-100 text-sm">
+                          {row.teamId?.name}
                         </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        <td className="py-4 px-4 text-center font-black text-cyan-400 text-sm font-mono-tech">
+                          {row.averageScore != null
+                            ? row.averageScore.toFixed(2)
+                            : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : (
-          <div className="text-center text-slate-500 py-16 z-5">
-            <BarChart3 size={32} className="mx-auto text-slate-700 mb-2" />
-            <p className="text-xs">Bảng xếp hạng chưa được công bố.</p>
-            <p className="text-[10px] text-slate-600 max-w-sm mx-auto mt-1">
-              {isCoordinator
-                ? "Chưa có giám khảo nào nộp điểm cho vòng này."
-                : "Bảng xếp hạng sẽ tự động hiển thị tại đây sau khi ban tổ chức tiến hành chốt khoá điểm thi và xếp hạng cuối cùng."}
-            </p>
+          <div className="space-y-4">
+            {/* Track Selector Tabs */}
+            {standingsByTrack.length > 1 && (
+              <div className="flex flex-wrap gap-2 pb-1 relative z-10">
+                {standingsByTrack.map((group: any) => (
+                  <button
+                    key={group.trackId}
+                    onClick={() => setActiveTrackId(group.trackId)}
+                    className={`px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all border cursor-pointer ${
+                      activeTrackId === group.trackId
+                        ? "bg-cyan-600 border-cyan-500 text-white shadow-md shadow-cyan-600/10"
+                        : "bg-slate-900 border-slate-850 text-slate-400 hover:text-slate-200 hover:border-slate-800"
+                    }`}
+                  >
+                    BẢNG ĐẤU: {group.trackName}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Selected Track Standings Card */}
+            {(() => {
+              const group = standingsByTrack.find((g: any) => g.trackId === activeTrackId) || standingsByTrack[0];
+              if (!group) return null;
+
+              return (
+                <div key={group.trackId} className="glass p-6 rounded-3xl relative overflow-hidden border border-slate-800 hover:border-cyan-500/30 transition-all z-5 space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3 flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></div>
+                      <h3 className="text-sm font-extrabold text-white font-mono uppercase tracking-wider">
+                        BẢNG ĐẤU: <span className="text-cyan-400">{group.trackName}</span>
+                      </h3>
+                    </div>
+                    {isCoordinator && isLive && (
+                      <span className="flex items-center gap-1 bg-rose-500/10 text-[10px] text-rose-400 px-2 py-0.5 border border-rose-500/20 rounded-md font-bold">
+                        <Radio size={10} className="animate-pulse" /> LIVE
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px] font-bold">
+                          <th className="py-4 px-4 w-[12%] text-center">Thứ Hạng</th>
+                          <th className="py-4 px-4 w-[53%]">Tên Đội Thi</th>
+                          <th className="py-4 px-4 w-[15%] text-center">Điểm Trung Bình</th>
+                          <th className="py-4 px-4 w-[20%] text-center">Trạng Thái</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {assignRanksWithTies(group.list).map((row: any, idx: number) => {
+                          const rank = row.displayRank;
+                          const rankStyles =
+                            rank === 1
+                              ? "text-amber-400 bg-amber-500/10"
+                              : rank === 2
+                                ? "text-slate-300 bg-slate-300/10"
+                                : rank === 3
+                                  ? "text-amber-600 bg-amber-700/10"
+                                  : "text-slate-400 bg-slate-800/40";
+
+                          return (
+                            <tr
+                              key={row._id || row.teamId?._id || idx}
+                              className="border-b border-slate-850 hover:bg-white/2 transition-colors"
+                            >
+                              <td className="py-4 px-4 text-center font-black">
+                                <span
+                                  className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${rankStyles}`}
+                                >
+                                  {rank}
+                                </span>
+                              </td>
+                              <td className="py-4 px-4 font-bold text-slate-100 text-sm">
+                                {row.teamId?.name}
+                              </td>
+                              <td className="py-4 px-4 text-center font-black text-cyan-400 text-sm font-mono-tech">
+                                {row.averageScore != null
+                                  ? row.averageScore.toFixed(2)
+                                  : "—"}
+                              </td>
+                              <td className="py-4 px-4 text-center">
+                                {selectedRound?.status !== "completed" ? null : row.isAdvanced ? (
+                                  <span className="inline-flex items-center gap-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded-md text-[10px] font-bold">
+                                    <CheckSquare size={10} /> ĐÃ ĐI TIẾP
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-0.5 bg-slate-800 text-slate-500 border border-slate-700 px-2 py-1 rounded-md text-[10px]">
+                                    Bị loại
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
-        )}
-      </div>
+        )
+      ) : (
+        <div className="glass p-6 rounded-3xl border border-slate-800 text-center py-16 z-5">
+          <BarChart3 size={32} className="mx-auto text-slate-700 mb-2" />
+          <p className="text-xs">Bảng xếp hạng chưa được công bố.</p>
+          <p className="text-[10px] text-slate-600 max-w-sm mx-auto mt-1">
+            {isCoordinator
+              ? "Chưa có giám khảo nào nộp điểm cho vòng này."
+              : "Bảng xếp hạng sẽ tự động hiển thị tại đây sau khi ban tổ chức tiến hành chốt khoá điểm thi và xếp hạng cuối cùng."}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

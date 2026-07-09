@@ -991,9 +991,48 @@ router.get('/my-team', authenticateToken, async (req, res) => {
       delete trackPlain.examDriveFileId;
       delete trackPlain.examDriveFileUrl;
       delete trackPlain.examDriveFileName;
-      delete trackPlain.attachments;
       teamPlain.trackId = trackPlain;
     }
+
+    // Calculate event rounds and elimination status
+    const Round = mongoose.model('Round');
+    const allRounds = await Round.find({ eventId: team.eventId._id }).sort({ order: 1 });
+    const activeRound = allRounds.find(r => r.status === 'active' || r.status === 'scoring');
+
+    let isEliminated = false;
+    let eliminationMessage = '';
+    let achievedResult = null;
+
+    if (team.status === 'disqualified') {
+      isEliminated = true;
+      eliminationMessage = team.disqualifyReason || 'Đội thi của bạn đã bị loại khỏi cuộc thi.';
+    } else if (trackPlain && trackPlain.roundId) {
+      const teamRound = trackPlain.roundId;
+      const hasNextRound = allRounds.some(r => r.order > teamRound.order);
+      if (teamRound.status === 'completed' && hasNextRound) {
+        isEliminated = true;
+        eliminationMessage = `Đội thi của bạn đã dừng bước tại vòng "${teamRound.name}" và không thể tiến vào vòng kế tiếp.`;
+
+        // Fetch ranking/result achieved in this completed round
+        const Ranking = mongoose.model('Ranking');
+        const rankingDoc = await Ranking.findOne({ teamId: team._id, roundId: teamRound._id }).lean();
+        if (rankingDoc) {
+          achievedResult = {
+            score: rankingDoc.finalScore || rankingDoc.averageScore || 0,
+            rank: rankingDoc.rank || 0,
+            roundName: teamRound.name,
+            trackName: trackPlain.name
+          };
+        }
+      }
+    }
+
+    const currentEventRound = activeRound ? activeRound.name : null;
+
+    teamPlain.isEliminated = isEliminated;
+    teamPlain.eliminationMessage = eliminationMessage;
+    teamPlain.currentEventRound = currentEventRound;
+    teamPlain.achievedResult = achievedResult;
 
     // Fetch active judge status from simulator
     let isJudgeActive = false;
@@ -1001,7 +1040,10 @@ router.get('/my-team', authenticateToken, async (req, res) => {
       const { getJudgeActive } = require('./externalTeamService');
       try {
         const activeInfo = await getJudgeActive();
-        if (activeInfo && activeInfo.teamCode === teamPlain.externalTeamCode) {
+        const info = Array.isArray(activeInfo)
+          ? activeInfo.find(item => item.teamCode === teamPlain.externalTeamCode)
+          : (activeInfo && activeInfo.teamCode === teamPlain.externalTeamCode ? activeInfo : null);
+        if (info) {
           isJudgeActive = true;
         }
       } catch (err) {
@@ -1371,9 +1413,12 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
       let currentScenario = 'NORMAL';
       try {
         const activeInfo = await getJudgeActive();
-        if (activeInfo && activeInfo.teamCode === team.externalTeamCode) {
+        const info = Array.isArray(activeInfo)
+          ? activeInfo.find(item => item.teamCode === team.externalTeamCode)
+          : (activeInfo && activeInfo.teamCode === team.externalTeamCode ? activeInfo : null);
+        if (info) {
           isJudgeActive = true;
-          currentScenario = activeInfo.scenario;
+          currentScenario = info.scenario;
         }
       } catch (err) {
         console.warn('[SIMULATOR] Failed to fetch active judge status:', err.message);
@@ -1925,9 +1970,19 @@ router.get('/judge/scenarios', authenticateToken, async (req, res) => {
  * @access  Private (System Admin or Event Judge/Coordinator)
  */
 router.get('/judge/live', authenticateToken, async (req, res) => {
+  const { teamId } = req.query;
+  if (!teamId) {
+    return res.status(400).json({ message: 'Thiếu tham số teamId.' });
+  }
+
   try {
+    const team = await Team.findById(teamId);
+    if (!team || !team.externalTeamId) {
+      return res.status(404).json({ message: 'Đội thi chưa được đồng bộ hoặc không tồn tại.' });
+    }
+
     const { getJudgeLive } = require('./externalTeamService');
-    const result = await getJudgeLive();
+    const result = await getJudgeLive(team.externalTeamId);
     res.json(result);
   } catch (error) {
     console.error('Get Judge Live Error:', error.message);

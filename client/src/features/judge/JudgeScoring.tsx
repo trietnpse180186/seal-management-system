@@ -383,6 +383,18 @@ export default function JudgeScoring() {
       }
     });
 
+    socket.on("judge_active_toggled", (data: any) => {
+      console.log("Socket Event judge_active_toggled on JudgeScoring:", data);
+      if (data.teamId === teamId) {
+        setIsJudgeActive(data.isJudgeActive);
+        if (data.isJudgeActive) {
+          toast.success("Môi trường chấm thi đã được kích hoạt!");
+        } else {
+          toast.info("Môi trường chấm thi đã bị tắt.");
+        }
+      }
+    });
+
     return () => {
       socket.emit("leave_live_room", { eventId: selectedEventId });
       socket.disconnect();

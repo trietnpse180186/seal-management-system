@@ -769,6 +769,26 @@ export default function TeamArea() {
                       </div>
                     </div>
 
+                    <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900">
+                      <span className="text-[10px] text-slate-550 font-bold block uppercase tracking-wider">Test Key</span>
+                      <div className="flex justify-between items-center text-slate-300">
+                        <span className="truncate max-w-[85%]">{team.testApiKey || '---'}</span>
+                        <button onClick={() => handleCopy(team.testApiKey || "", "Test Key")} className="text-slate-500 hover:text-cyan-400 cursor-pointer p-1" title="Sao chép Test Key">
+                          {copiedField === "Test Key" ? <CheckCircle size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900">
+                      <span className="text-[10px] text-slate-550 font-bold block uppercase tracking-wider">TEST Topic</span>
+                      <div className="flex justify-between items-center text-slate-300">
+                        <span className="truncate max-w-[85%]">{team.testTopic || '---'}</span>
+                        <button onClick={() => handleCopy(team.testTopic || "", "TEST Topic")} className="text-slate-500 hover:text-cyan-400 cursor-pointer p-1" title="Sao chép TEST Topic">
+                          {copiedField === "TEST Topic" ? <CheckCircle size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                        </button>
+                      </div>
+                    </div>
+
                     <div className="pt-2">
                       <p className="text-[10px] sm:text-[11px] text-amber-500 font-sans leading-normal mb-2 text-center">
                         Sao chép <b>Access Code</b> ở trên, sau đó bấm nút để mở trang simulator làm bài.

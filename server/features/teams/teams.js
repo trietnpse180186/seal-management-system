@@ -1204,32 +1204,94 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
 
     if (!req.user.isSystemAdmin) {
       const roundId = req.query.roundId;
+      const roleQuery = req.query.role;
       let userRole = null;
 
       if (roundId) {
-        userRole = await EventRole.findOne({
+        const criteria = {
           userId: req.user._id,
           eventId: req.params.eventId,
           roundId: roundId,
           status: 'active'
-        });
+        };
+        if (roleQuery) {
+          criteria.role = roleQuery;
+        }
+        userRole = await EventRole.findOne(criteria);
       }
 
       if (!userRole) {
-        userRole = await EventRole.findOne({
+        const criteria = {
           userId: req.user._id,
           eventId: req.params.eventId,
           status: 'active'
-        });
+        };
+        if (roleQuery) {
+          criteria.role = roleQuery;
+        }
+        userRole = await EventRole.findOne(criteria);
       }
 
       if (userRole && userRole.role === 'mentor') {
-        if (userRole.trackId) {
-          query.trackId = userRole.trackId;
+        const activeRound = await Round.findOne({ eventId: req.params.eventId, status: 'active' });
+
+        const mentorRoles = await EventRole.find({
+          userId: req.user._id,
+          eventId: req.params.eventId,
+          role: 'mentor',
+          status: 'active'
+        });
+
+        const activeRoundMentorRoles = [];
+        if (activeRound) {
+          for (const role of mentorRoles) {
+            if (role.trackId) {
+              const track = await Track.findById(role.trackId);
+              if (track && track.roundId.toString() === activeRound._id.toString()) {
+                activeRoundMentorRoles.push(role);
+              }
+            } else {
+              activeRoundMentorRoles.push(role);
+            }
+          }
+        } else {
+          activeRoundMentorRoles.push(...mentorRoles);
+        }
+
+        if (activeRound && activeRoundMentorRoles.length === 0) {
+          return res.status(403).json({ message: 'Bạn không được phân công cố vấn ở vòng thi này.' });
+        }
+
+        const trackIds = activeRoundMentorRoles.map(r => r.trackId).filter(id => id !== null && id !== undefined);
+
+        if (trackIds.length > 0) {
+          query.trackId = { $in: trackIds };
         } else {
           query.mentorId = req.user._id;
         }
       } else if (userRole && userRole.role === 'judge') {
+        const roundId = req.query.roundId;
+        let assignedRole = null;
+
+        if (roundId && mongoose.Types.ObjectId.isValid(roundId)) {
+          const TrackModel = mongoose.model('Track');
+          const roundTracks = await TrackModel.find({ roundId: roundId });
+          const roundTrackIds = roundTracks.map(t => t._id.toString());
+
+          const judgeRoles = await EventRole.find({
+            userId: req.user._id,
+            eventId: req.params.eventId,
+            role: 'judge',
+            status: 'active'
+          });
+
+          assignedRole = judgeRoles.find(role => role.trackId && roundTrackIds.includes(role.trackId.toString()));
+
+          if (!assignedRole) {
+            return res.status(403).json({ message: 'Bạn không được phân công chấm điểm ở vòng thi này.' });
+          }
+        }
+
         let isFinalRound = false;
         if (roundId && mongoose.Types.ObjectId.isValid(roundId)) {
           const RoundModel = mongoose.model('Round');
@@ -1258,19 +1320,27 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
             }
           }
 
-          if (userRole.trackId) {
-            const track = await Track.findById(userRole.trackId);
+          const trackIdToUse = assignedRole ? assignedRole.trackId : userRole.trackId;
+
+          if (trackIdToUse) {
+            const track = await Track.findById(trackIdToUse);
             if (track && effectiveRoundId && track.roundId.toString() !== effectiveRoundId.toString()) {
               // Queried/active round does not match the judge's assigned track's round
               return res.json([]);
             }
-            query.trackId = userRole.trackId;
+            query.trackId = trackIdToUse;
           } else {
             return res.json([]);
           }
         }
       } else if (!userRole) {
-        return res.json([]); // No active role in this event/round, return empty
+        let msg = 'Bạn không có quyền truy cập thông tin cuộc thi này.';
+        if (roleQuery === 'mentor') {
+          msg = 'Bạn không được phân công cố vấn ở cuộc thi này.';
+        } else if (roleQuery === 'judge') {
+          msg = 'Bạn không được phân công chấm điểm ở cuộc thi này.';
+        }
+        return res.status(403).json({ message: msg });
       }
     }
 
@@ -1363,7 +1433,7 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
         select: 'name description roundId attachments environmentId examDriveFileId examDriveFileUrl examDriveFileName isExamManualOpen',
         populate: {
           path: 'roundId',
-          select: 'name driveFileName driveFileId startTime hasExamMaterial'
+          select: 'name driveFileName driveFileId driveFileUrl startTime advanceTopN'
         }
       })
       .populate('leaderId', 'fullName email')
@@ -1390,17 +1460,70 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
       }
     }
 
-    // Verify track permissions for judges
+    // Verify track permissions for judges/mentors
     if (!req.user.isSystemAdmin) {
-      const userRole = await EventRole.findOne({
+      const userRoles = await EventRole.find({
         userId: req.user._id,
         eventId: team.eventId,
-        role: { $in: ['judge', 'mentor', 'coordinator'] },
-        status: 'active',
-        $or: [{ trackId: team.trackId }, { trackId: null }, { trackId: { $exists: false } }]
+        status: 'active'
       });
 
-      if (!userRole) {
+      if (userRoles.length === 0) {
+        return res.status(403).json({ message: 'Bạn không có quyền truy cập thông tin của đội thi này.' });
+      }
+
+      const activeRound = await Round.findOne({ eventId: team.eventId, status: 'active' });
+      let isAuthorized = false;
+
+      for (const roleObj of userRoles) {
+        if (roleObj.role === 'coordinator' || roleObj.role === 'admin_view') {
+          isAuthorized = true;
+          break;
+        }
+
+        if (roleObj.role === 'judge') {
+          if (roleObj.trackId && activeRound) {
+            const track = await Track.findById(roleObj.trackId);
+            if (track && track.roundId.toString() !== activeRound._id.toString()) {
+              continue; // Skip role if it belongs to a different round
+            }
+          }
+
+          let isFinalRound = false;
+          if (team.trackId && team.trackId.roundId) {
+            const r = team.trackId.roundId;
+            if (r.name.toLowerCase().includes('chung kết') || r.advanceTopN === 0) {
+              isFinalRound = true;
+            }
+          }
+          if (isFinalRound) {
+            isAuthorized = true;
+            break;
+          }
+          if (roleObj.trackId && team.trackId && roleObj.trackId.toString() === team.trackId._id.toString()) {
+            isAuthorized = true;
+            break;
+          }
+        }
+
+        if (roleObj.role === 'mentor') {
+          if (roleObj.trackId && activeRound) {
+            const track = await Track.findById(roleObj.trackId);
+            if (track && track.roundId.toString() !== activeRound._id.toString()) {
+              continue; // Skip role if it belongs to a different round
+            }
+          }
+
+          const isTeamMentor = team.mentorId && team.mentorId.toString() === req.user._id.toString();
+          const isTrackMatch = roleObj.trackId && team.trackId && roleObj.trackId.toString() === team.trackId._id.toString();
+          if (isTeamMentor || isTrackMatch) {
+            isAuthorized = true;
+            break;
+          }
+        }
+      }
+
+      if (!isAuthorized) {
         return res.status(403).json({ message: 'Bạn không có quyền truy cập thông tin của đội thi thuộc bảng đấu khác.' });
       }
     }
@@ -1411,6 +1534,14 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
     const repo = await GithubRepository.findOne({ teamId: team._id });
 
     const teamPlain = team.toObject();
+
+    if (teamPlain.trackId && teamPlain.trackId.roundId) {
+      const r = teamPlain.trackId.roundId;
+      teamPlain.trackId.roundId = {
+        ...r,
+        hasExamMaterial: !!(r.driveFileId || r.driveFileUrl)
+      };
+    }
 
     // Fetch environment code and active judge status if team has external code
     if (team.externalTeamCode) {

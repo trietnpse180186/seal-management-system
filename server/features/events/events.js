@@ -316,10 +316,20 @@ router.get('/judge/active-contest', authenticateToken, async (req, res) => {
     const userRole = await EventRole.findOne({
       userId: req.user._id,
       eventId: event._id,
+      role: 'judge',
       status: 'active'
     });
 
-    if (userRole && userRole.trackId) {
+    let isFinalRound = false;
+    if (currentRound) {
+      if (currentRound.name.toLowerCase().includes('chung kết') || currentRound.advanceTopN === 0) {
+        isFinalRound = true;
+      }
+    }
+
+    if (isFinalRound) {
+      assignedTrack = null;
+    } else if (userRole && userRole.trackId) {
       assignedTrack = await Track.findById(userRole.trackId).lean();
     }
 
@@ -1169,6 +1179,15 @@ router.delete('/:eventId/roles/:roleId', authenticateToken, async (req, res) => 
     // Mark status as removed
     roleToUpdate.status = 'removed';
     await roleToUpdate.save();
+
+    // If the removed role is mentor, unset mentorId on all teams in this event for this user
+    if (roleToUpdate.role === 'mentor') {
+      const TeamModel = mongoose.model('Team');
+      await TeamModel.updateMany(
+        { eventId, mentorId: roleToUpdate.userId },
+        { $unset: { mentorId: 1 } }
+      );
+    }
 
     // Create EventLog
     const targetUser = await User.findById(roleToUpdate.userId);

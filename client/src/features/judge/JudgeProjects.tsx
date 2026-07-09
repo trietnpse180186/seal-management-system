@@ -26,6 +26,7 @@ export default function JudgeProjects() {
   const [loading, setLoading] = useState(false);
   const [highlightedTeamId, setHighlightedTeamId] = useState<string | null>(null);
   const [rubric, setRubric] = useState<any>(null);
+  const [error, setError] = useState("");
   const socketRef = useRef<Socket | null>(null);
 
   // Real-time synchronization
@@ -104,11 +105,13 @@ export default function JudgeProjects() {
   useEffect(() => {
     if (!selectedRoundId) {
       setTeams([]);
+      setError("");
       return;
     }
+    setError("");
     setLoading(true);
     axiosInstance
-      .get(`http://localhost:5000/api/teams/all/${selectedEventId}?roundId=${selectedRoundId}`, {
+      .get(`http://localhost:5000/api/teams/all/${selectedEventId}?roundId=${selectedRoundId}&role=judge`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then(async (res: any) => {
@@ -146,6 +149,8 @@ export default function JudgeProjects() {
       })
       .catch((err: any) => {
         console.error(err);
+        const errMsg = err.response?.data?.message || "Đã xảy ra lỗi khi tải danh sách dự án.";
+        setError(errMsg);
         setLoading(false);
       });
   }, [selectedRoundId, selectedEventId, token]);
@@ -169,12 +174,7 @@ export default function JudgeProjects() {
   }, [selectedRoundId, token]);
 
   const filteredTeams = teams.filter((t) => {
-    const matchSearch =
-      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (t.topicSubmission?.title &&
-        t.topicSubmission.title
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase()));
+    const matchSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase());
 
     const isGraded = gradedTeams[t._id];
     const matchFilter =
@@ -224,7 +224,7 @@ export default function JudgeProjects() {
                 <>
                   <div className="w-px h-8 bg-white/10 hidden sm:block"></div>
                   <div>
-                    <p className="text-[9px] font-bold uppercase text-slate-500 tracking-wider">Bảng đấu của bạn</p>
+                    <p className="text-[9px] font-bold uppercase text-slate-500 tracking-wider">Bảng đấu được phân công</p>
                     <p className="text-sm font-extrabold text-teal-400 mt-1 font-mono uppercase drop-shadow-[0_0_5px_rgba(20,184,166,0.2)]">
                       {assignedTrack.name}
                     </p>
@@ -258,8 +258,8 @@ export default function JudgeProjects() {
             <button
               onClick={() => setStatusFilter("all")}
               className={`px-3 py-1 text-[10px] font-bold rounded uppercase transition-all ${statusFilter === "all"
-                  ? "bg-cyan-500 text-white shadow-[0_0_10px_rgba(6,182,212,0.4)]"
-                  : "text-slate-500 hover:text-slate-300"
+                ? "bg-cyan-500 text-white shadow-[0_0_10px_rgba(6,182,212,0.4)]"
+                : "text-slate-500 hover:text-slate-300"
                 }`}
             >
               Tất cả
@@ -267,8 +267,8 @@ export default function JudgeProjects() {
             <button
               onClick={() => setStatusFilter("pending")}
               className={`px-3 py-1 text-[10px] font-bold rounded uppercase transition-all ${statusFilter === "pending"
-                  ? "bg-amber-500 text-slate-900 shadow-[0_0_10px_rgba(245,158,11,0.4)]"
-                  : "text-slate-500 hover:text-slate-300"
+                ? "bg-amber-500 text-slate-900 shadow-[0_0_10px_rgba(245,158,11,0.4)]"
+                : "text-slate-500 hover:text-slate-300"
                 }`}
             >
               Chưa chấm
@@ -276,8 +276,8 @@ export default function JudgeProjects() {
             <button
               onClick={() => setStatusFilter("graded")}
               className={`px-3 py-1 text-[10px] font-bold rounded uppercase transition-all ${statusFilter === "graded"
-                  ? "bg-emerald-500 text-slate-900 shadow-[0_0_10px_rgba(16,185,129,0.4)]"
-                  : "text-slate-500 hover:text-slate-300"
+                ? "bg-emerald-500 text-slate-900 shadow-[0_0_10px_rgba(16,185,129,0.4)]"
+                : "text-slate-500 hover:text-slate-300"
                 }`}
             >
               Đã chấm
@@ -292,13 +292,16 @@ export default function JudgeProjects() {
           <div className="text-center py-20 text-slate-500 text-xs animate-pulse font-mono">
             [ĐANG TẢI DANH SÁCH DỰ ÁN...]
           </div>
+        ) : error ? (
+          <div className="text-center py-20 text-rose-400/90 text-sm font-semibold font-sans px-4">
+            {error}
+          </div>
         ) : filteredTeams.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-900/80 border-b border-white/10 text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                   <th className="px-6 py-4">Tên đội thi (Team)</th>
-                  <th className="px-6 py-4">Đề tài & Giải pháp</th>
                   <th className="px-6 py-4">Trạng thái chấm</th>
                   <th className="px-6 py-4 text-right">Thao tác</th>
                 </tr>
@@ -336,18 +339,7 @@ export default function JudgeProjects() {
                         </div>
                       </td>
 
-                      {/* Column 2: Topic */}
-                      <td className="px-6 py-5">
-                        <div className="max-w-md">
-                          <span className="font-bold text-white block truncate">
-                            {team.topicSubmission?.title || "Chưa nộp đề tài"}
-                          </span>
-                          <span className="text-[10px] text-slate-400 line-clamp-1 mt-0.5">
-                            {team.topicSubmission?.description ||
-                              "Không có mô tả chi tiết từ đội."}
-                          </span>
-                        </div>
-                      </td>
+
 
                       {/* Column 3: Status */}
                       <td className="px-6 py-5 whitespace-nowrap">
@@ -368,11 +360,10 @@ export default function JudgeProjects() {
                         {!isRoundCompleted && (
                           <button
                             onClick={() => navigate(`/expert/score/${team._id}?roundId=${selectedRoundId}`)}
-                            className={`inline-flex items-center gap-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(6,182,212,0.2)] ${
-                              isGraded
+                            className={`inline-flex items-center gap-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(6,182,212,0.2)] ${isGraded
                                 ? "bg-slate-800 border border-white/10 text-slate-300 hover:bg-slate-700 hover:text-white"
                                 : "bg-cyan-500 hover:bg-cyan-500 text-white hover:shadow-[0_0_15px_rgba(6,182,212,0.5)]"
-                            }`}
+                              }`}
                           >
                             <span>{isGraded ? "Xem & Sửa" : "Bắt đầu chấm"}</span>
                             <ChevronRight size={12} />

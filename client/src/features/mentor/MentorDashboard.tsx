@@ -17,19 +17,29 @@ export default function MentorDashboard({ user, roles }: any) {
   const [selectedEventId, setSelectedEventId] = useState(uniqueEvents.length > 0 ? String(uniqueEvents[0].value) : "");
   const [teams, setTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!selectedEventId) return;
+    if (!selectedEventId) {
+      setTeams([]);
+      setError("");
+      return;
+    }
+    setError("");
     setLoading(true);
     axios
-      .get(`http://localhost:5000/api/teams/all/${selectedEventId}`, {
+      .get(`http://localhost:5000/api/teams/all/${selectedEventId}?role=mentor`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res: any) => {
         // Only show confirmed teams
         setTeams(res.data.filter((t: any) => t.status === "confirmed"));
       })
-      .catch((err: any) => console.error(err))
+      .catch((err: any) => {
+        console.error(err);
+        const errMsg = err.response?.data?.message || "Đã xảy ra lỗi khi tải danh sách đội hướng dẫn.";
+        setError(errMsg);
+      })
       .finally(() => setLoading(false));
   }, [selectedEventId, token]);
 
@@ -71,7 +81,11 @@ export default function MentorDashboard({ user, roles }: any) {
             </div>
             
             {loading ? (
-              <p className="text-slate-400 text-sm animate-pulse">Đang tải danh sách...</p>
+              <p className="text-slate-400 text-sm animate-pulse font-mono uppercase tracking-wider">[ĐANG TẢI DANH SÁCH ĐỘI THI...]</p>
+            ) : error ? (
+              <div className="text-center py-10 text-rose-400 font-semibold font-mono text-sm uppercase">
+                [{error}]
+              </div>
             ) : teams.length === 0 ? (
               <p className="text-slate-500 text-sm italic border border-dashed border-slate-700 p-8 text-center rounded-xl">Không có đội thi nào trong bảng đấu của bạn hoặc bảng đấu chưa được phân đội.</p>
             ) : (

@@ -1,11 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { Award, Users, CheckSquare } from 'lucide-react';
 
-export default function ExpertDashboard({ user, roles = [] }: any) {
+export default function ExpertDashboard({ roles = [] }: any) {
   const navigate = useNavigate();
-  const isSystemAdmin = user?.isSystemAdmin;
-  const isJudge = roles?.some((r: any) => r.role === 'judge') || isSystemAdmin;
-  const isMentor = roles?.some((r: any) => r.role === 'mentor') || isSystemAdmin;
+  const isJudge = roles?.some((r: any) => r.role === 'judge');
+  const isMentor = roles?.some((r: any) => r.role === 'mentor');
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8 animate-fadeIn">

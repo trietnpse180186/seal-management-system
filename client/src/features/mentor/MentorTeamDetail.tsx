@@ -126,10 +126,26 @@ export default function MentorTeamDetail() {
 
             <div className="border-t border-slate-800 pt-8">
               <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><FileText className="text-cyan-400"/> Đề thi vòng thi</h3>
-              {team.trackId?.roundId?.hasExamMaterial ? (
-                <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-700 text-sm text-slate-400">
-                  <p className="text-white font-bold">{team.trackId.roundId.driveFileName || team.trackId.roundId.name}</p>
-                  <p className="text-xs mt-2">Đề được quản lý theo vòng — chỉ thí sinh đội confirmed truy cập qua Khu vực đội.</p>
+              {(team.trackId?.roundId?.hasExamMaterial || team.trackId?.examDriveFileId || team.trackId?.examDriveFileUrl) ? (
+                <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-700 text-sm text-slate-400 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                  <div>
+                    <p className="text-white font-bold">
+                      {team.trackId?.examDriveFileName || team.trackId?.roundId?.driveFileName || team.trackId?.roundId?.name || `Đề thi ${team.trackId?.name || ''}`}
+                    </p>
+                    <p className="text-xs mt-2">
+                      {team.trackId?.examDriveFileId ? "Đề thi cấp bảng đấu." : "Đề thi cấp vòng thi."}
+                    </p>
+                  </div>
+                  {(team.trackId?.examDriveFileUrl || team.trackId?.roundId?.driveFileUrl) && (
+                    <a
+                      href={team.trackId?.examDriveFileUrl || team.trackId?.roundId?.driveFileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase rounded-xl transition-all shadow-lg shadow-cyan-600/25 shrink-0 text-center"
+                    >
+                      Xem đề thi
+                    </a>
+                  )}
                 </div>
               ) : (
                 <p className="text-sm text-slate-500 italic bg-slate-900/30 p-4 rounded-xl">Chưa có đề cho vòng thi này.</p>

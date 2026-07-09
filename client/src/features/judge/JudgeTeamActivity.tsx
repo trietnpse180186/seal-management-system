@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { 
   ArrowLeft, 
-  ExternalLink, 
   HelpCircle,
   GitBranch,
   Sparkles,
@@ -120,28 +119,8 @@ export default function JudgeTeamActivity() {
               Tổng quan dự án của đội
             </span>
             <h2 className="text-2xl font-black text-white mt-2 uppercase drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">{team.name}</h2>
-            <p className="text-xs font-bold text-slate-300 mt-1">Đề tài: <span className="text-cyan-200">{team.topicSubmission?.title || 'Chưa đăng ký'}</span></p>
           </div>
-
-          {team.topicSubmission?.demoUrl && (
-            <a
-              href={team.topicSubmission.demoUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1.5 text-xs font-bold text-cyan-300 hover:text-white border border-cyan-500/30 hover:border-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-4 py-2 rounded-xl transition-all uppercase tracking-wider shadow-[0_0_10px_rgba(6,182,212,0.1)]"
-            >
-              <ExternalLink size={14} />
-              <span>Xem Demo</span>
-            </a>
-          )}
         </div>
-
-        {team.topicSubmission?.description && (
-          <div className="bg-slate-800/40 p-4 rounded-xl border border-white/5 shadow-inner">
-            <p className="text-[9px] text-cyan-400 font-bold uppercase tracking-wider mb-1.5 font-mono drop-shadow-[0_0_5px_rgba(6,182,212,0.3)]">Mô tả giải pháp:</p>
-            <p className="text-xs text-slate-300 leading-relaxed font-sans">{team.topicSubmission.description}</p>
-          </div>
-        )}
       </div>
 
       {/* Main 2-Column Grid */}

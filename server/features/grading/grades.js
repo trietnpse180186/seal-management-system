@@ -42,6 +42,7 @@ router.get('/suggestion', authenticateToken, async (req, res) => {
         userId: req.user._id,
         eventId: team.eventId,
         roundId: roundId,
+        role: { $in: ['judge', 'coordinator', 'admin_view'] },
         status: 'active'
       });
 
@@ -49,6 +50,7 @@ router.get('/suggestion', authenticateToken, async (req, res) => {
         userRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: team.eventId,
+          role: { $in: ['judge', 'coordinator', 'admin_view'] },
           $or: [{ roundId: null }, { roundId: { $exists: false } }],
           status: 'active'
         });
@@ -241,6 +243,7 @@ router.get('/team/:teamId/round/:roundId', authenticateToken, async (req, res) =
         userId: req.user._id,
         eventId: team.eventId,
         roundId: req.params.roundId,
+        role: { $in: ['judge', 'coordinator', 'admin_view'] },
         status: 'active'
       });
 
@@ -248,6 +251,7 @@ router.get('/team/:teamId/round/:roundId', authenticateToken, async (req, res) =
         userRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: team.eventId,
+          role: { $in: ['judge', 'coordinator', 'admin_view'] },
           $or: [{ roundId: null }, { roundId: { $exists: false } }],
           status: 'active'
         });
@@ -340,6 +344,7 @@ router.post('/submit', authenticateToken, async (req, res) => {
       userId: req.user._id,
       eventId: team.eventId,
       roundId: roundId,
+      role: { $in: ['judge', 'coordinator', 'admin_view'] },
       status: 'active'
     });
 
@@ -347,6 +352,7 @@ router.post('/submit', authenticateToken, async (req, res) => {
       userRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: team.eventId,
+        role: { $in: ['judge', 'coordinator', 'admin_view'] },
         $or: [{ roundId: null }, { roundId: { $exists: false } }],
         status: 'active'
       });

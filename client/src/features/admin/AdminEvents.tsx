@@ -1994,6 +1994,9 @@ export default function AdminEvents({
       });
       fetchEventRoles();
       fetchTeamsList();
+      if (email.toLowerCase() === currentUser?.email?.toLowerCase()) {
+        window.location.reload();
+      }
     } catch (err: any) {
       setMessage({
         type: "error",
@@ -2016,6 +2019,7 @@ export default function AdminEvents({
     setLoading(true);
 
     try {
+      const roleObj = eventRoles.find((r: any) => r._id === roleId);
       await axios.delete(
         `http://localhost:5000/api/events/${selectedEvent._id}/roles/${roleId}`,
         { headers: { Authorization: `Bearer ${token}` } },
@@ -2025,6 +2029,9 @@ export default function AdminEvents({
         text: "Thu hồi quyền thành viên thành công!",
       });
       fetchEventRoles();
+      if (roleObj && roleObj.userId && (roleObj.userId._id === currentUser?.id || roleObj.userId === currentUser?.id)) {
+        window.location.reload();
+      }
     } catch (err: any) {
       setMessage({
         type: "error",

@@ -71,7 +71,7 @@ export default function JudgeDashboard() {
   useEffect(() => {
     if (!selectedEventId) return;
     axios
-      .get(`http://localhost:5000/api/teams/all/${selectedEventId}?roundId=${selectedRoundId}`, {
+      .get(`http://localhost:5000/api/teams/all/${selectedEventId}?roundId=${selectedRoundId}&role=judge`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then(async (res: any) => {
@@ -257,7 +257,7 @@ export default function JudgeDashboard() {
               <>
                 <div className="w-px h-8 bg-white/10 hidden sm:block"></div>
                 <div>
-                  <p className="text-[9px] font-bold uppercase text-slate-500 tracking-wider">Bảng đấu của bạn</p>
+                  <p className="text-[9px] font-bold uppercase text-slate-500 tracking-wider">Bảng đấu được phân công</p>
                   <p className="text-sm font-extrabold text-teal-400 mt-1 font-mono uppercase drop-shadow-[0_0_5px_rgba(20,184,166,0.2)]">
                     {assignedTrack.name}
                   </p>

@@ -1383,16 +1383,6 @@ export default function JudgeScoring() {
                   Hồ sơ dự án đội thi
                 </span>
                 <h4 className="text-sm sm:text-base font-black text-slate-200 uppercase truncate">{team.name}</h4>
-                <p className="text-xs sm:text-[13px] text-slate-350 leading-relaxed font-sans">
-                  Đề tài: <span className="text-cyan-300 font-semibold">{team.topicSubmission?.title || 'Chưa đăng ký'}</span>
-                </p>
-                
-                {team.topicSubmission?.description && (
-                  <div className="bg-slate-800/40 p-3.5 rounded-xl border border-white/5 shadow-inner">
-                    <p className="text-[10px] text-cyan-400 font-bold uppercase tracking-wider mb-1.5 font-mono">Mô tả giải pháp:</p>
-                    <p className="text-xs sm:text-[13px] text-slate-400 leading-relaxed font-sans line-clamp-6">{team.topicSubmission.description}</p>
-                  </div>
-                )}
 
                 {team.members && team.members.length > 0 && (
                   <div className="bg-slate-800/40 p-3.5 rounded-xl border border-white/5 shadow-inner mt-4">
@@ -1429,17 +1419,7 @@ export default function JudgeScoring() {
                   </div>
                 )}
 
-                {team.topicSubmission?.demoUrl && (
-                  <a
-                    href={team.topicSubmission.demoUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center justify-center gap-1 text-[11px] font-bold text-cyan-300 hover:text-white border border-cyan-500/30 hover:border-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-4 py-2.5 rounded-xl transition-all uppercase tracking-wider shadow-inner w-full"
-                  >
-                    <ExternalLink size={12} />
-                    <span>Xem Link Demo dự án</span>
-                  </a>
-                )}
+
               </div>
 
             </div>

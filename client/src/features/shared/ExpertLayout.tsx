@@ -90,9 +90,8 @@ export default function ExpertLayout({ user, roles = [], onLogout }: ExpertLayou
     return location.pathname.startsWith(path);
   };
 
-  const isSystemAdmin = user?.isSystemAdmin;
-  const isJudge = roles?.some((r: any) => r.role === 'judge') || isSystemAdmin;
-  const isMentor = roles?.some((r: any) => r.role === 'mentor') || isSystemAdmin;
+  const isJudge = roles?.some((r: any) => r.role === 'judge');
+  const isMentor = roles?.some((r: any) => r.role === 'mentor');
 
   const navItems = [
     {

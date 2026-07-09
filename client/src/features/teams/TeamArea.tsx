@@ -83,8 +83,8 @@ function SeminarWidget({ seminar }: SeminarWidgetProps) {
 
   return (
     <div className={`glass p-6 rounded-3xl border transition-all relative overflow-hidden flex flex-col md:flex-row items-stretch md:items-center justify-between gap-6 ${isOngoing
-        ? 'border-cyan-500/40 glow-cyan bg-slate-900/10 shadow-[inset_0_0_20px_rgba(0,240,255,0.02)] animate-pulse'
-        : 'border-slate-800 hover:border-cyan-500/30'
+      ? 'border-cyan-500/40 glow-cyan bg-slate-900/10 shadow-[inset_0_0_20px_rgba(0,240,255,0.02)] animate-pulse'
+      : 'border-slate-800 hover:border-cyan-500/30'
       }`}>
       {isOngoing && <div className="absolute inset-0 pointer-events-none laser-scan-effect opacity-10"></div>}
 
@@ -349,7 +349,7 @@ export default function TeamArea() {
             }
           };
         });
-        
+
         if (payload.isJudgeActive) {
           toast.info('Môi trường chấm thi đã được kích hoạt! Hãy sao chép API Key và Topic kết nối.');
         } else {
@@ -426,11 +426,8 @@ export default function TeamArea() {
 
             <div>
               <h1 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tight text-cyan-glow">
-                {team?.name}
+                Tên đội: {team?.name}
               </h1>
-              <p className="text-[11px] text-slate-400 mt-1.5 font-sans leading-relaxed">
-                Khu vực làm việc và theo dõi tiến độ chính thức của đội thi.
-              </p>
             </div>
           </div>
 
@@ -441,14 +438,14 @@ export default function TeamArea() {
           <div className="lg:col-span-3 space-y-3 font-sans">
             <div>
               <span className="text-[9px] text-slate-500 block uppercase font-mono tracking-wider font-bold">CUỘC THI</span>
-              <span className="text-sm font-extrabold text-white font-mono uppercase truncate block">
+              <span className="text-xl font-extrabold text-white font-mono uppercase truncate block">
                 {team?.eventId?.name || '---'}
               </span>
             </div>
             <div>
               <span className="text-[9px] text-slate-500 block uppercase font-mono tracking-wider font-bold">HỌC KỲ</span>
-              <span className="text-xs font-bold text-slate-300 font-mono">
-                {team?.eventId?.semester ? `Kỳ ${team.eventId.semester} ${team.eventId.year}` : '---'}
+              <span className="text-xl font-bold text-slate-300 font-mono">
+                {team?.eventId?.semester ? `${team.eventId.semester} ${team.eventId.year}` : '---'}
               </span>
             </div>
           </div>
@@ -458,13 +455,13 @@ export default function TeamArea() {
             <div>
               <span className="text-[9px] text-slate-500 block uppercase font-mono tracking-wider font-bold">BẢNG ĐẤU</span>
               <span className="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-400 bg-cyan-950/40 border border-cyan-800/60 px-3 py-1 rounded-full mt-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
                 {team?.trackId?.name || 'Chờ phân bảng'}
               </span>
             </div>
             <div>
               <span className="text-[9px] text-slate-500 block uppercase font-mono tracking-wider font-bold">THÀNH VIÊN</span>
-              <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5 mt-1 font-mono">
+              <span className="text-xl font-semibold text-slate-300 flex items-center gap-1.5 mt-1 font-mono">
                 <Users size={14} className="text-slate-400" />
                 <span>{members?.length || 0} Thành viên</span>
               </span>
@@ -481,7 +478,7 @@ export default function TeamArea() {
           <div>
             <span className="text-[10px] text-slate-500 block uppercase font-mono tracking-wider font-bold">Trạng thái giải đấu</span>
             <p className="text-xs sm:text-sm font-bold text-slate-200">
-              Cuộc thi đang diễn ra tại: <span className="text-cyan-400 font-extrabold uppercase font-mono">{team.currentEventRound}</span>
+              Vòng thi hiện tại: <span className="text-cyan-400 font-extrabold uppercase font-mono">{team.currentEventRound}</span>
             </p>
           </div>
         </div>
@@ -651,7 +648,7 @@ export default function TeamArea() {
                         <span className="text-[10px] text-rose-400 font-bold block uppercase tracking-wider">
                           [MÔI TRƯỜNG CHẤM THI ĐANG BẬT]
                         </span>
-                        
+
                         <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900">
                           <span className="text-[10px] text-rose-400 font-bold block uppercase tracking-wider">JUDGE API Key</span>
                           <div className="flex justify-between items-center text-rose-350 font-mono">
@@ -749,7 +746,7 @@ export default function TeamArea() {
                         <p className="text-[10px] text-slate-550 font-mono mt-0.5 truncate">
                           {m.userId?.studentId && `MSSV: ${m.userId.studentId}`}
                           {m.userId?.studentId && m.userId?.university && ' • '}
-                          {m.userId?.university}
+                          Đại học {m.userId?.university}
                         </p>
                       )}
                     </div>
@@ -844,7 +841,7 @@ export default function TeamArea() {
                 ) : (
                   <div className="text-center text-slate-500 py-16">
                     <FileDiff size={32} className="mx-auto text-slate-700 mb-2" />
-                    <p className="text-xs">Chọn một commit ở cột trái để xem đánh giá AI chi tiết.</p>
+                    <p className="text-xs">Chưa có thông tin chi tiết</p>
                   </div>
                 )}
 

@@ -15,22 +15,41 @@ const captchaService = require('./captchaService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'seal_hackathon_secret_key_2026';
 
-function mapUserRoles(roles) {
-  return roles.map(r => {
+async function mapUserRoles(roles) {
+  const mapped = [];
+  const RoundModel = mongoose.model('Round');
+  const TrackModel = mongoose.model('Track');
+
+  for (const r of roles) {
     const roleObj = r.toObject ? r.toObject() : r;
     let roleName = roleObj.role;
+
     // If the event is completed or cancelled, demote role to participant since contest has ended
     if (roleObj.eventId && (roleObj.eventId.status === 'completed' || roleObj.eventId.status === 'cancelled')) {
       roleName = 'participant';
     }
-    return {
+
+    // Filter roles by active round of the event
+    if ((roleName === 'mentor' || roleName === 'judge') && roleObj.trackId && roleObj.eventId) {
+      const activeRound = await RoundModel.findOne({ eventId: roleObj.eventId._id || roleObj.eventId, status: 'active' });
+      if (activeRound) {
+        const track = await TrackModel.findById(roleObj.trackId._id || roleObj.trackId);
+        if (track && track.roundId.toString() !== activeRound._id.toString()) {
+          roleName = 'participant';
+        }
+      }
+    }
+
+    mapped.push({
       id: roleObj._id,
-      eventId: roleObj.eventId ? roleObj.eventId._id : null,
-      eventName: roleObj.eventId ? `${roleObj.eventId.name} (${roleObj.eventId.semester} ${roleObj.eventId.year})` : 'System',
+      eventId: roleObj.eventId ? (roleObj.eventId._id || roleObj.eventId) : null,
+      eventName: roleObj.eventId ? `${roleObj.eventId.name || 'System'} (${roleObj.eventId.semester || ''} ${roleObj.eventId.year || ''})` : 'System',
       role: roleName,
-      trackId: roleObj.trackId
-    };
-  });
+      trackId: roleObj.trackId ? (roleObj.trackId._id || roleObj.trackId) : null
+    });
+  }
+
+  return mapped;
 }
 
 /**
@@ -197,7 +216,15 @@ router.post('/login', async (req, res) => {
     await user.save();
 
     // Get event roles
-    const roles = await EventRole.find({ userId: user._id, status: 'active' }).populate('eventId', 'name semester year status');
+    const roles = await EventRole.find({ userId: user._id, status: 'active' })
+      .populate('eventId', 'name semester year status')
+      .populate({
+        path: 'trackId',
+        populate: {
+          path: 'roundId',
+          select: 'status'
+        }
+      });
 
     // Generate JWT (including sessionId)
     const token = jwt.sign({ id: user._id, sessionId: activeSessionId }, JWT_SECRET, { expiresIn: '24h' });
@@ -212,7 +239,7 @@ router.post('/login', async (req, res) => {
         githubUsername: user.githubUsername,
         avatarUrl: user.avatarUrl
       },
-      roles: mapUserRoles(roles)
+      roles: await mapUserRoles(roles)
     });
 
   } catch (error) {
@@ -228,7 +255,15 @@ router.post('/login', async (req, res) => {
  */
 router.get('/me', authenticateToken, async (req, res) => {
   try {
-    const roles = await EventRole.find({ userId: req.user._id, status: 'active' }).populate('eventId', 'name semester year status');
+    const roles = await EventRole.find({ userId: req.user._id, status: 'active' })
+      .populate('eventId', 'name semester year status')
+      .populate({
+        path: 'trackId',
+        populate: {
+          path: 'roundId',
+          select: 'status'
+        }
+      });
     res.json({
       user: {
         id: req.user._id,
@@ -239,7 +274,7 @@ router.get('/me', authenticateToken, async (req, res) => {
         githubUsername: req.user.githubUsername,
         isSystemAdmin: req.user.isSystemAdmin
       },
-      roles: mapUserRoles(roles)
+      roles: await mapUserRoles(roles)
     });
   } catch (error) {
     console.error('Fetch Profile Error:', error.message);
@@ -268,7 +303,15 @@ router.put('/profile', authenticateToken, async (req, res) => {
 
     await user.save();
 
-    const roles = await EventRole.find({ userId: user._id, status: 'active' }).populate('eventId', 'name semester year status');
+    const roles = await EventRole.find({ userId: user._id, status: 'active' })
+      .populate('eventId', 'name semester year status')
+      .populate({
+        path: 'trackId',
+        populate: {
+          path: 'roundId',
+          select: 'status'
+        }
+      });
 
     res.json({
       message: 'Cập nhật thông tin cá nhân thành công!',
@@ -282,7 +325,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
         isSystemAdmin: user.isSystemAdmin,
         avatarUrl: user.avatarUrl
       },
-      roles: mapUserRoles(roles)
+      roles: await mapUserRoles(roles)
     });
   } catch (error) {
     console.error('Update Profile Error:', error.message);
@@ -516,7 +559,15 @@ router.post('/google', async (req, res) => {
     user.lastActiveAt = new Date();
     await user.save();
 
-    const roles = await EventRole.find({ userId: user._id, status: 'active' }).populate('eventId', 'name semester year status');
+    const roles = await EventRole.find({ userId: user._id, status: 'active' })
+      .populate('eventId', 'name semester year status')
+      .populate({
+        path: 'trackId',
+        populate: {
+          path: 'roundId',
+          select: 'status'
+        }
+      });
     const token = jwt.sign({ id: user._id, sessionId: activeSessionId }, JWT_SECRET, { expiresIn: '24h' });
 
     res.json({
@@ -530,7 +581,7 @@ router.post('/google', async (req, res) => {
         githubUsername: user.githubUsername,
         avatarUrl: user.avatarUrl
       },
-      roles: mapUserRoles(roles)
+      roles: await mapUserRoles(roles)
     });
 
   } catch (error) {
@@ -701,7 +752,15 @@ router.post('/github', async (req, res) => {
     user.lastActiveAt = new Date();
     await user.save();
 
-    const roles = await EventRole.find({ userId: user._id, status: 'active' }).populate('eventId', 'name semester year status');
+    const roles = await EventRole.find({ userId: user._id, status: 'active' })
+      .populate('eventId', 'name semester year status')
+      .populate({
+        path: 'trackId',
+        populate: {
+          path: 'roundId',
+          select: 'status'
+        }
+      });
     const token = jwt.sign({ id: user._id, sessionId: activeSessionId }, JWT_SECRET, { expiresIn: '24h' });
 
     res.json({
@@ -715,7 +774,7 @@ router.post('/github', async (req, res) => {
         githubUsername: user.githubUsername,
         avatarUrl: user.avatarUrl
       },
-      roles: mapUserRoles(roles)
+      roles: await mapUserRoles(roles)
     });
 
   } catch (error) {

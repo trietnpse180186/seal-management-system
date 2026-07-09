@@ -161,11 +161,9 @@ async function getJudgeScenarios() {
   return callSimulatorAdmin('/team/judge-scenarios', 'GET');
 }
 
-/**
- * Fetch the latest live telemetry data.
- */
-async function getJudgeLive() {
-  return callSimulatorAdmin('/team/judge-live', 'GET');
+async function getJudgeLive(externalTeamId) {
+  const url = externalTeamId ? `/team/judge-live?teamId=${externalTeamId}` : '/team/judge-live';
+  return callSimulatorAdmin(url, 'GET');
 }
 
 /**

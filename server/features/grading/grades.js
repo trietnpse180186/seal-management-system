@@ -1084,7 +1084,7 @@ router.post('/advance-round', authenticateToken, async (req, res) => {
       currentRound.status = 'completed';
       await currentRound.save();
 
-      nextRound.status = 'active';
+      nextRound.status = 'pending';
       await nextRound.save();
 
       return res.json({
@@ -1115,6 +1115,87 @@ router.post('/advance-round', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Advance Round Error:', error.message);
     res.status(500).json({ message: 'Server error during round advancement.' });
+  }
+});
+
+/**
+ * @route   POST /api/grades/rollback-round
+ * @desc    Rollback round promotion and return to previous round
+ * @access  Private (System Admin or Coordinator)
+ */
+router.post('/rollback-round', authenticateToken, async (req, res) => {
+  const { eventId, currentRoundId } = req.body;
+
+  if (!eventId || !currentRoundId) {
+    return res.status(400).json({ message: 'Event ID and Current Round ID are required.' });
+  }
+
+  try {
+    // Auth Check
+    if (!req.user.isSystemAdmin) {
+      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator', status: 'active' });
+      if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
+    }
+
+    const currentRound = await Round.findById(currentRoundId);
+    if (!currentRound) return res.status(404).json({ message: 'Current round not found.' });
+
+    // Find the previous round in order
+    const previousRound = await Round.findOne({ eventId, order: currentRound.order - 1 });
+    if (!previousRound) {
+      return res.status(400).json({ message: 'Không tìm thấy vòng thi trước đó để thu hồi.' });
+    }
+
+    const Team = mongoose.model('Team');
+    const Ranking = mongoose.model('Ranking');
+
+    // Get all rankings in the previous round that were advanced
+    const advancedRankings = await Ranking.find({ roundId: previousRound._id, isAdvanced: true });
+    if (advancedRankings.length === 0) {
+      return res.status(400).json({ message: 'Không tìm thấy dữ liệu thăng hạng ở vòng trước để thu hồi.' });
+    }
+
+    // Move each team back to their previous track in the previous round
+    for (const ranking of advancedRankings) {
+      await Team.findByIdAndUpdate(ranking.teamId, {
+        currentRoundId: previousRound._id,
+        trackId: ranking.trackId
+      });
+    }
+
+    // Reset statuses
+    currentRound.status = 'pending';
+    currentRound.isExamManualOpen = false;
+    await currentRound.save();
+
+    previousRound.status = 'active';
+    await previousRound.save();
+
+    // Clean up empty tracks under the current round
+    const Track = mongoose.model('Track');
+    const currentRoundTracks = await Track.find({ roundId: currentRoundId });
+    for (const track of currentRoundTracks) {
+      const teamCount = await Team.countDocuments({ trackId: track._id });
+      if (teamCount === 0) {
+        await Track.findByIdAndDelete(track._id);
+      }
+    }
+
+    // Also revert Event status back to ongoing if it was set to completed (e.g. final round rolled back)
+    const Event = mongoose.model('Event');
+    const eventObj = await Event.findById(eventId);
+    if (eventObj && eventObj.status === 'completed') {
+      eventObj.status = 'ongoing';
+      await eventObj.save();
+    }
+
+    return res.json({
+      message: `Đã thu hồi thành công vòng đấu. Trạng thái vòng "${previousRound.name}" đã được chuyển về "active" và đưa các đội quay về vòng trước.`,
+      previousRoundId: previousRound._id
+    });
+  } catch (error) {
+    console.error('Rollback Round Error:', error);
+    return res.status(500).json({ message: 'Lỗi hệ thống khi thu hồi vòng đấu.' });
   }
 });
 

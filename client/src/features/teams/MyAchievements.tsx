@@ -119,9 +119,11 @@ export default function MyAchievements() {
                 {/* Team & Event Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
                   <div className="space-y-1.5">
-                    <span className="text-[10px] text-cyan-400 font-bold border border-cyan-500/30 px-2 py-0.5 rounded bg-cyan-950/20 tracking-wider">
-                      {t.event?.name}
-                    </span>
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className="text-sm font-bold text-cyan-400 border border-cyan-500/30 px-3 py-1 rounded-xl bg-cyan-950/25 tracking-wider shadow-[0_0_10px_rgba(34,211,238,0.1)]">
+                        Cuộc thi: {t.event?.name}
+                      </span>
+                    </div>
                     <h3 className="text-2xl font-black text-white uppercase tracking-tight text-cyan-glow">
                       Đội: {t.name}
                     </h3>

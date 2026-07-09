@@ -141,7 +141,7 @@ export default function JudgeScoring() {
     let lastEpoch = 0;
     
     const fetchLive = () => {
-      axios.get(`http://localhost:5000/api/teams/judge/live`, {
+      axios.get(`http://localhost:5000/api/teams/judge/live?teamId=${teamId}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then((res: any) => {

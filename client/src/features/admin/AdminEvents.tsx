@@ -1810,6 +1810,39 @@ export default function AdminEvents({
     }
   };
 
+  const handleRollbackRound = async (roundId: string) => {
+    if (!selectedEvent || !roundId) return;
+
+    setMessage({ type: "", text: "" });
+    setLoading(true);
+
+    try {
+      const res = await axios.post(
+        "http://localhost:5000/api/grades/rollback-round",
+        {
+          eventId: selectedEvent._id,
+          currentRoundId: roundId
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setMessage({ type: "success", text: res.data.message });
+
+      // Reload event details, rounds, and teams list
+      await fetchEventDetails();
+      await fetchTeamsList();
+    } catch (err: any) {
+      console.error("Rollback Round Error:", err);
+      setMessage({
+        type: "error",
+        text: err.response?.data?.message || "Lỗi khi thu hồi vòng đấu.",
+      });
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLockRound = async (roundId: string) => {
     if (!selectedEvent || !roundId) return;
 
@@ -3263,6 +3296,7 @@ export default function AdminEvents({
             handleSyncAllRepos={handleSyncAllRepos}
             handleUpdateRound={handleUpdateRound}
             fetchEventDetails={fetchEventDetails}
+            handleRollbackRound={handleRollbackRound}
             readOnly={readOnly}
           />
         ) : (

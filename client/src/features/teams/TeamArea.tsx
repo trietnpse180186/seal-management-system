@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { io } from 'socket.io-client';
-import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare, Cpu, Copy, RefreshCw, Crown, ExternalLink, Trophy } from 'lucide-react';
+import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare, Cpu, Copy, RefreshCw, Crown, Trophy } from 'lucide-react';
 import RegisterTeam from './RegisterTeam';
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
@@ -712,26 +712,26 @@ export default function TeamArea() {
                 ) : (
                   <div className="space-y-2.5 text-xs sm:text-[13px] font-mono">
                     {team.isJudgeActive && (
-                      <div className="space-y-2 border border-rose-500/30 bg-rose-500/5 p-3 rounded-xl animate-pulse">
-                        <span className="text-[10px] text-rose-400 font-bold block uppercase tracking-wider">
+                      <div className="space-y-2 border border-emerald-500/30 bg-emerald-500/5 p-3 rounded-xl animate-pulse">
+                        <span className="text-[10px] text-emerald-400 font-bold block uppercase tracking-wider animate-pulse">
                           [MÔI TRƯỜNG CHẤM THI ĐANG BẬT]
                         </span>
 
                         <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900">
-                          <span className="text-[10px] text-rose-400 font-bold block uppercase tracking-wider">JUDGE API Key</span>
-                          <div className="flex justify-between items-center text-rose-350 font-mono">
+                          <span className="text-[10px] text-emerald-400 font-bold block uppercase tracking-wider">JUDGE API Key</span>
+                          <div className="flex justify-between items-center text-emerald-300 font-mono">
                             <span className="truncate max-w-[85%]">{team.judgeApiKey || '---'}</span>
-                            <button onClick={() => handleCopy(team.judgeApiKey || "", "JUDGE API Key")} className="text-slate-500 hover:text-rose-400 cursor-pointer p-1" title="Sao chép JUDGE API Key">
+                            <button onClick={() => handleCopy(team.judgeApiKey || "", "JUDGE API Key")} className="text-slate-500 hover:text-emerald-400 cursor-pointer p-1" title="Sao chép JUDGE API Key">
                               {copiedField === "JUDGE API Key" ? <CheckCircle size={13} className="text-emerald-400" /> : <Copy size={13} />}
                             </button>
                           </div>
                         </div>
 
                         <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900">
-                          <span className="text-[10px] text-rose-400 font-bold block uppercase tracking-wider">JUDGE Topic</span>
-                          <div className="flex justify-between items-center text-rose-350 font-mono">
+                          <span className="text-[10px] text-emerald-400 font-bold block uppercase tracking-wider">JUDGE Topic</span>
+                          <div className="flex justify-between items-center text-emerald-300 font-mono">
                             <span className="truncate max-w-[85%]">{team.judgeTopic || '---'}</span>
-                            <button onClick={() => handleCopy(team.judgeTopic || "", "JUDGE Topic")} className="text-slate-500 hover:text-rose-400 cursor-pointer p-1" title="Sao chép JUDGE Topic">
+                            <button onClick={() => handleCopy(team.judgeTopic || "", "JUDGE Topic")} className="text-slate-500 hover:text-emerald-400 cursor-pointer p-1" title="Sao chép JUDGE Topic">
                               {copiedField === "JUDGE Topic" ? <CheckCircle size={13} className="text-emerald-400" /> : <Copy size={13} />}
                             </button>
                           </div>
@@ -745,6 +745,26 @@ export default function TeamArea() {
                         <span>{team.accessCode || '---'}</span>
                         <button onClick={() => handleCopy(team.accessCode || "", "Access Code")} className="text-slate-500 hover:text-cyan-400 cursor-pointer p-1" title="Sao chép Access Code">
                           {copiedField === "Access Code" ? <CheckCircle size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 bg-cyan-500/10 p-2.5 rounded-xl border border-cyan-500/35 shadow-[0_0_15px_rgba(6,182,212,0.12)]">
+                      <span className="text-[10px] text-cyan-400 font-bold block uppercase tracking-wider">Test Key</span>
+                      <div className="flex justify-between items-center text-slate-200 font-semibold">
+                        <span className="truncate max-w-[85%]">{team.testApiKey || '---'}</span>
+                        <button onClick={() => handleCopy(team.testApiKey || "", "Test Key")} className="text-slate-400 hover:text-cyan-400 cursor-pointer p-1" title="Sao chép Test Key">
+                          {copiedField === "Test Key" ? <CheckCircle size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 bg-cyan-500/10 p-2.5 rounded-xl border border-cyan-500/35 shadow-[0_0_15px_rgba(6,182,212,0.12)]">
+                      <span className="text-[10px] text-cyan-400 font-bold block uppercase tracking-wider">TEST Topic</span>
+                      <div className="flex justify-between items-center text-slate-200 font-semibold">
+                        <span className="truncate max-w-[85%]">{team.testTopic || '---'}</span>
+                        <button onClick={() => handleCopy(team.testTopic || "", "TEST Topic")} className="text-slate-400 hover:text-cyan-400 cursor-pointer p-1" title="Sao chép TEST Topic">
+                          {copiedField === "TEST Topic" ? <CheckCircle size={13} className="text-emerald-400" /> : <Copy size={13} />}
                         </button>
                       </div>
                     </div>
@@ -767,41 +787,6 @@ export default function TeamArea() {
                           {copiedField === "Password" ? <CheckCircle size={13} className="text-emerald-400" /> : <Copy size={13} />}
                         </button>
                       </div>
-                    </div>
-
-                    <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900">
-                      <span className="text-[10px] text-slate-550 font-bold block uppercase tracking-wider">Test Key</span>
-                      <div className="flex justify-between items-center text-slate-300">
-                        <span className="truncate max-w-[85%]">{team.testApiKey || '---'}</span>
-                        <button onClick={() => handleCopy(team.testApiKey || "", "Test Key")} className="text-slate-500 hover:text-cyan-400 cursor-pointer p-1" title="Sao chép Test Key">
-                          {copiedField === "Test Key" ? <CheckCircle size={13} className="text-emerald-400" /> : <Copy size={13} />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900">
-                      <span className="text-[10px] text-slate-550 font-bold block uppercase tracking-wider">TEST Topic</span>
-                      <div className="flex justify-between items-center text-slate-300">
-                        <span className="truncate max-w-[85%]">{team.testTopic || '---'}</span>
-                        <button onClick={() => handleCopy(team.testTopic || "", "TEST Topic")} className="text-slate-500 hover:text-cyan-400 cursor-pointer p-1" title="Sao chép TEST Topic">
-                          {copiedField === "TEST Topic" ? <CheckCircle size={13} className="text-emerald-400" /> : <Copy size={13} />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="pt-2">
-                      <p className="text-[10px] sm:text-[11px] text-amber-500 font-sans leading-normal mb-2 text-center">
-                        Sao chép <b>Access Code</b> ở trên, sau đó bấm nút để mở trang simulator làm bài.
-                      </p>
-                      <a
-                        href="https://hackathon.lexatek.vn/team-access"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-bold uppercase py-2.5 px-4 rounded-xl transition-all shadow-md shadow-cyan-900/30 text-center cursor-pointer hover:-translate-y-0.5 duration-150"
-                      >
-                        <ExternalLink size={14} />
-                        Mở trang Simulator
-                      </a>
                     </div>
                   </div>
                 )}

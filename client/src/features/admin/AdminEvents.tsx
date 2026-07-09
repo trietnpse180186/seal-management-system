@@ -398,6 +398,53 @@ export default function AdminEvents({
     }
   };
 
+  const handleDeleteRoundSchedule = async () => {
+    if (!selectedEvent || !selectedRoundForSchedule) return;
+
+    const confirmed = await conform({
+      title: "Xác nhận xóa",
+      message: `Bạn có chắc chắn muốn xóa toàn bộ cài đặt thời gian cho vòng thi "${selectedRoundForSchedule.name}"?`,
+      conformText: "Xóa",
+      cancelText: "Hủy",
+      variant: "danger",
+    });
+    if (!confirmed) return;
+
+    setLoading(true);
+    try {
+      const res = await axios.put(
+        `http://localhost:5000/api/events/${selectedEvent._id}/rounds/${selectedRoundForSchedule._id}`,
+        {
+          startTime: null,
+          endTime: null,
+          gradingEndTime: null,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setRounds((prev) =>
+        prev.map((r: any) => (r._id === res.data._id ? res.data : r))
+      );
+      setSelectedRoundForSchedule(res.data);
+      setTrackStartTime("");
+      setTrackEndTime("");
+      setTrackGradingEndTime("");
+
+      // Refresh tracks (mirrored schedule on backend)
+      const detailsRes = await axios.get(
+        `http://localhost:5000/api/events/${selectedEvent._id}`
+      );
+      setTracks(detailsRes.data.tracks || []);
+
+      toast.success("Đã xóa cài đặt thời gian vòng thi thành công!");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Lỗi khi xóa cài đặt thời gian vòng thi.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchEvents();
     fetchExistingRubrics();
@@ -2941,9 +2988,22 @@ export default function AdminEvents({
             <div className="glass p-6 rounded-2xl relative flex flex-col justify-between">
               <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none"></div>
               <div>
-                <h3 className="text-md font-bold text-white mb-4 flex items-center gap-1.5 font-mono">
-                  <Clock size={16} className="text-cyan-400" />
-                  <span>Lịch trình vòng thi (Rounds)</span>
+                <h3 className="text-md font-bold text-white mb-4 flex items-center justify-between font-mono">
+                  <div className="flex items-center gap-1.5">
+                    <Clock size={16} className="text-cyan-400" />
+                    <span>Lịch trình vòng thi (Rounds)</span>
+                  </div>
+                  {!readOnly && selectedRoundForSchedule && (
+                    <button
+                      type="button"
+                      onClick={handleDeleteRoundSchedule}
+                      disabled={loading}
+                      title="Xóa cài đặt thời gian"
+                      className="p-1.5 rounded-lg border border-red-500/20 hover:border-red-500/50 hover:bg-red-500/10 text-red-500 hover:text-red-400 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </h3>
                 <p className="text-slate-400 text-xs mb-6">
                   Thiết lập thời gian làm bài (nộp bài) và thời gian chấm bài cho từng vòng thi. Lịch trình sẽ tự động áp dụng cho tất cả bảng đấu thuộc vòng đó.

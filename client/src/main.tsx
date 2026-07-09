@@ -33,7 +33,15 @@ localStorage.removeItem = function(key: string) {
 // Configure Axios globally to dynamically rewrite hardcoded local API URLs to production
 axios.interceptors.request.use((config) => {
   if (config.url && config.url.startsWith('http://localhost:5000')) {
-    const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    let apiBase = import.meta.env.VITE_API_URL;
+    if (!apiBase) {
+      const hostname = window.location.hostname;
+      if (hostname && hostname !== 'localhost' && hostname !== '127.0.0.1') {
+        apiBase = window.location.origin;
+      } else {
+        apiBase = 'http://localhost:5000';
+      }
+    }
     config.url = config.url.replace('http://localhost:5000', apiBase);
   }
   return config;

@@ -6,7 +6,8 @@ import {
   RefreshCw,
   AlertTriangle,
   ShieldAlert,
-  HelpCircle
+  HelpCircle,
+  Clock
 } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
@@ -75,6 +76,66 @@ export default function OperationsTab({
   const isLockedByLaterRound = selectedRound
     ? rounds.some(r => r.order > selectedRound.order && (r.status === "active" || r.status === "completed"))
     : false;
+
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const getAdminRoundCountdown = () => {
+    if (!selectedRound) return null;
+    const startVal = selectedRound.startTime;
+    const endVal = selectedRound.endTime;
+
+    if (!startVal || !endVal) {
+      return {
+        text: "Chưa cấu hình thời gian làm bài",
+        color: "text-slate-500"
+      };
+    }
+
+    const start = new Date(startVal);
+    const end = new Date(endVal);
+
+    if (currentTime < start) {
+      const diffMs = start.getTime() - currentTime.getTime();
+      const seconds = Math.floor((diffMs / 1000) % 60);
+      const minutes = Math.floor((diffMs / 1000 / 60) % 60);
+      const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
+      const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+      const pad = (num: number) => num.toString().padStart(2, '0');
+      const timeStr = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+      const text = days > 0 ? `Bắt đầu sau: ${days} ngày ${timeStr}` : `Bắt đầu sau: ${timeStr}`;
+
+      return { text, color: "text-amber-400 font-bold" };
+    } else if (currentTime >= start && currentTime <= end) {
+      const diffMs = end.getTime() - currentTime.getTime();
+      const seconds = Math.floor((diffMs / 1000) % 60);
+      const minutes = Math.floor((diffMs / 1000 / 60) % 60);
+      const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
+      const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+      const pad = (num: number) => num.toString().padStart(2, '0');
+      const timeStr = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+      const text = days > 0 ? `Còn lại: ${days} ngày ${timeStr}` : `Còn lại: ${timeStr}`;
+
+      const isUrgent = diffMs < 1000 * 60 * 60; // < 1 hour
+      return {
+        text,
+        color: isUrgent ? "text-rose-500 animate-pulse font-extrabold" : "text-cyan-400 font-bold"
+      };
+    } else {
+      return {
+        text: "Đã hết thời gian làm bài",
+        color: "text-slate-500 font-semibold"
+      };
+    }
+  };
 
   // Helper to update event status
   const updateEventStatus = async (newStatus: string) => {
@@ -341,6 +402,19 @@ export default function OperationsTab({
                         )}
                       </span>
                     </div>
+                    {(() => {
+                      const countdown = getAdminRoundCountdown();
+                      return countdown ? (
+                        <div className="flex justify-between border-t border-slate-850/60 pt-2 items-center">
+                          <span className="text-slate-500 font-mono flex items-center gap-1">
+                            <Clock size={12} className="text-cyan-400" /> Đếm ngược:
+                          </span>
+                          <span className={`font-mono font-bold ${countdown.color}`}>
+                            {countdown.text}
+                          </span>
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                 </div>
 

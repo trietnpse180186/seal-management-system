@@ -207,6 +207,59 @@ export default function TeamArea() {
     return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
   };
 
+  const getRoundCountdown = () => {
+    const startVal = track?.startTime || round?.startTime;
+    const endVal = track?.endTime || round?.endTime;
+
+    if (!startVal || !endVal) {
+      return {
+        text: "Chưa cấu hình thời gian làm bài",
+        color: "text-slate-500"
+      };
+    }
+
+    const start = new Date(startVal);
+    const end = new Date(endVal);
+
+    if (currentTime < start) {
+      const diffMs = start.getTime() - currentTime.getTime();
+      const seconds = Math.floor((diffMs / 1000) % 60);
+      const minutes = Math.floor((diffMs / 1000 / 60) % 60);
+      const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
+      const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+      const pad = (num: number) => num.toString().padStart(2, '0');
+      const timeStr = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+      const text = days > 0 ? `Bắt đầu sau: ${days} ngày ${timeStr}` : `Bắt đầu sau: ${timeStr}`;
+
+      return {
+        text,
+        color: "text-amber-400 font-bold"
+      };
+    } else if (currentTime >= start && currentTime <= end) {
+      const diffMs = end.getTime() - currentTime.getTime();
+      const seconds = Math.floor((diffMs / 1000) % 60);
+      const minutes = Math.floor((diffMs / 1000 / 60) % 60);
+      const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
+      const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+      const pad = (num: number) => num.toString().padStart(2, '0');
+      const timeStr = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+      const text = days > 0 ? `Còn lại: ${days} ngày ${timeStr}` : `Còn lại: ${timeStr}`;
+
+      const isUrgent = diffMs < 1000 * 60 * 60; // < 1 hour
+      return {
+        text,
+        color: isUrgent ? "text-rose-500 animate-pulse font-extrabold" : "text-cyan-400 font-bold"
+      };
+    } else {
+      return {
+        text: "Đã hết thời gian làm bài",
+        color: "text-slate-500 font-semibold"
+      };
+    }
+  };
+
   const getTeamStatusText = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'confirmed': return 'ĐÃ XÁC NHẬN';
@@ -472,17 +525,32 @@ export default function TeamArea() {
       </div>
 
       {/* Active Round Banner */}
-      {team?.currentEventRound && (
-        <div className="glass p-5 rounded-2xl border border-cyan-500/20 bg-gradient-to-r from-cyan-950/40 via-slate-900/40 to-cyan-950/40 flex items-center gap-3 shadow-[0_0_15px_rgba(6,182,212,0.05)]">
-          <div className="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></div>
-          <div>
-            <span className="text-[10px] text-slate-500 block uppercase font-mono tracking-wider font-bold">Trạng thái giải đấu</span>
-            <p className="text-xs sm:text-sm font-bold text-slate-200">
-              Vòng thi hiện tại: <span className="text-cyan-400 font-extrabold uppercase font-mono">{team.currentEventRound}</span>
-            </p>
+      {team?.currentEventRound && (() => {
+        const countdown = getRoundCountdown();
+        return (
+          <div className="glass p-5 rounded-2xl border border-cyan-500/20 bg-gradient-to-r from-cyan-950/40 via-slate-900/40 to-cyan-950/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-[0_0_15px_rgba(6,182,212,0.05)]">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></div>
+              <div>
+                <span className="text-[10px] text-slate-500 block uppercase font-mono tracking-wider font-bold">Trạng thái giải đấu</span>
+                <p className="text-xs sm:text-sm font-bold text-slate-200">
+                  Vòng thi hiện tại: <span className="text-cyan-400 font-extrabold uppercase font-mono">{team.currentEventRound}</span>
+                </p>
+              </div>
+            </div>
+            {/* Timer section */}
+            {countdown && (
+              <div className="flex items-center gap-2 bg-slate-950/60 px-4 py-2 rounded-xl border border-slate-800 self-start sm:self-auto">
+                <Clock size={14} className="text-cyan-400" />
+                <div className="text-xs font-mono">
+                  <span className="text-slate-500 uppercase tracking-wider text-[9px] block">Thời gian làm bài</span>
+                  <span className={`${countdown.color} font-bold`}>{countdown.text}</span>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Seminar Widget */}
       {team?.eventId?.seminar?.scheduledAt && !isExamVisible && team?.eventId?.status !== 'ongoing' && team?.eventId?.status !== 'completed' && !team?.isEliminated && (

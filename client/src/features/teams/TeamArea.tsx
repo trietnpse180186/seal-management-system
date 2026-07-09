@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { io } from 'socket.io-client';
-import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare, Cpu, Copy, RefreshCw, Crown, ExternalLink, Trophy } from 'lucide-react';
+import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare, Cpu, Copy, RefreshCw, Crown, Trophy } from 'lucide-react';
 import RegisterTeam from './RegisterTeam';
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (

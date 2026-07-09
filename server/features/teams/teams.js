@@ -1358,7 +1358,14 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
 router.get('/:teamId', authenticateToken, async (req, res) => {
   try {
     const team = await Team.findById(req.params.teamId)
-      .populate('trackId', 'name attachments environmentId')
+      .populate({
+        path: 'trackId',
+        select: 'name description roundId attachments environmentId examDriveFileId examDriveFileUrl examDriveFileName isExamManualOpen',
+        populate: {
+          path: 'roundId',
+          select: 'name driveFileName driveFileId startTime hasExamMaterial'
+        }
+      })
       .populate('leaderId', 'fullName email')
       .populate('eventId', 'name status isArchived');
 

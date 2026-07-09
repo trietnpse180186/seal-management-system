@@ -32,7 +32,7 @@ export default function JudgeProjects() {
   useEffect(() => {
     if (!selectedEventId || !token) return;
 
-    const socketUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    const socketUrl = import.meta.env.VITE_API_URL || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.origin : 'http://localhost:5000');
     const socket = io(socketUrl, { query: { token } });
     socketRef.current = socket;
 

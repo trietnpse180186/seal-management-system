@@ -1634,6 +1634,15 @@ router.put('/:teamId/assign-track', authenticateToken, async (req, res) => {
     team.trackId = track._id;
     await team.save();
 
+    // Sync team to external simulator if confirmed
+    if (team.status === 'confirmed') {
+      try {
+        await syncTeamToExternalSimulator(team);
+      } catch (syncErr) {
+        console.error('[ASSIGN TRACK] Simulator sync failed:', syncErr.message);
+      }
+    }
+
     // Trigger GitHub Repo creation in the background
     const suffix = getSemesterSuffix(event);
     const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-') + suffix;
@@ -2026,6 +2035,35 @@ router.patch('/:teamId/judge', authenticateToken, async (req, res) => {
             judgeApiKey: active ? team.judgeApiKey : null,
             judgeTopic: active ? team.judgeTopic : null
           });
+        }
+      }
+
+      // If we activated this team, notify other teams in the same track that they are deactivated
+      if (active) {
+        const otherTeams = await Team.find({
+          trackId: team.trackId,
+          _id: { $ne: team._id }
+        });
+        for (const other of otherTeams) {
+          io.to(`live:${team.eventId}`).emit('judge_active_toggled', {
+            teamId: other._id.toString(),
+            isJudgeActive: false,
+            judgeApiKey: null,
+            judgeTopic: null
+          });
+
+          // Also notify team members of other teams
+          const otherMembers = await TeamMember.find({ teamId: other._id });
+          for (const member of otherMembers) {
+            if (member.userId) {
+              io.to(`user:${member.userId.toString()}`).emit('judge_active_toggled', {
+                teamId: other._id.toString(),
+                isJudgeActive: false,
+                judgeApiKey: null,
+                judgeTopic: null
+              });
+            }
+          }
         }
       }
     } catch (socketErr) {

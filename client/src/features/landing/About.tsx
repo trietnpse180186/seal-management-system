@@ -215,6 +215,19 @@ export default function About() {
                   <span>Thời lượng: {activeEvent.durationText || '48 GIỜ'}</span>
                   <span>Thành viên: {activeEvent.memberLimitText || '2-4 operators'}</span>
                   <span>Giải thưởng: <strong className="text-cyan-400 font-bold">{activeEvent.prizePoolText || '$50,000 USD'}</strong></span>
+                  {activeEvent.zaloUrl && (
+                    <span>
+                      Zalo hỗ trợ:{" "}
+                      <a
+                        href={activeEvent.zaloUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-cyan-400 hover:text-cyan-300 font-bold hover:underline"
+                      >
+                        [Tham gia ngay]
+                      </a>
+                    </span>
+                  )}
                 </div>
               </div>
 

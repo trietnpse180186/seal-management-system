@@ -34,6 +34,10 @@ const EventSchema = new Schema({
     type: String, 
     default: '$50,000 USD' 
   },
+  zaloUrl: {
+    type: String,
+    default: ''
+  },
   phase1Description: { 
     type: String, 
     default: 'Các đội thi thực hiện đăng ký tài khoản, liên kết thành viên nhóm và liên kết repository Github chính thức để chuẩn bị nhận nhiệm vụ.' 

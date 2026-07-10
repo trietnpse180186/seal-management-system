@@ -434,7 +434,52 @@ module.exports = {
   createOrganization,
   linkOrganization,
   createIssue,
-  searchUsers
+  searchUsers,
+  checkGithubUserExists,
+  checkGithubEmailExists
 };
+
+/**
+ * Checks if a GitHub username exists on GitHub.
+ * @param {string} username - GitHub username
+ * @returns {Promise<boolean>}
+ */
+async function checkGithubUserExists(username) {
+  if (!username) return false;
+  if (isMock || !octokit) {
+    return username.toLowerCase() !== 'invalid-user';
+  }
+
+  try {
+    await octokit.users.getByUsername({ username });
+    return true;
+  } catch (error) {
+    if (error.status === 404) {
+      return false;
+    }
+    console.error(`Error verifying GitHub user ${username}:`, error.message);
+    return true; 
+  }
+}
+
+/**
+ * Checks if an email is registered on GitHub.
+ * @param {string} email - Email address
+ * @returns {Promise<boolean>}
+ */
+async function checkGithubEmailExists(email) {
+  if (!email) return false;
+  if (isMock || !octokit) {
+    return !email.toLowerCase().includes('invalid');
+  }
+
+  try {
+    const res = await octokit.search.users({ q: `${email} in:email` });
+    return (res.data.total_count || 0) > 0;
+  } catch (error) {
+    console.error(`Error searching GitHub email ${email}:`, error.message);
+    return true; 
+  }
+}
 
 

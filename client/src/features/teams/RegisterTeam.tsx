@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Users, UserPlus, Trash2, Calendar, FolderGit2, CheckCircle } from 'lucide-react';
+import { Users, UserPlus, Trash2, Calendar, FolderGit2, CheckCircle, Download, Upload, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import UniversityCombobox from '../shared/UniversityCombobox';
 import CustomSelect from '../shared/CustomSelect';
 import CaptchaInput from '../shared/CaptchaInput';
@@ -30,10 +30,16 @@ export default function RegisterTeam() {
   const [teamName, setTeamName] = useState('');
 
   // Leader info states (to capture missing profile info from Google OAuth)
+  const [leaderEmail, setLeaderEmail] = useState('');
   const [leaderFullName, setLeaderFullName] = useState('');
   const [leaderStudentId, setLeaderStudentId] = useState('');
   const [leaderGithubUsername, setLeaderGithubUsername] = useState('');
   const [leaderUniversity, setLeaderUniversity] = useState('');
+
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importErrors, setImportErrors] = useState<string[]>([]);
+  const [importSuccess, setImportSuccess] = useState('');
 
   const [members, setMembers] = useState<MemberInput[]>([]);
 
@@ -165,6 +171,7 @@ export default function RegisterTeam() {
       .then(res => {
         const u = res.data.user;
         if (u) {
+          setLeaderEmail(u.email || '');
           setLeaderFullName(u.fullName || '');
           setLeaderStudentId(u.studentId || '');
           setLeaderGithubUsername(u.githubUsername || '');
@@ -177,10 +184,67 @@ export default function RegisterTeam() {
       .catch(err => console.error('Error fetching user profile:', err));
   }, [token]);
 
+  const leaderEmailTimeout = useRef<any>(null);
+
+  useEffect(() => {
+    if (!leaderEmail || !token) return;
+    const emailVal = leaderEmail.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailVal)) return;
+
+    if (leaderEmailTimeout.current) clearTimeout(leaderEmailTimeout.current);
+
+    leaderEmailTimeout.current = setTimeout(async () => {
+      try {
+        const res = await axios.get(`http://localhost:5000/api/teams/user-lookup?email=${encodeURIComponent(emailVal)}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.data.user) {
+          const u = res.data.user;
+          if (u.fullName) setLeaderFullName(u.fullName);
+          if (u.studentId) setLeaderStudentId(u.studentId);
+          if (u.githubUsername) setLeaderGithubUsername(u.githubUsername);
+          if (u.university) setLeaderUniversity(u.university);
+          toast.success('Đã tìm thấy thông tin Trưởng nhóm và tự động điền!');
+        }
+      } catch (err) {
+        // Do not overwrite manually entered fields on lookup failure
+      }
+    }, 500);
+
+    return () => {
+      if (leaderEmailTimeout.current) clearTimeout(leaderEmailTimeout.current);
+    };
+  }, [leaderEmail, token]);
+
+  const eligibilityTimeouts = useRef<{ [key: number]: any }>({});
+
   const handleMemberChange = (index: number, field: keyof MemberInput, value: any) => {
     const updated = [...members];
     (updated[index] as any)[field] = value;
     setMembers(updated);
+
+    if (field === 'email') {
+      if (eligibilityTimeouts.current[index]) {
+        clearTimeout(eligibilityTimeouts.current[index]);
+      }
+
+      const emailVal = value.trim();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (emailRegex.test(emailVal)) {
+        updated[index].checkingStatus = 'checking';
+        updated[index].checkingMessage = 'Đang kiểm tra tự động...';
+        setMembers([...updated]);
+
+        eligibilityTimeouts.current[index] = setTimeout(() => {
+          handleCheckEligibility(index, emailVal);
+        }, 500);
+      } else {
+        updated[index].checkingStatus = 'idle';
+        updated[index].checkingMessage = '';
+        setMembers([...updated]);
+      }
+    }
   };
 
   const addMemberRow = () => {
@@ -203,48 +267,54 @@ export default function RegisterTeam() {
     setMembers(updated);
   };
 
-  const handleCheckEligibility = async (index: number) => {
+  const handleCheckEligibility = async (index: number, emailOverride?: string) => {
     const member = members[index];
-    if (!member.email.trim()) {
+    if (!member) return;
+    const emailToUse = emailOverride !== undefined ? emailOverride : member.email;
+    if (!emailToUse.trim()) {
       toast.warning('Vui lòng nhập email trước khi kiểm tra.');
       return;
     }
 
     const updated = [...members];
     updated[index].checkingStatus = 'checking';
-    updated[index].checkingMessage = '';
+    updated[index].checkingMessage = 'Đang kiểm tra...';
     setMembers(updated);
 
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/teams/check-eligibility?email=${encodeURIComponent(member.email.trim())}&eventId=${selectedEventId}`,
+        `http://localhost:5000/api/teams/check-eligibility?email=${encodeURIComponent(emailToUse.trim())}&eventId=${selectedEventId}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
 
       const nextUpdated = [...members];
-      if (res.data.eligible) {
-        nextUpdated[index].checkingStatus = 'eligible';
-        nextUpdated[index].checkingMessage = res.data.message || 'Hợp lệ (Chưa có nhóm)';
-        if (res.data.user) {
-          const u = res.data.user;
-          if (u.fullName) nextUpdated[index].fullName = u.fullName;
-          if (u.studentId) nextUpdated[index].studentId = u.studentId;
-          if (u.githubUsername) nextUpdated[index].githubUsername = u.githubUsername;
-          if (u.university) nextUpdated[index].university = u.university;
+      if (nextUpdated[index]) {
+        if (res.data.eligible) {
+          nextUpdated[index].checkingStatus = 'eligible';
+          nextUpdated[index].checkingMessage = res.data.message || 'Hợp lệ (Chưa có nhóm)';
+          if (res.data.user) {
+            const u = res.data.user;
+            if (u.fullName) nextUpdated[index].fullName = u.fullName;
+            if (u.studentId) nextUpdated[index].studentId = u.studentId;
+            if (u.githubUsername) nextUpdated[index].githubUsername = u.githubUsername;
+            if (u.university) nextUpdated[index].university = u.university;
+          }
+        } else {
+          nextUpdated[index].checkingStatus = 'conflict';
+          nextUpdated[index].checkingMessage = res.data.message || 'Đã có nhóm!';
         }
-      } else {
-        nextUpdated[index].checkingStatus = 'conflict';
-        nextUpdated[index].checkingMessage = res.data.message || 'Đã có nhóm!';
+        setMembers(nextUpdated);
       }
-      setMembers(nextUpdated);
     } catch (err: any) {
       console.error(err);
       const nextUpdated = [...members];
-      nextUpdated[index].checkingStatus = 'idle';
-      nextUpdated[index].checkingMessage = err.response?.data?.message || 'Lỗi kiểm tra';
-      setMembers(nextUpdated);
+      if (nextUpdated[index]) {
+        nextUpdated[index].checkingStatus = 'idle';
+        nextUpdated[index].checkingMessage = err.response?.data?.message || 'Lỗi kiểm tra';
+        setMembers(nextUpdated);
+      }
       toast.error(err.response?.data?.message || 'Lỗi khi kiểm tra email.');
     }
   };
@@ -261,6 +331,26 @@ export default function RegisterTeam() {
       return;
     }
 
+    if (!leaderFullName.trim() || !leaderGithubUsername.trim()) {
+      setError('Họ tên Trưởng nhóm và GitHub Username là bắt buộc.');
+      setLoading(false);
+      return;
+    }
+
+    // Validate members
+    for (let i = 0; i < members.length; i++) {
+      const m = members[i];
+      if (!m.email.trim() || !m.fullName.trim() || !m.githubUsername.trim()) {
+        setError(`Thành viên thứ ${i + 1} phải điền đầy đủ Email, Họ Tên và GitHub Username.`);
+        setLoading(false);
+        return;
+      }
+      if (m.checkingStatus === 'conflict') {
+        setError(`Thành viên thứ ${i + 1} (${m.email}) đã thuộc đội khác hoặc không hợp lệ.`);
+        setLoading(false);
+        return;
+      }
+    }
 
     try {
       if (!captchaValue.trim()) {
@@ -275,7 +365,7 @@ export default function RegisterTeam() {
           eventId: selectedEventId,
           trackId: undefined,
           teamName: teamName.trim(),
-          membersList: members.filter(m => m.email.trim() !== '').map(m => ({
+          membersList: members.map(m => ({
             email: m.email.trim(),
             fullName: m.fullName.trim(),
             githubUsername: m.githubUsername.trim(),
@@ -283,6 +373,7 @@ export default function RegisterTeam() {
             university: m.university.trim()
           })),
           leaderInfo: {
+            email: leaderEmail.trim(),
             fullName: leaderFullName.trim(),
             studentId: leaderStudentId.trim(),
             githubUsername: leaderGithubUsername.trim(),
@@ -311,6 +402,74 @@ export default function RegisterTeam() {
       setError(err.response?.data?.message || 'Có lỗi xảy ra trong quá trình đăng ký.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    if (!token) return;
+    try {
+      const response = await axios.get('http://localhost:5000/api/teams/import-template', {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'Template_Import_Teams.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+    } catch (err) {
+      console.error(err);
+      toast.error('Lỗi khi tải file mẫu.');
+    }
+  };
+
+  const handleImportSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!importFile) {
+      toast.warning('Vui lòng chọn file Excel trước.');
+      return;
+    }
+    if (!selectedEventId) {
+      toast.warning('Vui lòng chọn cuộc thi trước khi import.');
+      return;
+    }
+
+    setImporting(true);
+    setImportErrors([]);
+    setImportSuccess('');
+
+    const formData = new FormData();
+    formData.append('file', importFile);
+    formData.append('eventId', selectedEventId);
+
+    try {
+      const res = await axios.post('http://localhost:5000/api/teams/import', formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      toast.success(res.data.message || 'Import danh sách đội thi thành công!');
+      setImportSuccess(res.data.message || 'Import thành công!');
+      setImportFile(null);
+
+      // Redirect after 3s
+      setTimeout(() => {
+        window.location.href = '/team-area';
+      }, 3000);
+
+    } catch (err: any) {
+      console.error(err);
+      if (err.response?.data?.errors) {
+        setImportErrors(err.response.data.errors);
+      } else {
+        toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi import.');
+      }
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -395,7 +554,85 @@ export default function RegisterTeam() {
           </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <>
+          {/* Excel Import Card */}
+          <div className="glass p-6 rounded-2xl space-y-4 border border-slate-800 hover:border-cyan-500/30 transition-all relative z-[3] mb-8 font-mono">
+            <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2 border-b border-slate-800 pb-3 font-mono-tech">
+              <FileSpreadsheet size={18} className="text-cyan-400" />
+              <span className="text-cyan-400">ĐĂNG KÝ BẰNG FILE EXCEL</span>
+            </h2>
+
+            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between text-xs text-slate-400 bg-slate-900/40 p-4 rounded-xl border border-slate-800">
+              <div className="space-y-1">
+                <p className="font-bold text-white uppercase tracking-wider">Tải File Excel Mẫu</p>
+                <p className="text-[11px]">Điền đầy đủ thông tin trưởng nhóm & các thành viên theo mẫu chuẩn.</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleDownloadTemplate}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 hover:border-cyan-500/30 font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer text-[10px]"
+              >
+                <Download size={14} />
+                Tải file mẫu
+              </button>
+            </div>
+
+            <form onSubmit={handleImportSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">Chọn file Excel đăng ký</label>
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <input
+                      type="file"
+                      accept=".xlsx, .xls"
+                      onChange={e => setImportFile(e.target.files ? e.target.files[0] : null)}
+                      className="hidden"
+                      id="excel-file-upload"
+                    />
+                    <label
+                      htmlFor="excel-file-upload"
+                      className="flex items-center gap-2 w-full bg-slate-900/50 border border-slate-800 text-slate-300 px-3 py-2 rounded-lg text-xs hover:border-cyan-500/50 hover:text-white transition-all font-mono cursor-pointer"
+                    >
+                      <Upload size={14} className="text-cyan-400" />
+                      {importFile ? importFile.name : 'Chọn file .xlsx hoặc .xls'}
+                    </label>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={importing || !importFile || !selectedEventId}
+                    className="bg-cyan-500 hover:bg-cyan-600 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-bold px-6 py-2 rounded-lg text-xs uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap"
+                  >
+                    {importing ? 'Đang import...' : 'Bắt đầu Import'}
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            {importSuccess && (
+              <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-xl text-emerald-400 text-xs font-mono">
+                {importSuccess}
+              </div>
+            )}
+
+            {importErrors.length > 0 && (
+              <div className="bg-rose-500/10 border border-rose-500/35 p-4 rounded-xl text-rose-400 text-xs space-y-1 max-h-48 overflow-y-auto">
+                <p className="font-bold flex items-center gap-1.5 uppercase text-white mb-2 font-mono">
+                  <AlertTriangle size={14} className="text-rose-400" /> Lỗi phân tích dữ liệu Excel:
+                </p>
+                {importErrors.map((err, idx) => (
+                  <p key={idx} className="font-mono text-[11px]">{err}</p>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="text-xs text-slate-500 uppercase tracking-widest text-center my-6 flex items-center justify-center gap-4">
+            <span className="h-px bg-slate-800 flex-1"></span>
+            <span>HOẶC ĐĂNG KÝ THỦ CÔNG</span>
+            <span className="h-px bg-slate-800 flex-1"></span>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-8">
 
           {selectedEvent && selectedEvent.maxTeams && (selectedEvent.teamCount || 0) >= selectedEvent.maxTeams && (
             <div className="bg-rose-500/10 border border-rose-500/35 p-5 rounded-2xl text-rose-400 text-xs font-mono flex items-center gap-3">
@@ -467,7 +704,7 @@ export default function RegisterTeam() {
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                Tên Nhóm thi đấu
+                Tên Nhóm thi đấu <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
@@ -492,7 +729,20 @@ export default function RegisterTeam() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                  Họ và Tên
+                  Email Trưởng Nhóm <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={leaderEmail}
+                  onChange={e => setLeaderEmail(e.target.value)}
+                  className="w-full bg-slate-900/50 border border-slate-800 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(0,240,255,0.05)] transition-all font-mono"
+                  placeholder="Email Trưởng nhóm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                  Họ và Tên <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -509,7 +759,6 @@ export default function RegisterTeam() {
                 </label>
                 <input
                   type="text"
-                  required
                   value={leaderStudentId}
                   onChange={e => setLeaderStudentId(e.target.value)}
                   className="w-full bg-slate-900/50 border border-slate-800 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(0,240,255,0.05)] transition-all font-mono"
@@ -518,7 +767,7 @@ export default function RegisterTeam() {
               </div>
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                  GitHub Username
+                  GitHub Username <span className="text-rose-500">*</span>
                 </label>
                 <GithubUserAutocomplete
                   value={leaderGithubUsername}
@@ -582,30 +831,19 @@ export default function RegisterTeam() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-slate-300">
                       <div className="space-y-1">
-                        <label className="block text-xs font-semibold text-slate-400">Email</label>
-                        <div className="flex gap-2">
+                        <label className="block text-xs font-semibold text-slate-400">Email <span className="text-rose-500">*</span></label>
+                        <div className="relative flex items-center">
                           <input
                             type="email"
                             required
                             placeholder="member@student.edu.vn"
                             value={member.email}
-                            onChange={e => {
-                              handleMemberChange(index, 'email', e.target.value);
-                              const updated = [...members];
-                              updated[index].checkingStatus = 'idle';
-                              updated[index].checkingMessage = '';
-                              setMembers(updated);
-                            }}
-                            className="flex-1 bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                            onChange={e => handleMemberChange(index, 'email', e.target.value)}
+                            className="w-full bg-slate-900/50 border border-slate-800 text-white px-3 py-2 pr-10 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
                           />
-                          <button
-                            type="button"
-                            onClick={() => handleCheckEligibility(index)}
-                            disabled={member.checkingStatus === 'checking'}
-                            className="bg-cyan-500 hover:bg-cyan-600 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-bold px-3 py-2 rounded-lg text-[10px] uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap"
-                          >
-                            {member.checkingStatus === 'checking' ? 'Đang check...' : 'Kiểm tra'}
-                          </button>
+                          {member.checkingStatus === 'checking' && (
+                            <div className="absolute right-3 animate-spin border-2 border-t-cyan-500 border-r-transparent border-slate-850 rounded-full w-4 h-4" />
+                          )}
                         </div>
                         {member.checkingMessage && (
                           <p className={`text-[10px] font-mono italic mt-1 ${member.checkingStatus === 'eligible' ? 'text-emerald-400' :
@@ -616,7 +854,7 @@ export default function RegisterTeam() {
                         )}
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-slate-400 mb-1">Họ Tên</label>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1">Họ Tên <span className="text-rose-500">*</span></label>
                         <input
                           type="text"
                           required
@@ -627,7 +865,7 @@ export default function RegisterTeam() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-slate-400 mb-1">GitHub Username</label>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1">GitHub Username <span className="text-rose-500">*</span></label>
                         <GithubUserAutocomplete
                           value={member.githubUsername}
                           onChange={val => handleMemberChange(index, 'githubUsername', val)}
@@ -691,6 +929,7 @@ export default function RegisterTeam() {
           </div>
 
         </form>
+        </>
       )}
 
     </div>

@@ -78,6 +78,7 @@ export default function AdminEvents({
   const [year, setYear] = useState("2026");
   const [desc, setDesc] = useState("");
   const [maxTeams, setMaxTeams] = useState("10");
+  const [zaloUrl, setZaloUrl] = useState("");
 
   const [events, setEvents] = useState<any[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
@@ -177,6 +178,7 @@ export default function AdminEvents({
   const [editDurationText, setEditDurationText] = useState("");
   const [editMemberLimitText, setEditMemberLimitText] = useState("");
   const [editPrizePoolText, setEditPrizePoolText] = useState("");
+  const [editZaloUrl, setEditZaloUrl] = useState("");
   const [editPhase1Description, setEditPhase1Description] = useState("");
   const [editPhase2Description, setEditPhase2Description] = useState("");
   const [editPhase3Description, setEditPhase3Description] = useState("");
@@ -926,6 +928,7 @@ export default function AdminEvents({
     setEditDurationText(eventObj.durationText || "48 GIỜ");
     setEditMemberLimitText(eventObj.memberLimitText || "2-4 OPERATORS");
     setEditPrizePoolText(eventObj.prizePoolText || "$50,000 USD");
+    setEditZaloUrl(eventObj.zaloUrl || "");
     setEditPhase1Description(eventObj.phase1Description || "Các đội thi thực hiện đăng ký tài khoản, liên kết thành viên nhóm và liên kết repository Github chính thức để chuẩn bị nhận nhiệm vụ.");
     setEditPhase2Description(eventObj.phase2Description || "Giai đoạn lập trình cường độ cao. Các đội thực hiện giải quyết yêu cầu dự án, liên tục push commit để AI tự động phân tích và đánh giá chất lượng mã nguồn.");
     setEditPhase3Description(eventObj.phase3Description || "Dừng cổng nộp bài, đóng repository. Các đội thi chuẩn bị báo cáo dự án trước hội đồng giám khảo và nhận kết quả xếp hạng chung cuộc từ hệ thống.");
@@ -966,6 +969,7 @@ export default function AdminEvents({
           description: desc,
           maxTeams: parseInt(maxTeams),
           githubOrgName,
+          zaloUrl,
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -979,6 +983,8 @@ export default function AdminEvents({
       setEditEventDesc(newEvent.description || "");
       setEditEventMaxTeams(String(newEvent.maxTeams || 10));
       setEditEventGithubOrgName(newEvent.githubOrgName || "");
+      setEditZaloUrl(newEvent.zaloUrl || "");
+      setZaloUrl("");
       populateEventSchedule(newEvent);
       setSearchParams({ eventId: newEvent._id });
       setTracks([]);
@@ -1023,6 +1029,7 @@ export default function AdminEvents({
           description: editEventDesc,
           maxTeams: parseInt(editEventMaxTeams),
           githubOrgName: editEventGithubOrgName,
+          zaloUrl: editZaloUrl,
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -1151,6 +1158,7 @@ export default function AdminEvents({
           durationText: editDurationText,
           memberLimitText: editMemberLimitText,
           prizePoolText: editPrizePoolText,
+          zaloUrl: editZaloUrl,
           phase1Description: editPhase1Description,
           phase2Description: editPhase2Description,
           phase3Description: editPhase3Description,
@@ -2437,6 +2445,20 @@ export default function AdminEvents({
 
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
+                      Link nhóm Zalo cuộc thi
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="Ví dụ: https://zalo.me/g/abcdef"
+                      value={editZaloUrl}
+                      onChange={(e) => setEditZaloUrl(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-slate-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                      disabled={readOnly}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
                       Mô tả Chi tiết Cuộc thi
                     </label>
                     <textarea
@@ -2559,6 +2581,19 @@ export default function AdminEvents({
                         className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-950 border border-slate-850 text-slate-200"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-mono">
+                      Link nhóm Zalo cuộc thi
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="Ví dụ: https://zalo.me/g/abcdef"
+                      value={zaloUrl}
+                      onChange={(e) => setZaloUrl(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl text-sm font-mono bg-slate-955 border border-slate-850 text-slate-200"
+                    />
                   </div>
 
                   <div>

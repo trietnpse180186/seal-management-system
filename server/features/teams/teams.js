@@ -169,6 +169,41 @@ router.get('/check-eligibility', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @route   GET /api/teams/check-name
+ * @desc    Check if a team name already exists for a specific event
+ * @access  Private (Authenticated Users)
+ */
+router.get('/check-name', authenticateToken, async (req, res) => {
+  const { name, eventId } = req.query;
+
+  if (!name || !eventId) {
+    return res.status(400).json({ message: 'Thiếu thông tin tên nhóm hoặc eventId.' });
+  }
+
+  try {
+    const existingTeam = await Team.findOne({
+      eventId,
+      name: { $regex: new RegExp(`^${name.trim()}$`, 'i') }
+    });
+
+    if (existingTeam) {
+      return res.json({
+        exists: true,
+        message: 'Tên đội đã tồn tại trong cuộc thi.'
+      });
+    }
+
+    return res.json({
+      exists: false,
+      message: 'Tên nhóm hợp lệ.'
+    });
+  } catch (err) {
+    console.error('Error checking team name:', err);
+    return res.status(500).json({ message: 'Lỗi hệ thống khi kiểm tra tên nhóm.' });
+  }
+});
+
+/**
  * @route   POST /api/teams/register
  * @desc    Register a team and invite members
  * @access  Private (Participants)
@@ -450,14 +485,14 @@ router.post('/register', authenticateToken, async (req, res) => {
         console.error('[ROLLBACK ERROR] Failed to clean up team registration:', rollbackError.message);
       }
     }
-    
+
     // Xử lý lỗi trùng lặp duy nhất (Race condition / Concurrent registration)
     if (error.code === 11000) {
-      return res.status(400).json({ 
-        message: 'Một hoặc nhiều thành viên (hoặc chính bạn) đã được đăng ký vào một đội khác trong cuộc thi này.' 
+      return res.status(400).json({
+        message: 'Một hoặc nhiều thành viên (hoặc chính bạn) đã được đăng ký vào một đội khác trong cuộc thi này.'
       });
     }
-    
+
     res.status(500).json({ message: 'Đăng ký đội thất bại.' });
   }
 });
@@ -1547,7 +1582,7 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
     // Fetch environment code and active judge status if team has external code
     if (team.externalTeamCode) {
       const { getJudgeActive, getEnvironment } = require('./externalTeamService');
-      
+
       let isJudgeActive = false;
       let currentScenario = 'NORMAL';
       try {
@@ -1898,7 +1933,7 @@ router.post('/:teamId/sync-mqtt', authenticateToken, async (req, res) => {
       try {
         const { fetchExternalKeys } = require('./externalTeamService');
         const result = await fetchExternalKeys(team.externalTeamCode);
-        
+
         team.testApiKey = result.testApiKey || team.testApiKey || '';
         team.judgeApiKey = result.judgeApiKey || team.judgeApiKey || '';
         team.mqttUsername = result.mqttUsername || team.mqttUsername || '';
@@ -2016,7 +2051,7 @@ router.patch('/:teamId/judge', authenticateToken, async (req, res) => {
     try {
       const socketModule = require('../chat/socket');
       const io = socketModule.getIO();
-      
+
       // Emit to live room (for judges/admins)
       io.to(`live:${team.eventId}`).emit('judge_active_toggled', {
         teamId: team._id.toString(),

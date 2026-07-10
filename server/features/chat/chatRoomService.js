@@ -16,16 +16,25 @@ async function ensureChatRoomForTeam(team) {
       trackId: team.trackId,
       eventId: team.eventId,
       type: 'team_mentor',
-      members: memberIds
+      members: memberIds,
+      mentorId: team.mentorId || undefined
     });
     await room.save();
     console.log(`[CHAT] Created general team_mentor room for team ${team.name}`);
   } else {
     // Đảm bảo tất cả thành viên hiện tại đều có mặt trong thành viên phòng
+    let updated = false;
+    if (team.mentorId && (!room.mentorId || room.mentorId.toString() !== team.mentorId.toString())) {
+      room.mentorId = team.mentorId;
+      updated = true;
+    }
     const currentMemberIds = room.members.map(id => id.toString());
     const newMembers = memberIds.filter(id => !currentMemberIds.includes(id.toString()));
     if (newMembers.length > 0) {
       room.members.push(...newMembers);
+      updated = true;
+    }
+    if (updated) {
       await room.save();
     }
   }

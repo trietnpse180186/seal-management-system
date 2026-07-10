@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { io } from 'socket.io-client';
-import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare, Cpu, Copy, RefreshCw, Crown, Trophy } from 'lucide-react';
+import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare, Cpu, Copy, RefreshCw, Crown, Trophy, Edit3, ExternalLink } from 'lucide-react';
 import RegisterTeam from './RegisterTeam';
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
@@ -173,6 +173,25 @@ export default function TeamArea() {
   const [syncingMqtt, setSyncingMqtt] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [savingBasicInfo, setSavingBasicInfo] = useState(false);
+  const [editMembers, setEditMembers] = useState<any[]>([]);
+
+  const handleOpenEditModal = () => {
+    if (data?.members) {
+      setEditMembers(data.members.map((m: any) => ({
+        userId: m.userId?._id,
+        email: m.userId?.email,
+        role: m.role,
+        fullName: m.userId?.fullName || '',
+        githubUsername: m.userId?.githubUsername || '',
+        studentId: m.userId?.studentId || '',
+        university: m.userId?.university || ''
+      })));
+    }
+    setShowEditModal(true);
+  };
+
 
 
   const track = data?.team?.trackId;
@@ -309,6 +328,7 @@ export default function TeamArea() {
 
 
 
+
         // Fetch commits if repo exists
         if (res.data.repository) {
           fetchCommits(res.data.team._id);
@@ -339,6 +359,37 @@ export default function TeamArea() {
       }
     } catch (err: any) {
       console.error('Error fetching commits:', err);
+    }
+  };
+
+  const handleSaveBasicInfo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!data?.team?._id) return;
+
+    setSavingBasicInfo(true);
+    try {
+      const res = await axios.put(
+        `http://localhost:5000/api/teams/${data.team._id}/basic-info`,
+        {
+          members: editMembers.map(m => ({
+            userId: m.userId,
+            fullName: m.fullName,
+            githubUsername: m.githubUsername,
+            studentId: m.studentId || '',
+            university: m.university || ''
+          }))
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      toast.success(res.data.message || 'Cập nhật thông tin thành công!');
+      setShowEditModal(false);
+      await fetchTeamData();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Lỗi khi cập nhật thông tin.');
+    } finally {
+      setSavingBasicInfo(false);
     }
   };
 
@@ -439,7 +490,7 @@ export default function TeamArea() {
     );
   }
 
-  const { team, members, repository } = data || {};
+  const { team, members, repository, isLeader } = data || {};
 
 
   const isEventEnded = team && (
@@ -475,6 +526,7 @@ export default function TeamArea() {
                 }`}>
                 {getTeamStatusText(team?.status)}
               </span>
+
             </div>
 
             <div>
@@ -795,54 +847,145 @@ export default function TeamArea() {
           )}
 
           {/* Right: Members Card (Col 4) */}
-          <div className={`${isExamVisible ? 'lg:col-span-4' : showMqttCard ? 'lg:col-span-6' : 'lg:col-span-12'} glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all`}>
-            <div>
-              <h2 className="text-sm font-bold text-white mb-4 flex items-center gap-2 font-mono-tech border-b border-slate-800 pb-3">
-                <Users size={18} className="text-cyan-400" />
-                <span className="text-cyan-400">[THÀNH_VIÊN_NHÓM]</span>
-              </h2>
-              <div className="space-y-3.5 max-h-[300px] overflow-y-auto pr-1">
-                {members?.map((m: any) => (
-                  <div key={m._id} className={`flex items-center justify-between p-3 bg-slate-900/30 rounded-xl border text-xs ${m.role === 'leader' ? 'border-amber-500/30 hover:border-amber-500/50' : 'border-slate-800'
-                    }`}>
-                    <div className="min-w-0 flex-1 pr-2">
-                      <div className="flex items-center gap-1.5">
-                        <p className={`font-bold truncate ${m.role === 'leader' ? 'text-amber-400' : 'text-slate-200'}`}>
-                          {m.userId?.fullName}
-                        </p>
-                        {m.role === 'leader' && (
-                          <Crown size={12} className="text-amber-400 shrink-0 fill-amber-400/20 animate-pulse" />
+          <div className={`${isExamVisible ? 'lg:col-span-4' : showMqttCard ? 'lg:col-span-6' : 'lg:col-span-6'} space-y-6`}>
+            <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all text-left">
+              <div>
+                <h2 className="text-sm font-bold text-white mb-4 flex items-center justify-between font-mono-tech border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Users size={18} className="text-cyan-400" />
+                    <span className="text-cyan-400">[THÀNH_VIÊN_NHÓM]</span>
+                  </div>
+                  {isLeader && (
+                    <button
+                      onClick={handleOpenEditModal}
+                      className="inline-flex items-center gap-1.5 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 px-2.5 py-1 rounded border border-cyan-500/25 transition-all cursor-pointer font-sans uppercase tracking-wider"
+                    >
+                      <Edit3 size={10} />
+                      Sửa thông tin
+                    </button>
+                  )}
+                </h2>
+                <div className="space-y-3.5 max-h-[300px] overflow-y-auto pr-1">
+                  {members?.map((m: any) => (
+                    <div key={m._id} className={`flex items-center justify-between p-3 bg-slate-900/30 rounded-xl border text-xs ${m.role === 'leader' ? 'border-amber-500/30 hover:border-amber-500/50' : 'border-slate-800'
+                      }`}>
+                      <div className="min-w-0 flex-1 pr-2">
+                        <div className="flex items-center gap-1.5">
+                          <p className={`font-bold truncate ${m.role === 'leader' ? 'text-amber-400' : 'text-slate-200'}`}>
+                            {m.userId?.fullName}
+                          </p>
+                          {m.role === 'leader' && (
+                            <Crown size={12} className="text-amber-400 shrink-0 fill-amber-400/20 animate-pulse" />
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-400 truncate">{m.userId?.email}</p>
+                        {(m.userId?.studentId || m.userId?.university) && (
+                          <p className="text-[10px] text-slate-550 font-mono mt-0.5 truncate">
+                            {m.userId?.studentId && `MSSV: ${m.userId.studentId}`}
+                            {m.userId?.studentId && m.userId?.university && ' • '}
+                            Đại học {m.userId?.university}
+                          </p>
                         )}
                       </div>
-                      <p className="text-[10px] text-slate-400 truncate">{m.userId?.email}</p>
-                      {(m.userId?.studentId || m.userId?.university) && (
-                        <p className="text-[10px] text-slate-550 font-mono mt-0.5 truncate">
-                          {m.userId?.studentId && `MSSV: ${m.userId.studentId}`}
-                          {m.userId?.studentId && m.userId?.university && ' • '}
-                          Đại học {m.userId?.university}
-                        </p>
-                      )}
-                    </div>
-                    <div className="shrink-0 flex items-center gap-1">
-                      {m.confirmStatus === 'confirmed' ? (
-                        m.role === 'leader' ? (
-                          <span className="flex items-center gap-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-0.5 rounded text-[9px] font-extrabold uppercase">
-                            Leader
-                          </span>
+                      <div className="shrink-0 flex items-center gap-1">
+                        {m.confirmStatus === 'confirmed' ? (
+                          m.role === 'leader' ? (
+                            <span className="flex items-center gap-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-0.5 rounded text-[9px] font-extrabold uppercase">
+                              Leader
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-0.5 bg-emerald-500/10 text-emerald-450 border border-emerald-500/20 px-2.5 py-0.5 rounded text-[9px] font-extrabold uppercase">
+                              Member
+                            </span>
+                          )
                         ) : (
-                          <span className="flex items-center gap-0.5 bg-emerald-500/10 text-emerald-450 border border-emerald-500/20 px-2.5 py-0.5 rounded text-[9px] font-extrabold uppercase">
-                            Member
+                          <span className="flex items-center gap-0.5 bg-slate-800 text-slate-400 px-2.5 py-0.5 rounded text-[9px] font-bold">
+                            <Clock size={8} /> Chờ duyệt
                           </span>
-                        )
-                      ) : (
-                        <span className="flex items-center gap-0.5 bg-slate-800 text-slate-400 px-2.5 py-0.5 rounded text-[9px] font-bold">
-                          <Clock size={8} /> Chờ duyệt
-                        </span>
-                      )}
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
+            </div>
+
+            {/* Zalo Card */}
+            {team.eventId?.zaloUrl && (
+              <div className="glass p-5 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all relative overflow-hidden shadow-lg text-left">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl pointer-events-none"></div>
+                <div className="flex items-start gap-3.5">
+                  <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-400 shrink-0">
+                    <MessageSquare size={20} />
+                  </div>
+                  <div className="space-y-3 flex-1 min-w-0">
+                    <div>
+                      <h3 className="text-xs font-bold text-white font-mono uppercase tracking-wide">
+                        KÊNH ZALO HỖ TRỢ ĐỘI THI
+                      </h3>
+                      <p className="text-[10px] text-slate-400 mt-1 leading-relaxed font-sans">
+                        Tham gia nhóm Zalo hỗ trợ kỹ thuật và nhận thông báo khẩn cấp từ BTC.
+                      </p>
+                    </div>
+                    <a
+                      href={team.eventId.zaloUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] uppercase rounded-xl transition-all shadow-md shadow-blue-600/10 tracking-wider font-mono cursor-pointer border border-blue-400/20"
+                    >
+                      <span>Tham gia ngay</span>
+                      <ExternalLink size={12} />
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Project Topic Card */}
+          <div className={`${
+            isExamVisible || showMqttCard ? 'lg:col-span-12' : 'lg:col-span-6'
+          } glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all`}>
+            <div>
+              <div className="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+                <h2 className="text-sm font-bold text-white flex items-center gap-2 font-mono-tech">
+                  <FileDiff size={18} className="text-cyan-400" />
+                  <span className="text-cyan-400">[ĐỀ_TÀI_DỰ_ÁN]</span>
+                </h2>
+              </div>
+              
+              {team.topicSubmission?.title ? (
+                <div className="space-y-4 text-xs font-mono">
+                  <div>
+                    <span className="text-[10px] text-slate-500 font-bold block uppercase tracking-wider">Tên đề tài</span>
+                    <p className="text-sm font-bold text-white mt-1">{team.topicSubmission.title}</p>
+                  </div>
+                  {team.topicSubmission.description && (
+                    <div>
+                      <span className="text-[10px] text-slate-500 font-bold block uppercase tracking-wider">Mô tả chi tiết</span>
+                      <p className="text-slate-300 mt-1 font-sans leading-relaxed text-xs max-h-[100px] overflow-y-auto whitespace-pre-wrap">{team.topicSubmission.description}</p>
+                    </div>
+                  )}
+                  {team.topicSubmission.documentationLink && (
+                    <div>
+                      <span className="text-[10px] text-slate-500 font-bold block uppercase tracking-wider">Đường dẫn tài liệu</span>
+                      <a
+                        href={team.topicSubmission.documentationLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-cyan-400 hover:underline mt-1 block truncate font-sans"
+                      >
+                        {team.topicSubmission.documentationLink}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-slate-500 italic font-sans text-xs">
+                  <FileDiff size={32} className="mx-auto text-slate-650 mb-2" />
+                  <p>Chưa đăng ký đề tài dự án.</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -963,7 +1106,7 @@ export default function TeamArea() {
           </div>
 
           {team.achievedResult && (
-            <div className="text-[11px] text-slate-500 font-mono pt-2 border-t border-slate-850/60 max-w-sm mx-auto">
+            <div className="text-[11px] text-slate-550 font-mono pt-2 border-t border-slate-850/60 max-w-sm mx-auto">
               <span>Ghi nhận tại: {team.achievedResult.roundName} ({team.achievedResult.trackName})</span>
             </div>
           )}
@@ -971,6 +1114,185 @@ export default function TeamArea() {
           <p className="text-xs text-slate-400 leading-relaxed font-sans max-w-md mx-auto pt-2">
             Cảm ơn bạn đã cống hiến hết mình tại giải đấu năm nay! Chúc đội thi <strong className="text-slate-200">{team.name}</strong> gặt hái được nhiều thành công hơn nữa trên con đường phát triển công nghệ sắp tới.
           </p>
+        </div>
+      )}
+
+      {/* Edit Basic Info Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-fade-in animate-duration-150">
+          <div className="glass max-w-2xl w-full rounded-3xl border border-slate-800 p-6 md:p-8 space-y-6 relative overflow-hidden shadow-2xl">
+            <form onSubmit={handleSaveBasicInfo} className="space-y-4 font-sans text-xs">
+              <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
+                {editMembers.map((member, index) => (
+                  <div key={member.userId || `new-${index}`} className="border border-slate-850 p-4 rounded-xl bg-slate-900/10 space-y-3 relative text-left">
+                    <div className="absolute top-3 right-4 flex items-center gap-2">
+                      {member.role === 'leader' ? (
+                        <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-0.5 rounded text-[8px] font-extrabold uppercase font-mono tracking-wider">
+                          Trưởng nhóm
+                        </span>
+                      ) : (
+                        <span className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2.5 py-0.5 rounded text-[8px] font-extrabold uppercase font-mono tracking-wider">
+                          Thành viên
+                        </span>
+                      )}
+                      {member.isNew && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = editMembers.filter((_, idx) => idx !== index);
+                            setEditMembers(updated);
+                          }}
+                          className="text-rose-500 hover:text-rose-400 text-[8px] font-bold cursor-pointer font-mono border border-rose-500/20 bg-rose-500/10 px-2 py-0.5 rounded"
+                        >
+                          XÓA
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="text-[10px] font-bold text-slate-350 font-mono flex items-center gap-1.5 border-b border-slate-850 pb-2 mb-2 uppercase">
+                      <span className="text-cyan-400">{`[THÀNH VIÊN #${index + 1}]`}</span>
+                      {!member.isNew && <span className="text-slate-500">{member.email}</span>}
+                      {member.isNew && <span className="text-emerald-400 font-extrabold">[MỚI]</span>}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                      {/* Email (Only for new members) */}
+                      {member.isNew && (
+                        <div className="space-y-1 md:col-span-2">
+                          <label className="block text-slate-450 font-semibold uppercase tracking-wider text-[9px]">
+                            Địa Chỉ Email <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="email"
+                            required
+                            placeholder="nhap-email-thanh-vien@fe.edu.vn"
+                            value={member.email}
+                            onChange={(e) => {
+                              const updated = [...editMembers];
+                              updated[index].email = e.target.value;
+                              setEditMembers(updated);
+                            }}
+                            className="w-full bg-slate-955 border border-slate-800 text-slate-200 px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                          />
+                        </div>
+                      )}
+
+                      {/* Full Name */}
+                      <div className="space-y-1">
+                        <label className="block text-slate-455 font-semibold uppercase tracking-wider text-[9px]">
+                          Họ Tên <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={member.fullName}
+                          onChange={(e) => {
+                            const updated = [...editMembers];
+                            updated[index].fullName = e.target.value;
+                            setEditMembers(updated);
+                          }}
+                          className="w-full bg-slate-955 border border-slate-800 text-slate-200 px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                        />
+                      </div>
+
+                      {/* GitHub Username */}
+                      <div className="space-y-1">
+                        <label className="block text-slate-455 font-semibold uppercase tracking-wider text-[9px]">
+                          GitHub Username <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={member.githubUsername}
+                          onChange={(e) => {
+                            const updated = [...editMembers];
+                            updated[index].githubUsername = e.target.value;
+                            setEditMembers(updated);
+                          }}
+                          className="w-full bg-slate-955 border border-slate-800 text-slate-200 px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                        />
+                      </div>
+
+                      {/* Student ID */}
+                      <div className="space-y-1">
+                        <label className="block text-slate-455 font-semibold uppercase tracking-wider text-[9px]">
+                          MSSV (Mã số sinh viên)
+                        </label>
+                        <input
+                          type="text"
+                          value={member.studentId}
+                          onChange={(e) => {
+                            const updated = [...editMembers];
+                            updated[index].studentId = e.target.value;
+                            setEditMembers(updated);
+                          }}
+                          className="w-full bg-slate-955 border border-slate-800 text-slate-200 px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                        />
+                      </div>
+
+                      {/* University */}
+                      <div className="space-y-1">
+                        <label className="block text-slate-455 font-semibold uppercase tracking-wider text-[9px]">
+                          Trường Đại Học
+                        </label>
+                        <input
+                          type="text"
+                          value={member.university}
+                          onChange={(e) => {
+                            const updated = [...editMembers];
+                            updated[index].university = e.target.value;
+                            setEditMembers(updated);
+                          }}
+                          className="w-full bg-slate-955 border border-slate-800 text-slate-200 px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Add member button */}
+                {editMembers.length < 5 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditMembers([
+                        ...editMembers,
+                        {
+                          isNew: true,
+                          email: '',
+                          fullName: '',
+                          githubUsername: '',
+                          studentId: '',
+                          university: ''
+                        }
+                      ]);
+                    }}
+                    className="w-full py-3 border-2 border-dashed border-slate-800 hover:border-cyan-500/50 rounded-xl text-slate-400 hover:text-cyan-400 text-xs font-bold font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer uppercase"
+                  >
+                    + Thêm thành viên mới
+                  </button>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-350 text-xs font-bold uppercase rounded-xl transition-all cursor-pointer font-sans"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingBasicInfo}
+                  className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs font-bold uppercase rounded-xl transition-all shadow-lg shadow-cyan-600/25 cursor-pointer font-sans"
+                >
+                  {savingBasicInfo ? 'Đang lưu...' : 'Lưu thay đổi'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

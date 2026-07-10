@@ -189,7 +189,7 @@ router.get('/', async (req, res) => {
  * @access  Private (System Admin)
  */
 router.post('/', authenticateToken, requireSystemAdmin, async (req, res) => {
-  const { name, semester, year, description, bannerUrl, maxTeams, githubOrgName, commitSyncInterval } = req.body;
+  const { name, semester, year, description, bannerUrl, maxTeams, githubOrgName, commitSyncInterval, zaloUrl } = req.body;
 
   if (!name || !semester || !year) {
     return res.status(400).json({ message: 'Tên sự kiện, học kỳ và năm là bắt buộc.' });
@@ -213,6 +213,7 @@ router.post('/', authenticateToken, requireSystemAdmin, async (req, res) => {
       maxTeams: maxTeams ? parseInt(maxTeams) : 20,
       githubOrgName: githubOrgName || 'sealhackathon-2026',
       commitSyncInterval: commitSyncInterval ? parseInt(commitSyncInterval) : 30,
+      zaloUrl: zaloUrl || '',
       status: 'draft',
       registrationOpen: null,
       registrationClose: null
@@ -1359,7 +1360,7 @@ router.post('/:eventId/distribute-teams', authenticateToken, async (req, res) =>
  * @access  Private
  */
 router.put('/:id', authenticateToken, async (req, res) => {
-  const { name, semester, year, description, bannerUrl, maxTeams, githubOrgName, status, registrationOpen, registrationClose, contestStart, contestEnd, commitSyncInterval, mainGoal, durationText, memberLimitText, prizePoolText, phase1Description, phase2Description, phase3Description, rules } = req.body;
+  const { name, semester, year, description, bannerUrl, maxTeams, githubOrgName, status, registrationOpen, registrationClose, contestStart, contestEnd, commitSyncInterval, mainGoal, durationText, memberLimitText, prizePoolText, phase1Description, phase2Description, phase3Description, rules, zaloUrl } = req.body;
   try {
     const event = await Event.findById(req.params.id);
     if (!event) return res.status(404).json({ message: 'Không tìm thấy sự kiện.' });
@@ -1527,6 +1528,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (prizePoolText !== undefined) {
       logDetails.push(`Quỹ giải thưởng`);
       event.prizePoolText = prizePoolText;
+    }
+    if (zaloUrl !== undefined) {
+      logDetails.push(`Link Zalo`);
+      event.zaloUrl = zaloUrl;
     }
     if (phase1Description !== undefined) {
       logDetails.push(`Mô tả Giai đoạn 1`);

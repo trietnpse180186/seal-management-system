@@ -27,6 +27,11 @@ interface NavbarProps {
 export default function Navbar({ user, roles, onLogout }: NavbarProps) {
   const location = useLocation();
   const isLoginPage = location.pathname === "/login";
+  const isAuthPage = 
+    location.pathname === "/login" || 
+    location.pathname.startsWith("/forgot") || 
+    location.pathname.startsWith("/reset") || 
+    location.pathname === "/register";
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -313,10 +318,12 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
             </>
           )}
 
-          <Link to="/album" className={linkClass("/album")}>
-            <Camera size={16} />
-            <span>Album ảnh</span>
-          </Link>
+          {!isAuthPage && (
+            <Link to="/album" className={linkClass("/album")}>
+              <Camera size={16} />
+              <span>Album ảnh</span>
+            </Link>
+          )}
         </div>
         {/* User Info & Actions */}
         <div className="flex-1 flex justify-end">

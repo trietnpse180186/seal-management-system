@@ -10,6 +10,7 @@ import {
   LogOut,
   Bell,
   Tv,
+  Camera,
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -123,6 +124,11 @@ export default function AdminLayout({ user, roles, onLogout }: AdminLayoutProps)
       path: '/admin/leaderboard',
       label: 'Bảng xếp hạng',
       icon: Trophy
+    },
+    {
+      path: '/admin/album',
+      label: 'Album ảnh',
+      icon: Camera
     }
   ];
 

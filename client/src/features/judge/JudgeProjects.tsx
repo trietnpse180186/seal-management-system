@@ -193,7 +193,7 @@ export default function JudgeProjects() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
           <h2 className="text-3xl font-extrabold text-white tracking-tight drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]">
-            Dự án cần chấm điểm
+            Chấm điểm
           </h2>
           <p className="text-slate-400 text-xs mt-1">
             Đánh giá và chấm điểm chất lượng mã nguồn, giải pháp kỹ thuật của
@@ -303,6 +303,7 @@ export default function JudgeProjects() {
                 <tr className="bg-slate-900/80 border-b border-white/10 text-[10px] font-bold uppercase text-slate-400 tracking-wider">
                   <th className="px-6 py-4">Tên đội thi (Team)</th>
                   <th className="px-6 py-4">Trạng thái chấm</th>
+                  <th className="px-6 py-4">Điểm</th>
                   <th className="px-6 py-4 text-right">Thao tác</th>
                 </tr>
               </thead>
@@ -318,12 +319,12 @@ export default function JudgeProjects() {
                       {/* Column 1: Team Info */}
                       <td className="px-6 py-5 whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-extrabold font-mono shadow-[0_0_10px_rgba(6,182,212,0.2)]">
+                          <div className="w-9 h-9 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-black font-mono shadow-[0_0_10px_rgba(6,182,212,0.2)] text-sm">
                             {team.name.charAt(0)}
                           </div>
                           <div>
                             <div className="flex items-center">
-                              <span className="font-extrabold text-white block drop-shadow-[0_0_5px_rgba(255,255,255,0.2)]">
+                              <span className="text-[16px] font-black text-white block drop-shadow-[0_0_5px_rgba(255,255,255,0.2)]">
                                 {team.name}
                               </span>
                               {team._id === highlightedTeamId && (
@@ -332,9 +333,6 @@ export default function JudgeProjects() {
                                 </span>
                               )}
                             </div>
-                            <span className="text-[10px] text-slate-500 block font-mono">
-                              ID: {team._id.slice(-6)}
-                            </span>
                           </div>
                         </div>
                       </td>
@@ -345,12 +343,24 @@ export default function JudgeProjects() {
                       <td className="px-6 py-5 whitespace-nowrap">
                         {isGraded ? (
                           <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider shadow-[0_0_10px_rgba(16,185,129,0.1)]">
-                            <Check size={10} /> Đã chấm (
-                            {scoreObj?.totalWeightedScore}/{rubric ? rubric.maxCriterionScore : 10})
+                            <Check size={10} /> Đã chấm
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider shadow-[0_0_10px_rgba(6,182,212,0.1)]">
                             Chờ chấm
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Column 3.5: Score */}
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        {isGraded ? (
+                          <span className="text-cyan-450 font-mono font-bold text-xs bg-cyan-500/5 border border-cyan-500/20 px-2 py-1 rounded">
+                            {scoreObj?.totalWeightedScore !== undefined ? scoreObj.totalWeightedScore : '0'}/{rubric ? rubric.maxCriterionScore : 10}đ
+                          </span>
+                        ) : (
+                          <span className="text-slate-500 italic text-[11px] font-mono">
+                            chưa chấm
                           </span>
                         )}
                       </td>
@@ -361,8 +371,8 @@ export default function JudgeProjects() {
                           <button
                             onClick={() => navigate(`/expert/score/${team._id}?roundId=${selectedRoundId}`)}
                             className={`inline-flex items-center gap-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(6,182,212,0.2)] ${isGraded
-                                ? "bg-slate-800 border border-white/10 text-slate-300 hover:bg-slate-700 hover:text-white"
-                                : "bg-cyan-500 hover:bg-cyan-500 text-white hover:shadow-[0_0_15px_rgba(6,182,212,0.5)]"
+                              ? "bg-slate-800 border border-white/10 text-slate-300 hover:bg-slate-700 hover:text-white"
+                              : "bg-cyan-500 hover:bg-cyan-500 text-white hover:shadow-[0_0_15px_rgba(6,182,212,0.5)]"
                               }`}
                           >
                             <span>{isGraded ? "Xem & Sửa" : "Bắt đầu chấm"}</span>

@@ -43,6 +43,50 @@ export default function RegisterTeam() {
 
   const [members, setMembers] = useState<MemberInput[]>([]);
 
+  // Refs for auto-checking email to avoid stale closures
+  const checkTimers = React.useRef<{ [key: number]: any }>({});
+  const membersRef = React.useRef<MemberInput[]>([]);
+  useEffect(() => {
+    membersRef.current = members;
+  }, [members]);
+
+  // States & Ref for auto-checking team name
+  const [teamNameCheckingStatus, setTeamNameCheckingStatus] = useState<'idle' | 'checking' | 'eligible' | 'conflict'>('idle');
+  const [teamNameCheckingMessage, setTeamNameCheckingMessage] = useState('');
+  const teamNameTimer = React.useRef<any>(null);
+
+  const handleCheckTeamName = async (name: string) => {
+    if (!name.trim() || !selectedEventId) {
+      setTeamNameCheckingStatus('idle');
+      setTeamNameCheckingMessage('');
+      return;
+    }
+
+    setTeamNameCheckingStatus('checking');
+    setTeamNameCheckingMessage('');
+
+    try {
+      const res = await axios.get(
+        `http://localhost:5000/api/teams/check-name?name=${encodeURIComponent(name.trim())}&eventId=${selectedEventId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      if (res.data.exists) {
+        setTeamNameCheckingStatus('conflict');
+        setTeamNameCheckingMessage(res.data.message || 'Tên nhóm đã tồn tại.');
+      } else {
+        setTeamNameCheckingStatus('eligible');
+        setTeamNameCheckingMessage(res.data.message || 'Tên nhóm hợp lệ.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setTeamNameCheckingStatus('idle');
+      setTeamNameCheckingMessage(err.response?.data?.message || 'Lỗi kiểm tra tên nhóm.');
+    }
+  };
+
   // History reuse states
   const [pastTeams, setPastTeams] = useState<any[]>([]);
   const [selectedPastTeamId, setSelectedPastTeamId] = useState('');
@@ -262,59 +306,99 @@ export default function RegisterTeam() {
   };
 
   const removeMemberRow = (index: number) => {
-    const updated = [...members];
-    updated.splice(index, 1);
-    setMembers(updated);
+    // Clear timer for this index if any
+    if (checkTimers.current[index]) {
+      clearTimeout(checkTimers.current[index]);
+      delete checkTimers.current[index];
+    }
+    // Shift timers down for indices greater than index
+    const nextTimers: { [key: number]: any } = {};
+    Object.keys(checkTimers.current).forEach(keyStr => {
+      const key = parseInt(keyStr);
+      if (key > index) {
+        nextTimers[key - 1] = checkTimers.current[key];
+      } else if (key < index) {
+        nextTimers[key] = checkTimers.current[key];
+      }
+    });
+    checkTimers.current = nextTimers;
+
+    setMembers(prev => {
+      const updated = [...prev];
+      updated.splice(index, 1);
+      return updated;
+    });
   };
 
-  const handleCheckEligibility = async (index: number, emailOverride?: string) => {
-    const member = members[index];
-    if (!member) return;
-    const emailToUse = emailOverride !== undefined ? emailOverride : member.email;
-    if (!emailToUse.trim()) {
-      toast.warning('Vui lòng nhập email trước khi kiểm tra.');
+  const handleCheckEligibility = async (index: number, emailToCheck?: string) => {
+    const targetEmail = emailToCheck !== undefined ? emailToCheck : (membersRef.current[index]?.email || '');
+    if (!targetEmail.trim()) {
       return;
     }
 
-    const updated = [...members];
-    updated[index].checkingStatus = 'checking';
-    updated[index].checkingMessage = 'Đang kiểm tra...';
-    setMembers(updated);
+    setMembers(prev => {
+      if (!prev[index]) return prev;
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        checkingStatus: 'checking',
+        checkingMessage: ''
+      };
+      return updated;
+    });
 
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/teams/check-eligibility?email=${encodeURIComponent(emailToUse.trim())}&eventId=${selectedEventId}`,
+        `http://localhost:5000/api/teams/check-eligibility?email=${encodeURIComponent(targetEmail.trim())}&eventId=${selectedEventId}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
 
-      const nextUpdated = [...members];
-      if (nextUpdated[index]) {
+      setMembers(prev => {
+        if (!prev[index]) return prev;
+        const nextUpdated = [...prev];
+        if (nextUpdated[index].email.trim() !== targetEmail.trim()) {
+          return prev;
+        }
+
         if (res.data.eligible) {
-          nextUpdated[index].checkingStatus = 'eligible';
-          nextUpdated[index].checkingMessage = res.data.message || 'Hợp lệ (Chưa có nhóm)';
-          if (res.data.user) {
-            const u = res.data.user;
+          nextUpdated[index] = {
+            ...nextUpdated[index],
+            checkingStatus: 'eligible',
+            checkingMessage: res.data.message || 'Hợp lệ (Chưa có nhóm)'
+          };
+          const u = res.data.user;
+          if (u) {
             if (u.fullName) nextUpdated[index].fullName = u.fullName;
             if (u.studentId) nextUpdated[index].studentId = u.studentId;
             if (u.githubUsername) nextUpdated[index].githubUsername = u.githubUsername;
             if (u.university) nextUpdated[index].university = u.university;
           }
         } else {
-          nextUpdated[index].checkingStatus = 'conflict';
-          nextUpdated[index].checkingMessage = res.data.message || 'Đã có nhóm!';
+          nextUpdated[index] = {
+            ...nextUpdated[index],
+            checkingStatus: 'conflict',
+            checkingMessage: res.data.message || 'Đã có nhóm!'
+          };
         }
-        setMembers(nextUpdated);
-      }
+        return nextUpdated;
+      });
     } catch (err: any) {
       console.error(err);
-      const nextUpdated = [...members];
-      if (nextUpdated[index]) {
-        nextUpdated[index].checkingStatus = 'idle';
-        nextUpdated[index].checkingMessage = err.response?.data?.message || 'Lỗi kiểm tra';
-        setMembers(nextUpdated);
-      }
+      setMembers(prev => {
+        if (!prev[index]) return prev;
+        const nextUpdated = [...prev];
+        if (nextUpdated[index].email.trim() !== targetEmail.trim()) {
+          return prev;
+        }
+        nextUpdated[index] = {
+          ...nextUpdated[index],
+          checkingStatus: 'idle',
+          checkingMessage: err.response?.data?.message || 'Lỗi kiểm tra'
+        };
+        return nextUpdated;
+      });
       toast.error(err.response?.data?.message || 'Lỗi khi kiểm tra email.');
     }
   };
@@ -706,14 +790,58 @@ export default function RegisterTeam() {
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
                 Tên Nhóm thi đấu <span className="text-rose-500">*</span>
               </label>
-              <input
-                type="text"
-                required
-                placeholder="Nhập tên nhóm của bạn"
-                value={teamName}
-                onChange={e => setTeamName(e.target.value)}
-                className="w-full bg-slate-900/50 border border-slate-800 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(0,240,255,0.05)] transition-all font-mono"
-              />
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  required
+                  placeholder="Nhập tên nhóm của bạn"
+                  value={teamName}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setTeamName(val);
+                    setTeamNameCheckingStatus('idle');
+                    setTeamNameCheckingMessage('');
+
+                    if (teamNameTimer.current) {
+                      clearTimeout(teamNameTimer.current);
+                    }
+
+                    const trimmed = val.trim();
+                    if (!trimmed) return;
+
+                    // Debounce kiểm tra tên nhóm sau 800ms
+                    teamNameTimer.current = setTimeout(() => {
+                      handleCheckTeamName(trimmed);
+                    }, 800);
+                  }}
+                  onBlur={() => {
+                    const trimmed = teamName.trim();
+                    if (!trimmed) return;
+
+                    if (teamNameTimer.current) {
+                      clearTimeout(teamNameTimer.current);
+                    }
+
+                    if (teamNameCheckingStatus === 'idle') {
+                      handleCheckTeamName(trimmed);
+                    }
+                  }}
+                  className="w-full bg-slate-900/50 border border-slate-800 text-white pl-4 pr-24 py-3 rounded-xl text-sm focus:outline-none focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(0,240,255,0.05)] transition-all font-mono"
+                />
+                {teamNameCheckingStatus === 'checking' && (
+                  <span className="absolute right-4 text-xs text-cyan-400 font-mono animate-pulse select-none">
+                    Đang check...
+                  </span>
+                )}
+              </div>
+              {teamNameCheckingMessage && (
+                <p className={`text-[10px] font-mono italic mt-1.5 ${
+                  teamNameCheckingStatus === 'eligible' ? 'text-emerald-400' :
+                  teamNameCheckingStatus === 'conflict' ? 'text-rose-400' : 'text-slate-400'
+                }`}>
+                  {teamNameCheckingMessage}
+                </p>
+              )}
             </div>
           </div>
 
@@ -838,11 +966,64 @@ export default function RegisterTeam() {
                             required
                             placeholder="member@student.edu.vn"
                             value={member.email}
-                            onChange={e => handleMemberChange(index, 'email', e.target.value)}
-                            className="w-full bg-slate-900/50 border border-slate-800 text-white px-3 py-2 pr-10 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                            onChange={e => {
+                              const val = e.target.value;
+                              
+                              // Cập nhật giá trị tức thời trong state
+                              setMembers(prev => {
+                                if (!prev[index]) return prev;
+                                const updated = [...prev];
+                                updated[index] = {
+                                  ...updated[index],
+                                  email: val,
+                                  checkingStatus: 'idle',
+                                  checkingMessage: ''
+                                };
+                                return updated;
+                              });
+
+                              // Dọn dẹp timer cũ
+                              if (checkTimers.current[index]) {
+                                clearTimeout(checkTimers.current[index]);
+                              }
+
+                              const trimmed = val.trim();
+                              if (!trimmed) return;
+
+                              // Debounce tự động kiểm tra sau 800ms nếu email đúng định dạng
+                              checkTimers.current[index] = setTimeout(() => {
+                                const currentEmail = membersRef.current[index]?.email || '';
+                                if (currentEmail.trim() === trimmed) {
+                                  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                                  if (emailRegex.test(trimmed)) {
+                                    handleCheckEligibility(index, trimmed);
+                                  }
+                                }
+                              }, 800);
+                            }}
+                            onBlur={() => {
+                              const trimmed = member.email.trim();
+                              if (!trimmed) return;
+
+                              // Dọn dẹp timer cũ để không chạy trùng lặp
+                              if (checkTimers.current[index]) {
+                                clearTimeout(checkTimers.current[index]);
+                              }
+
+                              // Chỉ kích hoạt check ngay lập tức nếu trạng thái đang là 'idle' và email hợp lệ
+                              if (member.checkingStatus === 'idle') {
+                                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                                  if (emailRegex.test(trimmed)) {
+                                    handleCheckEligibility(index, trimmed);
+                                  }
+                                }
+                              }}
+                            className="w-full bg-slate-900/50 border border-slate-800 text-white pl-3 pr-20 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
                           />
                           {member.checkingStatus === 'checking' && (
-                            <div className="absolute right-3 animate-spin border-2 border-t-cyan-500 border-r-transparent border-slate-850 rounded-full w-4 h-4" />
+                            <span className="absolute right-3 text-[10px] text-cyan-400 font-mono animate-pulse select-none">
+                              Đang check...
+                            </span>
                           )}
                         </div>
                         {member.checkingMessage && (

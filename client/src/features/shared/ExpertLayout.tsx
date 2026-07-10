@@ -7,7 +7,8 @@ import {
   LogOut,
   Bell,
   Home,
-  Users
+  Users,
+  Camera
 } from 'lucide-react';
 
 interface ExpertLayoutProps {
@@ -116,6 +117,12 @@ export default function ExpertLayout({ user, roles = [], onLogout }: ExpertLayou
       icon: Users
     });
   }
+
+  navItems.push({
+    path: '/expert/album',
+    label: 'Album ảnh',
+    icon: Camera
+  });
 
   const handleLogoutClick = () => {
     onLogout();

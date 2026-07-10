@@ -102,6 +102,11 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     const localUrl = mobileApiUrl || localStorage.getItem('mobile_api_url');
     if (localUrl) return localUrl;
 
+    const envUrl = import.meta.env.VITE_API_URL;
+    if (envUrl) {
+      return envUrl.endsWith('/api') ? envUrl : `${envUrl}/api`;
+    }
+
     // Fallback based on client hostname
     if (window.location.hostname.includes('seal-hackathon.io.vn') ||
       window.location.hostname.includes('vercel.app')) {

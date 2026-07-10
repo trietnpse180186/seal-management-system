@@ -85,7 +85,14 @@ router.get('/rooms', authenticateToken, async (req, res) => {
       : ChatRoom.find({ $or: orConditions });
 
     const rooms = await roomsQuery
-      .populate('teamId', 'name')
+      .populate({
+        path: 'teamId',
+        select: 'name mentorId',
+        populate: {
+          path: 'mentorId',
+          select: 'fullName email'
+        }
+      })
       .populate('trackId', 'name')
       .populate('mentorId', 'fullName email')
       .populate('eventId', 'name status')

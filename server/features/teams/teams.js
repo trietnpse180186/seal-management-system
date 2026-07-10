@@ -926,6 +926,7 @@ router.get('/my-team', authenticateToken, async (req, res) => {
     for (const record of memberRecords) {
       const foundTeam = await Team.findById(record.teamId)
         .populate('eventId', 'name semester year status contestStart contestEnd registrationOpen registrationClose seminar commitSyncInterval')
+        .populate('mentorId', 'fullName email')
         .populate({
           path: 'trackId',
           select: 'name description startTime endTime roundId environmentId examDriveFileId examDriveFileName examDriveFileUrl isExamManualOpen',

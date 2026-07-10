@@ -116,6 +116,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
             <Route path="live" element={<AdminLiveInteraction />} />
             <Route path="grades" element={<AdminGradesView />} />
             <Route path="leaderboard" element={<Leaderboard user={user} roles={roles} />} />
+            <Route path="album" element={<Gallery user={user} roles={roles} />} />
           </Route>
           
           {/* Expert Sub-Routes under ExpertLayout (Judge & Mentor combined) */}
@@ -131,6 +132,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
             <Route path="activity/:teamId" element={<JudgeTeamActivity />} />
             <Route path="mentored-teams" element={<MentorDashboard user={user} roles={roles} />} />
             <Route path="mentored-team/:teamId" element={<MentorTeamDetail />} />
+            <Route path="album" element={<Gallery user={user} roles={roles} />} />
           </Route>
 
           {/* Fallbacks for backward compatibility */}
@@ -143,7 +145,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
           <Route path="/mentor/team/:teamId" element={<RedirectToExpertMentorTeam />} />
           
           <Route path="/leaderboard" element={<Leaderboard user={user} roles={roles} />} />
-          <Route path="/album" element={<Gallery />} />
+          <Route path="/album" element={<Gallery user={user} roles={roles} />} />
         </Routes>
       </main>
 

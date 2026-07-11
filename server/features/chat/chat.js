@@ -87,7 +87,7 @@ router.get('/rooms', authenticateToken, async (req, res) => {
     const rooms = await roomsQuery
       .populate({
         path: 'teamId',
-        select: 'name mentorId',
+        select: 'name mentorId status',
         populate: {
           path: 'mentorId',
           select: 'fullName email'
@@ -99,9 +99,45 @@ router.get('/rooms', authenticateToken, async (req, res) => {
       .populate('members', 'fullName role avatar')
       .sort({ updatedAt: -1 });
 
-    const visibleRooms = rooms.filter(room => isRoomVisibleToUser(room));
+    const visibleRooms = rooms.filter(room => {
+      if (room.type === 'team_mentor') {
+        // Hide orphan rooms or rooms of teams that are not confirmed (e.g. draft/disqualified)
+        if (!room.teamId || room.teamId.status !== 'confirmed') {
+          return false;
+        }
+      }
+      return isRoomVisibleToUser(room);
+    });
 
-    res.json(visibleRooms);
+    // Deduplicate team_mentor rooms by teamId
+    const deduplicatedRooms = [];
+    const seenTeamIds = new Set();
+
+    // Sort visible rooms so that those with mentorId set come first
+    const sortedRooms = [...visibleRooms].sort((a, b) => {
+      if (a.type === 'team_mentor' && b.type === 'team_mentor') {
+        const aHasMentor = !!a.mentorId;
+        const bHasMentor = !!b.mentorId;
+        if (aHasMentor && !bHasMentor) return -1;
+        if (!aHasMentor && bHasMentor) return 1;
+      }
+      return 0;
+    });
+
+    for (const r of sortedRooms) {
+      if (r.type === 'team_mentor') {
+        const tId = r.teamId?._id?.toString() || r.teamId?.toString();
+        if (tId) {
+          if (seenTeamIds.has(tId)) {
+            continue; // Skip duplicate room for the same team
+          }
+          seenTeamIds.add(tId);
+        }
+      }
+      deduplicatedRooms.push(r);
+    }
+
+    res.json(deduplicatedRooms);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Lỗi lấy danh sách phòng chat." });
@@ -229,8 +265,8 @@ router.post('/rooms/team', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: 'Bạn không phải là Mentor phụ trách bảng đấu của đội thi này.' });
     }
 
-    // Tìm hoặc tạo phòng chat
-    let room = await ChatRoom.findOne({ teamId: team._id, mentorId: userId });
+    // Tìm hoặc tạo phòng chat dựa trên teamId và type
+    let room = await ChatRoom.findOne({ teamId: team._id, type: 'team_mentor' });
     if (!room) {
       const TeamMember = mongoose.model('TeamMember');
       const teamMembers = await TeamMember.find({ teamId: team._id, confirmStatus: 'confirmed' });
@@ -246,6 +282,21 @@ router.post('/rooms/team', authenticateToken, async (req, res) => {
       });
       await room.save();
       console.log(`[CHAT] Created room for team ${team.name} by mentor ${userId}`);
+    } else {
+      // Nếu phòng đã tồn tại, đảm bảo mentorId được gán và mentor có tên trong members
+      let updated = false;
+      if (!room.mentorId || room.mentorId.toString() !== userId.toString()) {
+        room.mentorId = userId;
+        updated = true;
+      }
+      const memberIdsStr = (room.members || []).map(id => id.toString());
+      if (!memberIdsStr.includes(userId.toString())) {
+        room.members.push(userId);
+        updated = true;
+      }
+      if (updated) {
+        await room.save();
+      }
     }
 
     // Populate thông tin để trả về

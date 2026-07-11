@@ -36,6 +36,16 @@ async function sendMailHelper(mailOptions) {
     }
   }
 
+  // Parse BCC list if provided
+  let bccList = [];
+  if (mailOptions.bcc) {
+    if (Array.isArray(mailOptions.bcc)) {
+      bccList = mailOptions.bcc;
+    } else if (typeof mailOptions.bcc === 'string') {
+      bccList = mailOptions.bcc.split(',').map(e => e.trim());
+    }
+  }
+
   if (isResendApi) {
     console.log('[EMAIL] Detected Resend API key. Routing mail through secure Resend HTTP API (Port 443)...');
     try {
@@ -45,18 +55,26 @@ async function sendMailHelper(mailOptions) {
         senderEmail = 'onboarding@resend.dev';
       }
 
+      const payload = {
+        from: `SEAL Hackathon <${senderEmail}>`,
+        to: [recipientEmail],
+        subject: mailOptions.subject,
+        html: mailOptions.html
+      };
+      if (bccList.length > 0) {
+        payload.bcc = bccList.map(email => {
+          const match = email.match(/^(?:"?([^"]*)"?\s)?(?:<(.+)>)$/);
+          return match ? match[2] : email;
+        });
+      }
+
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${process.env.EMAIL_PASS}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          from: `SEAL Hackathon <${senderEmail}>`,
-          to: [recipientEmail],
-          subject: mailOptions.subject,
-          html: mailOptions.html
-        })
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
@@ -88,6 +106,22 @@ async function sendMailHelper(mailOptions) {
         senderName = senderEmail.split('@')[0];
       }
 
+      const personalization = {
+        to: [{
+          email: recipientEmail,
+          name: recipientName || undefined
+        }]
+      };
+      if (bccList.length > 0) {
+        personalization.bcc = bccList.map(email => {
+          const match = email.match(/^(?:"?([^"]*)"?\s)?(?:<(.+)>)$/);
+          if (match) {
+            return { email: match[2], name: match[1] || undefined };
+          }
+          return { email };
+        });
+      }
+
       const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
         method: 'POST',
         headers: {
@@ -95,12 +129,7 @@ async function sendMailHelper(mailOptions) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          personalizations: [{
-            to: [{
-              email: recipientEmail,
-              name: recipientName || undefined
-            }]
-          }],
+          personalizations: [personalization],
           from: {
             email: senderEmail,
             name: senderName
@@ -154,6 +183,22 @@ async function sendMailHelper(mailOptions) {
         toField.name = recipientName;
       }
 
+      const payload = {
+        sender: { name: senderName, email: senderEmail },
+        to: [toField],
+        subject: mailOptions.subject,
+        htmlContent: mailOptions.html
+      };
+      if (bccList.length > 0) {
+        payload.bcc = bccList.map(email => {
+          const match = email.match(/^(?:"?([^"]*)"?\s)?(?:<(.+)>)$/);
+          if (match) {
+            return { email: match[2], name: match[1] || undefined };
+          }
+          return { email };
+        });
+      }
+
       const response = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
@@ -161,12 +206,7 @@ async function sendMailHelper(mailOptions) {
           'api-key': process.env.EMAIL_PASS,
           'content-type': 'application/json'
         },
-        body: JSON.stringify({
-          sender: { name: senderName, email: senderEmail },
-          to: [toField],
-          subject: mailOptions.subject,
-          htmlContent: mailOptions.html
-        })
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
@@ -443,9 +483,11 @@ async function sendSeminarInvitation(email, recipientName, eventName, seminarDat
   const formattedTime = endTimeStr ? `${startTimeStr} - ${endTimeStr}` : startTimeStr;
   const clientUrl = process.env.CLIENT_URL || 'https://www.seal-hackathon.io.vn';
   const teamAreaUrl = eventId ? `${clientUrl}/team-area?eventId=${eventId}` : `${clientUrl}/team-area`;
+  const senderEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@seal-hackathon.com';
   const mailOptions = {
-    from: `"SEAL Hackathon Platform" <${process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@seal-hackathon.com'}>`,
-    to: email,
+    from: `"SEAL Hackathon Platform" <${senderEmail}>`,
+    to: senderEmail,
+    bcc: email,
     subject: `[SEAL HACKATHON] Thư Mời Tham Gia Buổi Seminar: ${eventName}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0b1329; color: #e2e8f0; border-radius: 12px; border: 1px solid #1e293b;">
@@ -479,7 +521,8 @@ async function sendSeminarInvitation(email, recipientName, eventName, seminarDat
 
   if (isMock) {
     console.log('\n--- [EMAIL MOCK SERVICE: SEMINAR INVITATION] ---');
-    console.log(`To: ${email}`);
+    console.log(`To: ${mailOptions.to}`);
+    console.log(`Bcc: ${mailOptions.bcc}`);
     console.log(`Subject: ${mailOptions.subject}`);
     console.log(`Meet URL: ${seminarData.meetUrl}`);
     console.log('----------------------------------------------\n');
@@ -488,10 +531,10 @@ async function sendSeminarInvitation(email, recipientName, eventName, seminarDat
 
   try {
     const info = await sendMailHelper(mailOptions);
-    console.log(`Seminar email sent to ${email}: ${info.messageId}`);
+    console.log(`Seminar email sent (BCC to ${email}): ${info.messageId}`);
     return true;
   } catch (error) {
-    console.error(`Error sending seminar email to ${email}:`, error);
+    console.error(`Error sending seminar email (BCC to ${email}):`, error);
     throw error;
   }
 }

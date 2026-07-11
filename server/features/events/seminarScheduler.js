@@ -28,7 +28,7 @@ function startSeminarScheduler() {
 
       for (const event of events) {
         console.log(`[SEMINAR SCHEDULER] Processing event: "${event.name}"...`);
-        const members = await TeamMember.find({ eventId: event._id }).populate('userId', 'email fullName');
+        const members = await TeamMember.find({ eventId: event._id, role: 'leader' }).populate('userId', 'email fullName');
         
         const recipientMap = new Map();
         members.forEach(m => {

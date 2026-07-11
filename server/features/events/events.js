@@ -1844,8 +1844,8 @@ router.post('/:id/seminar/send-email', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'Vui lòng nhập Link phòng họp (Google Meet) trước khi gửi mail thông báo!' });
     }
 
-    // Fetch all registered team members for this event
-    const members = await TeamMember.find({ eventId }).populate('userId', 'email fullName');
+    // Fetch only team leaders for this event
+    const members = await TeamMember.find({ eventId, role: 'leader' }).populate('userId', 'email fullName');
 
     // Extract unique contestant emails & names
     const recipientMap = new Map();
@@ -1861,7 +1861,7 @@ router.post('/:id/seminar/send-email', authenticateToken, async (req, res) => {
     const recipients = Array.from(recipientMap.values());
 
     if (recipients.length === 0) {
-      return res.status(400).json({ message: 'Chưa có thí sinh/đội thi nào đăng ký tham gia sự kiện này để gửi mail.' });
+      return res.status(400).json({ message: 'Chưa có trưởng nhóm/đội thi nào đăng ký tham gia sự kiện này để gửi mail.' });
     }
 
     // Send emails

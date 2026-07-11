@@ -1673,6 +1673,7 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
 
     // 4. Save to Database
     const importedTeams = [];
+    const createdTeamIds = [];
     const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
 
     for (const teamName of teamNames) {
@@ -1709,6 +1710,7 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
         status: 'pending_confirm'
       });
       await team.save();
+      createdTeamIds.push(team._id);
 
       // Create Leader TeamMember
       const leaderMember = new TeamMember({
@@ -1794,6 +1796,17 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
 
   } catch (error) {
     console.error('Import teams error:', error.message);
+    if (createdTeamIds.length > 0) {
+      try {
+        console.log(`[ROLLBACK] Cleaning up ${createdTeamIds.length} teams due to import error...`);
+        const Team = mongoose.model('Team');
+        const TeamMember = mongoose.model('TeamMember');
+        await Team.deleteMany({ _id: { $in: createdTeamIds } });
+        await TeamMember.deleteMany({ teamId: { $in: createdTeamIds } });
+      } catch (rollbackError) {
+        console.error('[ROLLBACK ERROR] Failed to clean up imported teams:', rollbackError.message);
+      }
+    }
     res.status(500).json({ message: 'Lỗi hệ thống khi import danh sách đội thi.' });
   }
 });

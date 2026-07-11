@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { io } from 'socket.io-client';
-import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare, Cpu, Copy, RefreshCw, Crown, Trophy, Edit3, ExternalLink } from 'lucide-react';
+import { CheckCircle, Clock, BookOpen, Users, MessageSquare, Cpu, Copy, RefreshCw, Crown, Trophy, Edit3, ExternalLink, AlertTriangle } from 'lucide-react';
 import RegisterTeam from './RegisterTeam';
 import GithubUserAutocomplete from '../shared/GithubUserAutocomplete';
 import UniversityCombobox from '../shared/UniversityCombobox';
@@ -172,6 +172,12 @@ export default function TeamArea() {
 
 
   const [currentTime, setCurrentTime] = useState(new Date());
+  const hasContestStarted = !!(
+    data?.team?.eventId?.status === 'ongoing' ||
+    data?.team?.eventId?.status === 'completed' ||
+    data?.team?.eventId?.status === 'cancelled' ||
+    (data?.team?.eventId?.contestStart && new Date(data.team.eventId.contestStart) <= currentTime)
+  );
   const [syncingMqtt, setSyncingMqtt] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -267,6 +273,11 @@ export default function TeamArea() {
     const activeTeam = data?.team;
     if (!activeTeam) return;
 
+    if (hasContestStarted) {
+      toast.error('Cuộc thi đã bắt đầu, không thể xóa thông tin đội thi!');
+      return;
+    }
+
     if (deleteConfirmTeamName.trim() !== activeTeam.name) {
       toast.error('Tên nhóm xác nhận không chính xác.');
       return;
@@ -288,6 +299,10 @@ export default function TeamArea() {
   };
 
   const handleOpenEditModal = () => {
+    if (hasContestStarted) {
+      toast.error('Cuộc thi đã bắt đầu, không thể chỉnh sửa thông tin đội thi!');
+      return;
+    }
     if (data?.members) {
       setEditMembers(data.members.map((m: any) => ({
         userId: m.userId?._id,
@@ -400,7 +415,6 @@ export default function TeamArea() {
 
   // Git commits & AI report
   const [commits, setCommits] = useState<any[]>([]);
-  const [selectedCommit, setSelectedCommit] = useState<any>(null);
 
 
 
@@ -464,9 +478,6 @@ export default function TeamArea() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setCommits(res.data);
-      if (res.data.length > 0) {
-        handleSelectCommit(res.data[0]);
-      }
     } catch (err: any) {
       console.error('Error fetching commits:', err);
     }
@@ -475,6 +486,11 @@ export default function TeamArea() {
   const handleSaveBasicInfo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!data?.team?._id) return;
+
+    if (hasContestStarted) {
+      toast.error('Cuộc thi đã bắt đầu, không thể chỉnh sửa thông tin đội thi!');
+      return;
+    }
 
     setSavingBasicInfo(true);
     try {
@@ -527,9 +543,7 @@ export default function TeamArea() {
     }
   };
 
-  const handleSelectCommit = (commitObj: any) => {
-    setSelectedCommit(commitObj);
-  };
+
 
 
 
@@ -965,7 +979,7 @@ export default function TeamArea() {
                     <Users size={18} className="text-cyan-400" />
                     <span className="text-cyan-400">[THÀNH_VIÊN_NHÓM]</span>
                   </div>
-                  {isLeader && (
+                  {isLeader && !hasContestStarted && (
                     <button
                       onClick={handleOpenEditModal}
                       className="inline-flex items-center gap-1.5 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 px-2.5 py-1 rounded border border-cyan-500/25 transition-all cursor-pointer font-sans uppercase tracking-wider"
@@ -975,6 +989,12 @@ export default function TeamArea() {
                     </button>
                   )}
                 </h2>
+                {!hasContestStarted && (
+                  <div className="mb-4 p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start gap-2.5 text-xs text-amber-400 leading-relaxed font-sans">
+                    <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+                    <span>Đảm bảo đúng thông tin đội thi và thành viên trước khi cuộc thi chính thức bắt đầu.</span>
+                  </div>
+                )}
                 <div className="space-y-3.5 max-h-[300px] overflow-y-auto pr-1">
                   {members?.map((m: any) => (
                     <div key={m._id} className={`flex items-center justify-between p-3 bg-slate-900/30 rounded-xl border text-xs ${m.role === 'leader' ? 'border-amber-500/30 hover:border-amber-500/50' : 'border-slate-800'
@@ -1052,51 +1072,7 @@ export default function TeamArea() {
             )}
           </div>
 
-          {/* Project Topic Card */}
-          <div className={`${isExamVisible || showMqttCard ? 'lg:col-span-12' : 'lg:col-span-6'
-            } glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all`}>
-            <div>
-              <div className="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
-                <h2 className="text-sm font-bold text-white flex items-center gap-2 font-mono-tech">
-                  <FileDiff size={18} className="text-cyan-400" />
-                  <span className="text-cyan-400">[ĐỀ_TÀI_DỰ_ÁN]</span>
-                </h2>
-              </div>
 
-              {team.topicSubmission?.title ? (
-                <div className="space-y-4 text-xs font-mono">
-                  <div>
-                    <span className="text-[10px] text-slate-500 font-bold block uppercase tracking-wider">Tên đề tài</span>
-                    <p className="text-sm font-bold text-white mt-1">{team.topicSubmission.title}</p>
-                  </div>
-                  {team.topicSubmission.description && (
-                    <div>
-                      <span className="text-[10px] text-slate-500 font-bold block uppercase tracking-wider">Mô tả chi tiết</span>
-                      <p className="text-slate-300 mt-1 font-sans leading-relaxed text-xs max-h-[100px] overflow-y-auto whitespace-pre-wrap">{team.topicSubmission.description}</p>
-                    </div>
-                  )}
-                  {team.topicSubmission.documentationLink && (
-                    <div>
-                      <span className="text-[10px] text-slate-500 font-bold block uppercase tracking-wider">Đường dẫn tài liệu</span>
-                      <a
-                        href={team.topicSubmission.documentationLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-cyan-400 hover:underline mt-1 block truncate font-sans"
-                      >
-                        {team.topicSubmission.documentationLink}
-                      </a>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-slate-500 italic font-sans text-xs">
-                  <FileDiff size={32} className="mx-auto text-slate-650 mb-2" />
-                  <p>Chưa đăng ký đề tài dự án.</p>
-                </div>
-              )}
-            </div>
-          </div>
 
         </div>
       )}
@@ -1106,70 +1082,74 @@ export default function TeamArea() {
 
           {/* GitHub Integration & AI Commit Reviews */}
           {repository ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-              {/* Commits List Column */}
-              <div className="md:col-span-1 glass p-5 rounded-2xl space-y-4 border border-slate-800">
-                <h3 className="text-sm font-bold text-slate-200 flex items-center gap-1.5 font-mono-tech">
+              {/* Repository Info Column */}
+              <div className="lg:col-span-3 glass p-5 rounded-2xl space-y-4 border border-slate-800 text-left">
+                <h3 className="text-sm font-bold text-slate-200 flex items-center gap-1.5 font-mono-tech border-b border-slate-800 pb-3">
                   <Github size={16} className="text-cyan-400" />
-                  <span className="text-cyan-400">[COMMITS_({commits.length})]</span>
+                  <span className="text-cyan-400">[GITHUB_REPOSITORY]</span>
                 </h3>
 
-                <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
-                  {commits.map((c: any) => (
-                    <button
-                      key={c._id}
-                      onClick={() => handleSelectCommit(c)}
-                      className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer ${selectedCommit?._id === c._id
-                        ? 'bg-cyan-600/20 border-cyan-500 text-white'
-                        : 'border-slate-800 text-slate-400 hover:border-slate-700'
-                        }`}
-                    >
-                      <p className="text-xs font-bold truncate">{c.message}</p>
-                      <div className="flex justify-between items-center mt-1.5 text-[9px] text-slate-400">
-                        <span>@{c.authorGithubUsername || 'dev'}</span>
-                        <span>{new Date(c.committedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                    </button>
-                  ))}
-                  {commits.length === 0 && (
-                    <p className="text-xs text-slate-500 italic text-center py-6">
-                      Chưa crawl được commit nào. Commit sẽ được đồng bộ mỗi {team?.eventId?.commitSyncInterval || 30} phút.
+                <div className="space-y-4 font-mono text-xs">
+                  <div>
+                    <span className="text-[10px] text-slate-500 font-bold block uppercase tracking-wider">Tên Repo</span>
+                    <p className="text-xs font-bold text-white mt-1 break-all">
+                      {repository.orgName ? `${repository.orgName}/${repository.repoName}` : repository.repoName}
                     </p>
+                  </div>
+
+                  {repository.repoUrl && (
+                    <div className="pt-2">
+                      <a
+                        href={repository.repoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-bold uppercase py-2 px-4 rounded-xl transition-all shadow-md shadow-cyan-900/20 text-center cursor-pointer hover:-translate-y-0.5 duration-150"
+                      >
+                        <ExternalLink size={12} />
+                        Mở GitHub Repo
+                      </a>
+                    </div>
                   )}
                 </div>
               </div>
 
-              {/* Commit Details & Gemini AI Analysis */}
-              <div className="md:col-span-2 glass p-6 rounded-2xl space-y-6">
+              {/* Commits Area Card (Merged list and details) */}
+              <div className="lg:col-span-9 glass p-6 rounded-2xl border border-slate-800 text-left">
+                <h3 className="text-sm font-bold text-slate-200 flex items-center gap-1.5 font-mono-tech border-b border-slate-800 pb-3 mb-4">
+                  <Github size={16} className="text-cyan-400" />
+                  <span className="text-cyan-400">[GITHUB_COMMITS_({commits.length})]</span>
+                </h3>
 
-                {selectedCommit ? (
-                  <div className="space-y-6">
-
-                    {/* Commit Basic Detail */}
-                    <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-2">
-                      <div className="flex justify-between items-center text-[10px] text-cyan-400 font-bold font-mono-tech">
-                        <span>SHA: {selectedCommit.commitSha.substring(0, 8)}</span>
-                        <span>{new Date(selectedCommit.committedAt).toLocaleString()}</span>
-                      </div>
-                      <h4 className="text-sm font-bold text-white">{selectedCommit.message}</h4>
-                      <p className="text-xs text-slate-400">Tác giả: <span className="text-slate-300 font-semibold">{selectedCommit.authorName} (@{selectedCommit.authorGithubUsername})</span></p>
-                      <div className="flex gap-3 text-[10px] pt-1">
-                        <span className="text-emerald-400">+{selectedCommit.additions} dòng</span>
-                        <span className="text-rose-400">-{selectedCommit.deletions} dòng</span>
-                        <span className="text-slate-400">{selectedCommit.changedFilesCount} tệp</span>
-                      </div>
-                    </div>
-
-
-                  </div>
+                {commits.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic py-8 text-center">
+                    Chưa crawl được commit nào. Commit sẽ được đồng bộ mỗi {team?.eventId?.commitSyncInterval || 30} phút.
+                  </p>
                 ) : (
-                  <div className="text-center text-slate-500 py-16">
-                    <FileDiff size={32} className="mx-auto text-slate-700 mb-2" />
-                    <p className="text-xs">Chưa có thông tin chi tiết</p>
+                  <div className="space-y-4 max-h-[550px] overflow-y-auto pr-1">
+                    {commits.map((c: any) => (
+                      <div
+                        key={c._id}
+                        className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-2 text-left font-mono"
+                      >
+                        <div className="flex justify-between items-center text-[10px] text-cyan-400 font-bold font-mono-tech">
+                          <span>SHA: {c.commitSha.substring(0, 8)}</span>
+                          <span>{new Date(c.committedAt).toLocaleString('vi-VN')}</span>
+                        </div>
+                        <h4 className="text-sm font-bold text-white leading-snug">{c.message}</h4>
+                        <p className="text-xs text-slate-400">
+                          Tác giả: <span className="text-slate-350 font-semibold">{c.authorName} (@{c.authorGithubUsername})</span>
+                        </p>
+                        <div className="flex gap-3 text-[10px] pt-1">
+                          <span className="text-emerald-400">+{c.additions} dòng</span>
+                          <span className="text-rose-400">-{c.deletions} dòng</span>
+                          <span className="text-slate-400">{c.changedFilesCount} tệp</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
-
               </div>
 
             </div>

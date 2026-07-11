@@ -2900,4 +2900,45 @@ router.get('/judge/live', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * @route   DELETE /api/teams/:teamId
+ * @desc    Delete a team (only team leader can delete)
+ * @access  Private
+ */
+router.delete('/:teamId', authenticateToken, async (req, res) => {
+  const { teamId } = req.params;
+
+  try {
+    const Team = mongoose.model('Team');
+    const TeamMember = mongoose.model('TeamMember');
+    const GithubRepository = mongoose.model('GithubRepository');
+
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return res.status(404).json({ message: 'Không tìm thấy đội thi.' });
+    }
+
+    // Check if the user is the leader of the team
+    const memberRecord = await TeamMember.findOne({
+      teamId,
+      userId: req.user._id,
+      role: 'leader'
+    });
+
+    if (!memberRecord) {
+      return res.status(403).json({ message: 'Chỉ có trưởng nhóm mới có quyền xóa đội thi.' });
+    }
+
+    // Delete related records
+    await Team.deleteOne({ _id: teamId });
+    await TeamMember.deleteMany({ teamId });
+    await GithubRepository.deleteMany({ teamId });
+
+    res.json({ message: 'Xóa đội thi thành công.' });
+  } catch (error) {
+    console.error('Delete Team Error:', error);
+    res.status(500).json({ message: 'Xóa đội thi thất bại.' });
+  }
+});
+
 module.exports = router;

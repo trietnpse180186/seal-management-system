@@ -179,6 +179,9 @@ export default function TeamArea() {
   const [editMembers, setEditMembers] = useState<any[]>([]);
   const editMembersRef = useRef<any[]>([]);
   const checkTimers = useRef<{ [key: number]: any }>({});
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmTeamName, setDeleteConfirmTeamName] = useState('');
+  const [deletingTeam, setDeletingTeam] = useState(false);
 
   useEffect(() => {
     editMembersRef.current = editMembers;
@@ -256,6 +259,30 @@ export default function TeamArea() {
         return nextUpdated;
       });
       toast.error(err.response?.data?.message || 'Lỗi khi kiểm tra email.');
+    }
+  };
+
+  const handleDeleteTeam = async () => {
+    const activeTeam = data?.team;
+    if (!activeTeam) return;
+
+    if (deleteConfirmTeamName.trim() !== activeTeam.name) {
+      toast.error('Tên nhóm xác nhận không chính xác.');
+      return;
+    }
+    setDeletingTeam(true);
+    try {
+      await axios.delete(`http://localhost:5000/api/teams/${activeTeam._id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Đã xóa đội thi thành công.');
+      window.location.reload();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Không thể xóa đội thi.');
+    } finally {
+      setDeletingTeam(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -1412,23 +1439,89 @@ export default function TeamArea() {
               </div>
 
               {/* Actions */}
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-350 text-xs font-bold uppercase rounded-xl transition-all cursor-pointer font-sans"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingBasicInfo}
-                  className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs font-bold uppercase rounded-xl transition-all shadow-lg shadow-cyan-600/25 cursor-pointer font-sans"
-                >
-                  {savingBasicInfo ? 'Đang lưu...' : 'Lưu thay đổi'}
-                </button>
+              <div className="flex justify-between items-center pt-4 border-t border-slate-800">
+                <div>
+                  {isLeader && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowEditModal(false);
+                        setShowDeleteConfirm(true);
+                      }}
+                      className="px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/25 hover:border-rose-500/40 text-xs font-bold uppercase rounded-xl transition-all cursor-pointer font-sans"
+                    >
+                      Xóa đội thi
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditModal(false)}
+                    className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-350 text-xs font-bold uppercase rounded-xl transition-all cursor-pointer font-sans"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingBasicInfo}
+                    className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs font-bold uppercase rounded-xl transition-all shadow-lg shadow-cyan-600/25 cursor-pointer font-sans"
+                  >
+                    {savingBasicInfo ? 'Đang lưu...' : 'Lưu thay đổi'}
+                  </button>
+                </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/80 backdrop-blur-sm p-4 animate-fade-in animate-duration-150">
+          <div className="glass max-w-md w-full rounded-3xl border border-rose-500/20 p-6 md:p-8 space-y-6 relative overflow-hidden shadow-2xl">
+            <div className="space-y-2 text-left font-sans">
+              <h3 className="text-lg font-black text-rose-400 uppercase tracking-wider font-mono-tech">
+                XÁC NHẬN XÓA ĐỘI THI
+              </h3>
+              <p className="text-xs text-slate-400 leading-relaxed font-sans">
+                Hành động này sẽ xóa vĩnh viễn đội thi <strong className="text-slate-200">{team?.name}</strong> cùng toàn bộ danh sách thành viên và tài nguyên liên quan. Hành động này <strong className="text-rose-400 uppercase">không thể khôi phục</strong>.
+              </p>
+            </div>
+
+            <div className="space-y-2.5 text-left font-sans">
+              <label className="block text-[10px] text-slate-450 font-semibold uppercase tracking-wider">
+                Vui lòng nhập tên đội thi để xác nhận:
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmTeamName}
+                onChange={e => setDeleteConfirmTeamName(e.target.value)}
+                placeholder={team?.name}
+                className="w-full bg-slate-955 border border-slate-800 text-rose-400 px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-rose-500/50 transition-all font-mono text-xs"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeleteConfirmTeamName('');
+                }}
+                className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-350 text-xs font-bold uppercase rounded-xl transition-all cursor-pointer font-sans"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={deleteConfirmTeamName.trim() !== team?.name || deletingTeam}
+                onClick={handleDeleteTeam}
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white text-xs font-bold uppercase rounded-xl transition-all shadow-lg shadow-rose-600/25 cursor-pointer font-sans"
+              >
+                {deletingTeam ? 'Đang xóa...' : 'Xóa vĩnh viễn'}
+              </button>
+            </div>
           </div>
         </div>
       )}

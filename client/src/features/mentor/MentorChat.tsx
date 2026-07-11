@@ -204,8 +204,16 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
     fetchRooms();
     fetchMentorTeams();
 
-    // Setup socket connection
+    return () => {
+      window.removeEventListener('click', handleOutsideClick);
+    };
+  }, []);
+
+  // Setup socket connection whenever currentUser changes (post-login)
+  useEffect(() => {
     const token = localStorage.getItem('token');
+    if (!token || !currentUser) return;
+
     const socketUrl = import.meta.env.VITE_API_URL || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.origin : 'http://localhost:5000');
     const newSocket = io(socketUrl, {
       query: { token }
@@ -215,9 +223,8 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
 
     return () => {
       newSocket.disconnect();
-      window.removeEventListener('click', handleOutsideClick);
     };
-  }, []);
+  }, [currentUser]);
 
   // Listen to open_chat_room events from other components
   useEffect(() => {
@@ -961,7 +968,10 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                             {teamRooms.length > 0 && (
                               <div>
                                 <div className="flex items-center gap-1 text-[9px] font-extrabold text-slate-550 uppercase tracking-widest font-mono px-2 mb-1.5 mt-2">
-                                  <MessageCircle size={10} className="text-slate-500" /> Đội Thi Đang Hỗ Trợ
+                                  <MessageCircle size={10} className="text-slate-500" />{' '}
+                                  {isSystemAdmin || roles.some(r => r.role === 'mentor')
+                                    ? 'Đội thi đang hỗ trợ'
+                                    : 'Trò chuyện với Mentor'}
                                 </div>
                                 {teamRooms.map(renderRoomCard)}
                               </div>

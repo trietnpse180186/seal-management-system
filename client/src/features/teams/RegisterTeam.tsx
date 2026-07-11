@@ -249,7 +249,6 @@ export default function RegisterTeam() {
           if (u.studentId) setLeaderStudentId(u.studentId);
           if (u.githubUsername) setLeaderGithubUsername(u.githubUsername);
           if (u.university) setLeaderUniversity(u.university);
-          toast.success('Đã tìm thấy thông tin Trưởng nhóm và tự động điền!');
         }
       } catch (err) {
         // Do not overwrite manually entered fields on lookup failure

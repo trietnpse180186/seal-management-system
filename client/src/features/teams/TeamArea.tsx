@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { io } from 'socket.io-client';
 import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare, Cpu, Copy, RefreshCw, Crown, Trophy, Edit3, ExternalLink } from 'lucide-react';
 import RegisterTeam from './RegisterTeam';
+import GithubUserAutocomplete from '../shared/GithubUserAutocomplete';
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
   <svg
@@ -1337,16 +1338,15 @@ export default function TeamArea() {
                         <label className="block text-slate-455 font-semibold uppercase tracking-wider text-[9px]">
                           GitHub Username <span className="text-rose-500">*</span>
                         </label>
-                        <input
-                          type="text"
-                          required
+                        <GithubUserAutocomplete
                           value={member.githubUsername}
-                          onChange={(e) => {
+                          onChange={(val) => {
                             const updated = [...editMembers];
-                            updated[index].githubUsername = e.target.value;
+                            updated[index].githubUsername = val;
                             setEditMembers(updated);
                           }}
-                          className="w-full bg-slate-955 border border-slate-800 text-slate-200 px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                          placeholder="nhập github-username"
+                          className="bg-slate-955 border border-slate-800 text-slate-200 px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
                         />
                       </div>
 

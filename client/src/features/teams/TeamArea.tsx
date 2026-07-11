@@ -1498,7 +1498,11 @@ export default function TeamArea() {
                 value={deleteConfirmTeamName}
                 onChange={e => setDeleteConfirmTeamName(e.target.value)}
                 placeholder={team?.name}
-                className="w-full bg-slate-955 border border-slate-800 text-rose-400 px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-rose-500/50 transition-all font-mono text-xs"
+                className={`w-full bg-slate-955 border px-3.5 py-2.5 rounded-xl focus:outline-none transition-all font-mono text-xs ${
+                  deleteConfirmTeamName && deleteConfirmTeamName.trim().toLowerCase() !== team?.name?.toLowerCase()
+                    ? 'border-rose-500/40 text-rose-400 focus:border-rose-500/70'
+                    : 'border-slate-800 text-slate-200 focus:border-cyan-500/50'
+                }`}
               />
             </div>
 
@@ -1515,9 +1519,9 @@ export default function TeamArea() {
               </button>
               <button
                 type="button"
-                disabled={deleteConfirmTeamName.trim() !== team?.name || deletingTeam}
+                disabled={deleteConfirmTeamName.trim().toLowerCase() !== team?.name?.toLowerCase() || deletingTeam}
                 onClick={handleDeleteTeam}
-                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white text-xs font-bold uppercase rounded-xl transition-all shadow-lg shadow-rose-600/25 cursor-pointer font-sans"
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:border-transparent disabled:shadow-none disabled:cursor-not-allowed text-white text-xs font-bold uppercase rounded-xl transition-all shadow-lg shadow-rose-600/25 cursor-pointer font-sans"
               >
                 {deletingTeam ? 'Đang xóa...' : 'Xóa vĩnh viễn'}
               </button>

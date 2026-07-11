@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { io } from 'socket.io-client';
 import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare, Cpu, Copy, RefreshCw, Crown, Trophy, Edit3, ExternalLink } from 'lucide-react';
 import RegisterTeam from './RegisterTeam';
+import GithubUserAutocomplete from '../shared/GithubUserAutocomplete';
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
   <svg
@@ -176,6 +177,114 @@ export default function TeamArea() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [savingBasicInfo, setSavingBasicInfo] = useState(false);
   const [editMembers, setEditMembers] = useState<any[]>([]);
+  const editMembersRef = useRef<any[]>([]);
+  const checkTimers = useRef<{ [key: number]: any }>({});
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmTeamName, setDeleteConfirmTeamName] = useState('');
+  const [deletingTeam, setDeletingTeam] = useState(false);
+
+  useEffect(() => {
+    editMembersRef.current = editMembers;
+  }, [editMembers]);
+
+  const handleCheckEligibility = async (index: number, emailToCheck?: string) => {
+    const targetEmail = emailToCheck !== undefined ? emailToCheck : (editMembersRef.current[index]?.email || '');
+    if (!targetEmail.trim()) {
+      return;
+    }
+    const currentEventId = data?.team?.eventId?._id;
+    if (!currentEventId) return;
+
+    setEditMembers(prev => {
+      if (!prev[index]) return prev;
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        checkingStatus: 'checking',
+        checkingMessage: ''
+      };
+      return updated;
+    });
+
+    try {
+      const res = await axios.get(
+        `http://localhost:5000/api/teams/check-eligibility?email=${encodeURIComponent(targetEmail.trim())}&eventId=${currentEventId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      setEditMembers(prev => {
+        if (!prev[index]) return prev;
+        const nextUpdated = [...prev];
+        if (nextUpdated[index].email.trim() !== targetEmail.trim()) {
+          return prev;
+        }
+
+        if (res.data.eligible) {
+          nextUpdated[index] = {
+            ...nextUpdated[index],
+            checkingStatus: 'eligible',
+            checkingMessage: res.data.message || 'Hợp lệ (Chưa có nhóm)'
+          };
+          const u = res.data.user;
+          if (u) {
+            if (u.fullName) nextUpdated[index].fullName = u.fullName;
+            if (u.studentId) nextUpdated[index].studentId = u.studentId;
+            if (u.githubUsername) nextUpdated[index].githubUsername = u.githubUsername;
+            if (u.university) nextUpdated[index].university = u.university;
+          }
+        } else {
+          nextUpdated[index] = {
+            ...nextUpdated[index],
+            checkingStatus: 'conflict',
+            checkingMessage: res.data.message || 'Đã có nhóm!'
+          };
+        }
+        return nextUpdated;
+      });
+    } catch (err: any) {
+      console.error(err);
+      setEditMembers(prev => {
+        if (!prev[index]) return prev;
+        const nextUpdated = [...prev];
+        if (nextUpdated[index].email.trim() !== targetEmail.trim()) {
+          return prev;
+        }
+        nextUpdated[index] = {
+          ...nextUpdated[index],
+          checkingStatus: 'idle',
+          checkingMessage: err.response?.data?.message || 'Lỗi kiểm tra'
+        };
+        return nextUpdated;
+      });
+      toast.error(err.response?.data?.message || 'Lỗi khi kiểm tra email.');
+    }
+  };
+
+  const handleDeleteTeam = async () => {
+    const activeTeam = data?.team;
+    if (!activeTeam) return;
+
+    if (deleteConfirmTeamName.trim() !== activeTeam.name) {
+      toast.error('Tên nhóm xác nhận không chính xác.');
+      return;
+    }
+    setDeletingTeam(true);
+    try {
+      await axios.delete(`http://localhost:5000/api/teams/${activeTeam._id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Đã xóa đội thi thành công.');
+      window.location.reload();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Không thể xóa đội thi.');
+    } finally {
+      setDeletingTeam(false);
+      setShowDeleteConfirm(false);
+    }
+  };
 
   const handleOpenEditModal = () => {
     if (data?.members) {
@@ -1162,18 +1271,74 @@ export default function TeamArea() {
                           <label className="block text-slate-450 font-semibold uppercase tracking-wider text-[9px]">
                             Địa Chỉ Email <span className="text-rose-500">*</span>
                           </label>
-                          <input
-                            type="email"
-                            required
-                            placeholder="nhap-email-thanh-vien@fe.edu.vn"
-                            value={member.email}
-                            onChange={(e) => {
-                              const updated = [...editMembers];
-                              updated[index].email = e.target.value;
-                              setEditMembers(updated);
-                            }}
-                            className="w-full bg-slate-955 border border-slate-800 text-slate-200 px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
-                          />
+                          <div className="relative flex items-center">
+                            <input
+                              type="email"
+                              required
+                              placeholder="nhap-email-thanh-vien@fe.edu.vn"
+                              value={member.email}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setEditMembers(prev => {
+                                  if (!prev[index]) return prev;
+                                  const updated = [...prev];
+                                  updated[index] = {
+                                    ...updated[index],
+                                    email: val,
+                                    checkingStatus: 'idle',
+                                    checkingMessage: ''
+                                  };
+                                  return updated;
+                                });
+
+                                if (checkTimers.current[index]) {
+                                  clearTimeout(checkTimers.current[index]);
+                                }
+
+                                const trimmed = val.trim();
+                                if (!trimmed) return;
+
+                                checkTimers.current[index] = setTimeout(() => {
+                                  const currentEmail = editMembersRef.current[index]?.email || '';
+                                  if (currentEmail.trim() === trimmed) {
+                                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                                    if (emailRegex.test(trimmed)) {
+                                      handleCheckEligibility(index, trimmed);
+                                    }
+                                  }
+                                }, 800);
+                              }}
+                              onBlur={() => {
+                                const trimmed = member.email.trim();
+                                if (!trimmed) return;
+
+                                if (checkTimers.current[index]) {
+                                  clearTimeout(checkTimers.current[index]);
+                                }
+
+                                if (member.checkingStatus === 'idle' || !member.checkingStatus) {
+                                  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                                  if (emailRegex.test(trimmed)) {
+                                    handleCheckEligibility(index, trimmed);
+                                  }
+                                }
+                              }}
+                              className="w-full bg-slate-955 border border-slate-800 text-slate-200 pl-3.5 pr-20 py-2.5 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                            />
+                            {member.checkingStatus === 'checking' && (
+                              <span className="absolute right-3.5 text-[10px] text-cyan-400 font-mono animate-pulse select-none">
+                                Đang check...
+                              </span>
+                            )}
+                          </div>
+                          {member.checkingMessage && (
+                            <p className={`text-[9px] font-mono italic mt-1 ${
+                              member.checkingStatus === 'eligible' ? 'text-emerald-400' :
+                              member.checkingStatus === 'conflict' ? 'text-rose-400' : 'text-slate-400'
+                            }`}>
+                              {member.checkingMessage}
+                            </p>
+                          )}
                         </div>
                       )}
 
@@ -1200,16 +1365,15 @@ export default function TeamArea() {
                         <label className="block text-slate-455 font-semibold uppercase tracking-wider text-[9px]">
                           GitHub Username <span className="text-rose-500">*</span>
                         </label>
-                        <input
-                          type="text"
-                          required
+                        <GithubUserAutocomplete
                           value={member.githubUsername}
-                          onChange={(e) => {
+                          onChange={(val) => {
                             const updated = [...editMembers];
-                            updated[index].githubUsername = e.target.value;
+                            updated[index].githubUsername = val;
                             setEditMembers(updated);
                           }}
-                          className="w-full bg-slate-955 border border-slate-800 text-slate-200 px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                          placeholder="nhập github-username"
+                          className="bg-slate-955 border border-slate-800 text-slate-200 px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
                         />
                       </div>
 
@@ -1275,23 +1439,93 @@ export default function TeamArea() {
               </div>
 
               {/* Actions */}
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-350 text-xs font-bold uppercase rounded-xl transition-all cursor-pointer font-sans"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingBasicInfo}
-                  className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs font-bold uppercase rounded-xl transition-all shadow-lg shadow-cyan-600/25 cursor-pointer font-sans"
-                >
-                  {savingBasicInfo ? 'Đang lưu...' : 'Lưu thay đổi'}
-                </button>
+              <div className="flex justify-between items-center pt-4 border-t border-slate-800">
+                <div>
+                  {isLeader && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowEditModal(false);
+                        setShowDeleteConfirm(true);
+                      }}
+                      className="px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/25 hover:border-rose-500/40 text-xs font-bold uppercase rounded-xl transition-all cursor-pointer font-sans"
+                    >
+                      Xóa đội thi
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditModal(false)}
+                    className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-350 text-xs font-bold uppercase rounded-xl transition-all cursor-pointer font-sans"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingBasicInfo}
+                    className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs font-bold uppercase rounded-xl transition-all shadow-lg shadow-cyan-600/25 cursor-pointer font-sans"
+                  >
+                    {savingBasicInfo ? 'Đang lưu...' : 'Lưu thay đổi'}
+                  </button>
+                </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/80 backdrop-blur-sm p-4 animate-fade-in animate-duration-150">
+          <div className="glass max-w-md w-full rounded-3xl border border-rose-500/20 p-6 md:p-8 space-y-6 relative overflow-hidden shadow-2xl">
+            <div className="space-y-2 text-left font-sans">
+              <h3 className="text-lg font-black text-rose-400 uppercase tracking-wider font-mono-tech">
+                XÁC NHẬN XÓA ĐỘI THI
+              </h3>
+              <p className="text-xs text-slate-400 leading-relaxed font-sans">
+                Hành động này sẽ xóa vĩnh viễn đội thi <strong className="text-slate-200">{team?.name}</strong> cùng toàn bộ danh sách thành viên và tài nguyên liên quan. Hành động này <strong className="text-rose-400 uppercase">không thể khôi phục</strong>.
+              </p>
+            </div>
+
+            <div className="space-y-2.5 text-left font-sans">
+              <label className="block text-[10px] text-slate-450 font-semibold uppercase tracking-wider">
+                Vui lòng nhập tên đội thi để xác nhận:
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmTeamName}
+                onChange={e => setDeleteConfirmTeamName(e.target.value)}
+                placeholder={team?.name}
+                className={`w-full bg-slate-955 border px-3.5 py-2.5 rounded-xl focus:outline-none transition-all font-mono text-xs ${
+                  deleteConfirmTeamName && deleteConfirmTeamName.trim().toLowerCase() !== team?.name?.toLowerCase()
+                    ? 'border-rose-500/40 text-rose-400 focus:border-rose-500/70'
+                    : 'border-slate-800 text-slate-200 focus:border-cyan-500/50'
+                }`}
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeleteConfirmTeamName('');
+                }}
+                className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-350 text-xs font-bold uppercase rounded-xl transition-all cursor-pointer font-sans"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={deleteConfirmTeamName.trim().toLowerCase() !== team?.name?.toLowerCase() || deletingTeam}
+                onClick={handleDeleteTeam}
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:border-transparent disabled:shadow-none disabled:cursor-not-allowed text-white text-xs font-bold uppercase rounded-xl transition-all shadow-lg shadow-rose-600/25 cursor-pointer font-sans"
+              >
+                {deletingTeam ? 'Đang xóa...' : 'Xóa vĩnh viễn'}
+              </button>
+            </div>
           </div>
         </div>
       )}

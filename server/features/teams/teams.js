@@ -1324,10 +1324,11 @@ router.put('/:teamId/basic-info', authenticateToken, async (req, res) => {
 
       const teamMember = new TeamMember({
         teamId: team._id,
+        eventId: team.eventId,
         userId: memberUser._id,
         role: 'member',
         confirmStatus: 'pending',
-        confirmToken,
+        confirmTokenHash: confirmToken,
         confirmTokenExpiry
       });
       await teamMember.save();
@@ -1340,7 +1341,7 @@ router.put('/:teamId/basic-info', authenticateToken, async (req, res) => {
       );
 
       // Send invitation email
-      const inviteLink = `${clientUrl}/api/teams/confirm-invite?token=${confirmToken}&memberId=${teamMember._id}`;
+      const inviteLink = `${req.protocol}://${req.get('host')}/api/teams/confirm-invite?token=${confirmToken}&memberId=${teamMember._id}`;
       emailService.sendTeamInvitation(memberUser.email, team.name, inviteLink)
         .catch(err => console.error(`[MEMBER ADD] Failed to send invitation to ${memberUser.email}:`, err.message));
     }
@@ -1482,6 +1483,7 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
     return res.status(400).json({ message: 'Vui lòng upload file Excel (.xlsx).' });
   }
 
+  let createdTeamIds = [];
   try {
     // 1. Verify Event is active & open for registration
     const event = await Event.findById(eventId);
@@ -1709,6 +1711,7 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
         status: 'pending_confirm'
       });
       await team.save();
+      createdTeamIds.push(team._id);
 
       // Create Leader TeamMember
       const leaderMember = new TeamMember({
@@ -1756,10 +1759,11 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
 
         const teamMember = new TeamMember({
           teamId: team._id,
+          eventId,
           userId: memberUser._id,
           role: 'member',
           confirmStatus: 'pending',
-          confirmToken,
+          confirmTokenHash: confirmToken,
           confirmTokenExpiry
         });
         await teamMember.save();
@@ -1772,7 +1776,7 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
         );
 
         // Send Email Invitation
-        const inviteLink = `${clientUrl}/api/teams/confirm-invite?token=${confirmToken}&memberId=${teamMember._id}`;
+        const inviteLink = `${req.protocol}://${req.get('host')}/api/teams/confirm-invite?token=${confirmToken}&memberId=${teamMember._id}`;
         emailService.sendTeamInvitation(memberUser.email, teamName, inviteLink)
           .catch(err => console.error(`[IMPORT] Failed to send invitation to ${memberUser.email}:`, err.message));
       }
@@ -1794,6 +1798,17 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
 
   } catch (error) {
     console.error('Import teams error:', error.message);
+    if (createdTeamIds.length > 0) {
+      try {
+        console.log(`[ROLLBACK] Cleaning up ${createdTeamIds.length} teams due to import error...`);
+        const Team = mongoose.model('Team');
+        const TeamMember = mongoose.model('TeamMember');
+        await Team.deleteMany({ _id: { $in: createdTeamIds } });
+        await TeamMember.deleteMany({ teamId: { $in: createdTeamIds } });
+      } catch (rollbackError) {
+        console.error('[ROLLBACK ERROR] Failed to clean up imported teams:', rollbackError.message);
+      }
+    }
     res.status(500).json({ message: 'Lỗi hệ thống khi import danh sách đội thi.' });
   }
 });
@@ -2897,6 +2912,47 @@ router.get('/judge/live', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Get Judge Live Error:', error.message);
     res.status(error.status || 500).json({ message: `Lỗi kết nối simulator: ${error.message}` });
+  }
+});
+
+/**
+ * @route   DELETE /api/teams/:teamId
+ * @desc    Delete a team (only team leader can delete)
+ * @access  Private
+ */
+router.delete('/:teamId', authenticateToken, async (req, res) => {
+  const { teamId } = req.params;
+
+  try {
+    const Team = mongoose.model('Team');
+    const TeamMember = mongoose.model('TeamMember');
+    const GithubRepository = mongoose.model('GithubRepository');
+
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return res.status(404).json({ message: 'Không tìm thấy đội thi.' });
+    }
+
+    // Check if the user is the leader of the team
+    const memberRecord = await TeamMember.findOne({
+      teamId,
+      userId: req.user._id,
+      role: 'leader'
+    });
+
+    if (!memberRecord) {
+      return res.status(403).json({ message: 'Chỉ có trưởng nhóm mới có quyền xóa đội thi.' });
+    }
+
+    // Delete related records
+    await Team.deleteOne({ _id: teamId });
+    await TeamMember.deleteMany({ teamId });
+    await GithubRepository.deleteMany({ teamId });
+
+    res.json({ message: 'Xóa đội thi thành công.' });
+  } catch (error) {
+    console.error('Delete Team Error:', error);
+    res.status(500).json({ message: 'Xóa đội thi thất bại.' });
   }
 });
 

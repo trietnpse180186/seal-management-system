@@ -1341,7 +1341,7 @@ router.put('/:teamId/basic-info', authenticateToken, async (req, res) => {
       );
 
       // Send invitation email
-      const inviteLink = `${clientUrl}/api/teams/confirm-invite?token=${confirmToken}&memberId=${teamMember._id}`;
+      const inviteLink = `${req.protocol}://${req.get('host')}/api/teams/confirm-invite?token=${confirmToken}&memberId=${teamMember._id}`;
       emailService.sendTeamInvitation(memberUser.email, team.name, inviteLink)
         .catch(err => console.error(`[MEMBER ADD] Failed to send invitation to ${memberUser.email}:`, err.message));
     }
@@ -1776,7 +1776,7 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
         );
 
         // Send Email Invitation
-        const inviteLink = `${clientUrl}/api/teams/confirm-invite?token=${confirmToken}&memberId=${teamMember._id}`;
+        const inviteLink = `${req.protocol}://${req.get('host')}/api/teams/confirm-invite?token=${confirmToken}&memberId=${teamMember._id}`;
         emailService.sendTeamInvitation(memberUser.email, teamName, inviteLink)
           .catch(err => console.error(`[IMPORT] Failed to send invitation to ${memberUser.email}:`, err.message));
       }

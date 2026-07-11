@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import axios from 'axios';
-import { Send, User, MessageCircle, AlertCircle } from 'lucide-react';
+import { Send, MessageCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Message {

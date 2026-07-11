@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -176,6 +176,87 @@ export default function TeamArea() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [savingBasicInfo, setSavingBasicInfo] = useState(false);
   const [editMembers, setEditMembers] = useState<any[]>([]);
+  const editMembersRef = useRef<any[]>([]);
+  const checkTimers = useRef<{ [key: number]: any }>({});
+
+  useEffect(() => {
+    editMembersRef.current = editMembers;
+  }, [editMembers]);
+
+  const handleCheckEligibility = async (index: number, emailToCheck?: string) => {
+    const targetEmail = emailToCheck !== undefined ? emailToCheck : (editMembersRef.current[index]?.email || '');
+    if (!targetEmail.trim()) {
+      return;
+    }
+    const currentEventId = data?.team?.eventId?._id;
+    if (!currentEventId) return;
+
+    setEditMembers(prev => {
+      if (!prev[index]) return prev;
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        checkingStatus: 'checking',
+        checkingMessage: ''
+      };
+      return updated;
+    });
+
+    try {
+      const res = await axios.get(
+        `http://localhost:5000/api/teams/check-eligibility?email=${encodeURIComponent(targetEmail.trim())}&eventId=${currentEventId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      setEditMembers(prev => {
+        if (!prev[index]) return prev;
+        const nextUpdated = [...prev];
+        if (nextUpdated[index].email.trim() !== targetEmail.trim()) {
+          return prev;
+        }
+
+        if (res.data.eligible) {
+          nextUpdated[index] = {
+            ...nextUpdated[index],
+            checkingStatus: 'eligible',
+            checkingMessage: res.data.message || 'Hợp lệ (Chưa có nhóm)'
+          };
+          const u = res.data.user;
+          if (u) {
+            if (u.fullName) nextUpdated[index].fullName = u.fullName;
+            if (u.studentId) nextUpdated[index].studentId = u.studentId;
+            if (u.githubUsername) nextUpdated[index].githubUsername = u.githubUsername;
+            if (u.university) nextUpdated[index].university = u.university;
+          }
+        } else {
+          nextUpdated[index] = {
+            ...nextUpdated[index],
+            checkingStatus: 'conflict',
+            checkingMessage: res.data.message || 'Đã có nhóm!'
+          };
+        }
+        return nextUpdated;
+      });
+    } catch (err: any) {
+      console.error(err);
+      setEditMembers(prev => {
+        if (!prev[index]) return prev;
+        const nextUpdated = [...prev];
+        if (nextUpdated[index].email.trim() !== targetEmail.trim()) {
+          return prev;
+        }
+        nextUpdated[index] = {
+          ...nextUpdated[index],
+          checkingStatus: 'idle',
+          checkingMessage: err.response?.data?.message || 'Lỗi kiểm tra'
+        };
+        return nextUpdated;
+      });
+      toast.error(err.response?.data?.message || 'Lỗi khi kiểm tra email.');
+    }
+  };
 
   const handleOpenEditModal = () => {
     if (data?.members) {
@@ -1162,18 +1243,74 @@ export default function TeamArea() {
                           <label className="block text-slate-450 font-semibold uppercase tracking-wider text-[9px]">
                             Địa Chỉ Email <span className="text-rose-500">*</span>
                           </label>
-                          <input
-                            type="email"
-                            required
-                            placeholder="nhap-email-thanh-vien@fe.edu.vn"
-                            value={member.email}
-                            onChange={(e) => {
-                              const updated = [...editMembers];
-                              updated[index].email = e.target.value;
-                              setEditMembers(updated);
-                            }}
-                            className="w-full bg-slate-955 border border-slate-800 text-slate-200 px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
-                          />
+                          <div className="relative flex items-center">
+                            <input
+                              type="email"
+                              required
+                              placeholder="nhap-email-thanh-vien@fe.edu.vn"
+                              value={member.email}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setEditMembers(prev => {
+                                  if (!prev[index]) return prev;
+                                  const updated = [...prev];
+                                  updated[index] = {
+                                    ...updated[index],
+                                    email: val,
+                                    checkingStatus: 'idle',
+                                    checkingMessage: ''
+                                  };
+                                  return updated;
+                                });
+
+                                if (checkTimers.current[index]) {
+                                  clearTimeout(checkTimers.current[index]);
+                                }
+
+                                const trimmed = val.trim();
+                                if (!trimmed) return;
+
+                                checkTimers.current[index] = setTimeout(() => {
+                                  const currentEmail = editMembersRef.current[index]?.email || '';
+                                  if (currentEmail.trim() === trimmed) {
+                                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                                    if (emailRegex.test(trimmed)) {
+                                      handleCheckEligibility(index, trimmed);
+                                    }
+                                  }
+                                }, 800);
+                              }}
+                              onBlur={() => {
+                                const trimmed = member.email.trim();
+                                if (!trimmed) return;
+
+                                if (checkTimers.current[index]) {
+                                  clearTimeout(checkTimers.current[index]);
+                                }
+
+                                if (member.checkingStatus === 'idle' || !member.checkingStatus) {
+                                  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                                  if (emailRegex.test(trimmed)) {
+                                    handleCheckEligibility(index, trimmed);
+                                  }
+                                }
+                              }}
+                              className="w-full bg-slate-955 border border-slate-800 text-slate-200 pl-3.5 pr-20 py-2.5 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                            />
+                            {member.checkingStatus === 'checking' && (
+                              <span className="absolute right-3.5 text-[10px] text-cyan-400 font-mono animate-pulse select-none">
+                                Đang check...
+                              </span>
+                            )}
+                          </div>
+                          {member.checkingMessage && (
+                            <p className={`text-[9px] font-mono italic mt-1 ${
+                              member.checkingStatus === 'eligible' ? 'text-emerald-400' :
+                              member.checkingStatus === 'conflict' ? 'text-rose-400' : 'text-slate-400'
+                            }`}>
+                              {member.checkingMessage}
+                            </p>
+                          )}
                         </div>
                       )}
 

@@ -1324,10 +1324,11 @@ router.put('/:teamId/basic-info', authenticateToken, async (req, res) => {
 
       const teamMember = new TeamMember({
         teamId: team._id,
+        eventId: team.eventId,
         userId: memberUser._id,
         role: 'member',
         confirmStatus: 'pending',
-        confirmToken,
+        confirmTokenHash: confirmToken,
         confirmTokenExpiry
       });
       await teamMember.save();
@@ -1762,7 +1763,7 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
           userId: memberUser._id,
           role: 'member',
           confirmStatus: 'pending',
-          confirmToken,
+          confirmTokenHash: confirmToken,
           confirmTokenExpiry
         });
         await teamMember.save();

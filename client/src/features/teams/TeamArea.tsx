@@ -6,6 +6,7 @@ import { io } from 'socket.io-client';
 import { CheckCircle, Clock, FileDiff, BookOpen, Users, MessageSquare, Cpu, Copy, RefreshCw, Crown, Trophy, Edit3, ExternalLink } from 'lucide-react';
 import RegisterTeam from './RegisterTeam';
 import GithubUserAutocomplete from '../shared/GithubUserAutocomplete';
+import UniversityCombobox from '../shared/UniversityCombobox';
 
 const Github = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
   <svg
@@ -1052,9 +1053,8 @@ export default function TeamArea() {
           </div>
 
           {/* Project Topic Card */}
-          <div className={`${
-            isExamVisible || showMqttCard ? 'lg:col-span-12' : 'lg:col-span-6'
-          } glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all`}>
+          <div className={`${isExamVisible || showMqttCard ? 'lg:col-span-12' : 'lg:col-span-6'
+            } glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all`}>
             <div>
               <div className="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
                 <h2 className="text-sm font-bold text-white flex items-center gap-2 font-mono-tech">
@@ -1062,7 +1062,7 @@ export default function TeamArea() {
                   <span className="text-cyan-400">[ĐỀ_TÀI_DỰ_ÁN]</span>
                 </h2>
               </div>
-              
+
               {team.topicSubmission?.title ? (
                 <div className="space-y-4 text-xs font-mono">
                   <div>
@@ -1275,7 +1275,7 @@ export default function TeamArea() {
                             <input
                               type="email"
                               required
-                              placeholder="nhap-email-thanh-vien@fe.edu.vn"
+                              placeholder="Nhập email thành viên"
                               value={member.email}
                               onChange={(e) => {
                                 const val = e.target.value;
@@ -1332,10 +1332,9 @@ export default function TeamArea() {
                             )}
                           </div>
                           {member.checkingMessage && (
-                            <p className={`text-[9px] font-mono italic mt-1 ${
-                              member.checkingStatus === 'eligible' ? 'text-emerald-400' :
-                              member.checkingStatus === 'conflict' ? 'text-rose-400' : 'text-slate-400'
-                            }`}>
+                            <p className={`text-[9px] font-mono italic mt-1 ${member.checkingStatus === 'eligible' ? 'text-emerald-400' :
+                                member.checkingStatus === 'conflict' ? 'text-rose-400' : 'text-slate-400'
+                              }`}>
                               {member.checkingMessage}
                             </p>
                           )}
@@ -1399,15 +1398,16 @@ export default function TeamArea() {
                         <label className="block text-slate-455 font-semibold uppercase tracking-wider text-[9px]">
                           Trường Đại Học
                         </label>
-                        <input
-                          type="text"
+                        <UniversityCombobox
                           value={member.university}
-                          onChange={(e) => {
+                          onChange={(val) => {
                             const updated = [...editMembers];
-                            updated[index].university = e.target.value;
+                            updated[index].university = val;
                             setEditMembers(updated);
                           }}
-                          className="w-full bg-slate-955 border border-slate-800 text-slate-200 px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                          placeholder="Nhập hoặc chọn trường..."
+                          className="w-full"
+                          inputClassName="w-full bg-slate-955 border border-slate-800 text-slate-200 px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
                         />
                       </div>
                     </div>
@@ -1479,7 +1479,7 @@ export default function TeamArea() {
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/80 backdrop-blur-sm p-4 animate-fade-in animate-duration-150">
-          <div className="glass max-w-md w-full rounded-3xl border border-rose-500/20 p-6 md:p-8 space-y-6 relative overflow-hidden shadow-2xl">
+          <div className="bg-slate-900 max-w-md w-full rounded-3xl border border-rose-500/20 p-6 md:p-8 space-y-6 relative overflow-hidden shadow-2xl">
             <div className="space-y-2 text-left font-sans">
               <h3 className="text-lg font-black text-rose-400 uppercase tracking-wider font-mono-tech">
                 XÁC NHẬN XÓA ĐỘI THI
@@ -1498,11 +1498,10 @@ export default function TeamArea() {
                 value={deleteConfirmTeamName}
                 onChange={e => setDeleteConfirmTeamName(e.target.value)}
                 placeholder={team?.name}
-                className={`w-full bg-slate-955 border px-3.5 py-2.5 rounded-xl focus:outline-none transition-all font-mono text-xs ${
-                  deleteConfirmTeamName && deleteConfirmTeamName.trim().toLowerCase() !== team?.name?.toLowerCase()
+                className={`w-full bg-slate-955 border px-3.5 py-2.5 rounded-xl focus:outline-none transition-all font-mono text-xs ${deleteConfirmTeamName && deleteConfirmTeamName.trim().toLowerCase() !== team?.name?.toLowerCase()
                     ? 'border-rose-500/40 text-rose-400 focus:border-rose-500/70'
                     : 'border-slate-800 text-slate-200 focus:border-cyan-500/50'
-                }`}
+                  }`}
               />
             </div>
 

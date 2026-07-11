@@ -132,13 +132,8 @@ async function canViewEndedEventChat(userId, eventId, isSystemAdmin = false) {
   return isCoordinatorForEvent(userId, eventId);
 }
 
-function isRoomVisibleToUser(room, { isSystemAdmin = false, coordinatorEventIds = [] } = {}) {
-  const eventStatus = room.eventId?.status;
-  const eventId = normalizeEventId(room.eventId)?.toString();
-  if (!ENDED_EVENT_STATUSES.includes(eventStatus)) {
-    return eventStatus === 'ongoing';
-  }
-  return isSystemAdmin || coordinatorEventIds.includes(eventId);
+function isRoomVisibleToUser(room) {
+  return room.eventId && room.eventId.status === 'ongoing';
 }
 
 async function checkRoomAccess(room, userId, options = {}) {

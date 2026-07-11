@@ -99,12 +99,7 @@ router.get('/rooms', authenticateToken, async (req, res) => {
       .populate('members', 'fullName role avatar')
       .sort({ updatedAt: -1 });
 
-    const visibleRooms = rooms.filter(room =>
-      isRoomVisibleToUser(room, {
-        isSystemAdmin,
-        coordinatorEventIds
-      })
-    );
+    const visibleRooms = rooms.filter(room => isRoomVisibleToUser(room));
 
     res.json(visibleRooms);
   } catch (err) {

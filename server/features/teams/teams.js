@@ -1482,6 +1482,7 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
     return res.status(400).json({ message: 'Vui lòng upload file Excel (.xlsx).' });
   }
 
+  let createdTeamIds = [];
   try {
     // 1. Verify Event is active & open for registration
     const event = await Event.findById(eventId);
@@ -1673,7 +1674,6 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
 
     // 4. Save to Database
     const importedTeams = [];
-    const createdTeamIds = [];
     const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
 
     for (const teamName of teamNames) {
@@ -1758,6 +1758,7 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
 
         const teamMember = new TeamMember({
           teamId: team._id,
+          eventId,
           userId: memberUser._id,
           role: 'member',
           confirmStatus: 'pending',

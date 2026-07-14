@@ -4,7 +4,7 @@ import errorMessages from './errorMessages';
 
 // Khởi tạo Axios Client với cấu hình mặc định
 const apiClient = axios.create({
-  baseURL: 'https://seal-management-system.onrender.com/api',
+  baseURL: 'https://seal-management-system-staging.onrender.com/api',
   timeout: 10000,
 });
 

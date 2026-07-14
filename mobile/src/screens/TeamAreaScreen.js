@@ -16,7 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import api from '../api/api';
 import BottomTabs from '../components/BottomTabs';
-import { BookOpen, Users, Save, RefreshCw, CheckCircle, Clock, MessageSquare, Download, FileText } from 'lucide-react-native';
+import { BookOpen, Users, Save, RefreshCw, CheckCircle, Clock, MessageSquare, Download, FileText, Video, ExternalLink, Crown } from 'lucide-react-native';
 
 export default function TeamAreaScreen({ navigation }) {
   const [data, setData] = useState(null);
@@ -39,6 +39,14 @@ export default function TeamAreaScreen({ navigation }) {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const round = data?.team?.trackId?.roundId;
+  const isExamVisible = !!(round?.startTime || round?.isExamManualOpen || data?.team?.trackId?.examAccess?.examOpened);
+
+  const formatTimeStr = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    const pad = (n) => n.toString().padStart(2, '0');
+    return `${pad(d.getHours())}:${pad(d.getMinutes())} ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+  };
 
   useEffect(() => {
     const startTimeStr = round?.startTime;
@@ -64,19 +72,24 @@ export default function TeamAreaScreen({ navigation }) {
     
     const seconds = Math.floor((diff / 1000) % 60);
     const minutes = Math.floor((diff / 1000 / 60) % 60);
-    const hours = Math.floor((diff / 1000 / 60 / 60));
+    const hours = Math.floor((diff / 1000 / 60 / 60) % 24);
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     
     const pad = (num) => num.toString().padStart(2, '0');
+    if (days > 0) {
+      return `${days} ngày ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    }
     return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
   };
 
   const handleOpenExamAccess = async () => {
-    if (!round?.driveFileUrl) {
+    const fileUrl = data?.team?.trackId?.examAccess?.examDriveFileUrl || round?.driveFileUrl;
+    if (!fileUrl) {
       Alert.alert('Thông báo', 'Đề bài chưa được mở.');
       return;
     }
     try {
-      await WebBrowser.openBrowserAsync(round.driveFileUrl);
+      await WebBrowser.openBrowserAsync(fileUrl);
     } catch (error) {
       Alert.alert('Lỗi', 'Không thể mở liên kết Google Drive.');
     }
@@ -101,9 +114,21 @@ export default function TeamAreaScreen({ navigation }) {
   const fetchTeamData = async () => {
     try {
       const res = await api.get('/teams/my-team');
+      const team = res.data?.team;
+      const isEventEnded = team && (
+        team.eventId?.status === 'completed' ||
+        team.eventId?.status === 'cancelled' ||
+        (team.eventId?.contestEnd && new Date(team.eventId.contestEnd) <= new Date())
+      );
+
+      if (!team || isEventEnded) {
+        navigation.replace('RegisterTeam');
+        return;
+      }
+
       setData(res.data);
       
-      const { team, repository } = res.data;
+      const { repository } = res.data;
       if (team?.topicSubmission) {
         setTopicTitle(team.topicSubmission.title || '');
         setTopicDesc(team.topicSubmission.description || '');
@@ -115,12 +140,14 @@ export default function TeamAreaScreen({ navigation }) {
       }
     } catch (err) {
       console.error(err);
-      Alert.alert(
-        'Không tải được thông tin',
-        err.response?.data?.message || 'Bạn chưa có đội thi hoặc đội thi chưa được duyệt.'
-      );
-      // Quay lại màn hình đăng ký đội thi nếu chưa có đội
-      navigation.replace('RegisterTeam');
+      if (err.response?.status === 404) {
+        navigation.replace('RegisterTeam');
+      } else {
+        Alert.alert(
+          'Không tải được thông tin',
+          err.response?.data?.message || 'Có lỗi xảy ra khi kết nối máy chủ.'
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -251,37 +278,104 @@ export default function TeamAreaScreen({ navigation }) {
           {/* Nội dung Tab 1: Đề tài & Dự án */}
           {activeTab === 'project' && (
             <View style={styles.tabContent}>
-              {/* BTC Exam Materials Card */}
-              <View style={styles.examCard}>
-                <View style={styles.sectionTitleRow}>
-                  <BookOpen size={16} color="#00f0ff" />
-                  <Text style={styles.sectionTitle}>[ĐỀ_BÀI_&_TÀI_LIỆU_THI]</Text>
-                </View>
-
-                {round?.startTime && new Date(round.startTime) > currentTime ? (
-                  <View style={styles.countdownContainer}>
-                    <Text style={styles.countdownLabel}>Đề bài vòng "{round.name}" sẽ được mở sau:</Text>
-                    <Text style={styles.countdownTime}>{getRemainingTimeText(round.startTime)}</Text>
-                    <Text style={styles.countdownDetail}>Thời gian mở đề: {new Date(round.startTime).toLocaleString('vi-VN')}</Text>
-                  </View>
-                ) : round?.hasExamMaterial && round?.examOpened ? (
-                  <View style={styles.examOpenContainer}>
-                    <View style={styles.activeDotRow}>
-                      <View style={styles.activeDot} />
-                      <Text style={styles.activeLabel}>ĐỀ BÀI ĐÃ MỞ</Text>
+              {/* Seminar Card */}
+              {(() => {
+                const seminar = team?.eventId?.seminar;
+                const showSeminar = !!(
+                  seminar?.scheduledAt &&
+                  !isExamVisible &&
+                  team?.eventId?.status !== 'ongoing' &&
+                  team?.eventId?.status !== 'completed' &&
+                  !team?.isEliminated
+                );
+                if (!showSeminar) return null;
+                const isUpcoming = new Date() < new Date(seminar.scheduledAt);
+                return (
+                  <View style={styles.seminarCard}>
+                    <View style={styles.seminarHeader}>
+                      <View style={styles.seminarIconBox}>
+                        <Video size={18} color="#00f0ff" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
+                          <Text style={styles.seminarTag}>[SEMINAR_HƯỚNG_DẪN]</Text>
+                          <Text style={[styles.seminarStatusTag, isUpcoming ? styles.tagUpcoming : styles.tagOngoing]}>
+                            {isUpcoming ? 'SẮP DIỄN RA' : 'ĐANG DIỄN RA'}
+                          </Text>
+                        </View>
+                        <Text style={styles.seminarTitle}>{seminar.title}</Text>
+                        {seminar.description && (
+                          <Text style={styles.seminarDesc}>{seminar.description}</Text>
+                        )}
+                        <Text style={styles.seminarMetaText}>
+                          Lịch: {formatTimeStr(seminar.scheduledAt)}
+                        </Text>
+                      </View>
                     </View>
-                    <Text style={styles.examFileName}>{round.driveFileName || `Đề vòng ${round.name}`}</Text>
-                    <Text style={styles.examSubText}>Nhấn nút bên dưới để mở tài liệu trên Google Drive.</Text>
-                    <TouchableOpacity style={styles.openExamBtn} onPress={handleOpenExamAccess}>
-                      <Text style={styles.openExamBtnText}>MỞ ĐỀ & TÀI LIỆU (GOOGLE DRIVE)</Text>
-                    </TouchableOpacity>
+                    {isUpcoming ? (
+                      <View style={styles.countdownContainer}>
+                        <Text style={styles.countdownLabel}>Seminar bắt đầu sau:</Text>
+                        <Text style={styles.countdownTime}>{getRemainingTimeText(seminar.scheduledAt)}</Text>
+                      </View>
+                    ) : (
+                      seminar.meetUrl && (
+                        <TouchableOpacity
+                          style={styles.meetBtn}
+                          onPress={async () => {
+                            try {
+                              await WebBrowser.openBrowserAsync(seminar.meetUrl);
+                            } catch (e) {
+                              Alert.alert('Lỗi', 'Không thể mở phòng Google Meet.');
+                            }
+                          }}
+                        >
+                          <Text style={styles.meetBtnText}>THAM GIA GOOGLE MEET</Text>
+                        </TouchableOpacity>
+                      )
+                    )}
                   </View>
-                ) : round?.hasExamMaterial ? (
-                  <Text style={styles.italicText}>Đề đã được gắn nhưng chưa đến giờ mở hoặc chưa cấu hình thời gian.</Text>
-                ) : (
-                  <Text style={styles.italicText}>Chưa có đề bài cho vòng thi của bạn.</Text>
-                )}
-              </View>
+                );
+              })()}
+
+              {/* BTC Exam Materials Card */}
+              {isExamVisible && (
+                <View style={styles.examCard}>
+                  <View style={styles.sectionTitleRow}>
+                    <BookOpen size={16} color="#00f0ff" />
+                    <Text style={styles.sectionTitle}>[ĐỀ_BÀI_&_TÀI_LIỆU_THI]</Text>
+                  </View>
+
+                  {team?.eventId?.contestStart && new Date(team.eventId.contestStart) > currentTime ? (
+                    <View style={styles.countdownContainer}>
+                      <Text style={styles.countdownLabel}>Đề bài cuộc thi "{team.eventId.name}" sẽ được mở sau:</Text>
+                      <Text style={styles.countdownTime}>{getRemainingTimeText(team.eventId.contestStart)}</Text>
+                      <Text style={styles.countdownDetail}>Thời gian mở đề: {formatTimeStr(team.eventId.contestStart)}</Text>
+                    </View>
+                  ) : round?.startTime && new Date(round.startTime) > currentTime ? (
+                    <View style={styles.countdownContainer}>
+                      <Text style={styles.countdownLabel}>Đề bài vòng "{round.name}" sẽ được mở sau:</Text>
+                      <Text style={styles.countdownTime}>{getRemainingTimeText(round.startTime)}</Text>
+                      <Text style={styles.countdownDetail}>Thời gian mở đề: {formatTimeStr(round.startTime)}</Text>
+                    </View>
+                  ) : team?.trackId?.examAccess?.examOpened ? (
+                    <View style={styles.examOpenContainer}>
+                      <View style={styles.activeDotRow}>
+                        <View style={styles.activeDot} />
+                        <Text style={styles.activeLabel}>ĐỀ BÀI ĐÃ MỞ KHÓA — BẢNG {team.trackId.name?.toUpperCase()}</Text>
+                      </View>
+                      <Text style={styles.examFileName}>
+                        {team.trackId.examAccess.examDriveFileName || `Đề thi & Tài liệu hướng dẫn — ${team.trackId.name}`}
+                      </Text>
+                      <Text style={styles.examSubText}>Nhấn nút bên dưới để mở tài liệu trên Google Drive.</Text>
+                      <TouchableOpacity style={styles.openExamBtn} onPress={handleOpenExamAccess}>
+                        <Text style={styles.openExamBtnText}>MỞ ĐỀ & TÀI LIỆU (GOOGLE DRIVE)</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <Text style={styles.italicText}>Chưa có đề bài hoặc đề chưa được mở cho bảng đấu của bạn.</Text>
+                  )}
+                </View>
+              )}
 
               {/* Chat with Mentor Card */}
               {team && team.eventId?.status === 'ongoing' && (
@@ -349,26 +443,38 @@ export default function TeamAreaScreen({ navigation }) {
               {members?.map((m) => (
                 <View key={m._id} style={styles.memberCard}>
                   <View style={styles.memberInfo}>
-                    <Text style={styles.memberName}>{m.userId?.fullName}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                      <Text style={styles.memberName}>{m.userId?.fullName}</Text>
+                      {m.role === 'leader' && (
+                        <Crown size={12} color="#f59e0b" style={{ marginTop: -1 }} />
+                      )}
+                    </View>
                     <Text style={styles.memberEmail}>{m.userId?.email}</Text>
-                    {m.userId?.studentId && (
+                    {(m.userId?.studentId || m.userId?.university) && (
                       <Text style={styles.memberSubText}>
-                        MSSV: {m.userId.studentId} • Trường: {m.userId.university || 'Đại học FPT'}
+                        {m.userId?.studentId && `MSSV: ${m.userId.studentId}`}
+                        {m.userId?.studentId && m.userId?.university && ' • '}
+                        Trường: {m.userId?.university || 'Đại học FPT'}
                       </Text>
                     )}
                   </View>
 
-                  <View style={[styles.confirmBadge, m.confirmStatus === 'confirmed' ? styles.confirmBadgeSuccess : styles.confirmBadgePending]}>
+                  <View style={styles.badgeContainer}>
                     {m.confirmStatus === 'confirmed' ? (
-                      <>
-                        <CheckCircle size={10} color="#10b981" />
-                        <Text style={styles.confirmBadgeTextSuccess}>Đã nhận</Text>
-                      </>
+                      m.role === 'leader' ? (
+                        <View style={styles.leaderBadge}>
+                          <Text style={styles.leaderBadgeText}>LEADER</Text>
+                        </View>
+                      ) : (
+                        <View style={styles.memberBadge}>
+                          <Text style={styles.memberBadgeText}>MEMBER</Text>
+                        </View>
+                      )
                     ) : (
-                      <>
-                        <Clock size={10} color="#f59e0b" />
-                        <Text style={styles.confirmBadgeTextPending}>Chờ...</Text>
-                      </>
+                      <View style={styles.pendingBadge}>
+                        <Clock size={10} color="#849495" />
+                        <Text style={styles.pendingBadgeText}>CHỜ DUYỆT</Text>
+                      </View>
                     )}
                   </View>
                 </View>
@@ -965,5 +1071,130 @@ const styles = StyleSheet.create({
   },
   spin: {
     // Rotation is typically handled in JS animation, but here we can rely on standard spinner or simple state text
+  },
+  seminarCard: {
+    backgroundColor: '#131d25',
+    borderColor: 'rgba(0, 240, 255, 0.15)',
+    borderWidth: 1,
+    padding: 16,
+    borderRadius: 6,
+    marginBottom: 16,
+  },
+  seminarHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  seminarIconBox: {
+    width: 36,
+    height: 36,
+    backgroundColor: 'rgba(0, 240, 255, 0.1)',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    marginTop: 2,
+  },
+  seminarTag: {
+    color: '#00f0ff',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  seminarStatusTag: {
+    fontSize: 8,
+    fontWeight: '800',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 3,
+  },
+  tagUpcoming: {
+    backgroundColor: '#1e293b',
+    color: '#94a3b8',
+    borderColor: '#334155',
+    borderWidth: 0.5,
+  },
+  tagOngoing: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    color: '#34d399',
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderWidth: 0.5,
+  },
+  seminarTitle: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  seminarDesc: {
+    color: '#849495',
+    fontSize: 11,
+    lineHeight: 15,
+    marginBottom: 8,
+  },
+  seminarMetaText: {
+    color: '#dae3f0',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  meetBtn: {
+    backgroundColor: '#10b981',
+    paddingVertical: 10,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  meetBtnText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  badgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  leaderBadge: {
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  leaderBadgeText: {
+    color: '#f59e0b',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  memberBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  memberBadgeText: {
+    color: '#10b981',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  pendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    gap: 4,
+  },
+  pendingBadgeText: {
+    color: '#849495',
+    fontSize: 9,
+    fontWeight: '700',
   },
 });

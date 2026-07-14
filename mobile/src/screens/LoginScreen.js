@@ -23,7 +23,7 @@ WebBrowser.maybeCompleteAuthSession();
 const getWebClientUrl = (apiUrl) => {
   try {
     if (!apiUrl) return 'http://10.0.2.2:5173';
-    if (apiUrl.includes('seal-management-system.onrender.com') || apiUrl.includes('seal-backend.onrender.com')) {
+    if (apiUrl.includes('seal-management-system.onrender.com') || apiUrl.includes('seal-management-system-staging.onrender.com') || apiUrl.includes('seal-backend.onrender.com')) {
       return 'https://www.seal-hackathon.io.vn';
     }
     const match = apiUrl.match(/^(https?:\/\/)([^:/]+)/i);
@@ -34,7 +34,7 @@ const getWebClientUrl = (apiUrl) => {
     }
     return 'http://10.0.2.2:5173';
   } catch (e) {
-    console.error(e);
+    console.log('Error parsing URL:', e);
     return 'http://10.0.2.2:5173';
   }
 };
@@ -66,7 +66,7 @@ export default function LoginScreen({ navigation }) {
           redirectUser(user, roles);
         }
       } catch (err) {
-        console.error(err);
+        console.log('Session check error:', err);
       } finally {
         setInitializing(false);
       }
@@ -97,7 +97,7 @@ export default function LoginScreen({ navigation }) {
 
       await redirectUser(user, roles || []);
     } catch (err) {
-      console.error(err);
+      console.log('OAuth submit error:', err);
       if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message);
       } else {
@@ -145,7 +145,7 @@ export default function LoginScreen({ navigation }) {
         setError('Đăng nhập qua trình duyệt thất bại.');
       }
     } catch (err) {
-      console.error(err);
+      console.log('OAuth redirect error:', err);
       setError('Lỗi khi mở trình duyệt đăng nhập cầu nối.');
     } finally {
       setLoading(false);
@@ -206,7 +206,7 @@ export default function LoginScreen({ navigation }) {
 
       await redirectUser(user, roles || []);
     } catch (err) {
-      console.error(err);
+      console.log('Login error:', err);
       if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message);
       } else {

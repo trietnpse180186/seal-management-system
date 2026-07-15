@@ -117,7 +117,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
       const token = localStorage.getItem("token");
       if (token) {
         const socketUrl = import.meta.env.VITE_API_URL || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.origin : 'http://localhost:5000');
-        const sock = io(socketUrl, { query: { token } });
+        const sock = io(socketUrl, { auth: { token } });
         socketRef.current = sock;
         sock.on("new_notification", (notif: any) => {
           setNotifications((prev) => [notif, ...prev]);

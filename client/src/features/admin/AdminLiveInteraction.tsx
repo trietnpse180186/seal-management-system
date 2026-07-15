@@ -75,7 +75,7 @@ export default function AdminLiveInteraction() {
 
     // Socket Connection
     const socketUrl = import.meta.env.VITE_API_URL || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.origin : 'http://localhost:5000');
-    const socket = io(socketUrl, { query: { token } });
+    const socket = io(socketUrl, { auth: { token } });
     socketRef.current = socket;
 
     socket.on("connect", () => {

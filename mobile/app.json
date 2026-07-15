@@ -24,8 +24,23 @@
       },
       "package": "com.ntngoc204.mobile"
     },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "newArchEnabled": false
+          }
+        }
+      ]
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "b22960e4-c1ef-4c27-b7f1-dd0840109aec"
+      }
     }
   }
 }

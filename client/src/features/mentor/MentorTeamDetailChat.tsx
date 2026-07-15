@@ -76,7 +76,7 @@ export default function MentorTeamDetailChat({ team, token }: Props) {
 
     const socketUrl = import.meta.env.VITE_API_URL || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.origin : 'http://localhost:5000');
     const newSocket = io(socketUrl, {
-      query: { token }
+      auth: { token }
     });
 
     setSocket(newSocket);

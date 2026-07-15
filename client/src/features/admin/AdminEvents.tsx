@@ -469,7 +469,7 @@ export default function AdminEvents({
       fetchEventLogs();
       if (token) {
         const socketUrl = import.meta.env.VITE_API_URL || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.origin : 'http://localhost:5000');
-        const sock = io(socketUrl, { query: { token } });
+        const sock = io(socketUrl, { auth: { token } });
         socketRef.current = sock;
         sock.on("new_event_log", (newLog: any) => {
           if (newLog.eventId === selectedEvent._id) {

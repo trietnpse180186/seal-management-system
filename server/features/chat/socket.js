@@ -4,6 +4,21 @@ const mongoose = require('mongoose');
 
 let io;
 
+// Track last message timestamp per user to prevent spamming (Rate Limiting)
+const userLastMessageTimes = new Map();
+
+// Helper to escape HTML characters and prevent Stored XSS injection
+function escapeHTML(str) {
+  if (typeof str !== 'string') return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;');
+}
+
 module.exports = {
   init: (httpServer) => {
     io = new Server(httpServer, {
@@ -14,8 +29,10 @@ module.exports = {
     });
 
     io.use((socket, next) => {
-      if (socket.handshake.query && socket.handshake.query.token){
-        jwt.verify(socket.handshake.query.token, process.env.JWT_SECRET || 'seal_hackathon_secret_key_2026', function(err, decoded) {
+      // Support secure auth token handshake or query token fallback
+      const token = socket.handshake.auth?.token || (socket.handshake.query && socket.handshake.query.token);
+      if (token) {
+        jwt.verify(token, process.env.JWT_SECRET || 'seal_hackathon_secret_key_2026', function(err, decoded) {
           if (err) {
             console.error('Socket authentication error:', err.message);
             return next(new Error('Authentication error'));
@@ -104,21 +121,33 @@ module.exports = {
             return socket.emit('error', { message: 'Unauthorized: Bạn không có quyền nhắn tin trong phòng này.' });
           }
 
+          // [CRITICAL] Rate Limiting: Max 2 messages per second
+          const now = Date.now();
+          const lastTime = userLastMessageTimes.get(userId.toString());
+          if (lastTime && now - lastTime < 500) {
+            return socket.emit('error', { message: 'Bạn đang gửi tin nhắn quá nhanh. Vui lòng đợi 1 giây trước khi thử lại.' });
+          }
+          userLastMessageTimes.set(userId.toString(), now);
+
           const user = await User.findById(userId);
           if (!user) {
             console.warn(`Sender user not found for ID: ${userId}`);
             return;
           }
 
+          // [CRITICAL] XSS Mitigation: Escape input message content
+          const cleanContent = escapeHTML(content.trim());
+          const cleanReplyToContent = replyTo ? escapeHTML(replyTo.content) : undefined;
+
           const newMessage = new ChatMessage({
             roomId,
             senderId: user._id,
             senderName: user.fullName || user.email,
-            content: content.trim(),
+            content: cleanContent,
             replyTo: replyTo ? {
               messageId: replyTo.messageId,
               senderName: replyTo.senderName,
-              content: replyTo.content
+              content: cleanReplyToContent
             } : undefined
           });
 

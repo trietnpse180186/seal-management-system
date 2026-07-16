@@ -18,9 +18,12 @@ Hệ thống quản lý cuộc thi **SEAL Hackathon** toàn diện dành cho cá
 seal-management-system/
 ├── client/                 # Mã nguồn Frontend (React + Vite)
 ├── server/                 # Mã nguồn Backend (NodeJS + Express)
+├── docs/                   # Thư mục chứa tài liệu hệ thống
+│   ├── guides/             # Hướng dẫn phát triển & cài đặt (SETUP, DEVELOPER_GUIDE, SYSTEM_HARNESS_GUIDE, MQTT_GUIDE)
+│   ├── deployment/         # Hướng dẫn triển khai production (PRODUCTION_GUIDE)
+│   └── process/            # Quy trình nghiệp vụ, quy định đánh giá & API bên ngoài
 ├── schema.dbml             # File thiết kế Database chuẩn (20 bảng)
-├── DEVELOPER_GUIDE.md      # Tài liệu chi tiết cấu hình API (GitHub, Google, SMTP)
-└── README.md               # Hướng dẫn này
+└── README.md               # Hướng dẫn này (ở root)
 ```
 
 ---

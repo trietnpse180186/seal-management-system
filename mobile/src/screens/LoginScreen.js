@@ -15,10 +15,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
+import * as Google from 'expo-auth-session/providers/google';
 import api, { getBaseUrl } from '../api/api';
 import { ShieldAlert } from 'lucide-react-native';
 
 WebBrowser.maybeCompleteAuthSession();
+
+// Cấu hình Google Client ID cho đăng nhập Google In-App
+// Hãy thay thế các giá trị này bằng thông tin Client ID từ Google Cloud Console của bạn
+const GOOGLE_ANDROID_CLIENT_ID = '366093122734-qnj50t37f717ja1j0tn4d0jr36um2kt2.apps.googleusercontent.com';
+const GOOGLE_IOS_CLIENT_ID = '366093122734-0po1s7mrt5fctsluna0gf3ufd6iqcrtk.apps.googleusercontent.com';
+const GOOGLE_WEB_CLIENT_ID = '366093122734-h9v9v6ddjekkv8phv02oi35qqgplp9u3.apps.googleusercontent.com'; // Mặc định dùng Client ID của web client
 
 const getWebClientUrl = (apiUrl) => {
   try {
@@ -52,6 +59,15 @@ export default function LoginScreen({ navigation }) {
   const [mockEmail, setMockEmail] = useState('');
   const [mockUsername, setMockUsername] = useState('');
   const [mockFullName, setMockFullName] = useState('');
+
+
+
+  const handleGoogleSignInSuccess = async (idToken) => {
+    await loginWithBackend('/auth/google', {
+      idToken,
+      isMock: false
+    });
+  };
 
   useEffect(() => {
     const checkExistingSession = async () => {
@@ -153,11 +169,79 @@ export default function LoginScreen({ navigation }) {
   };
 
   const handleGoogleLogin = async (isRealFlow = false) => {
-    await handleOAuthRealFlow('google');
+    if (isRealFlow) {
+      setError('');
+      setLoading(true);
+      try {
+        // 1. Tạo Redirect URI cho ứng dụng di động nhận kết quả (Deep Link)
+        const appRedirectUrl = AuthSession.makeRedirectUri({
+          scheme: 'sealhackathon',
+          path: 'redirect',
+        });
+
+        // 2. Tạo Redirect URI gửi lên Google OAuth (phải là HTTPS và khớp cấu hình trên Google Cloud)
+        // Khi chạy trên Expo Go, Google cấm dùng giao thức exp://. Ta bắt buộc dùng Expo Auth Proxy.
+        let googleRedirectUrl = appRedirectUrl;
+        if (googleRedirectUrl.startsWith('exp://') || googleRedirectUrl.startsWith('http://')) {
+          googleRedirectUrl = 'https://auth.expo.io/@ntngoc204/mobile';
+        }
+
+        const nonce = Math.random().toString(36).substring(2) + Date.now().toString(36);
+
+        // 3. Tạo URL đăng nhập Google trực tiếp (implicit flow trả về id_token)
+        const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+          `client_id=${encodeURIComponent(GOOGLE_WEB_CLIENT_ID)}` +
+          `&redirect_uri=${encodeURIComponent(googleRedirectUrl)}` +
+          `&response_type=id_token` +
+          `&scope=${encodeURIComponent('openid email profile')}` +
+          `&nonce=${encodeURIComponent(nonce)}` +
+          `&prompt=select_account`;
+
+        console.log('Opening Google Auth directly:', googleAuthUrl);
+        console.log('Using redirect URI on Google Cloud:', googleRedirectUrl);
+
+        // 4. Mở trình duyệt in-app
+        const result = await WebBrowser.openAuthSessionAsync(googleAuthUrl, appRedirectUrl);
+
+        if (result.type === 'success' && result.url) {
+          // Trích xuất idToken từ URL redirect (Expo Auth Proxy trả về)
+          const idToken = getQueryParam(result.url, 'id_token') || getQueryParam(result.url, 'idToken');
+
+          if (idToken) {
+            await handleGoogleSignInSuccess(idToken);
+          } else {
+            console.log('No id_token found in URL:', result.url);
+            setError('Không lấy được mã xác thực (idToken) từ kết quả đăng nhập Google.');
+          }
+        } else if (result.type === 'cancel') {
+          console.log('User cancelled Google Sign-in');
+        } else {
+          setError('Đăng nhập Google thất bại.');
+        }
+      } catch (err) {
+        console.log('Google Sign-in Direct Error:', err);
+        setError('Lỗi khi khởi chạy đăng nhập Google.');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      setMockProvider('google');
+      setMockEmail('candidate1@gmail.com');
+      setMockFullName('Candidate One');
+      setShowMockModal(true);
+    }
   };
 
   const handleGithubLogin = async (isRealFlow = false) => {
-    await handleOAuthRealFlow('github');
+    if (isRealFlow) {
+      await handleOAuthRealFlow('github');
+    } else {
+      setMockProvider('github');
+      setMockEmail('mentor1@gmail.com');
+      setMockUsername('mentor1-github');
+      setMockFullName('Mentor One');
+      setShowMockModal(true);
+    }
   };
 
   const handleMockSubmit = async () => {
@@ -324,8 +408,8 @@ export default function LoginScreen({ navigation }) {
                 <Text style={styles.modalTitle}>
                   {mockProvider === 'google' ? 'ĐĂNG NHẬP GOOGLE' : 'ĐĂNG NHẬP GITHUB'}
                 </Text>
-                
-                <TouchableOpacity 
+
+                <TouchableOpacity
                   style={styles.modalRealBtn}
                   onPress={() => {
                     setShowMockModal(false);

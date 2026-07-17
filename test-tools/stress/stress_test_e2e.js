@@ -299,7 +299,7 @@ async function main() {
   });
   await event.save();
 
-  const round = await new Round({ eventId: event._id, name: 'Vòng Chung Kết', order: 1, status: 'active' }).save();
+  const round = await new Round({ eventId: event._id, name: 'Vòng Loại', order: 1, status: 'active' }).save();
 
   // Create 3 Tracks matching SU25 đề thi
   const t1 = await new Track({ eventId: event._id, roundId: round._id, name: 'Track 1: Smart Home' }).save();
@@ -359,6 +359,7 @@ async function main() {
     const team = await new Team({
       eventId: event._id,
       trackId: track._id,
+      currentRoundId: round._id,
       name: teamName,
       status: 'confirmed',
       leaderId: user._id

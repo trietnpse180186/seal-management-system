@@ -556,7 +556,7 @@ export default function TeamArea() {
     if (!token || !teamId) return;
 
     const socketUrl = import.meta.env.VITE_API_URL || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.origin : 'http://localhost:5000');
-    const socket = io(socketUrl, { query: { token } });
+    const socket = io(socketUrl, { auth: { token } });
 
     socket.on('connect', () => {
       console.log('DEBUG [TeamArea] Connected to socket server');

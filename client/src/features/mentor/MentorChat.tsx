@@ -216,7 +216,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
 
     const socketUrl = import.meta.env.VITE_API_URL || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.origin : 'http://localhost:5000');
     const newSocket = io(socketUrl, {
-      query: { token }
+      auth: { token }
     });
 
     setSocket(newSocket);
@@ -529,7 +529,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
 
       {/* Floating Chat Window */}
       {isOpen && (
-        <div className="w-[360px] h-[500px] sm:w-[380px] sm:h-[550px] bg-[#0c1322] border border-slate-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
+        <div className="w-screen h-screen sm:w-[380px] sm:h-[550px] fixed inset-0 sm:relative sm:inset-auto bg-[#0c1322] border-0 sm:border border-slate-800 rounded-none sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
 
           {/* Header */}
           {(() => {

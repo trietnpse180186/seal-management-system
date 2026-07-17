@@ -133,3 +133,24 @@ Tài liệu này hệ thống hóa các tiêu chí đánh giá giải pháp RAG 
 | **Khá** | 3 | - Trả lời được câu hỏi cơ bản.<br>- Lúng túng với câu hỏi về trade-off hoặc lý do chọn công nghệ. |
 | **Trung bình** | 2 | - Chỉ trả lời được câu hỏi mô tả sản phẩm.<br>- Không giải thích được quyết định kỹ thuật. |
 | **Kém** | 1 | Không trả lời được câu hỏi từ BGK hoặc né tránh. |
+
+---
+
+## ⚠️ ĐIỀU KIỆN LOẠI TRỰC TIẾP (CRITICAL FAILS) CHO TỪNG TRACK
+
+Đội thi sẽ BỊ LOẠI hoặc nhận 0 ĐIỂM tại Track tương ứng nếu vi phạm một trong các tiêu chí bắt buộc dưới đây:
+
+### 1. TRACK 1: SMART HOME (AI Home Safety & Energy Intelligence)
+* **[Bắt buộc] Bằng chứng giải thuật AI:** Đội thi phải có file mô tả (hoặc trình bày trong slide thuyết trình) kiến trúc model sử dụng (ML/DL/LLM Agent). Code giám sát lõi thuần `IF/ELSE/SWITCH` dựa trên ngưỡng tĩnh (static threshold) sẽ bị đánh trượt (0 điểm AI).
+* **[Bắt buộc] Phân loại Severity chuẩn xác:** AI phải gán nhãn severity cho sự cố JUDGE khớp với Ma trận của BTC (chấp nhận biên độ sai số lệch tối đa 1 bậc).
+* **[Đảm bảo UX]:** Nhận, parse thành công và hiển thị tối thiểu **04/06 thiết bị** lên giao diện theo thời gian thực (độ trễ không quá 3 giây). Giao diện thể hiện rõ thông điệp cảnh báo phù hợp cho Persona **Chủ hộ** (tiếng Việt dễ hiểu, có hành động đề xuất rõ ràng).
+
+### 2. TRACK 2: SMART AGRICULTURE (AI-Driven Irrigation & Crop Resilience)
+* **[Bắt buộc] Bằng chứng AI xử lý chuỗi thời gian:** Bắt buộc model AI phải có khả năng xử lý Time-window (cửa sổ thời gian) chứ không chỉ nhìn vào Data point hiện tại. Nếu code dùng `IF/ELSE` kiểm tra ngưỡng tĩnh trên payload cuối cùng sẽ bị loại ngay lập tức.
+* **[Bắt buộc] Ràng buộc Mobile-friendly:** Giao diện người dùng (UI) không xem được trên tỷ lệ màn hình điện thoại di động (bị vỡ layout, tràn bảng) sẽ không đạt điều kiện nghiệm thu UX.
+* **[Đảm bảo luồng kỹ thuật]:** Theo dõi và vẽ được biểu đồ của ít nhất **04/06 thiết bị** lên giao diện theo thời gian thực mà không bị gián đoạn (Crash) khi Simulator thay đổi tần số gửi dữ liệu.
+
+### 3. TRACK 3: SMART FACTORY (AI Predictive Maintenance & Industrial Safety)
+* **[Bắt buộc] Bằng chứng thuật toán Predictive (Dự báo):** Sản phẩm phải chứng minh được khả năng dự báo lỗi trước khi chạm ngưỡng. Nếu code giải thuật chỉ thụ động phát hiện lỗi khi giá trị vượt ngưỡng (`value > max_threshold`), đội thi sẽ bị đánh trượt (0 điểm AI).
+* **[Bắt buộc] Lọc nhiễu (Debouncing):** Giao diện và hệ thống cảnh báo không được phép bị "nhấp nháy" hay Spam sự kiện liên tục khi nhận các bản ghi bị nhiễu do BTC cố ý chèn vào luồng JUDGE.
+* **[Đảm bảo UX Dashboard]:** Giao diện phải thể hiện rõ thiết kế dành cho phòng điều hành công nghiệp (Nhiều dữ liệu nhưng không rối, ưu tiên cảnh báo Critical lên cao nhất, không bị lag/giật khi render hàng chục metric mỗi giây).

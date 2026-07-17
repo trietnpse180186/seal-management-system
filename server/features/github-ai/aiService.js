@@ -404,7 +404,7 @@ async function analyzeCommitAndAggregate(commit, files, teamId, commits, priorRe
   // Read detailed rubrics from tieu_chi_danh_gia.md
   let detailedRubrics = '';
   try {
-    const rubricPath = path.join(__dirname, '../../..', 'tieu_chi_danh_gia.md');
+    const rubricPath = path.join(__dirname, '../../..', 'docs/process/tieu_chi_danh_gia.md');
     detailedRubrics = fs.readFileSync(rubricPath, 'utf8');
   } catch (err) {
     console.warn('[AI SERVICE] Warning: Could not read tieu_chi_danh_gia.md:', err.message);

@@ -43,7 +43,7 @@ When adding any AI capabilities, structure your code according to these 6 layers
 ## 3. Reference Documentation
 
 For details on how to write code adhering to these rules, read:
-* **[SYSTEM_HARNESS_GUIDE.md](file:///c:/Users/Triet/MyProject/seal-management-system/SYSTEM_HARNESS_GUIDE.md)**
+* **[SYSTEM_HARNESS_GUIDE.md](file:///c:/Users/Triet/MyProject/seal-management-system/docs/guides/SYSTEM_HARNESS_GUIDE.md)**
 
 ---
 

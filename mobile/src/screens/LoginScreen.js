@@ -17,6 +17,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
 import * as Google from 'expo-auth-session/providers/google';
 import api, { getBaseUrl } from '../api/api';
+import socketService from '../api/socketService';
 import { ShieldAlert } from 'lucide-react-native';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -111,6 +112,7 @@ export default function LoginScreen({ navigation }) {
       await AsyncStorage.setItem('user', JSON.stringify(user));
       await AsyncStorage.setItem('roles', JSON.stringify(roles || []));
 
+      await socketService.connect();
       await redirectUser(user, roles || []);
     } catch (err) {
       console.log('OAuth submit error:', err);
@@ -288,6 +290,7 @@ export default function LoginScreen({ navigation }) {
       await AsyncStorage.setItem('user', JSON.stringify(user));
       await AsyncStorage.setItem('roles', JSON.stringify(roles || []));
 
+      await socketService.connect();
       await redirectUser(user, roles || []);
     } catch (err) {
       console.log('Login error:', err);

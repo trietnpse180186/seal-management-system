@@ -180,10 +180,27 @@ const promptsRegistry = {
     ${detailedRubrics}
     
     =========================================
+    PART 4: HARD CONSTRAINTS VALIDATION (CRITICAL FAILS)
+    =========================================
+    Analyze the code repository for the active track based on their specific Auto-Fail criteria:
+    - Track 1 (Smart Home):
+      1. AI Algorithm Evidence: Look for imports or configurations of ML/DL/LLM Agent libraries or APIs. If it is only static IF/ELSE/SWITCH rules, flag it as WARNING_CHECK_SLIDE since the team might present their architecture in the slide.
+      2. Severity Accuracy: Scan for severity mapping logic (LOW/MEDIUM/HIGH/CRITICAL) for incidents and check for logical alignment with BTC rules.
+      3. UX & 04/06 Devices: Check if at least 4 out of 6 Track 1 devices (AC_01, SENSOR_01, METER_01, CO2_01, HEATER_01, LIGHT_01) are parsed and displayed on UI. Check if UI messages are friendly for "Chủ hộ" (homeowner) with actionable advice in Vietnamese.
+    - Track 2 (Smart Agriculture):
+      1. Time-window processing: Check if the AI model or code handles a time-window of data instead of just the latest single data point. If it's a static threshold on the last record, flag it as WARNING_CHECK_SLIDE.
+      2. Mobile-friendly: Check if CSS/Tailwind classes indicate responsive design.
+      3. Technical stability & 04/06 Devices: Check if at least 4 out of 6 Track 2 devices (SOIL_01, WEATHER_01, PUMP_01, PH_01, TANK_01, SUN_01) are parsed and plotted.
+    - Track 3 (Smart Factory):
+      1. Predictive algorithm evidence: Check if there is code predicting faults before threshold is reached (e.g. trend analysis, forecasting) rather than just passive threshold checking. Flag as WARNING_CHECK_SLIDE if only passive code is found.
+      2. Debouncing/Filtering: Check for debounce/throttle logic to filter noise.
+      3. UX Industrial Dashboard: Check if layout is designed for control rooms (incident prioritizing, non-cluttered).
+
+    =========================================
     INSTRUCTIONS & OUTPUT FORMAT
     =========================================
     Please provide your review in JSON format with the following keys. Do not include markdown code block syntax. Return only raw JSON.
-    All comments, summaries, evolution notes, test cases, and advisories MUST be in fluent, professional Vietnamese.
+    All comments, summaries, evolution notes, test cases, advisories, and validation details MUST be in fluent, professional Vietnamese.
     
     {
       "commit_review": {
@@ -250,6 +267,24 @@ const promptsRegistry = {
           "historical_synthesis": "overview of the team development progress in Vietnamese",
           "evolution_notes": "notable milestones during the hackathon in Vietnamese"
         }
+      },
+      "hard_constraints_validation": {
+        "track_detected": "Track 1 | Track 2 | Track 3 | Unknown",
+        "ai_algorithm_check": {
+          "status": "PASSED | WARNING_CHECK_SLIDE | FAILED",
+          "details": "Explanation of what AI algorithm evidence was found or missed in Vietnamese. If WARNING_CHECK_SLIDE, suggest what slide/presentation details the judge should look for."
+        },
+        "severity_accuracy_check": {
+          "status": "PASSED | WARNING | FAILED | NOT_APPLICABLE",
+          "details": "Explanation of incident severity mapping code logic in Vietnamese."
+        },
+        "ux_and_devices_check": {
+          "status": "PASSED | WARNING | FAILED",
+          "devices_detected": ["e.g. AC_01", "SENSOR_01"],
+          "details": "Explanation of device count, UI friendliness for target Persona, responsive design, debouncing, or chart plots in Vietnamese."
+        },
+        "is_disqualified": false,
+        "disqualification_reason": "Summary of disqualification reasons if any, in Vietnamese"
       }
     }
   `

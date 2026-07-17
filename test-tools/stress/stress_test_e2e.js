@@ -470,12 +470,20 @@ async function main() {
 
   // Chạy AI Sync 1
   if (mode === 'sequential') {
-    for (const teamInfo of activeRepos) await executeSync(teamInfo);
+    for (const teamInfo of activeRepos) {
+      await executeSync(teamInfo);
+      console.log('[E2E] Sequential cooldown: sleeping 12 seconds to prevent Gemini Rate Limit (429)...');
+      await sleep(12000);
+    }
   } else if (mode === 'parallel') {
     await Promise.all(activeRepos.map(executeSync));
   } else {
-    // Concurrency limit
-    await asyncPool(limit, activeRepos, executeSync);
+    // Concurrency limit - with cooldown to prevent bursts
+    const executeSyncWithCooldown = async (teamInfo) => {
+      await executeSync(teamInfo);
+      await sleep(12000);
+    };
+    await asyncPool(limit, activeRepos, executeSyncWithCooldown);
   }
   console.log('[E2E] AI Analysis Lần 1 hoàn thành.');
 
@@ -551,11 +559,20 @@ async function main() {
 
   // Chạy AI Sync 2
   if (mode === 'sequential') {
-    for (const teamInfo of activeRepos) await executeSync2(teamInfo);
+    for (const teamInfo of activeRepos) {
+      await executeSync2(teamInfo);
+      console.log('[E2E] Sequential cooldown: sleeping 12 seconds to prevent Gemini Rate Limit (429)...');
+      await sleep(12000);
+    }
   } else if (mode === 'parallel') {
     await Promise.all(activeRepos.map(executeSync2));
   } else {
-    await asyncPool(limit, activeRepos, executeSync2);
+    // Concurrency limit - with cooldown to prevent bursts
+    const executeSync2WithCooldown = async (teamInfo) => {
+      await executeSync2(teamInfo);
+      await sleep(12000);
+    };
+    await asyncPool(limit, activeRepos, executeSync2WithCooldown);
   }
   console.log('[E2E] AI Analysis Lần 2 hoàn thành.');
 

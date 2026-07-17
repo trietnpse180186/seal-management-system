@@ -14,6 +14,17 @@ if (!githubToken) {
 
 const octokit = new Octokit({ auth: githubToken });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const readline = require('readline');
+const askQuestion = query => {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+  return new Promise(resolve => rl.question(query, ans => {
+    rl.close();
+    resolve(ans);
+  }));
+};
 
 // Concurrency helper
 async function asyncPool(concurrency, iterable, iteratorFn) {
@@ -449,6 +460,13 @@ async function main() {
   // Push Commit 1 song song có giới hạn (concurrency limit = 5) để tránh Rate Limit GitHub
   await asyncPool(5, activeRepos, pushCommit1);
   console.log('[E2E] Completed Push 1.');
+
+  const answer = await askQuestion('\n[HỎI] Bạn có muốn tiếp tục chạy Bước 5 để đẩy Commit 2 lên GitHub không? (y/n): ');
+  if (answer.toLowerCase() !== 'y' && answer.toLowerCase() !== 'yes') {
+    console.log('[E2E] Đã dừng script test theo yêu cầu của bạn. Quá trình đẩy Commit 1 hoàn tất.');
+    await mongoose.disconnect();
+    return;
+  }
 
   // ==========================================
   // BƯỚC 4: Đồng bộ và Chạy AI Review Lần 1 (Bỏ qua - Chờ Cron/Webhook xử lý)

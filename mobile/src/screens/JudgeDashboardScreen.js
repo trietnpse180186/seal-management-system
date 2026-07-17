@@ -13,7 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../api/api';
 import BottomTabs from '../components/BottomTabs';
-import { ClipboardList, RefreshCw, ArrowRight } from 'lucide-react-native';
+import socketService from '../api/socketService';
+import { ClipboardList, RefreshCw, ArrowRight, MessageSquare } from 'lucide-react-native';
 
 export default function JudgeDashboardScreen({ navigation }) {
   const [events, setEvents] = useState([]);
@@ -26,6 +27,7 @@ export default function JudgeDashboardScreen({ navigation }) {
   
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchEvents = async () => {
     try {
@@ -87,6 +89,19 @@ export default function JudgeDashboardScreen({ navigation }) {
 
   useEffect(() => {
     fetchEvents();
+
+    // Socket setup
+    const initSocket = async () => {
+      await socketService.connect();
+      socketService.on('new_message', () => {
+        setUnreadCount(prev => prev + 1);
+      });
+    };
+    initSocket();
+
+    return () => {
+      socketService.off('new_message');
+    };
   }, []);
 
   useEffect(() => {
@@ -117,6 +132,20 @@ export default function JudgeDashboardScreen({ navigation }) {
         <View style={styles.header}>
           <ClipboardList size={22} color="#00f0ff" />
           <Text style={styles.headerTitle}>BÀN GIÁM KHẢO</Text>
+          <TouchableOpacity
+            style={styles.chatHeaderBtn}
+            onPress={() => {
+              setUnreadCount(0);
+              navigation.navigate('Chat');
+            }}
+          >
+            <MessageSquare size={22} color="#00f0ff" />
+            {unreadCount > 0 && (
+              <View style={styles.headerBadge}>
+                <Text style={styles.headerBadgeText}>{unreadCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
           <TouchableOpacity onPress={onRefresh} style={styles.refreshBtn}>
             <RefreshCw size={18} color="#00f0ff" />
           </TouchableOpacity>
@@ -261,6 +290,33 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     flex: 1,
     letterSpacing: 1.5,
+  },
+  chatHeaderBtn: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    marginRight: 10,
+  },
+  headerBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: '#ff3b30',
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#0a141d',
+  },
+  headerBadgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '900',
   },
   refreshBtn: {
     padding: 5,

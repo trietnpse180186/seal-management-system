@@ -10,11 +10,12 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Terminal, Award, Clock, Users, Calendar, Play } from 'lucide-react-native';
+import { Terminal, Award, Clock, Users, Calendar, Play, MessageSquare } from 'lucide-react-native';
 import * as WebBrowser from 'expo-web-browser';
 import api from '../api/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import BottomTabs from '../components/BottomTabs';
+import socketService from '../api/socketService';
 
 const { width } = Dimensions.get('window');
 
@@ -22,6 +23,7 @@ export default function HomeScreen({ navigation }) {
   const [events, setEvents] = useState([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [hasTeam, setHasTeam] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -51,6 +53,19 @@ export default function HomeScreen({ navigation }) {
 
     fetchEvents();
     checkTeamStatus();
+
+    // Socket setup for unread count
+    const initSocket = async () => {
+      await socketService.connect();
+      socketService.on('new_message', () => {
+        setUnreadCount(prev => prev + 1);
+      });
+    };
+    initSocket();
+
+    return () => {
+      socketService.off('new_message');
+    };
   }, []);
 
   const handlePlayVideo = async () => {
@@ -86,9 +101,28 @@ export default function HomeScreen({ navigation }) {
         <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
           {/* Logo & Hero Header */}
           <View style={styles.heroSection}>
-            <Text style={styles.logoText}>SEAL</Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>HACKATHON</Text>
+            <View style={styles.headerTopRow}>
+              <View style={{ width: 40 }} />
+              <View style={styles.logoContainer}>
+                <Text style={styles.logoText}>SEAL</Text>
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>HACKATHON</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.chatHeaderBtn}
+                onPress={() => {
+                  setUnreadCount(0);
+                  navigation.navigate('Chat');
+                }}
+              >
+                <MessageSquare size={24} color="#00f0ff" />
+                {unreadCount > 0 && (
+                  <View style={styles.headerBadge}>
+                    <Text style={styles.headerBadgeText}>{unreadCount}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
             </View>
             <Text style={styles.subtitle}>
               HỆ THỐNG QUẢN LÝ CHẤM ĐIỂM & THEO DÕI DỰ ÁN
@@ -284,6 +318,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 10,
     marginBottom: 24,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  logoContainer: {
+    alignItems: 'center',
+  },
+  chatHeaderBtn: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  headerBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: '#ff3b30',
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#0a141d',
+  },
+  headerBadgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '900',
   },
   logoText: {
     fontSize: 44,

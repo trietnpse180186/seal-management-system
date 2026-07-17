@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import api from '../api/api';
+import socketService from '../api/socketService';
 import { firebaseAuth, firebaseWebClientId } from '../config/firebase';
 import { ShieldAlert } from 'lucide-react-native';
 
@@ -69,6 +70,7 @@ export default function LoginScreen({ navigation }) {
     await AsyncStorage.setItem('token', token);
     await AsyncStorage.setItem('user', JSON.stringify(user));
     await AsyncStorage.setItem('roles', JSON.stringify(roles || []));
+    await socketService.connect();
     await redirectUser(user, roles || []);
   };
 

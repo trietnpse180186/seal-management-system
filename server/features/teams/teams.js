@@ -2020,31 +2020,42 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
         }
       } else if (userRole && userRole.role === 'judge') {
         const roundId = req.query.roundId;
-        let assignedRole = null;
-
-        if (roundId && mongoose.Types.ObjectId.isValid(roundId)) {
-          const TrackModel = mongoose.model('Track');
-          const roundTracks = await TrackModel.find({ roundId: roundId });
-          const roundTrackIds = roundTracks.map(t => t._id.toString());
-
-          const judgeRoles = await EventRole.find({
-            userId: req.user._id,
-            eventId: req.params.eventId,
-            role: 'judge',
-            status: 'active'
-          });
-
-          assignedRole = judgeRoles.find(role => role.trackId && roundTrackIds.includes(role.trackId.toString()));
-
-          if (!assignedRole) {
-            return res.status(403).json({ message: 'Bạn không được phân công chấm điểm ở vòng thi này.' });
+        
+        // 1. Resolve effective round (use active round if not queried)
+        let effectiveRoundId = roundId;
+        if (!effectiveRoundId || !mongoose.Types.ObjectId.isValid(effectiveRoundId)) {
+          const activeRound = await Round.findOne({ eventId: req.params.eventId, status: 'active' });
+          if (activeRound) {
+            effectiveRoundId = activeRound._id;
           }
         }
 
+        // 2. Fetch all active judge roles for this user and event
+        const judgeRoles = await EventRole.find({
+          userId: req.user._id,
+          eventId: req.params.eventId,
+          role: 'judge',
+          status: 'active'
+        });
+
+        // 3. Find the role assigned to the track of the effective round
+        let assignedRole = null;
+        if (effectiveRoundId && mongoose.Types.ObjectId.isValid(effectiveRoundId)) {
+          const TrackModel = mongoose.model('Track');
+          const roundTracks = await TrackModel.find({ roundId: effectiveRoundId });
+          const roundTrackIds = roundTracks.map(t => t._id.toString());
+          assignedRole = judgeRoles.find(role => role.trackId && roundTrackIds.includes(role.trackId.toString()));
+        }
+
+        // 4. Fallback: if no role is matched for the effective round, take the first role with a trackId
+        if (!assignedRole) {
+          assignedRole = judgeRoles.find(role => role.trackId);
+        }
+
         let isFinalRound = false;
-        if (roundId && mongoose.Types.ObjectId.isValid(roundId)) {
+        if (effectiveRoundId && mongoose.Types.ObjectId.isValid(effectiveRoundId)) {
           const RoundModel = mongoose.model('Round');
-          const roundObj = await RoundModel.findById(roundId);
+          const roundObj = await RoundModel.findById(effectiveRoundId);
           if (roundObj && (roundObj.name.toLowerCase().includes('chung kết') || roundObj.advanceTopN === 0)) {
             isFinalRound = true;
           }
@@ -2053,14 +2064,6 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
         if (isFinalRound) {
           // Judges can see all teams in the final round, don't restrict to track
         } else {
-          let effectiveRoundId = roundId;
-          if (!effectiveRoundId) {
-            const activeRound = await Round.findOne({ eventId: req.params.eventId, status: 'active' });
-            if (activeRound) {
-              effectiveRoundId = activeRound._id;
-            }
-          }
-
           if (effectiveRoundId) {
             const roundDoc = await Round.findById(effectiveRoundId);
             if (roundDoc && roundDoc.status === 'completed') {

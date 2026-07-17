@@ -16,11 +16,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import api from '../api/api';
 import BottomTabs from '../components/BottomTabs';
-import { BookOpen, Users, Save, RefreshCw, CheckCircle, Clock, MessageSquare, Download, FileText, Video, ExternalLink, Crown } from 'lucide-react-native';
+import socketService from '../api/socketService';
+import { BookOpen, Users, Save, RefreshCw, CheckCircle, Clock, MessageSquare, Download, FileText, Video, ExternalLink, Crown, ArrowLeft } from 'lucide-react-native';
 
 export default function TeamAreaScreen({ navigation }) {
   const [data, setData] = useState(null);
   const [activeTab, setActiveTab] = useState('project'); // 'project', 'members', 'github'
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Form state
   const [topicTitle, setTopicTitle] = useState('');
@@ -105,10 +107,7 @@ export default function TeamAreaScreen({ navigation }) {
   };
 
   const handleMentorChatPress = () => {
-    Alert.alert(
-      'Hỗ trợ từ Mentor',
-      'Tính năng Chat trực tuyến hiện đang được phát triển cho ứng dụng Mobile. Vui lòng truy cập phiên bản Web để gửi tin nhắn hỗ trợ trực tiếp với Mentor của nhóm bạn!'
-    );
+    navigation.navigate('Chat', { teamId: data?.team?._id });
   };
 
   const fetchTeamData = async () => {
@@ -164,6 +163,19 @@ export default function TeamAreaScreen({ navigation }) {
 
   useEffect(() => {
     fetchTeamData();
+
+    // Socket setup
+    const initSocket = async () => {
+      await socketService.connect();
+      socketService.on('new_message', () => {
+        setUnreadCount(prev => prev + 1);
+      });
+    };
+    initSocket();
+
+    return () => {
+      socketService.off('new_message');
+    };
   }, []);
 
   const onRefresh = useCallback(async () => {
@@ -235,6 +247,28 @@ export default function TeamAreaScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
+        {/* Simple Header with Chat icon */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBackBtn}>
+            <ArrowLeft size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>KHU VỰC ĐỘI THI</Text>
+          <TouchableOpacity
+            style={styles.chatHeaderBtn}
+            onPress={() => {
+              setUnreadCount(0);
+              navigation.navigate('Chat');
+            }}
+          >
+            <MessageSquare size={24} color="#00f0ff" />
+            {unreadCount > 0 && (
+              <View style={styles.headerBadge}>
+                <Text style={styles.headerBadgeText}>{unreadCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
         <ScrollView
           contentContainerStyle={styles.scrollContainer}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00f0ff" />}
@@ -547,6 +581,52 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  headerBackBtn: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  chatHeaderBtn: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  headerBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: '#ff3b30',
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#0a141d',
+  },
+  headerBadgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '900',
   },
   scrollContainer: {
     paddingGrow: 1,

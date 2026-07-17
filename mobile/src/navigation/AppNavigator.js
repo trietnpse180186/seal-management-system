@@ -8,6 +8,7 @@ import JudgeDashboardScreen from '../screens/JudgeDashboardScreen';
 import JudgeScoringScreen from '../screens/JudgeScoringScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import ChatScreen from '../screens/ChatScreen';
 
 const Stack = createStackNavigator();
 
@@ -28,6 +29,7 @@ export default function AppNavigator({ initialRoute = 'Login' }) {
       <Stack.Screen name="TeamArea" component={TeamAreaScreen} />
       <Stack.Screen name="JudgeDashboard" component={JudgeDashboardScreen} />
       <Stack.Screen name="JudgeScoring" component={JudgeScoringScreen} />
+      <Stack.Screen name="Chat" component={ChatScreen} />
     </Stack.Navigator>
   );
 }

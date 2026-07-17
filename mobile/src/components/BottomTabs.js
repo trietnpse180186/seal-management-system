@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } fr
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Home, Trophy, Users, ClipboardList, User, LogOut } from 'lucide-react-native';
 import api from '../api/api';
+import socketService from '../api/socketService';
 
 export default function BottomTabs({ activeTab, navigation }) {
   const [role, setRole] = useState(null);
@@ -65,6 +66,7 @@ export default function BottomTabs({ activeTab, navigation }) {
           onPress: async () => {
             try {
               await api.post('/auth/logout').catch(() => {});
+              socketService.disconnect();
               await AsyncStorage.removeItem('token');
               await AsyncStorage.removeItem('user');
               await AsyncStorage.removeItem('roles');

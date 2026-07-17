@@ -451,41 +451,9 @@ async function main() {
   console.log('[E2E] Completed Push 1.');
 
   // ==========================================
-  // BƯỚC 4: Đồng bộ và Chạy AI Review Lần 1 (Đồng loạt)
+  // BƯỚC 4: Đồng bộ và Chạy AI Review Lần 1 (Bỏ qua - Chờ Cron/Webhook xử lý)
   // ==========================================
-  console.log('\n[STEP 4] Syncing & Running AI Analysis Lần 1...');
-  const { syncRepo } = require('../../server/features/events/cronService');
-
-  const executeSync = async (teamInfo) => {
-    const repoRecord = teamInfo.record;
-    const syncStart = Date.now();
-    try {
-      console.log(`[AI SYNC 1] Syncing ${repoRecord.repoName}...`);
-      await syncRepo(repoRecord._id);
-      console.log(`[AI SYNC 1 SUCCESS] Finished ${repoRecord.repoName} in ${((Date.now() - syncStart) / 1000).toFixed(2)}s`);
-    } catch (err) {
-      console.error(`[AI SYNC 1 FAILED] ${repoRecord.repoName} failed:`, err.message);
-    }
-  };
-
-  // Chạy AI Sync 1
-  if (mode === 'sequential') {
-    for (const teamInfo of activeRepos) {
-      await executeSync(teamInfo);
-      console.log('[E2E] Sequential cooldown: sleeping 12 seconds to prevent Gemini Rate Limit (429)...');
-      await sleep(12000);
-    }
-  } else if (mode === 'parallel') {
-    await Promise.all(activeRepos.map(executeSync));
-  } else {
-    // Concurrency limit - with cooldown to prevent bursts
-    const executeSyncWithCooldown = async (teamInfo) => {
-      await executeSync(teamInfo);
-      await sleep(12000);
-    };
-    await asyncPool(limit, activeRepos, executeSyncWithCooldown);
-  }
-  console.log('[E2E] AI Analysis Lần 1 hoàn thành.');
+  console.log('\n[STEP 4] Syncing & Running AI Analysis Lần 1 (Bỏ qua - Hệ thống backend cron/webhook sẽ tự động xử lý)...');
 
   // ==========================================
   // BƯỚC 5: Đẩy Commit 2 (Mô phỏng Đạt/Lỗi Auto-Fail)
@@ -539,48 +507,18 @@ async function main() {
   console.log('[E2E] Completed Push 2.');
 
   // ==========================================
-  // BƯỚC 6: Đồng bộ và Chạy AI Review Lần 2 (Đồng loạt)
+  // BƯỚC 6: Đồng bộ và Chạy AI Review Lần 2 (Bỏ qua - Chờ Cron/Webhook xử lý)
   // ==========================================
-  console.log('\n[STEP 6] Syncing & Running AI Analysis Lần 2 (Chấm điểm commit mới)...');
-
-  const executeSync2 = async (teamInfo) => {
-    const repoRecord = teamInfo.record;
-    const syncStart = Date.now();
-    try {
-      console.log(`[AI SYNC 2] Syncing ${repoRecord.repoName}...`);
-      // Lấy bản ghi mới nhất từ DB
-      const freshRepo = await GithubRepository.findById(repoRecord._id);
-      await syncRepo(freshRepo._id);
-      console.log(`[AI SYNC 2 SUCCESS] Finished ${repoRecord.repoName} in ${((Date.now() - syncStart) / 1000).toFixed(2)}s`);
-    } catch (err) {
-      console.error(`[AI SYNC 2 FAILED] ${repoRecord.repoName} failed:`, err.message);
-    }
-  };
-
-  // Chạy AI Sync 2
-  if (mode === 'sequential') {
-    for (const teamInfo of activeRepos) {
-      await executeSync2(teamInfo);
-      console.log('[E2E] Sequential cooldown: sleeping 12 seconds to prevent Gemini Rate Limit (429)...');
-      await sleep(12000);
-    }
-  } else if (mode === 'parallel') {
-    await Promise.all(activeRepos.map(executeSync2));
-  } else {
-    // Concurrency limit - with cooldown to prevent bursts
-    const executeSync2WithCooldown = async (teamInfo) => {
-      await executeSync2(teamInfo);
-      await sleep(12000);
-    };
-    await asyncPool(limit, activeRepos, executeSync2WithCooldown);
-  }
-  console.log('[E2E] AI Analysis Lần 2 hoàn thành.');
+  console.log('\n[STEP 6] Syncing & Running AI Analysis Lần 2 (Bỏ qua - Hệ thống backend cron/webhook sẽ tự động xử lý)...');
 
   // ==========================================
   // BƯỚC 7: Xuất báo cáo kết quả đánh giá AI E2E
   // ==========================================
   console.log('\n====================================================');
   console.log(`[STEP 7] E2E EVALUATION REPORT: CRITICAL FAILS DETECTED BY AI`);
+  console.log('Lưu ý: Quá trình AI review đã được bàn giao cho hệ thống backend xử lý bất đồng bộ.');
+  console.log('Bạn có thể bật server backend và chạy cron job (hoặc chờ cron quét) để bắt đầu chấm điểm.');
+  console.log('Dưới đây là bảng trạng thái hiện tại (nếu backend đang chạy và đã xử lý xong):');
   console.log('====================================================');
 
   const report = [];

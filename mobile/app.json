@@ -32,7 +32,8 @@
             "newArchEnabled": false
           }
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "web": {
       "favicon": "./assets/favicon.png"

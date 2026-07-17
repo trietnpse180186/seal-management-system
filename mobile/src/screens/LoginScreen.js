@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -46,13 +45,6 @@ export default function LoginScreen({ navigation }) {
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState('');
 
-  // Các state hỗ trợ OAuth & Mock Login
-  const [showMockModal, setShowMockModal] = useState(false);
-  const [mockProvider, setMockProvider] = useState('google');
-  const [mockEmail, setMockEmail] = useState('');
-  const [mockUsername, setMockUsername] = useState('');
-  const [mockFullName, setMockFullName] = useState('');
-
   useEffect(() => {
     const checkExistingSession = async () => {
       try {
@@ -84,28 +76,11 @@ export default function LoginScreen({ navigation }) {
     return string ? decodeURIComponent(string[1]) : null;
   };
 
-  const loginWithBackend = async (endpoint, payload) => {
-    setError('');
-    setLoading(true);
-    try {
-      const res = await api.post(endpoint, payload);
-      const { token, user, roles } = res.data;
-
-      await AsyncStorage.setItem('token', token);
-      await AsyncStorage.setItem('user', JSON.stringify(user));
-      await AsyncStorage.setItem('roles', JSON.stringify(roles || []));
-
-      await redirectUser(user, roles || []);
-    } catch (err) {
-      console.log('OAuth submit error:', err);
-      if (err.response && err.response.data && err.response.data.message) {
-        setError(err.response.data.message);
-      } else {
-        setError('Kết nối máy chủ thất bại. Hãy kiểm tra địa chỉ API của bạn.');
-      }
-    } finally {
-      setLoading(false);
-    }
+  const saveSession = async ({ token, user, roles }) => {
+    await AsyncStorage.setItem('token', token);
+    await AsyncStorage.setItem('user', JSON.stringify(user));
+    await AsyncStorage.setItem('roles', JSON.stringify(roles || []));
+    await redirectUser(user, roles || []);
   };
 
   const handleOAuthRealFlow = async (provider) => {
@@ -130,12 +105,7 @@ export default function LoginScreen({ navigation }) {
         if (token && userStr && rolesStr) {
           const user = JSON.parse(userStr);
           const roles = JSON.parse(rolesStr);
-
-          await AsyncStorage.setItem('token', token);
-          await AsyncStorage.setItem('user', JSON.stringify(user));
-          await AsyncStorage.setItem('roles', JSON.stringify(roles || []));
-
-          await redirectUser(user, roles || []);
+          await saveSession({ token, user, roles });
         } else {
           setError('Không trích xuất được thông tin đăng nhập từ Web Client.');
         }
@@ -152,39 +122,8 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
-  const handleGoogleLogin = async (isRealFlow = false) => {
+  const handleGoogleLogin = async () => {
     await handleOAuthRealFlow('google');
-  };
-
-  const handleGithubLogin = async (isRealFlow = false) => {
-    await handleOAuthRealFlow('github');
-  };
-
-  const handleMockSubmit = async () => {
-    if (mockProvider === 'google') {
-      if (!mockEmail) {
-        setError('Vui lòng nhập Email giả lập.');
-        return;
-      }
-      setShowMockModal(false);
-      await loginWithBackend('/auth/google', {
-        email: mockEmail,
-        fullName: mockFullName || mockEmail.split('@')[0],
-        isMock: true
-      });
-    } else {
-      if (!mockEmail || !mockUsername) {
-        setError('Vui lòng nhập đầy đủ Email và GitHub Username giả lập.');
-        return;
-      }
-      setShowMockModal(false);
-      await loginWithBackend('/auth/github', {
-        email: mockEmail,
-        githubUsername: mockUsername,
-        fullName: mockFullName || mockEmail.split('@')[0],
-        isMock: true
-      });
-    }
   };
 
   const handleLogin = async () => {
@@ -198,13 +137,7 @@ export default function LoginScreen({ navigation }) {
 
     try {
       const res = await api.post('/auth/login', { email, password });
-      const { token, user, roles } = res.data;
-
-      await AsyncStorage.setItem('token', token);
-      await AsyncStorage.setItem('user', JSON.stringify(user));
-      await AsyncStorage.setItem('roles', JSON.stringify(roles || []));
-
-      await redirectUser(user, roles || []);
+      await saveSession(res.data);
     } catch (err) {
       console.log('Login error:', err);
       if (err.response && err.response.data && err.response.data.message) {
@@ -290,117 +223,18 @@ export default function LoginScreen({ navigation }) {
               <View style={styles.dividerLine} />
             </View>
 
-            {/* Nút bấm Google và GitHub */}
+            {/* Nút bấm Google */}
             <View style={styles.oauthRow}>
               <TouchableOpacity
                 style={styles.oauthBtn}
-                onPress={() => handleGoogleLogin(false)}
+                onPress={handleGoogleLogin}
                 disabled={loading}
               >
                 <Text style={[styles.googleIconText, { marginRight: 8 }]}>[G]</Text>
                 <Text style={styles.oauthBtnText}>Google</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.oauthBtn}
-                onPress={() => handleGithubLogin(false)}
-                disabled={loading}
-              >
-                <Text style={[styles.githubIconText, { marginRight: 8 }]}>[Git]</Text>
-                <Text style={styles.oauthBtnText}>GitHub</Text>
-              </TouchableOpacity>
             </View>
           </View>
-
-          {/* Modal Đăng nhập nhanh (Test Mode) / OAuth */}
-          <Modal
-            animationType="fade"
-            transparent={true}
-            visible={showMockModal}
-            onRequestClose={() => setShowMockModal(false)}
-          >
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>
-                  {mockProvider === 'google' ? 'ĐĂNG NHẬP GOOGLE' : 'ĐĂNG NHẬP GITHUB'}
-                </Text>
-                
-                <TouchableOpacity 
-                  style={styles.modalRealBtn}
-                  onPress={() => {
-                    setShowMockModal(false);
-                    if (mockProvider === 'google') {
-                      handleGoogleLogin(true);
-                    } else {
-                      handleGithubLogin(true);
-                    }
-                  }}
-                >
-                  <Text style={styles.modalRealBtnText}>ĐĂNG NHẬP THẬT (OAUTH)</Text>
-                </TouchableOpacity>
-
-                <View style={styles.modalDividerContainer}>
-                  <View style={styles.modalDividerLine} />
-                  <Text style={styles.modalDividerText}>HOẶC MOCK TEST</Text>
-                  <View style={styles.modalDividerLine} />
-                </View>
-
-                <Text style={styles.modalLabel}>Họ và tên giả lập (Tùy chọn)</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="Ví dụ: Nguyễn Văn A"
-                  placeholderTextColor="#849495"
-                  value={mockFullName}
-                  onChangeText={setMockFullName}
-                  autoCapitalize="none"
-                />
-
-                <Text style={styles.modalLabel}>Email giả lập</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="example@gmail.com"
-                  placeholderTextColor="#849495"
-                  value={mockEmail}
-                  onChangeText={setMockEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-
-                {mockProvider === 'github' && (
-                  <>
-                    <Text style={styles.modalLabel}>GitHub Username giả lập</Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="github-username"
-                      placeholderTextColor="#849495"
-                      value={mockUsername}
-                      onChangeText={setMockUsername}
-                      autoCapitalize="none"
-                    />
-                  </>
-                )}
-
-                <View style={styles.modalActionRow}>
-                  <TouchableOpacity
-                    style={styles.modalCancelBtn}
-                    onPress={() => setShowMockModal(false)}
-                  >
-                    <Text style={styles.modalCancelBtnText}>HỦY</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.modalSubmitBtn}
-                    onPress={handleMockSubmit}
-                  >
-                    <Text style={styles.modalSubmitBtnText}>XÁC NHẬN</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          </Modal>
-
-
-
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -595,119 +429,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
-  githubIconText: {
-    color: '#fff',
-    fontWeight: '900',
-    fontSize: 14,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-  },
   oauthBtnText: {
     color: '#dae3f0',
     fontWeight: '700',
     fontSize: 13,
     letterSpacing: 0.5,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(6, 15, 23, 0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  modalContent: {
-    width: '100%',
-    backgroundColor: '#131d25',
-    borderColor: '#00f0ff',
-    borderWidth: 1,
-    borderRadius: 4,
-    padding: 24,
-    shadowColor: '#00f0ff',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 15,
-    elevation: 10,
-  },
-  modalTitle: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '800',
-    textAlign: 'center',
-    marginBottom: 20,
-    letterSpacing: 1,
-  },
-  modalRealBtn: {
-    backgroundColor: '#00f0ff',
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 4,
-    marginBottom: 16,
-  },
-  modalRealBtnText: {
-    color: '#000',
-    fontWeight: '800',
-    fontSize: 12,
-    letterSpacing: 1,
-  },
-  modalDividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 16,
-  },
-  modalDividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'rgba(59, 73, 75, 0.4)',
-  },
-  modalDividerText: {
-    color: '#849495',
-    fontSize: 9,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    paddingHorizontal: 8,
-  },
-  modalLabel: {
-    color: '#849495',
-    fontSize: 11,
-    fontWeight: '700',
-    marginBottom: 6,
-    textTransform: 'uppercase',
-  },
-  modalInput: {
-    backgroundColor: 'rgba(6, 15, 23, 0.8)',
-    borderWidth: 1,
-    borderColor: '#3b494b',
-    color: '#dae3f0',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 12,
-    marginBottom: 16,
-    borderRadius: 4,
-  },
-  modalActionRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-    marginTop: 8,
-  },
-  modalCancelBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  modalCancelBtnText: {
-    color: '#849495',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  modalSubmitBtn: {
-    borderColor: '#00f0ff',
-    borderWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 4,
-  },
-  modalSubmitBtnText: {
-    color: '#00f0ff',
-    fontSize: 12,
-    fontWeight: '800',
   },
 });
 

@@ -13,6 +13,9 @@ interface LoginProps {
   onLoginSuccess: (token: string, user: any, roles: any[]) => void;
 }
 
+const MOBILE_OAUTH_STARTED_KEY = 'mobile_oauth_started';
+const MOBILE_OAUTH_PROCESSING_KEY = 'mobile_oauth_processing';
+
 export default function Login({ onLoginSuccess }: LoginProps) {
   const confirm = useConfirm();
   const [isRegister, setIsRegister] = useState(false);
@@ -70,6 +73,11 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     const apiU = params.get('api_url');
     const prov = params.get('provider');
     const redirect = params.get('redirect');
+
+    if (plat || redir || prov) {
+      sessionStorage.removeItem(MOBILE_OAUTH_STARTED_KEY);
+      sessionStorage.removeItem(MOBILE_OAUTH_PROCESSING_KEY);
+    }
 
     if (redirect) {
       setRedirectTarget(redirect);
@@ -142,6 +150,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     const redir = mobileRedirect || localStorage.getItem('mobile_redirect');
 
     if (plat === 'mobile' && redir) {
+      sessionStorage.setItem(MOBILE_OAUTH_PROCESSING_KEY, '1');
       localStorage.removeItem('mobile_platform');
       localStorage.removeItem('mobile_redirect');
       localStorage.removeItem('mobile_provider');
@@ -261,6 +270,12 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       const hashParams = new URLSearchParams(hash.substring(1));
       const idToken = hashParams.get('id_token');
       if (idToken) {
+        // Mobile bridge has already returned from Google; prevent the auto-start
+        // effect below from opening Google again after the hash is cleared.
+        sessionStorage.setItem(MOBILE_OAUTH_PROCESSING_KEY, '1');
+        localStorage.removeItem('mobile_provider');
+        setProvider(null);
+
         // Clear hash
         window.history.replaceState({}, document.title, window.location.pathname);
 
@@ -361,9 +376,16 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     const plat = platform || localStorage.getItem('mobile_platform');
     const prov = provider || localStorage.getItem('mobile_provider');
     const isCallback = window.location.hash.includes('id_token=') || params.has('code');
+    const isProcessingMobileCallback = sessionStorage.getItem(MOBILE_OAUTH_PROCESSING_KEY) === '1';
 
-    if (plat === 'mobile' && !isCallback) {
+    if (plat === 'mobile' && !isCallback && !isProcessingMobileCallback) {
       if (prov === 'google') {
+        const startedProvider = sessionStorage.getItem(MOBILE_OAUTH_STARTED_KEY);
+        if (startedProvider === 'google') {
+          return;
+        }
+        sessionStorage.setItem(MOBILE_OAUTH_STARTED_KEY, 'google');
+
         const isLocal = window.location.hostname === 'localhost' ||
           window.location.hostname === '127.0.0.1' ||
           window.location.hostname.includes('192.168.') ||
@@ -375,6 +397,11 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           handleOAuthClick('google');
         }
       } else if (prov === 'github') {
+        const startedProvider = sessionStorage.getItem(MOBILE_OAUTH_STARTED_KEY);
+        if (startedProvider === 'github') {
+          return;
+        }
+        sessionStorage.setItem(MOBILE_OAUTH_STARTED_KEY, 'github');
         handleOAuthClick('github');
       }
     }

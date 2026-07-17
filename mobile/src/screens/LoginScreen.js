@@ -12,30 +12,25 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
-import api, { getBaseUrl } from '../api/api';
+import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import api from '../api/api';
+import { firebaseAuth, firebaseWebClientId } from '../config/firebase';
 import { ShieldAlert } from 'lucide-react-native';
 
-WebBrowser.maybeCompleteAuthSession();
+let isGoogleSigninConfigured = false;
 
-const getWebClientUrl = (apiUrl) => {
-  try {
-    if (!apiUrl) return 'http://10.0.2.2:5173';
-    if (apiUrl.includes('seal-management-system.onrender.com') || apiUrl.includes('seal-management-system-staging.onrender.com') || apiUrl.includes('seal-backend.onrender.com')) {
-      return 'https://www.seal-hackathon.io.vn';
-    }
-    const match = apiUrl.match(/^(https?:\/\/)([^:/]+)/i);
-    if (match) {
-      const protocol = match[1];
-      const hostname = match[2];
-      return `${protocol}${hostname}:5173`;
-    }
-    return 'http://10.0.2.2:5173';
-  } catch (e) {
-    console.log('Error parsing URL:', e);
-    return 'http://10.0.2.2:5173';
+const getGoogleSigninModule = () => {
+  const googleSigninModule = require('@react-native-google-signin/google-signin');
+
+  if (!isGoogleSigninConfigured) {
+    googleSigninModule.GoogleSignin.configure({
+      webClientId: firebaseWebClientId,
+      offlineAccess: false,
+    });
+    isGoogleSigninConfigured = true;
   }
+
+  return googleSigninModule;
 };
 
 export default function LoginScreen({ navigation }) {
@@ -70,12 +65,6 @@ export default function LoginScreen({ navigation }) {
     navigation.replace('Home');
   };
 
-  const getQueryParam = (url, paramName) => {
-    const reg = new RegExp('[#?&]' + paramName + '=([^&#]*)', 'i');
-    const string = reg.exec(url);
-    return string ? decodeURIComponent(string[1]) : null;
-  };
-
   const saveSession = async ({ token, user, roles }) => {
     await AsyncStorage.setItem('token', token);
     await AsyncStorage.setItem('user', JSON.stringify(user));
@@ -83,47 +72,80 @@ export default function LoginScreen({ navigation }) {
     await redirectUser(user, roles || []);
   };
 
-  const handleOAuthRealFlow = async (provider) => {
+  const handleGoogleLogin = async () => {
     setError('');
     setLoading(true);
+
+    let googleSigninModule;
     try {
-      const currentApiUrl = getBaseUrl();
-      const finalWebUrl = getWebClientUrl(currentApiUrl);
-      const redirectUrl = AuthSession.makeRedirectUri({
-        scheme: 'sealhackathon',
-        path: 'redirect',
-      });
-      const authUrl = `${finalWebUrl}/login?platform=mobile&mobile_redirect=${encodeURIComponent(redirectUrl)}&provider=${provider}&api_url=${encodeURIComponent(currentApiUrl)}`;
-
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
-
-      if (result.type === 'success' && result.url) {
-        const token = getQueryParam(result.url, 'token');
-        const userStr = getQueryParam(result.url, 'user');
-        const rolesStr = getQueryParam(result.url, 'roles');
-
-        if (token && userStr && rolesStr) {
-          const user = JSON.parse(userStr);
-          const roles = JSON.parse(rolesStr);
-          await saveSession({ token, user, roles });
-        } else {
-          setError('Không trích xuất được thông tin đăng nhập từ Web Client.');
-        }
-      } else if (result.type === 'cancel') {
-        // User cancelled
-      } else {
-        setError('Đăng nhập qua trình duyệt thất bại.');
-      }
+      googleSigninModule = getGoogleSigninModule();
     } catch (err) {
-      console.log('OAuth redirect error:', err);
-      setError('Lỗi khi mở trình duyệt đăng nhập cầu nối.');
+      console.log('Google Sign-In native module error:', err);
+      setError('Google native login chi hoat dong tren APK/EAS development build, khong ho tro Expo Go.');
+      setLoading(false);
+      return;
+    }
+
+    const {
+      GoogleSignin,
+      isCancelledResponse,
+      isErrorWithCode,
+      statusCodes,
+    } = googleSigninModule;
+
+    try {
+      if (!firebaseWebClientId) {
+        setError('Khong tim thay Firebase Web Client ID trong google-services.json.');
+        return;
+      }
+
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const signInResult = await GoogleSignin.signIn();
+
+      if (isCancelledResponse(signInResult)) {
+        return;
+      }
+
+      let idToken = signInResult.data?.idToken;
+      if (!idToken) {
+        const tokens = await GoogleSignin.getTokens();
+        idToken = tokens.idToken;
+      }
+
+      if (!idToken) {
+        setError('Khong lay duoc Google ID token. Hay kiem tra Firebase Google Auth.');
+        return;
+      }
+
+      const googleCredential = GoogleAuthProvider.credential(idToken);
+      const firebaseCredential = await signInWithCredential(firebaseAuth, googleCredential);
+      const firebaseIdToken = await firebaseCredential.user.getIdToken();
+
+      const res = await api.post('/auth/firebase-google', { firebaseIdToken });
+      await saveSession(res.data);
+    } catch (err) {
+      console.log('Google login error:', err);
+
+      if (isErrorWithCode(err)) {
+        if (err.code === statusCodes.IN_PROGRESS) {
+          setError('Dang co mot phien dang nhap Google dang chay.');
+          return;
+        }
+
+        if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+          setError('Google Play Services khong kha dung hoac can cap nhat.');
+          return;
+        }
+      }
+
+      if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else {
+        setError('Dang nhap Google that bai. Vui long thu lai.');
+      }
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleGoogleLogin = async () => {
-    await handleOAuthRealFlow('google');
   };
 
   const handleLogin = async () => {

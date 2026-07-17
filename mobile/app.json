@@ -22,7 +22,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "package": "com.ntngoc204.mobile"
+      "package": "com.ntngoc204.mobile",
+      "googleServicesFile": "./google-services.json"
     },
     "plugins": [
       [
@@ -33,7 +34,8 @@
           }
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "@react-native-google-signin/google-signin"
     ],
     "web": {
       "favicon": "./assets/favicon.png"

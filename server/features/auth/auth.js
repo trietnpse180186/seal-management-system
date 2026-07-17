@@ -12,6 +12,7 @@ const emailService = require('../notifications/emailService');
 const { addEmailJob, isQueueAvailable } = require('../notifications/notificationQueue');
 
 const captchaService = require('./captchaService');
+const { verifyFirebaseIdToken } = require('./firebaseAdmin');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'seal_hackathon_secret_key_2026';
 
@@ -780,6 +781,112 @@ router.post('/github', async (req, res) => {
   } catch (error) {
     console.error('GitHub Login DB Error:', error.message);
     res.status(500).json({ message: 'Server error processing GitHub account.' });
+  }
+});
+
+/**
+ * @route   POST /api/auth/firebase-google
+ * @desc    Login or Register mobile users with Firebase Google Auth
+ * @access  Public
+ */
+router.post('/firebase-google', async (req, res) => {
+  const { firebaseIdToken } = req.body;
+
+  if (!firebaseIdToken) {
+    return res.status(400).json({ message: 'Firebase ID token is required.' });
+  }
+
+  let payload;
+  try {
+    payload = await verifyFirebaseIdToken(firebaseIdToken);
+  } catch (err) {
+    console.error('Firebase Google Auth Verify Error:', err.message);
+    return res.status(401).json({ message: 'Invalid Firebase authentication token.' });
+  }
+
+  const signInProvider = payload.firebase && payload.firebase.sign_in_provider;
+  if (signInProvider !== 'google.com') {
+    return res.status(400).json({ message: 'Firebase token is not from Google sign-in.' });
+  }
+
+  if (!payload.email) {
+    return res.status(400).json({ message: 'Firebase account does not contain an email address.' });
+  }
+
+  const userEmail = payload.email.toLowerCase();
+  const userName = payload.name || userEmail.split('@')[0];
+  const userAvatar = payload.picture || '';
+
+  try {
+    let user = await User.findOne({ email: userEmail });
+    const isNewUser = !user;
+
+    if (!user) {
+      const salt = await bcrypt.genSalt(10);
+      const randomPassword = crypto.randomBytes(16).toString('hex');
+      const passwordHash = await bcrypt.hash(randomPassword, salt);
+      const isFirstUser = (await User.countDocuments({})) === 0;
+
+      user = new User({
+        email: userEmail,
+        passwordHash,
+        fullName: userName,
+        avatarUrl: userAvatar,
+        isSystemAdmin: isFirstUser,
+        isApproved: true,
+      });
+      await user.save();
+    } else if (userAvatar && !user.avatarUrl) {
+      user.avatarUrl = userAvatar;
+      await user.save();
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({
+        message: 'Tai khoan cua ban da bi khoa. Vui long lien he Admin.',
+        isDeactivated: true,
+      });
+    }
+
+    if (!req.body.force && user.activeSessionId && user.lastActiveAt && (Date.now() - new Date(user.lastActiveAt).getTime() < 90000)) {
+      return res.status(409).json({
+        message: 'Tai khoan nay dang duoc dang nhap o noi khac. Vui long dang xuat o thiet bi cu.',
+        code: 'ACTIVE_SESSION_EXISTS',
+      });
+    }
+
+    const activeSessionId = crypto.randomBytes(16).toString('hex');
+    user.activeSessionId = activeSessionId;
+    user.lastActiveAt = new Date();
+    await user.save();
+
+    const roles = await EventRole.find({ userId: user._id, status: 'active' })
+      .populate('eventId', 'name semester year status')
+      .populate({
+        path: 'trackId',
+        populate: {
+          path: 'roundId',
+          select: 'status',
+        },
+      });
+    const token = jwt.sign({ id: user._id, sessionId: activeSessionId }, JWT_SECRET, { expiresIn: '24h' });
+
+    res.json({
+      token,
+      isNewUser,
+      user: {
+        id: user._id,
+        email: user.email,
+        fullName: user.fullName,
+        isSystemAdmin: user.isSystemAdmin,
+        githubUsername: user.githubUsername,
+        avatarUrl: user.avatarUrl,
+      },
+      roles: await mapUserRoles(roles),
+    });
+  } catch (error) {
+    console.error('Firebase Google Login DB Error:', error.message);
+    res.status(500).json({ message: 'Server error processing Firebase Google account.' });
   }
 });
 

@@ -9,42 +9,29 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
-import * as Google from 'expo-auth-session/providers/google';
-import api, { getBaseUrl } from '../api/api';
+import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import api from '../api/api';
 import socketService from '../api/socketService';
+import { firebaseAuth, firebaseWebClientId } from '../config/firebase';
 import { ShieldAlert } from 'lucide-react-native';
 
-WebBrowser.maybeCompleteAuthSession();
+let isGoogleSigninConfigured = false;
 
-// Cấu hình Google Client ID cho đăng nhập Google In-App
-// Hãy thay thế các giá trị này bằng thông tin Client ID từ Google Cloud Console của bạn
-const GOOGLE_ANDROID_CLIENT_ID = '366093122734-qnj50t37f717ja1j0tn4d0jr36um2kt2.apps.googleusercontent.com';
-const GOOGLE_IOS_CLIENT_ID = '366093122734-0po1s7mrt5fctsluna0gf3ufd6iqcrtk.apps.googleusercontent.com';
-const GOOGLE_WEB_CLIENT_ID = '366093122734-h9v9v6ddjekkv8phv02oi35qqgplp9u3.apps.googleusercontent.com'; // Mặc định dùng Client ID của web client
+const getGoogleSigninModule = () => {
+  const googleSigninModule = require('@react-native-google-signin/google-signin');
 
-const getWebClientUrl = (apiUrl) => {
-  try {
-    if (!apiUrl) return 'http://10.0.2.2:5173';
-    if (apiUrl.includes('seal-management-system.onrender.com') || apiUrl.includes('seal-management-system-staging.onrender.com') || apiUrl.includes('seal-backend.onrender.com')) {
-      return 'https://www.seal-hackathon.io.vn';
-    }
-    const match = apiUrl.match(/^(https?:\/\/)([^:/]+)/i);
-    if (match) {
-      const protocol = match[1];
-      const hostname = match[2];
-      return `${protocol}${hostname}:5173`;
-    }
-    return 'http://10.0.2.2:5173';
-  } catch (e) {
-    console.log('Error parsing URL:', e);
-    return 'http://10.0.2.2:5173';
+  if (!isGoogleSigninConfigured) {
+    googleSigninModule.GoogleSignin.configure({
+      webClientId: firebaseWebClientId,
+      offlineAccess: false,
+    });
+    isGoogleSigninConfigured = true;
   }
+
+  return googleSigninModule;
 };
 
 export default function LoginScreen({ navigation }) {
@@ -53,22 +40,6 @@ export default function LoginScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState('');
-
-  // Các state hỗ trợ OAuth & Mock Login
-  const [showMockModal, setShowMockModal] = useState(false);
-  const [mockProvider, setMockProvider] = useState('google');
-  const [mockEmail, setMockEmail] = useState('');
-  const [mockUsername, setMockUsername] = useState('');
-  const [mockFullName, setMockFullName] = useState('');
-
-
-
-  const handleGoogleSignInSuccess = async (idToken) => {
-    await loginWithBackend('/auth/google', {
-      idToken,
-      isMock: false
-    });
-  };
 
   useEffect(() => {
     const checkExistingSession = async () => {
@@ -95,181 +66,87 @@ export default function LoginScreen({ navigation }) {
     navigation.replace('Home');
   };
 
-  const getQueryParam = (url, paramName) => {
-    const reg = new RegExp('[#?&]' + paramName + '=([^&#]*)', 'i');
-    const string = reg.exec(url);
-    return string ? decodeURIComponent(string[1]) : null;
+  const saveSession = async ({ token, user, roles }) => {
+    await AsyncStorage.setItem('token', token);
+    await AsyncStorage.setItem('user', JSON.stringify(user));
+    await AsyncStorage.setItem('roles', JSON.stringify(roles || []));
+    await socketService.connect();
+    await redirectUser(user, roles || []);
   };
 
-  const loginWithBackend = async (endpoint, payload) => {
+  const handleGoogleLogin = async () => {
     setError('');
     setLoading(true);
+
+    let googleSigninModule;
     try {
-      const res = await api.post(endpoint, payload);
-      const { token, user, roles } = res.data;
-
-      await AsyncStorage.setItem('token', token);
-      await AsyncStorage.setItem('user', JSON.stringify(user));
-      await AsyncStorage.setItem('roles', JSON.stringify(roles || []));
-
-      await socketService.connect();
-      await redirectUser(user, roles || []);
+      googleSigninModule = getGoogleSigninModule();
     } catch (err) {
-      console.log('OAuth submit error:', err);
-      if (err.response && err.response.data && err.response.data.message) {
+      console.log('Google Sign-In native module error:', err);
+      setError('Google native login chi hoat dong tren APK/EAS development build, khong ho tro Expo Go.');
+      setLoading(false);
+      return;
+    }
+
+    const {
+      GoogleSignin,
+      isCancelledResponse,
+      isErrorWithCode,
+      statusCodes,
+    } = googleSigninModule;
+
+    try {
+      if (!firebaseWebClientId) {
+        setError('Khong tim thay Firebase Web Client ID trong google-services.json.');
+        return;
+      }
+
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const signInResult = await GoogleSignin.signIn();
+
+      if (isCancelledResponse(signInResult)) {
+        return;
+      }
+
+      let idToken = signInResult.data?.idToken;
+      if (!idToken) {
+        const tokens = await GoogleSignin.getTokens();
+        idToken = tokens.idToken;
+      }
+
+      if (!idToken) {
+        setError('Khong lay duoc Google ID token. Hay kiem tra Firebase Google Auth.');
+        return;
+      }
+
+      const googleCredential = GoogleAuthProvider.credential(idToken);
+      const firebaseCredential = await signInWithCredential(firebaseAuth, googleCredential);
+      const firebaseIdToken = await firebaseCredential.user.getIdToken();
+
+      const res = await api.post('/auth/firebase-google', { firebaseIdToken });
+      await saveSession(res.data);
+    } catch (err) {
+      console.log('Google login error:', err);
+
+      if (isErrorWithCode(err)) {
+        if (err.code === statusCodes.IN_PROGRESS) {
+          setError('Dang co mot phien dang nhap Google dang chay.');
+          return;
+        }
+
+        if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+          setError('Google Play Services khong kha dung hoac can cap nhat.');
+          return;
+        }
+      }
+
+      if (err.response?.data?.message) {
         setError(err.response.data.message);
       } else {
-        setError('Kết nối máy chủ thất bại. Hãy kiểm tra địa chỉ API của bạn.');
+        setError('Dang nhap Google that bai. Vui long thu lai.');
       }
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleOAuthRealFlow = async (provider) => {
-    setError('');
-    setLoading(true);
-    try {
-      const currentApiUrl = getBaseUrl();
-      const finalWebUrl = getWebClientUrl(currentApiUrl);
-      const redirectUrl = AuthSession.makeRedirectUri({
-        scheme: 'sealhackathon',
-        path: 'redirect',
-      });
-      const authUrl = `${finalWebUrl}/login?platform=mobile&mobile_redirect=${encodeURIComponent(redirectUrl)}&provider=${provider}&api_url=${encodeURIComponent(currentApiUrl)}`;
-
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
-
-      if (result.type === 'success' && result.url) {
-        const token = getQueryParam(result.url, 'token');
-        const userStr = getQueryParam(result.url, 'user');
-        const rolesStr = getQueryParam(result.url, 'roles');
-
-        if (token && userStr && rolesStr) {
-          const user = JSON.parse(userStr);
-          const roles = JSON.parse(rolesStr);
-
-          await AsyncStorage.setItem('token', token);
-          await AsyncStorage.setItem('user', JSON.stringify(user));
-          await AsyncStorage.setItem('roles', JSON.stringify(roles || []));
-
-          await redirectUser(user, roles || []);
-        } else {
-          setError('Không trích xuất được thông tin đăng nhập từ Web Client.');
-        }
-      } else if (result.type === 'cancel') {
-        // User cancelled
-      } else {
-        setError('Đăng nhập qua trình duyệt thất bại.');
-      }
-    } catch (err) {
-      console.log('OAuth redirect error:', err);
-      setError('Lỗi khi mở trình duyệt đăng nhập cầu nối.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = async (isRealFlow = false) => {
-    if (isRealFlow) {
-      setError('');
-      setLoading(true);
-      try {
-        // 1. Tạo Redirect URI cho ứng dụng di động nhận kết quả (Deep Link)
-        const appRedirectUrl = AuthSession.makeRedirectUri({
-          scheme: 'sealhackathon',
-          path: 'redirect',
-        });
-
-        // 2. Tạo Redirect URI gửi lên Google OAuth (phải là HTTPS và khớp cấu hình trên Google Cloud)
-        // Khi chạy trên Expo Go, Google cấm dùng giao thức exp://. Ta bắt buộc dùng Expo Auth Proxy.
-        let googleRedirectUrl = appRedirectUrl;
-        if (googleRedirectUrl.startsWith('exp://') || googleRedirectUrl.startsWith('http://')) {
-          googleRedirectUrl = 'https://auth.expo.io/@ntngoc204/mobile';
-        }
-
-        const nonce = Math.random().toString(36).substring(2) + Date.now().toString(36);
-
-        // 3. Tạo URL đăng nhập Google trực tiếp (implicit flow trả về id_token)
-        const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-          `client_id=${encodeURIComponent(GOOGLE_WEB_CLIENT_ID)}` +
-          `&redirect_uri=${encodeURIComponent(googleRedirectUrl)}` +
-          `&response_type=id_token` +
-          `&scope=${encodeURIComponent('openid email profile')}` +
-          `&nonce=${encodeURIComponent(nonce)}` +
-          `&prompt=select_account`;
-
-        console.log('Opening Google Auth directly:', googleAuthUrl);
-        console.log('Using redirect URI on Google Cloud:', googleRedirectUrl);
-
-        // 4. Mở trình duyệt in-app
-        const result = await WebBrowser.openAuthSessionAsync(googleAuthUrl, appRedirectUrl);
-
-        if (result.type === 'success' && result.url) {
-          // Trích xuất idToken từ URL redirect (Expo Auth Proxy trả về)
-          const idToken = getQueryParam(result.url, 'id_token') || getQueryParam(result.url, 'idToken');
-
-          if (idToken) {
-            await handleGoogleSignInSuccess(idToken);
-          } else {
-            console.log('No id_token found in URL:', result.url);
-            setError('Không lấy được mã xác thực (idToken) từ kết quả đăng nhập Google.');
-          }
-        } else if (result.type === 'cancel') {
-          console.log('User cancelled Google Sign-in');
-        } else {
-          setError('Đăng nhập Google thất bại.');
-        }
-      } catch (err) {
-        console.log('Google Sign-in Direct Error:', err);
-        setError('Lỗi khi khởi chạy đăng nhập Google.');
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      setMockProvider('google');
-      setMockEmail('candidate1@gmail.com');
-      setMockFullName('Candidate One');
-      setShowMockModal(true);
-    }
-  };
-
-  const handleGithubLogin = async (isRealFlow = false) => {
-    if (isRealFlow) {
-      await handleOAuthRealFlow('github');
-    } else {
-      setMockProvider('github');
-      setMockEmail('mentor1@gmail.com');
-      setMockUsername('mentor1-github');
-      setMockFullName('Mentor One');
-      setShowMockModal(true);
-    }
-  };
-
-  const handleMockSubmit = async () => {
-    if (mockProvider === 'google') {
-      if (!mockEmail) {
-        setError('Vui lòng nhập Email giả lập.');
-        return;
-      }
-      setShowMockModal(false);
-      await loginWithBackend('/auth/google', {
-        email: mockEmail,
-        fullName: mockFullName || mockEmail.split('@')[0],
-        isMock: true
-      });
-    } else {
-      if (!mockEmail || !mockUsername) {
-        setError('Vui lòng nhập đầy đủ Email và GitHub Username giả lập.');
-        return;
-      }
-      setShowMockModal(false);
-      await loginWithBackend('/auth/github', {
-        email: mockEmail,
-        githubUsername: mockUsername,
-        fullName: mockFullName || mockEmail.split('@')[0],
-        isMock: true
-      });
     }
   };
 
@@ -284,14 +161,7 @@ export default function LoginScreen({ navigation }) {
 
     try {
       const res = await api.post('/auth/login', { email, password });
-      const { token, user, roles } = res.data;
-
-      await AsyncStorage.setItem('token', token);
-      await AsyncStorage.setItem('user', JSON.stringify(user));
-      await AsyncStorage.setItem('roles', JSON.stringify(roles || []));
-
-      await socketService.connect();
-      await redirectUser(user, roles || []);
+      await saveSession(res.data);
     } catch (err) {
       console.log('Login error:', err);
       if (err.response && err.response.data && err.response.data.message) {
@@ -377,117 +247,18 @@ export default function LoginScreen({ navigation }) {
               <View style={styles.dividerLine} />
             </View>
 
-            {/* Nút bấm Google và GitHub */}
+            {/* Nút bấm Google */}
             <View style={styles.oauthRow}>
               <TouchableOpacity
                 style={styles.oauthBtn}
-                onPress={() => handleGoogleLogin(false)}
+                onPress={handleGoogleLogin}
                 disabled={loading}
               >
                 <Text style={[styles.googleIconText, { marginRight: 8 }]}>[G]</Text>
                 <Text style={styles.oauthBtnText}>Google</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.oauthBtn}
-                onPress={() => handleGithubLogin(false)}
-                disabled={loading}
-              >
-                <Text style={[styles.githubIconText, { marginRight: 8 }]}>[Git]</Text>
-                <Text style={styles.oauthBtnText}>GitHub</Text>
-              </TouchableOpacity>
             </View>
           </View>
-
-          {/* Modal Đăng nhập nhanh (Test Mode) / OAuth */}
-          <Modal
-            animationType="fade"
-            transparent={true}
-            visible={showMockModal}
-            onRequestClose={() => setShowMockModal(false)}
-          >
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>
-                  {mockProvider === 'google' ? 'ĐĂNG NHẬP GOOGLE' : 'ĐĂNG NHẬP GITHUB'}
-                </Text>
-
-                <TouchableOpacity
-                  style={styles.modalRealBtn}
-                  onPress={() => {
-                    setShowMockModal(false);
-                    if (mockProvider === 'google') {
-                      handleGoogleLogin(true);
-                    } else {
-                      handleGithubLogin(true);
-                    }
-                  }}
-                >
-                  <Text style={styles.modalRealBtnText}>ĐĂNG NHẬP THẬT (OAUTH)</Text>
-                </TouchableOpacity>
-
-                <View style={styles.modalDividerContainer}>
-                  <View style={styles.modalDividerLine} />
-                  <Text style={styles.modalDividerText}>HOẶC MOCK TEST</Text>
-                  <View style={styles.modalDividerLine} />
-                </View>
-
-                <Text style={styles.modalLabel}>Họ và tên giả lập (Tùy chọn)</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="Ví dụ: Nguyễn Văn A"
-                  placeholderTextColor="#849495"
-                  value={mockFullName}
-                  onChangeText={setMockFullName}
-                  autoCapitalize="none"
-                />
-
-                <Text style={styles.modalLabel}>Email giả lập</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="example@gmail.com"
-                  placeholderTextColor="#849495"
-                  value={mockEmail}
-                  onChangeText={setMockEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-
-                {mockProvider === 'github' && (
-                  <>
-                    <Text style={styles.modalLabel}>GitHub Username giả lập</Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="github-username"
-                      placeholderTextColor="#849495"
-                      value={mockUsername}
-                      onChangeText={setMockUsername}
-                      autoCapitalize="none"
-                    />
-                  </>
-                )}
-
-                <View style={styles.modalActionRow}>
-                  <TouchableOpacity
-                    style={styles.modalCancelBtn}
-                    onPress={() => setShowMockModal(false)}
-                  >
-                    <Text style={styles.modalCancelBtnText}>HỦY</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.modalSubmitBtn}
-                    onPress={handleMockSubmit}
-                  >
-                    <Text style={styles.modalSubmitBtnText}>XÁC NHẬN</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          </Modal>
-
-
-
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -682,119 +453,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
-  githubIconText: {
-    color: '#fff',
-    fontWeight: '900',
-    fontSize: 14,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-  },
   oauthBtnText: {
     color: '#dae3f0',
     fontWeight: '700',
     fontSize: 13,
     letterSpacing: 0.5,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(6, 15, 23, 0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  modalContent: {
-    width: '100%',
-    backgroundColor: '#131d25',
-    borderColor: '#00f0ff',
-    borderWidth: 1,
-    borderRadius: 4,
-    padding: 24,
-    shadowColor: '#00f0ff',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 15,
-    elevation: 10,
-  },
-  modalTitle: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '800',
-    textAlign: 'center',
-    marginBottom: 20,
-    letterSpacing: 1,
-  },
-  modalRealBtn: {
-    backgroundColor: '#00f0ff',
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 4,
-    marginBottom: 16,
-  },
-  modalRealBtnText: {
-    color: '#000',
-    fontWeight: '800',
-    fontSize: 12,
-    letterSpacing: 1,
-  },
-  modalDividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 16,
-  },
-  modalDividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'rgba(59, 73, 75, 0.4)',
-  },
-  modalDividerText: {
-    color: '#849495',
-    fontSize: 9,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    paddingHorizontal: 8,
-  },
-  modalLabel: {
-    color: '#849495',
-    fontSize: 11,
-    fontWeight: '700',
-    marginBottom: 6,
-    textTransform: 'uppercase',
-  },
-  modalInput: {
-    backgroundColor: 'rgba(6, 15, 23, 0.8)',
-    borderWidth: 1,
-    borderColor: '#3b494b',
-    color: '#dae3f0',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 12,
-    marginBottom: 16,
-    borderRadius: 4,
-  },
-  modalActionRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-    marginTop: 8,
-  },
-  modalCancelBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  modalCancelBtnText: {
-    color: '#849495',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  modalSubmitBtn: {
-    borderColor: '#00f0ff',
-    borderWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 4,
-  },
-  modalSubmitBtnText: {
-    color: '#00f0ff',
-    fontSize: 12,
-    fontWeight: '800',
   },
 });
 

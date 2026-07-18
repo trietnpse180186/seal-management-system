@@ -27,7 +27,7 @@ function generateSvgCaptcha(text) {
     const y1 = Math.floor(Math.random() * height);
     const x2 = Math.floor(Math.random() * width);
     const y2 = Math.floor(Math.random() * height);
-    lines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(6, 182, 212, 0.25)" stroke-width="1.5" />`;
+    lines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(242, 112, 36, 0.24)" stroke-width="1.5" />`;
   }
 
   // Background noise dots
@@ -36,7 +36,7 @@ function generateSvgCaptcha(text) {
     const cx = Math.floor(Math.random() * width);
     const cy = Math.floor(Math.random() * height);
     const r = Math.random() * 1.5 + 0.5;
-    dots += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="rgba(6, 182, 212, 0.2)" />`;
+    dots += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="rgba(242, 112, 36, 0.18)" />`;
   }
 
   // Draw characters with random rotation, color, and font-size
@@ -49,9 +49,9 @@ function generateSvgCaptcha(text) {
     const angle = Math.floor(Math.random() * 30 - 15); // Rotate -15 to 15 deg
     const fontSize = Math.floor(Math.random() * 4 + 18); // Font size 18 to 22px
     
-    // Cyan/blue range (180 to 220) for dark background compatibility
-    const hue = Math.floor(Math.random() * 40 + 180);
-    const color = `hsl(${hue}, 90%, 65%)`;
+    // Orange range for the light FPT landing theme
+    const hue = Math.floor(Math.random() * 18 + 18);
+    const color = `hsl(${hue}, 88%, 45%)`;
 
     charsSvg += `
       <text 
@@ -69,7 +69,7 @@ function generateSvgCaptcha(text) {
   }
 
   const svg = `
-    <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg" style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 8px; user-select: none;">
+    <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg" style="background: #fff7f2; border: 1px solid rgba(242, 112, 36, 0.3); border-radius: 8px; user-select: none;">
       ${lines}
       ${dots}
       ${charsSvg}

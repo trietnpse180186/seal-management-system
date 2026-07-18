@@ -178,6 +178,14 @@ export default function RoundsTab({
   // Read unused props to satisfy the TS compiler (noUnusedLocals: true)
   const confirm = useConfirm();
   const selectedRound = rounds.find((r: any) => r._id === selectedRubricRoundId);
+  const isFinalRound = (round: any) => {
+    const normalizedName = String(round?.name || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+
+    return round?.advanceTopN === 0 || normalizedName.includes("chung ket") || normalizedName.includes("final");
+  };
   if (false as boolean) {
     console.log(selectedTrack, setSelectedTrack, setRubric, setCriteria, roundDeadline, setRoundDeadline);
   }
@@ -662,7 +670,7 @@ export default function RoundsTab({
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  {isSystemAdmin && !readOnly && (
+                  {isSystemAdmin && !readOnly && !isFinalRound(r) && (
                     <>
                       <button
                         type="button"

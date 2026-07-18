@@ -2169,8 +2169,13 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
           { _id: { $in: teamIdsFromRankings } }
         ];
       } else if (effectiveRoundIdForRanking) {
+        const TrackModel = mongoose.model('Track');
+        const roundTracks = await TrackModel.find({ roundId: effectiveRoundIdForRanking });
+        const roundTrackIds = roundTracks.map(t => t._id);
+
         finalQuery.$or = [
           { currentRoundId: effectiveRoundIdForRanking },
+          { trackId: { $in: roundTrackIds } },
           { _id: { $in: teamIdsFromRankings } }
         ];
       }

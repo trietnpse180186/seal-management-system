@@ -199,15 +199,23 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const linkClass = (path: string, forceActive?: boolean) => `
-    flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 font-mono
-    ${(forceActive !== undefined ? forceActive : isActive(path))
-      ? "bg-cyan-600/30 text-cyan-400 border border-cyan-500/20 shadow-[0_0_15px_-3px_rgba(6,182,212,0.3)]"
-      : "text-slate-300 hover:text-white hover:bg-white/5 border border-transparent"
-    }
-  `;
-
   const isLandingPage = location.pathname === "/";
+
+  const linkClass = (path: string, forceActive?: boolean) => {
+    const active = forceActive !== undefined ? forceActive : isActive(path);
+    if (isLandingPage) {
+      return `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 font-mono
+        ${active
+          ? "bg-[#F27024]/10 text-[#F27024] border border-[#F27024]/20 shadow-[0_0_15px_-3px_rgba(242,112,36,0.2)]"
+          : "text-slate-700 hover:text-[#F27024] hover:bg-slate-100 border border-transparent"
+        }`;
+    }
+    return `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 font-mono
+      ${active
+        ? "bg-cyan-600/30 text-cyan-400 border border-cyan-500/20 shadow-[0_0_15px_-3px_rgba(6,182,212,0.3)]"
+        : "text-slate-300 hover:text-white hover:bg-white/5 border border-transparent"
+      }`;
+  };
 
   const handleScrollToSchedule = (e: React.MouseEvent) => {
     if (location.pathname === "/") {
@@ -225,7 +233,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
 
   const navClass = isLandingPage
     ? isScrolled
-      ? "fixed top-0 left-0 w-full z-50 px-6 py-3 glass-nav transition-all duration-300"
+      ? "fixed top-0 left-0 w-full z-50 px-6 py-3 glass-nav-light transition-all duration-300"
       : "absolute top-0 left-0 w-full z-50 px-6 py-4 bg-transparent border-b-transparent shadow-none transition-all duration-300"
     : "glass-nav sticky top-0 z-50 w-full px-6 py-4";
 
@@ -236,10 +244,10 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
         <div className="flex-1 flex justify-start">
           <Link to="/" className="flex items-center gap-2 group">
             <div>
-              <span className="font-extrabold text-lg tracking-wider text-cyan-400 text-cyan-glow font-mono-tech">
+              <span className={`font-extrabold text-lg tracking-wider font-mono-tech ${isLandingPage ? "text-[#F27024] text-orange-glow" : "text-cyan-400 text-cyan-glow"}`}>
                 SEAL
               </span>
-              <span className="font-semibold text-xs ml-1 bg-slate-800 text-white px-2 py-0.5 font-mono-tech">
+              <span className={`font-semibold text-xs ml-1 px-2 py-0.5 font-mono-tech ${isLandingPage ? "bg-[#F27024] text-white" : "bg-slate-800 text-white"}`}>
                 HACKATHON
               </span>
             </div>
@@ -443,7 +451,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
               !isLoginPage && (
                 <Link
                   to="/login"
-                  className="btn-primary text-xs font-bold uppercase tracking-wider px-5 py-2.5 flex items-center justify-center"
+                  className={`${isLandingPage ? "btn-fpt" : "btn-primary"} text-xs font-bold uppercase tracking-wider px-5 py-2.5 flex items-center justify-center`}
                 >
                   Đăng nhập
                 </Link>

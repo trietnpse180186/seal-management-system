@@ -91,7 +91,7 @@ export default function About() {
       return {
         label: "Cuộc thi đã kết thúc thành công",
         timeText: null,
-        colorClass: "text-emerald-400 bg-emerald-950/20 border-emerald-900/30 font-mono"
+        colorClass: "text-emerald-600 bg-emerald-50 border-emerald-200 font-mono"
       };
     }
 
@@ -101,13 +101,13 @@ export default function About() {
         return {
           label: "Cuộc thi đang diễn ra! Kết thúc sau:",
           timeText: formatRemainingTime(contestEnd - now),
-          colorClass: "text-cyan-400 bg-cyan-950/20 border-cyan-900/30 font-mono"
+          colorClass: "text-[#F27024] bg-[#F27024]/10 border-[#F27024]/20 font-mono"
         };
       } else {
         return {
           label: "Cuộc thi đang diễn ra",
           timeText: null,
-          colorClass: "text-cyan-400 bg-cyan-950/20 border-cyan-900/30 font-mono"
+          colorClass: "text-[#F27024] bg-[#F27024]/10 border-[#F27024]/20 font-mono"
         };
       }
     }
@@ -118,13 +118,13 @@ export default function About() {
         return {
           label: "Cuộc thi sẽ bắt đầu sau:",
           timeText: formatRemainingTime(contestStart - now),
-          colorClass: "text-cyan-400 bg-cyan-950/20 border-cyan-900/30 font-mono"
+          colorClass: "text-[#F27024] bg-[#F27024]/10 border-[#F27024]/20 font-mono"
         };
       } else {
         return {
           label: "Đang chuẩn bị cuộc thi",
           timeText: null,
-          colorClass: "text-cyan-400 bg-cyan-950/20 border-cyan-900/30 font-mono"
+          colorClass: "text-[#F27024] bg-[#F27024]/10 border-[#F27024]/20 font-mono"
         };
       }
     }
@@ -135,14 +135,14 @@ export default function About() {
         return {
           label: "Đăng ký đội thi sẽ mở sau:",
           timeText: formatRemainingTime(regOpen - now),
-          colorClass: "text-amber-400 bg-amber-950/20 border-amber-900/30 font-mono"
+          colorClass: "text-amber-600 bg-amber-50 border-amber-200 font-mono"
         };
       }
       if (regClose && now < regClose) {
         return {
           label: "Đăng ký đội thi sẽ đóng sau:",
           timeText: formatRemainingTime(regClose - now),
-          colorClass: "text-cyan-400 bg-cyan-950/20 border-cyan-900/30 font-mono"
+          colorClass: "text-[#F27024] bg-[#F27024]/10 border-[#F27024]/20 font-mono"
         };
       }
     }
@@ -151,7 +151,7 @@ export default function About() {
     return {
       label: "Cổng đăng ký đội thi đã đóng",
       timeText: null,
-      colorClass: "text-slate-400 bg-slate-900/40 border-slate-800 font-mono"
+      colorClass: "text-slate-500 bg-slate-100 border-slate-200 font-mono"
     };
   };
 
@@ -171,50 +171,50 @@ export default function About() {
   };
 
   return (
-    <section ref={containerRef} className="py-24 bg-surface-dim relative border-y border-outline-variant/10" id="about">
+    <section ref={containerRef} className="py-24 bg-white relative border-y border-slate-200" id="about">
       {/* Background radial glow */}
-      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_50%_10%,rgba(0,240,255,0.03)_0%,transparent_50%)]"></div>
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_50%_10%,rgba(242,112,36,0.03)_0%,transparent_50%)]"></div>
       
       <div className="max-w-7xl mx-auto px-6 relative z-10">
         
         {/* Header */}
         <div className="about-header max-w-3xl mb-16 space-y-4">
-          <span className="font-mono text-xs text-cyan-400 uppercase tracking-widest block font-semibold">
+          <span className="font-mono text-xs text-[#F27024] uppercase tracking-widest block font-semibold">
             Tổng quan Hệ Thống
           </span>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white uppercase tracking-tight font-sans">
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 uppercase tracking-tight font-sans">
             Hệ thống Hackathon
           </h2>
-          <p className="text-on-surface-variant text-base leading-relaxed font-sans">
+          <p className="text-slate-600 text-base leading-relaxed font-sans">
             Mỗi năm SEAL tổ chức 03 Hackathon, tương ứng với 3 học kỳ: Spring, Summer, Fall:
           </p>
         </div>
 
         {/* Active Contest Countdown Banner */}
         {activeEvent && (
-          <div className="border border-cyan-500/20 bg-cyan-950/5 p-6 sm:p-8 rounded-none hover:border-cyan-500/40 transition-all duration-350 mb-12 relative overflow-hidden backdrop-blur-sm">
+          <div className="border border-[#F27024]/20 bg-[#F27024]/5 p-6 sm:p-8 rounded-none hover:border-[#F27024]/40 transition-all duration-350 mb-12 relative overflow-hidden backdrop-blur-sm">
             {/* Ambient subtle glow */}
-            <div className="absolute right-0 top-0 w-80 h-full bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute right-0 top-0 w-80 h-full bg-[#F27024]/5 rounded-full blur-3xl pointer-events-none"></div>
             
             <div className="flex flex-col lg:flex-row items-center justify-between gap-6 relative z-10">
               <div className="space-y-3 max-w-2xl text-left">
                 <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
-                  <span className="text-[10px] font-mono tracking-widest text-cyan-400 font-extrabold uppercase">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#F27024] animate-pulse"></span>
+                  <span className="text-[10px] font-mono tracking-widest text-[#F27024] font-extrabold uppercase">
                     [CUỘC THI ĐANG DIỄN RA]
                   </span>
                 </div>
-                <h3 className="text-xl sm:text-2xl font-black text-white uppercase tracking-wide leading-tight">
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-wide leading-tight">
                   {activeEvent.name}
                 </h3>
-                <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                <p className="text-xs text-slate-600 leading-relaxed font-sans">
                   {activeEvent.description || activeEvent.mainGoal}
                 </p>
-                <div className="flex flex-wrap gap-x-6 gap-y-2 pt-2 text-[10px] font-mono text-slate-400 uppercase">
+                <div className="flex flex-wrap gap-x-6 gap-y-2 pt-2 text-[10px] font-mono text-slate-500 uppercase">
                   <span>Học kỳ: Kỳ {activeEvent.semester} {activeEvent.year}</span>
                   <span>Thời lượng: {activeEvent.durationText || '48 GIỜ'}</span>
                   <span>Thành viên: {activeEvent.memberLimitText || '2-4 operators'}</span>
-                  <span>Giải thưởng: <strong className="text-cyan-400 font-bold">{activeEvent.prizePoolText || '$50,000 USD'}</strong></span>
+                  <span>Giải thưởng: <strong className="text-[#F27024] font-bold">{activeEvent.prizePoolText || '$50,000 USD'}</strong></span>
                   {activeEvent.zaloUrl && (
                     <span>
                       Zalo hỗ trợ:{" "}
@@ -222,7 +222,7 @@ export default function About() {
                         href={activeEvent.zaloUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-cyan-400 hover:text-cyan-300 font-bold hover:underline"
+                        className="text-[#F27024] hover:text-[#F27024]/80 font-bold hover:underline"
                       >
                         [Tham gia ngay]
                       </a>
@@ -241,7 +241,7 @@ export default function About() {
                       {countdown.label}
                     </p>
                     {countdown.timeText && (
-                      <p className="text-2xl sm:text-3xl font-black text-center font-mono tracking-widest text-cyan-glow">
+                      <p className="text-2xl sm:text-3xl font-black text-center font-mono tracking-widest text-orange-glow">
                         {countdown.timeText}
                       </p>
                     )}
@@ -256,34 +256,34 @@ export default function About() {
         <div className="hackathon-grid grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
           
           {/* Card 1: Emerging Technologies */}
-          <div className="hackathon-card border border-outline-variant/30 p-8 flex flex-col bg-[#0a141d]/85 rounded-none hover:border-cyan-500/40 transition-all duration-350 opacity-0">
-            <div className="w-12 h-12 rounded-none border border-cyan-500/20 flex items-center justify-center mb-6 bg-cyan-950/10 text-cyan-400">
+          <div className="hackathon-card border border-slate-200 p-8 flex flex-col bg-slate-50 rounded-none hover:border-[#F27024]/40 hover:shadow-md transition-all duration-350 opacity-0">
+            <div className="w-12 h-12 rounded-none border border-[#F27024]/20 flex items-center justify-center mb-6 bg-[#F27024]/10 text-[#F27024]">
               <Cpu size={22} />
             </div>
-            <h3 className="text-lg font-bold text-white mb-3 font-sans">Emerging Technologies</h3>
-            <p className="text-on-surface-variant text-sm leading-relaxed font-sans">
+            <h3 className="text-lg font-bold text-slate-900 mb-3 font-sans">Emerging Technologies</h3>
+            <p className="text-slate-600 text-sm leading-relaxed font-sans">
               Tập trung vào các công nghệ mới và xu hướng tiên tiến như AI, IoT, Blockchain, cùng các lĩnh vực nghiên cứu đột phá trong ngành công nghệ.
             </p>
           </div>
 
           {/* Card 2: Product & User Experience */}
-          <div className="hackathon-card border border-outline-variant/30 p-8 flex flex-col bg-[#0a141d]/85 rounded-none hover:border-cyan-500/40 transition-all duration-350 opacity-0">
-            <div className="w-12 h-12 rounded-none border border-cyan-500/20 flex items-center justify-center mb-6 bg-cyan-950/10 text-cyan-400">
+          <div className="hackathon-card border border-slate-200 p-8 flex flex-col bg-slate-50 rounded-none hover:border-[#F27024]/40 hover:shadow-md transition-all duration-350 opacity-0">
+            <div className="w-12 h-12 rounded-none border border-[#F27024]/20 flex items-center justify-center mb-6 bg-[#F27024]/10 text-[#F27024]">
               <Layers size={22} />
             </div>
-            <h3 className="text-lg font-bold text-white mb-3 font-sans">Product & User Experience</h3>
-            <p className="text-on-surface-variant text-sm leading-relaxed font-sans">
+            <h3 className="text-lg font-bold text-slate-900 mb-3 font-sans">Product & User Experience</h3>
+            <p className="text-slate-600 text-sm leading-relaxed font-sans">
               Tập trung vào việc phát triển sản phẩm hướng đến người dùng, tối ưu trải nghiệm thực tế và thúc đẩy thương mại hóa các ý tưởng sáng tạo.
             </p>
           </div>
 
           {/* Card 3: SDLC & Professional Working */}
-          <div className="hackathon-card border border-outline-variant/30 p-8 flex flex-col bg-[#0a141d]/85 rounded-none hover:border-cyan-500/40 transition-all duration-350 opacity-0">
-            <div className="w-12 h-12 rounded-none border border-cyan-500/20 flex items-center justify-center mb-6 bg-cyan-950/10 text-cyan-400">
+          <div className="hackathon-card border border-slate-200 p-8 flex flex-col bg-slate-50 rounded-none hover:border-[#F27024]/40 hover:shadow-md transition-all duration-350 opacity-0">
+            <div className="w-12 h-12 rounded-none border border-[#F27024]/20 flex items-center justify-center mb-6 bg-[#F27024]/10 text-[#F27024]">
               <Terminal size={22} />
             </div>
-            <h3 className="text-lg font-bold text-white mb-3 font-sans">SDLC & Professional Working</h3>
-            <p className="text-on-surface-variant text-sm leading-relaxed font-sans">
+            <h3 className="text-lg font-bold text-slate-900 mb-3 font-sans">SDLC & Professional Working</h3>
+            <p className="text-slate-600 text-sm leading-relaxed font-sans">
               Tập trung vào các chủ đề liên quan đến vòng đời phát triển phần mềm (SDLC) và kỹ năng làm việc chuyên nghiệp, giúp sinh viên phát triển khả năng làm việc trong môi trường công nghiệp thực tế.
             </p>
           </div>

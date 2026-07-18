@@ -14,6 +14,17 @@ if (!githubToken) {
 
 const octokit = new Octokit({ auth: githubToken });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const readline = require('readline');
+const askQuestion = query => {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+  return new Promise(resolve => rl.question(query, ans => {
+    rl.close();
+    resolve(ans);
+  }));
+};
 
 // Concurrency helper
 async function asyncPool(concurrency, iterable, iteratorFn) {
@@ -299,7 +310,7 @@ async function main() {
   });
   await event.save();
 
-  const round = await new Round({ eventId: event._id, name: 'Vòng Chung Kết', order: 1, status: 'active' }).save();
+  const round = await new Round({ eventId: event._id, name: 'Vòng Loại', order: 1, status: 'active' }).save();
 
   // Create 3 Tracks matching SU25 đề thi
   const t1 = await new Track({ eventId: event._id, roundId: round._id, name: 'Track 1: Smart Home' }).save();
@@ -359,6 +370,7 @@ async function main() {
     const team = await new Team({
       eventId: event._id,
       trackId: track._id,
+      currentRoundId: round._id,
       name: teamName,
       status: 'confirmed',
       leaderId: user._id
@@ -449,34 +461,17 @@ async function main() {
   await asyncPool(5, activeRepos, pushCommit1);
   console.log('[E2E] Completed Push 1.');
 
-  // ==========================================
-  // BƯỚC 4: Đồng bộ và Chạy AI Review Lần 1 (Đồng loạt)
-  // ==========================================
-  console.log('\n[STEP 4] Syncing & Running AI Analysis Lần 1...');
-  const { syncRepo } = require('../../server/features/events/cronService');
-
-  const executeSync = async (teamInfo) => {
-    const repoRecord = teamInfo.record;
-    const syncStart = Date.now();
-    try {
-      console.log(`[AI SYNC 1] Syncing ${repoRecord.repoName}...`);
-      await syncRepo(repoRecord._id);
-      console.log(`[AI SYNC 1 SUCCESS] Finished ${repoRecord.repoName} in ${((Date.now() - syncStart) / 1000).toFixed(2)}s`);
-    } catch (err) {
-      console.error(`[AI SYNC 1 FAILED] ${repoRecord.repoName} failed:`, err.message);
-    }
-  };
-
-  // Chạy AI Sync 1
-  if (mode === 'sequential') {
-    for (const teamInfo of activeRepos) await executeSync(teamInfo);
-  } else if (mode === 'parallel') {
-    await Promise.all(activeRepos.map(executeSync));
-  } else {
-    // Concurrency limit
-    await asyncPool(limit, activeRepos, executeSync);
+  const answer = await askQuestion('\n[HỎI] Bạn có muốn tiếp tục chạy Bước 5 để đẩy Commit 2 lên GitHub không? (y/n): ');
+  if (answer.toLowerCase() !== 'y' && answer.toLowerCase() !== 'yes') {
+    console.log('[E2E] Đã dừng script test theo yêu cầu của bạn. Quá trình đẩy Commit 1 hoàn tất.');
+    await mongoose.disconnect();
+    return;
   }
-  console.log('[E2E] AI Analysis Lần 1 hoàn thành.');
+
+  // ==========================================
+  // BƯỚC 4: Đồng bộ và Chạy AI Review Lần 1 (Bỏ qua - Chờ Cron/Webhook xử lý)
+  // ==========================================
+  console.log('\n[STEP 4] Syncing & Running AI Analysis Lần 1 (Bỏ qua - Hệ thống backend cron/webhook sẽ tự động xử lý)...');
 
   // ==========================================
   // BƯỚC 5: Đẩy Commit 2 (Mô phỏng Đạt/Lỗi Auto-Fail)
@@ -530,39 +525,18 @@ async function main() {
   console.log('[E2E] Completed Push 2.');
 
   // ==========================================
-  // BƯỚC 6: Đồng bộ và Chạy AI Review Lần 2 (Đồng loạt)
+  // BƯỚC 6: Đồng bộ và Chạy AI Review Lần 2 (Bỏ qua - Chờ Cron/Webhook xử lý)
   // ==========================================
-  console.log('\n[STEP 6] Syncing & Running AI Analysis Lần 2 (Chấm điểm commit mới)...');
-
-  const executeSync2 = async (teamInfo) => {
-    const repoRecord = teamInfo.record;
-    const syncStart = Date.now();
-    try {
-      console.log(`[AI SYNC 2] Syncing ${repoRecord.repoName}...`);
-      // Lấy bản ghi mới nhất từ DB
-      const freshRepo = await GithubRepository.findById(repoRecord._id);
-      await syncRepo(freshRepo._id);
-      console.log(`[AI SYNC 2 SUCCESS] Finished ${repoRecord.repoName} in ${((Date.now() - syncStart) / 1000).toFixed(2)}s`);
-    } catch (err) {
-      console.error(`[AI SYNC 2 FAILED] ${repoRecord.repoName} failed:`, err.message);
-    }
-  };
-
-  // Chạy AI Sync 2
-  if (mode === 'sequential') {
-    for (const teamInfo of activeRepos) await executeSync2(teamInfo);
-  } else if (mode === 'parallel') {
-    await Promise.all(activeRepos.map(executeSync2));
-  } else {
-    await asyncPool(limit, activeRepos, executeSync2);
-  }
-  console.log('[E2E] AI Analysis Lần 2 hoàn thành.');
+  console.log('\n[STEP 6] Syncing & Running AI Analysis Lần 2 (Bỏ qua - Hệ thống backend cron/webhook sẽ tự động xử lý)...');
 
   // ==========================================
   // BƯỚC 7: Xuất báo cáo kết quả đánh giá AI E2E
   // ==========================================
   console.log('\n====================================================');
   console.log(`[STEP 7] E2E EVALUATION REPORT: CRITICAL FAILS DETECTED BY AI`);
+  console.log('Lưu ý: Quá trình AI review đã được bàn giao cho hệ thống backend xử lý bất đồng bộ.');
+  console.log('Bạn có thể bật server backend và chạy cron job (hoặc chờ cron quét) để bắt đầu chấm điểm.');
+  console.log('Dưới đây là bảng trạng thái hiện tại (nếu backend đang chạy và đã xử lý xong):');
   console.log('====================================================');
 
   const report = [];

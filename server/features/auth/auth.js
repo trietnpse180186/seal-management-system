@@ -14,6 +14,35 @@ const { addEmailJob, isQueueAvailable } = require('../notifications/notification
 const captchaService = require('./captchaService');
 const { verifyFirebaseIdToken } = require('./firebaseAdmin');
 
+/**
+ * Normalizes university names to avoid duplicates and double prefixes.
+ */
+function normalizeUniversityName(name) {
+  if (!name) return '';
+  let cleaned = name.trim();
+
+  // 1. Remove duplicate "Trường Đại học Đại học" or "Đại học Đại học" prefixes
+  cleaned = cleaned.replace(/^(Trường\s+)?Đại\s+học\s+(Trường\s+)?Đại\s+học\s+/i, 'Trường Đại học ');
+  cleaned = cleaned.replace(/^(Trường\s+Đại\s+học\s+)+/i, 'Trường Đại học ');
+  cleaned = cleaned.replace(/^(Đại\s+học\s+)+/i, 'Đại học ');
+
+  // 2. Standardize abbreviations for HCMC IT / Tech Universities
+  const lowerCleaned = cleaned.toLowerCase();
+  if (lowerCleaned === 'fpt' || lowerCleaned === 'fpt university' || lowerCleaned === 'đại học fpt' || lowerCleaned === 'truong dai hoc fpt' || lowerCleaned.includes('fpt tp') || lowerCleaned.includes('fpt hcm')) {
+    cleaned = 'Trường Đại học FPT TP.HCM';
+  } else if (lowerCleaned === 'uit' || lowerCleaned === 'đại học công nghệ thông tin' || lowerCleaned === 'truong dai hoc cong nghe thong tin' || lowerCleaned.includes('công nghệ thông tin')) {
+    cleaned = 'Trường Đại học Công nghệ thông tin - ĐHQG TP.HCM';
+  } else if (lowerCleaned === 'hcmut' || lowerCleaned === 'đại học bách khoa tphcm' || lowerCleaned === 'đại học bách khoa tp.hcm' || (lowerCleaned.includes('bách khoa') && lowerCleaned.includes('hồ chí minh'))) {
+    cleaned = 'Trường Đại học Bách Khoa - ĐHQG TP.HCM';
+  } else if (lowerCleaned === 'hcmus' || lowerCleaned === 'đại học khoa học tự nhiên' || lowerCleaned === 'đại học khoa học tự nhiên tphcm' || (lowerCleaned.includes('tự nhiên') && lowerCleaned.includes('hồ chí minh'))) {
+    cleaned = 'Trường Đại học Khoa học tự nhiên - ĐHQG TP.HCM';
+  } else if (lowerCleaned === 'hcmute' || lowerCleaned === 'đại học sư phạm kỹ thuật' || lowerCleaned.includes('sư phạm kỹ thuật')) {
+    cleaned = 'Trường Đại học Sư phạm Kỹ thuật TP.HCM';
+  }
+
+  return cleaned.trim();
+}
+
 const JWT_SECRET = process.env.JWT_SECRET || 'seal_hackathon_secret_key_2026';
 
 async function mapUserRoles(roles) {
@@ -103,7 +132,7 @@ router.post('/register', async (req, res) => {
       passwordHash,
       fullName,
       studentId,
-      university,
+      university: normalizeUniversityName(university),
       githubUsername,
       isSystemAdmin: isFirstUser,
       isApproved: isFirstUser, // Auto-approve only the first user (system admin)
@@ -299,7 +328,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
     const user = req.user;
     user.fullName = fullName.trim();
     user.studentId = studentId ? studentId.trim() : undefined;
-    user.university = university ? university.trim() : undefined;
+    user.university = university ? normalizeUniversityName(university) : undefined;
     user.githubUsername = githubUsername ? githubUsername.trim() : undefined;
 
     await user.save();
@@ -1193,7 +1222,7 @@ router.post('/users', authenticateToken, requireSystemAdmin, async (req, res) =>
       passwordHash,
       fullName,
       studentId: studentId || '',
-      university: university || 'FPT University',
+      university: normalizeUniversityName(university || 'FPT University'),
       isSystemAdmin: !!isSystemAdmin,
       isApproved: true,
       isActive: isActive !== undefined ? !!isActive : true
@@ -1220,7 +1249,7 @@ router.put('/users/:id', authenticateToken, requireSystemAdmin, async (req, res)
 
     if (fullName !== undefined) user.fullName = fullName;
     if (studentId !== undefined) user.studentId = studentId;
-    if (university !== undefined) user.university = university;
+    if (university !== undefined) user.university = normalizeUniversityName(university);
     if (isSystemAdmin !== undefined) user.isSystemAdmin = !!isSystemAdmin;
     if (isActive !== undefined) user.isActive = !!isActive;
 

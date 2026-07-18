@@ -10,6 +10,7 @@ html {
 :root {
   --font-sans: 'Inter', 'Plus Jakarta Sans', 'Outfit', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+  --fpt-orange: #f27024;
 }
 
 body {
@@ -311,3 +312,46 @@ input:focus, select:focus, textarea:focus {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-12px); }
 }
+
+/* FPT Light Mode & Orange Utilities */
+.glass-nav-light {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(242, 112, 36, 0.12);
+}
+
+.btn-fpt {
+  background-color: transparent;
+  color: #f27024;
+  border: 1px solid #f27024;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  text-shadow: 0 0 5px rgba(242, 112, 36, 0.3);
+  box-shadow: inset 0 0 10px rgba(242, 112, 36, 0.08);
+}
+
+.btn-fpt:hover {
+  background-color: #f27024;
+  color: #ffffff;
+  box-shadow: 0 0 20px rgba(242, 112, 36, 0.4);
+  text-shadow: none;
+  transform: translateY(-2px);
+}
+
+.glow-orange {
+  box-shadow: 0 0 40px -10px rgba(242, 112, 36, 0.25);
+}
+
+.text-orange-glow {
+  color: #f27024;
+  text-shadow: 0 0 8px rgba(242, 112, 36, 0.4);
+}
+
+.bg-orange-glow {
+  background-color: #f27024;
+  box-shadow: 0 0 12px rgba(242, 112, 36, 0.35);
+}
+

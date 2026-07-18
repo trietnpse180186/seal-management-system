@@ -67,17 +67,17 @@ export default function Timeline() {
     const isActive = currentPhase === phaseNum;
     return {
       title: isActive 
-        ? "text-lg font-bold text-cyan-400 text-cyan-glow font-sans transition-all duration-300" 
-        : "text-lg font-bold text-slate-500 font-sans transition-all duration-300",
+        ? "text-lg font-bold text-[#F27024] text-orange-glow font-sans transition-all duration-300" 
+        : "text-lg font-bold text-slate-400 font-sans transition-all duration-300",
       date: isActive 
-        ? "font-mono text-xs text-cyan-400/80 font-semibold mt-1 transition-all duration-300" 
-        : "font-mono text-xs text-slate-650 font-semibold mt-1 transition-all duration-300",
+        ? "font-mono text-xs text-[#F27024]/85 font-semibold mt-1 transition-all duration-300" 
+        : "font-mono text-xs text-slate-500 font-semibold mt-1 transition-all duration-300",
       desc: isActive 
-        ? "text-slate-200 text-sm font-sans leading-relaxed transition-all duration-300" 
-        : "text-slate-500 text-sm font-sans leading-relaxed opacity-60 transition-all duration-300",
+        ? "text-slate-700 text-sm font-sans leading-relaxed transition-all duration-300" 
+        : "text-slate-400 text-sm font-sans leading-relaxed transition-all duration-300",
       node: isActive 
-        ? "timeline-node z-10 w-6 h-6 rounded-full bg-cyan-400 glow-cyan ring-4 ring-[#0a141d] border-4 border-surface shadow-[0_0_15px_#00f0ff] shrink-0 hidden md:block opacity-0" 
-        : "timeline-node z-10 w-6 h-6 rounded-full bg-slate-800 ring-4 ring-[#0a141d] border-4 border-surface shrink-0 hidden md:block opacity-0"
+        ? "timeline-node z-10 w-6 h-6 rounded-full bg-[#F27024] glow-orange ring-4 ring-white border-4 border-slate-50 shadow-[0_0_15px_#F27024] shrink-0 hidden md:block opacity-0" 
+        : "timeline-node z-10 w-6 h-6 rounded-full bg-slate-300 ring-4 ring-white border-4 border-slate-50 shrink-0 hidden md:block opacity-0"
     };
   };
 
@@ -200,17 +200,17 @@ export default function Timeline() {
       <div className="max-w-7xl mx-auto px-6">
         
         <div className="timeline-header text-center mb-16">
-          <h2 className="timeline-title text-2xl sm:text-3xl font-extrabold text-primary-container uppercase tracking-widest font-sans opacity-0">
+          <h2 className="timeline-title text-2xl sm:text-3xl font-extrabold text-slate-900 uppercase tracking-widest font-sans opacity-0">
             Lịch trình Cuộc thi {activeEvent ? `- ${activeEvent.name}` : ''}
           </h2>
-          <p className="timeline-subtitle font-mono text-xs text-on-surface-variant mt-2 opacity-0">
+          <p className="timeline-subtitle font-mono text-xs text-slate-500 mt-2 opacity-0">
             CÁC_GIAI_ĐOẠN_THỰC_THI
           </p>
         </div>
 
         <div className="relative max-w-4xl mx-auto py-6 timeline-body">
           {/* Vertical Line */}
-          <div className="timeline-line absolute left-1/2 top-0 bottom-0 w-px bg-primary-container/30 -translate-x-1/2 hidden md:block origin-top"></div>
+          <div className="timeline-line absolute left-1/2 top-0 bottom-0 w-px bg-[#F27024]/30 -translate-x-1/2 hidden md:block origin-top"></div>
           
           <div className="space-y-16 relative">
             

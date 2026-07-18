@@ -42,13 +42,7 @@ const removeAccents = (str) => {
     .replace(/Đ/g, 'D');
 };
 
-let apiCachedUniversities = null;
-let isFetchingAll = false;
-let fetchListeners = [];
 
-const triggerFetch = async (onComplete) => {
-  if (onComplete) onComplete(LOCAL_UNIVERSITIES);
-};
 
 export default function UniversityCombobox({
   value,

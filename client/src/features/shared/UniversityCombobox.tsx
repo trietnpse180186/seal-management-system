@@ -42,8 +42,7 @@ const removeAccents = (str: string): string => {
     .replace(/Đ/g, 'D');
 };
 
-// Global cache variable to avoid re-fetching when multiple comboboxes are rendered
-let apiCachedUniversities: University[] | null = null;
+
 
 interface Props {
   value: string;

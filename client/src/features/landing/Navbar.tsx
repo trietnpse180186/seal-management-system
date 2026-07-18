@@ -200,10 +200,11 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
   const isActive = (path: string) => location.pathname === path;
 
   const isLandingPage = location.pathname === "/";
+  const usesLightShell = isLandingPage || isAuthPage || location.pathname === "/album";
 
   const linkClass = (path: string, forceActive?: boolean) => {
     const active = forceActive !== undefined ? forceActive : isActive(path);
-    if (isLandingPage) {
+    if (usesLightShell) {
       return `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 font-mono
         ${active
           ? "bg-[#F27024]/10 text-[#F27024] border border-[#F27024]/20 shadow-[0_0_15px_-3px_rgba(242,112,36,0.2)]"
@@ -235,7 +236,9 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
     ? isScrolled
       ? "fixed top-0 left-0 w-full z-50 px-6 py-3 glass-nav-light transition-all duration-300"
       : "absolute top-0 left-0 w-full z-50 px-6 py-4 bg-transparent border-b-transparent shadow-none transition-all duration-300"
-    : "glass-nav sticky top-0 z-50 w-full px-6 py-4";
+    : usesLightShell
+      ? "glass-nav-light sticky top-0 z-50 w-full px-6 py-4"
+      : "glass-nav sticky top-0 z-50 w-full px-6 py-4";
 
   return (
     <nav className={navClass}>
@@ -244,10 +247,10 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
         <div className="flex-1 flex justify-start">
           <Link to="/" className="flex items-center gap-2 group">
             <div>
-              <span className={`font-extrabold text-lg tracking-wider font-mono-tech ${isLandingPage ? "text-[#F27024] text-orange-glow" : "text-cyan-400 text-cyan-glow"}`}>
+              <span className={`font-extrabold text-lg tracking-wider font-mono-tech ${usesLightShell ? "text-[#F27024] text-orange-glow" : "text-cyan-400 text-cyan-glow"}`}>
                 SEAL
               </span>
-              <span className={`font-semibold text-xs ml-1 px-2 py-0.5 font-mono-tech ${isLandingPage ? "bg-[#F27024] text-white" : "bg-slate-800 text-white"}`}>
+              <span className={`font-semibold text-xs ml-1 px-2 py-0.5 font-mono-tech ${usesLightShell ? "bg-[#F27024] text-white" : "bg-slate-800 text-white"}`}>
                 HACKATHON
               </span>
             </div>
@@ -342,7 +345,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                 <div className="relative">
                   <button
                     onClick={() => setShowNotifications(!showNotifications)}
-                    className="relative p-2 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 border border-transparent transition-all duration-200"
+                    className={`relative p-2 rounded-lg border border-transparent transition-all duration-200 ${usesLightShell ? "text-slate-500 hover:text-[#F27024] hover:bg-[#F27024]/10" : "text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10"}`}
                   >
                     <Bell size={18} />
                     {unreadCount > 0 && (
@@ -419,7 +422,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                 </div>
 
                 <div className="text-right hidden sm:block font-mono">
-                  <p className="text-sm font-semibold text-slate-200">
+                  <p className={`text-sm font-semibold ${usesLightShell ? "text-slate-800" : "text-slate-200"}`}>
                     {user.fullName}
                   </p>
                   <p className="text-xs text-slate-400">
@@ -435,7 +438,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                   </p>
                 </div>
 
-                <div className="h-9 w-9 rounded-full bg-cyan-950/50 text-cyan-400 border border-cyan-500/30 flex items-center justify-center text-sm font-bold shadow-[0_0_10px_rgba(6,182,212,0.15)] font-mono">
+                <div className={`h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold font-mono ${usesLightShell ? "bg-[#F27024]/10 text-[#F27024] border border-[#F27024]/25 shadow-[0_0_10px_rgba(242,112,36,0.12)]" : "bg-cyan-950/50 text-cyan-400 border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)]"}`}>
                   {user.fullName.charAt(0)}
                 </div>
 
@@ -451,7 +454,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
               !isLoginPage && (
                 <Link
                   to="/login"
-                  className={`${isLandingPage ? "btn-fpt" : "btn-primary"} text-xs font-bold uppercase tracking-wider px-5 py-2.5 flex items-center justify-center`}
+                  className={`${usesLightShell ? "btn-fpt" : "btn-primary"} text-xs font-bold uppercase tracking-wider px-5 py-2.5 flex items-center justify-center`}
                 >
                   Đăng nhập
                 </Link>

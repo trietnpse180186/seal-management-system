@@ -56,6 +56,10 @@ const formatTrackName = (name: string) => {
   return `Bảng ${trimmed}`;
 };
 
+const isFinalRound = (round: any) => {
+  const name = String(round?.name || "").toLowerCase();
+  return round?.advanceTopN === 0 || name.includes("chung kết") || name.includes("chung ket") || name === "final";
+};
 export default function TracksTab({
   selectedEvent,
   tracks,
@@ -126,8 +130,13 @@ export default function TracksTab({
 
 
   const maxEventTeams = selectedEvent?.maxTeams || 0;
-  const finalRound = rounds.find(r => r.advanceTopN === 0);
+  const finalRound = rounds.find(isFinalRound);
   const finalRoundId = finalRound?._id || finalRound?.id;
+  const availableTrackRounds = useMemo(() => rounds.filter((r: any) => !isFinalRound(r)), [rounds]);
+  const isDefaultFinalRoundTrack = (track: any) => {
+    const trackRoundId = track.roundId?._id || track.roundId;
+    return Boolean(trackRoundId && finalRoundId && trackRoundId.toString() === finalRoundId.toString());
+  };
   const totalAllocatedTeams = tracks
     .filter(t => {
       const tRoundId = t.roundId?._id || t.roundId;
@@ -142,6 +151,11 @@ export default function TracksTab({
       ((role.trackId?._id || role.trackId) === selectedTrack?._id)
   );
 
+  useEffect(() => {
+    if (editingTrack || !trackRoundId) return;
+    const hasAllowedRound = availableTrackRounds.some((r: any) => r._id === trackRoundId);
+    if (!hasAllowedRound) setTrackRoundId("");
+  }, [availableTrackRounds, editingTrack, setTrackRoundId, trackRoundId]);
   useEffect(() => {
     const query = judgeEmail.trim();
     if (!showSuggestions || query.length < 2 || !token || allUsers.length > 0) {
@@ -242,7 +256,7 @@ export default function TracksTab({
                   )}
                 </button>
                 <div className="flex items-center gap-2.5 ml-2 shrink-0">
-                  {!readOnly && (
+                  {!readOnly && !isDefaultFinalRoundTrack(t) && (
                     <>
                       <button
                         type="button"
@@ -309,7 +323,7 @@ export default function TracksTab({
               <CustomSelect
                 value={trackRoundId}
                 onChange={(val) => setTrackRoundId(val)}
-                options={rounds.map((r: any) => ({
+                options={availableTrackRounds.map((r: any) => ({
                   value: r._id,
                   label: `${r.name} (Vòng ${r.order})${r.status === 'completed' ? ' - Đã kết thúc' : ''}`,
                   disabled: r.status === 'completed'

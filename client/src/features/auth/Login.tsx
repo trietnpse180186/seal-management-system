@@ -15,6 +15,149 @@ interface LoginProps {
 
 const MOBILE_OAUTH_STARTED_KEY = 'mobile_oauth_started';
 const MOBILE_OAUTH_PROCESSING_KEY = 'mobile_oauth_processing';
+const loginLightThemeStyles = `
+  .login-light-shell {
+    background:
+      linear-gradient(180deg, rgba(242, 112, 36, 0.08), rgba(255, 255, 255, 0) 240px),
+      #f1f5f9;
+    color: #0f172a;
+  }
+  .login-light-shell .glass-panel {
+    background: #ffffff;
+    border: 1px solid rgba(242, 112, 36, 0.18);
+    box-shadow: 0 24px 80px rgba(15, 23, 42, 0.08), inset 0 0 0 1px rgba(242, 112, 36, 0.04);
+    backdrop-filter: none;
+  }
+  .login-light-shell .glass-panel:hover,
+  .login-light-shell .glass-panel:focus-within {
+    border-color: rgba(242, 112, 36, 0.36);
+    box-shadow: 0 28px 90px rgba(15, 23, 42, 0.1), 0 0 28px rgba(242, 112, 36, 0.12);
+  }
+  .login-light-shell .text-primary-container,
+  .login-light-shell .text-primary-fixed,
+  .login-light-shell .text-cyan-400,
+  .login-light-shell .text-blue-600 {
+    color: #f27024;
+    text-shadow: none;
+  }
+  .login-light-shell .text-on-surface-variant {
+    color: #64748b;
+  }
+  .login-light-shell .logo-glow {
+    animation: none;
+    filter: drop-shadow(0 0 18px rgba(242, 112, 36, 0.25));
+  }
+  .login-light-shell .chip {
+    color: #f27024;
+    border-color: rgba(242, 112, 36, 0.24);
+    background: rgba(242, 112, 36, 0.08);
+    box-shadow: none;
+    text-shadow: none;
+  }
+  .login-light-shell .cyber-input-wrapper::before {
+    display: none;
+    animation: none;
+  }
+  .login-light-shell .cyber-input-wrapper::after,
+  .login-light-shell .cyber-input-wrapper:focus-within::after {
+    background: #ffffff;
+    transition: none;
+  }
+  .login-light-shell .terminal-prompt::before {
+    color: #f27024;
+    background: transparent;
+    text-shadow: none;
+  }
+  .login-light-shell .scanline {
+    display: none;
+    animation: none;
+  }
+  .login-light-shell input,
+  .login-light-shell select,
+  .login-light-shell textarea,
+  .login-light-shell .cyber-input {
+    background-color: #ffffff !important;
+    border-color: rgba(242, 112, 36, 0.24) !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+  }
+  .login-light-shell input::placeholder,
+  .login-light-shell textarea::placeholder {
+    color: #94a3b8;
+  }
+  .login-light-shell input:focus,
+  .login-light-shell select:focus,
+  .login-light-shell textarea:focus,
+  .login-light-shell .cyber-input:focus {
+    border-color: #f27024 !important;
+    box-shadow: 0 0 0 2px rgba(242, 112, 36, 0.14) !important;
+  }
+  .login-light-shell .btn-primary {
+    background: #f27024;
+    color: #ffffff;
+    border-color: #f27024;
+    box-shadow: 0 10px 24px rgba(242, 112, 36, 0.22);
+    text-shadow: none;
+  }
+  .login-light-shell .btn-primary:hover {
+    background: #d95f1f;
+    color: #ffffff;
+    box-shadow: 0 14px 30px rgba(242, 112, 36, 0.28);
+    transform: translateY(-1px);
+  }
+  .login-light-shell .btn-secondary {
+    background: #ffffff;
+    color: #334155;
+    border-color: rgba(242, 112, 36, 0.22);
+  }
+  .login-light-shell .btn-secondary:hover {
+    color: #f27024;
+    border-color: #f27024;
+    background: rgba(242, 112, 36, 0.05);
+  }
+  .login-light-shell .pt-2 > .space-y-2 > label {
+    color: #f27024;
+  }
+  .login-light-shell .pt-2 > .space-y-2 > .flex > div:first-child {
+    border: 1px solid rgba(242, 112, 36, 0.24);
+    border-radius: 6px;
+    background: #ffffff;
+    box-shadow: inset 0 0 0 1px rgba(242, 112, 36, 0.04);
+  }
+  .login-light-shell .pt-2 > .space-y-2 > .flex > div:first-child svg {
+    display: block;
+  }
+  .login-light-shell .pt-2 > .space-y-2 button {
+    background: #fff7f2 !important;
+    border-color: rgba(242, 112, 36, 0.26) !important;
+    color: #f27024 !important;
+    border-radius: 6px;
+    box-shadow: none;
+  }
+  .login-light-shell .pt-2 > .space-y-2 button:hover {
+    background: #f27024 !important;
+    border-color: #f27024 !important;
+    color: #ffffff !important;
+  }
+  .login-light-shell .pt-2 > .space-y-2 input {
+    background: #ffffff !important;
+    border-radius: 6px !important;
+    border-color: rgba(242, 112, 36, 0.28) !important;
+    color: #0f172a !important;
+    letter-spacing: 0.22em;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+  .login-light-shell .pt-2 > .space-y-2 input:hover {
+    background: #ffffff !important;
+    border-color: rgba(242, 112, 36, 0.42) !important;
+  }
+  .login-light-shell .pt-2 > .space-y-2 input:focus,
+  .login-light-shell .pt-2 > .space-y-2 input:active {
+    background: #ffffff !important;
+    border-color: #f27024 !important;
+    box-shadow: 0 0 0 2px rgba(242, 112, 36, 0.14) !important;
+  }`;
 
 export default function Login({ onLoginSuccess }: LoginProps) {
   const confirm = useConfirm();
@@ -542,14 +685,15 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
   if (registrationSuccess || isVerificationPending) {
     return (
-      <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-12">
-        <div className="glass-panel w-full max-w-md p-8 rounded-xl relative overflow-hidden text-center">
-          <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary-container to-transparent opacity-80 animate-pulse"></div>
+      <div className="login-light-shell min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-12 text-slate-900">
+        <style dangerouslySetInnerHTML={{ __html: loginLightThemeStyles }} />
+        <div className="glass-panel w-full max-w-md p-8 rounded-[6px] relative overflow-hidden text-center">
+          <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#F27024] to-transparent opacity-80 animate-pulse"></div>
 
           <div className="w-24 h-24 mb-6 mx-auto relative">
             <img
               alt="SEAL Hackathon Logo"
-              className="w-full h-full object-contain rounded-full logo-glow drop-shadow-[0_0_20px_rgba(0,240,255,0.6)]"
+              className="w-full h-full object-contain rounded-full logo-glow drop-shadow-[0_0_18px_rgba(242,112,36,0.25)]"
               src={logo}
             />
           </div>
@@ -558,7 +702,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             {isVerificationPending ? '[ACTIVATION_REQUIRED]' : '[SYSTEM_PENDING]'}
           </div>
 
-          <h2 className="font-mono text-xl font-bold text-white mb-3 uppercase tracking-tight">
+          <h2 className="font-mono text-xl font-bold text-slate-900 mb-3 uppercase tracking-tight">
             {isVerificationPending ? 'PENDING_ACTIVATION' : 'NODE_VERIFICATION'}
           </h2>
 
@@ -591,8 +735,9 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
   if (showMockGoogle) {
     return (
-      <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-12 font-sans bg-[#f0f4f9] text-gray-800">
-        <div className="w-full max-w-[450px] bg-white rounded-3xl p-10 border border-gray-200 shadow-sm flex flex-col items-center">
+      <div className="login-light-shell min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-12 font-sans text-slate-900">
+        <style dangerouslySetInnerHTML={{ __html: loginLightThemeStyles }} />
+        <div className="w-full max-w-[450px] bg-white rounded-[6px] p-10 border border-[#F27024]/20 shadow-[0_20px_60px_rgba(15,23,42,0.08)] flex flex-col items-center">
 
           {/* Google Logo */}
           <div className="mb-4">
@@ -625,10 +770,10 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                     key={acc.email}
                     onClick={() => handleMockGoogleLogin(acc.email, acc.name)}
                     disabled={loading}
-                    className={`w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors text-left ${index > 0 ? 'border-t border-gray-100' : ''
+                    className={`w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[#F27024]/5 transition-colors text-left ${index > 0 ? 'border-t border-gray-100' : ''
                       }`}
                   >
-                    <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-semibold text-sm">
+                    <div className="w-8 h-8 rounded-full bg-[#F27024]/10 text-[#F27024] flex items-center justify-center font-semibold text-sm">
                       {acc.name[0]}
                     </div>
                     <div className="flex-1">
@@ -646,7 +791,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 <button
                   onClick={() => setCustomEmailMode(true)}
                   disabled={loading}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors text-left border-t border-gray-100"
+                  className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[#F27024]/5 transition-colors text-left border-t border-gray-100"
                 >
                   <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -667,7 +812,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                   handleOAuthClick('google');
                 }}
                 disabled={loading}
-                className="text-xs text-blue-600 hover:text-blue-700 hover:underline text-center font-medium py-2 self-center transition-all cursor-pointer"
+                className="text-xs text-[#F27024] hover:text-[#d95f1f] hover:underline text-center font-medium py-2 self-center transition-all cursor-pointer"
               >
                 Thử đăng nhập Google OAuth thật (có thể lỗi redirect_uri trên IP local)
               </button>
@@ -690,7 +835,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                   placeholder="nhap-email-cua-ban@gmail.com"
                   value={mockGoogleEmail}
                   onChange={(e) => setMockGoogleEmail(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none transition-colors"
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:border-[#F27024] focus:outline-none transition-colors"
                 />
               </div>
 
@@ -701,7 +846,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                   placeholder="Nguyễn Văn A"
                   value={mockGoogleName}
                   onChange={(e) => setMockGoogleName(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none transition-colors"
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:border-[#F27024] focus:outline-none transition-colors"
                 />
               </div>
 
@@ -716,7 +861,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 <button
                   type="submit"
                   disabled={loading || !mockGoogleEmail}
-                  className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-700 active:scale-95 transition-all cursor-pointer"
+                  className="flex-1 py-2.5 bg-[#F27024] text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-[#d95f1f] active:scale-95 transition-all cursor-pointer"
                 >
                   {loading ? 'Đang xử lý...' : 'Tiếp tục'}
                 </button>
@@ -730,17 +875,18 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   }
 
   return (
-    <div className="min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-12">
+    <div className="login-light-shell min-h-[calc(100vh-80px)] flex items-center justify-center px-4 py-12 text-slate-900">
+      <style dangerouslySetInnerHTML={{ __html: loginLightThemeStyles }} />
 
-      <div className="glass-panel w-full max-w-md p-8 rounded-xl relative overflow-hidden z-10">
+      <div className="glass-panel w-full max-w-md p-8 rounded-[6px] relative overflow-hidden z-10">
 
         {/* Top Rule */}
-        <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary-container to-transparent opacity-80"></div>
-        <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-primary-container to-transparent opacity-30"></div>
+        <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#F27024] to-transparent opacity-80"></div>
+        <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#F27024] to-transparent opacity-30"></div>
 
         {/* Header Section */}
         <div className="text-center mb-6 flex flex-col items-center">
-          <h1 className="font-mono text-3xl font-bold text-cyan-300 mb-2 tracking-tight uppercase">
+          <h1 className="font-mono text-3xl font-bold text-[#F27024] mb-2 tracking-tight uppercase">
             {isRegister ? 'Đăng ký Tài khoản' : 'Đăng nhập'}
           </h1>
           <p className="text-on-surface-variant text-xs font-sans">
@@ -749,14 +895,14 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         </div>
 
         {errorMessage && (
-          <div className="mb-5 p-3.5 bg-rose-950/90 border border-rose-500/80 rounded-xl text-rose-200 text-xs font-mono flex items-center justify-between shadow-xl animate-in fade-in zoom-in-95">
+          <div className="mb-5 p-3.5 bg-rose-50 border border-rose-200 rounded-[6px] text-rose-700 text-xs font-mono flex items-center justify-between shadow-sm animate-in fade-in zoom-in-95">
             <div className="flex items-center gap-2.5">
               <span className="leading-relaxed">{errorMessage}</span>
             </div>
             <button
               type="button"
               onClick={() => setError('')}
-              className="text-rose-400 hover:text-white font-bold ml-3 text-sm cursor-pointer shrink-0"
+              className="text-rose-500 hover:text-rose-700 font-bold ml-3 text-sm cursor-pointer shrink-0"
               title="Đóng thông báo"
             >
               ✕
@@ -853,7 +999,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             <div className="flex justify-between items-center mb-1">
               <label className="block font-mono text-xs text-primary-container opacity-80" htmlFor="password">Mật khẩu</label>
               {!isRegister && (
-                <Link to="/forgot-password" className="font-mono text-[10px] text-primary-container hover:underline hover:text-[#7df4ff] transition-colors">Quên mật khẩu?</Link>
+                <Link to="/forgot-password" className="font-mono text-[10px] text-primary-container hover:underline hover:text-[#d95f1f] transition-colors">Quên mật khẩu?</Link>
               )}
             </div>
             <div className="relative cyber-input-wrapper rounded overflow-hidden">
@@ -903,9 +1049,9 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
         <div className="relative my-6 text-center">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-outline-variant/30"></div>
+            <div className="w-full border-t border-slate-200"></div>
           </div>
-          <span className="relative px-3 text-[10px] uppercase tracking-wider text-on-surface-variant/60 bg-[#0a141d] font-mono">
+          <span className="relative px-3 text-[10px] uppercase tracking-wider text-slate-500 bg-white font-mono">
             Hoặc đăng nhập bằng
           </span>
         </div>
@@ -926,7 +1072,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           </button>
         </div>
 
-        <div className="mt-6 pt-4 border-t border-outline-variant/30 text-center">
+        <div className="mt-6 pt-4 border-t border-slate-200 text-center">
           <p className="text-xs text-on-surface-variant font-sans">
             {isRegister ? 'Đã kích hoạt khóa truy cập?' : 'Chưa có tài khoản?'}
             <button
@@ -934,7 +1080,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 setIsRegister(!isRegister);
                 setError('');
               }}
-              className="text-primary-container hover:text-primary-fixed underline font-mono text-xs ml-1.5 transition-colors duration-150 cursor-pointer"
+              className="text-[#F27024] hover:text-[#d95f1f] underline font-mono text-xs ml-1.5 transition-colors duration-150 cursor-pointer"
             >
               {isRegister ? 'Đăng nhập ngay' : 'Đăng ký tài khoản mới'}
             </button>

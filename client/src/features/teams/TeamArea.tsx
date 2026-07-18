@@ -1013,7 +1013,7 @@ export default function TeamArea() {
                           <p className="text-[10px] text-slate-550 font-mono mt-0.5 truncate">
                             {m.userId?.studentId && `MSSV: ${m.userId.studentId}`}
                             {m.userId?.studentId && m.userId?.university && ' • '}
-                            Đại học {m.userId?.university}
+                            {m.userId?.university}
                           </p>
                         )}
                       </div>

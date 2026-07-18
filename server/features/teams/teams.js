@@ -34,6 +34,35 @@ const githubService = require('../github-ai/githubService');
 const captchaService = require('../auth/captchaService');
 const { ensureChatRoomForTeam } = require('../chat/chatRoomService');
 
+/**
+ * Normalizes university names to avoid duplicates and double prefixes.
+ */
+function normalizeUniversityName(name) {
+  if (!name) return '';
+  let cleaned = name.trim();
+
+  // 1. Remove duplicate "Trường Đại học Đại học" or "Đại học Đại học" prefixes
+  cleaned = cleaned.replace(/^(Trường\s+)?Đại\s+học\s+(Trường\s+)?Đại\s+học\s+/i, 'Trường Đại học ');
+  cleaned = cleaned.replace(/^(Trường\s+Đại\s+học\s+)+/i, 'Trường Đại học ');
+  cleaned = cleaned.replace(/^(Đại\s+học\s+)+/i, 'Đại học ');
+
+  // 2. Standardize abbreviations for HCMC IT / Tech Universities
+  const lowerCleaned = cleaned.toLowerCase();
+  if (lowerCleaned === 'fpt' || lowerCleaned === 'fpt university' || lowerCleaned === 'đại học fpt' || lowerCleaned === 'truong dai hoc fpt' || lowerCleaned.includes('fpt tp') || lowerCleaned.includes('fpt hcm')) {
+    cleaned = 'Trường Đại học FPT TP.HCM';
+  } else if (lowerCleaned === 'uit' || lowerCleaned === 'đại học công nghệ thông tin' || lowerCleaned === 'truong dai hoc cong nghe thong tin' || lowerCleaned.includes('công nghệ thông tin')) {
+    cleaned = 'Trường Đại học Công nghệ thông tin - ĐHQG TP.HCM';
+  } else if (lowerCleaned === 'hcmut' || lowerCleaned === 'đại học bách khoa tphcm' || lowerCleaned === 'đại học bách khoa tp.hcm' || (lowerCleaned.includes('bách khoa') && lowerCleaned.includes('hồ chí minh'))) {
+    cleaned = 'Trường Đại học Bách Khoa - ĐHQG TP.HCM';
+  } else if (lowerCleaned === 'hcmus' || lowerCleaned === 'đại học khoa học tự nhiên' || lowerCleaned === 'đại học khoa học tự nhiên tphcm' || (lowerCleaned.includes('tự nhiên') && lowerCleaned.includes('hồ chí minh'))) {
+    cleaned = 'Trường Đại học Khoa học tự nhiên - ĐHQG TP.HCM';
+  } else if (lowerCleaned === 'hcmute' || lowerCleaned === 'đại học sư phạm kỹ thuật' || lowerCleaned.includes('sư phạm kỹ thuật')) {
+    cleaned = 'Trường Đại học Sư phạm Kỹ thuật TP.HCM';
+  }
+
+  return cleaned.trim();
+}
+
 function getSemesterSuffix(event) {
   if (!event || !event.semester || !event.year) return '';
   const semLower = event.semester.toLowerCase();
@@ -1553,7 +1582,7 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
       const email = String(row[3] || '').trim().toLowerCase();
       const github = String(row[4] || '').trim();
       const studentId = String(row[5] || '').trim();
-      const university = String(row[6] || '').trim();
+      const university = normalizeUniversityName(String(row[6] || '').trim());
 
       if (!teamName) {
         errors.push(`Dòng ${rowNum}: Tên Đội Ngũ là bắt buộc.`);

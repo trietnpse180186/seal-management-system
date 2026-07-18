@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, X, Loader2 } from 'lucide-react';
-import axios from 'axios';
+
 
 export interface University {
   name: string;

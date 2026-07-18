@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
-import axios from 'axios';
+
 
 const LOCAL_UNIVERSITIES = [
   { name: 'Trường Đại học FPT TP.HCM', short: 'FPT TP.HCM', aliases: ['FPT', 'FPT University', 'FU', 'FU HCMC'] },

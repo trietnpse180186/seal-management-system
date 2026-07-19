@@ -28,9 +28,10 @@ import MentorDashboard from './features/mentor/MentorDashboard';
 import MentorTeamDetail from './features/mentor/MentorTeamDetail';
 import MentorChat from './features/mentor/MentorChat';
 import Gallery from './features/landing/Gallery';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import { ConformProvider } from './features/shared/ModalConform';
 import { ConfirmProvider } from './features/shared/ConfirmDialog';
+import { Settings2, UserCog } from 'lucide-react';
 
 function RedirectToExpertScore() {
   const { teamId } = useParams();
@@ -56,6 +57,66 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
   const isMentor = roles?.some((r: any) => r.role === 'mentor') || user?.isSystemAdmin;
   const isExpertMentorRoute = location.pathname.startsWith('/expert/mentored-team') || location.pathname.startsWith('/expert/mentored-teams');
   
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    fullName: "",
+    studentId: "",
+    university: "",
+    githubUsername: "",
+  });
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        fullName: user.fullName || "",
+        studentId: user.studentId || "",
+        university: user.university || "",
+        githubUsername: user.githubUsername || "",
+      });
+    }
+  }, [user, isProfileOpen]);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.fullName.trim()) {
+      toast.error("Họ và tên không được để trống");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const apiBase = import.meta.env.VITE_API_URL || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.origin : 'http://localhost:5000');
+      const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+      
+      const response = await axios.put(
+        `${apiBase}/api/auth/profile`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
+      toast.success(response.data.message || "Cập nhật thông tin thành công!");
+      setIsEditing(false);
+      setIsProfileOpen(false);
+      
+      if (setUser) {
+        setUser(response.data.user);
+      }
+    } catch (err: any) {
+      console.error("Failed to update profile:", err);
+      toast.error(err.response?.data?.message || "Cập nhật thông tin thất bại");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const usesLightShell = location.pathname === '/' || location.pathname === '/team-area' || location.pathname === '/register-team' || location.pathname === '/login' || location.pathname === '/achievements' || location.pathname === '/guest-portal';
+
   const showChatWidget = user && (
     (!isJudgeRoute && (!isAdminRoute || isCoordinator)) ||
     (isExpertMentorRoute && isMentor)
@@ -63,7 +124,14 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
 
   return (
     <div className={`min-h-screen ${location.pathname === '/login' ? 'bg-[#f5efe8]' : 'bg-gradient-dark'} flex flex-col`}>
-      {!isJudgeRoute && !isAdminRoute && <Navbar user={user} roles={roles} onLogout={handleLogout} onUpdateUser={setUser} />}
+      {!isJudgeRoute && !isAdminRoute && (
+        <Navbar 
+          user={user} 
+          roles={roles} 
+          onLogout={handleLogout} 
+          onOpenProfile={() => setIsProfileOpen(true)} 
+        />
+      )}
       
       <main className="flex-1">
         <Routes>
@@ -153,6 +221,215 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
       
       {showChatWidget && (
         <MentorChat roles={roles} isSystemAdmin={!!user?.isSystemAdmin} />
+      )}
+
+      {isProfileOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-955/80 backdrop-blur-sm p-4 animate-fade-in animate-duration-150">
+          <div className={`relative w-full max-w-md p-6 rounded-2xl shadow-2xl transition-all duration-300 font-sans ${
+            usesLightShell 
+              ? "bg-[#faf9f6] border border-slate-200 text-slate-800" 
+              : "bg-[#0c1322] border border-cyan-500/30 text-slate-200 shadow-[0_0_30px_rgba(6,182,212,0.15)]"
+          }`}>
+            {/* Top decorative line */}
+            <div className={`absolute top-0 left-0 w-full h-[2px] rounded-t-2xl ${
+              usesLightShell 
+                ? "bg-gradient-to-r from-transparent via-[#F27024]/50 to-transparent" 
+                : "bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"
+            }`}></div>
+            
+            {/* Header */}
+            <div className={`flex items-center justify-between pb-4 mb-4 border-b ${
+              usesLightShell ? "border-slate-200" : "border-slate-800"
+            }`}>
+              <h3 className="text-base font-bold uppercase tracking-wider flex items-center gap-2">
+                {isEditing ? (
+                  <Settings2 size={18} className={usesLightShell ? "text-[#F27024]" : "text-cyan-400"} />
+                ) : (
+                  <UserCog size={18} className={usesLightShell ? "text-[#F27024]" : "text-cyan-400"} />
+                )}
+                <span>{isEditing ? "Cập nhật thông tin" : "Hồ sơ cá nhân"}</span>
+              </h3>
+              <button 
+                onClick={() => {
+                  setIsProfileOpen(false);
+                  setIsEditing(false);
+                }}
+                className={`text-sm p-1 rounded-lg transition-colors ${
+                  usesLightShell 
+                    ? "hover:bg-slate-200 text-slate-400 hover:text-slate-600" 
+                    : "hover:bg-slate-800 text-slate-500 hover:text-slate-350"
+                }`}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Form / Details */}
+            <form onSubmit={handleSaveProfile} className="space-y-4">
+              <div className="space-y-1.5 text-left">
+                <label className={`block text-xs font-semibold uppercase tracking-wider ${
+                  usesLightShell ? "text-slate-500" : "text-slate-400"
+                }`}>
+                  Họ và tên <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  disabled={!isEditing}
+                  value={formData.fullName}
+                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                  placeholder="Họ và tên"
+                  className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none transition-all ${
+                    !isEditing 
+                      ? usesLightShell 
+                        ? "bg-slate-100/85 border-slate-250 text-slate-500 cursor-not-allowed" 
+                        : "bg-slate-900/50 border-slate-850 text-slate-500 cursor-not-allowed"
+                      : usesLightShell 
+                        ? "bg-white border-slate-300 text-slate-800 focus:border-[#F27024] focus:ring-2 focus:ring-[#F27024]/20" 
+                        : "bg-slate-900 border-slate-800 text-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+                  }`}
+                />
+              </div>
+
+              <div className="space-y-1.5 text-left">
+                <label className={`block text-xs font-semibold uppercase tracking-wider ${
+                  usesLightShell ? "text-slate-500" : "text-slate-400"
+                }`}>
+                  Mã số sinh viên
+                </label>
+                <input
+                  type="text"
+                  disabled={!isEditing}
+                  value={formData.studentId}
+                  onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
+                  placeholder={isEditing ? "Nhập mã số sinh viên (ví dụ: SE180186)" : "Chưa cập nhật"}
+                  className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none transition-all ${
+                    !isEditing 
+                      ? usesLightShell 
+                        ? "bg-slate-100/85 border-slate-250 text-slate-500 cursor-not-allowed" 
+                        : "bg-slate-900/50 border-slate-850 text-slate-500 cursor-not-allowed"
+                      : usesLightShell 
+                        ? "bg-white border-slate-300 text-slate-800 focus:border-[#F27024] focus:ring-2 focus:ring-[#F27024]/20" 
+                        : "bg-slate-900 border-slate-800 text-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+                  }`}
+                />
+              </div>
+
+              <div className="space-y-1.5 text-left">
+                <label className={`block text-xs font-semibold uppercase tracking-wider ${
+                  usesLightShell ? "text-slate-500" : "text-slate-400"
+                }`}>
+                  Trường Đại học / Đơn vị
+                </label>
+                <input
+                  type="text"
+                  disabled={!isEditing}
+                  value={formData.university}
+                  onChange={(e) => setFormData({ ...formData, university: e.target.value })}
+                  placeholder={isEditing ? "Nhập tên trường đại học" : "Chưa cập nhật"}
+                  className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none transition-all ${
+                    !isEditing 
+                      ? usesLightShell 
+                        ? "bg-slate-100/85 border-slate-250 text-slate-500 cursor-not-allowed" 
+                        : "bg-slate-900/50 border-slate-850 text-slate-500 cursor-not-allowed"
+                      : usesLightShell 
+                        ? "bg-white border-slate-300 text-slate-800 focus:border-[#F27024] focus:ring-2 focus:ring-[#F27024]/20" 
+                        : "bg-slate-900 border-slate-800 text-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+                  }`}
+                />
+              </div>
+
+              <div className="space-y-1.5 text-left">
+                <label className={`block text-xs font-semibold uppercase tracking-wider ${
+                  usesLightShell ? "text-slate-500" : "text-slate-400"
+                }`}>
+                  Tài khoản GitHub
+                </label>
+                <input
+                  type="text"
+                  disabled={!isEditing}
+                  value={formData.githubUsername}
+                  onChange={(e) => setFormData({ ...formData, githubUsername: e.target.value })}
+                  placeholder={isEditing ? "Nhập tên tài khoản GitHub (ví dụ: octocat)" : "Chưa cập nhật"}
+                  className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none transition-all ${
+                    !isEditing 
+                      ? usesLightShell 
+                        ? "bg-slate-100/85 border-slate-250 text-slate-500 cursor-not-allowed" 
+                        : "bg-slate-900/50 border-slate-850 text-slate-500 cursor-not-allowed"
+                      : usesLightShell 
+                        ? "bg-white border-slate-300 text-slate-800 focus:border-[#F27024] focus:ring-2 focus:ring-[#F27024]/20" 
+                        : "bg-slate-900 border-slate-800 text-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+                  }`}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-200/20">
+                {!isEditing ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsProfileOpen(false)}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                        usesLightShell 
+                          ? "bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200" 
+                          : "bg-slate-800/40 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800"
+                      }`}
+                    >
+                      Đóng
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditing(true)}
+                      className={`px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+                        usesLightShell 
+                          ? "bg-[#F27024] hover:bg-[#e05e1b] text-white shadow-lg shadow-[#F27024]/20" 
+                          : "bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/30 hover:shadow-[0_0_15px_rgba(6,182,212,0.2)]"
+                      }`}
+                    >
+                      Cập nhật
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditing(false);
+                        if (user) {
+                          setFormData({
+                            fullName: user.fullName || "",
+                            studentId: user.studentId || "",
+                            university: user.university || "",
+                            githubUsername: user.githubUsername || "",
+                          });
+                        }
+                      }}
+                      disabled={isSaving}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer ${
+                        usesLightShell 
+                          ? "bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200" 
+                          : "bg-slate-800/40 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800"
+                      }`}
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSaving}
+                      className={`px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer ${
+                        usesLightShell 
+                          ? "bg-[#F27024] hover:bg-[#e05e1b] text-white shadow-lg shadow-[#F27024]/20" 
+                          : "bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/30 hover:shadow-[0_0_15px_rgba(6,182,212,0.2)]"
+                      }`}
+                    >
+                      {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
+                    </button>
+                  </>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

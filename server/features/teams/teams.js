@@ -1,17 +1,17 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const mongoose = require('mongoose');
-const crypto = require('crypto');
+const mongoose = require("mongoose");
+const crypto = require("crypto");
 
-const Team = mongoose.model('Team');
-const TeamMember = mongoose.model('TeamMember');
-const User = mongoose.model('User');
-const Event = mongoose.model('Event');
-const Track = mongoose.model('Track');
-const GithubRepository = mongoose.model('GithubRepository');
-const EventRole = mongoose.model('EventRole');
-const multer = require('multer');
-const XLSX = require('xlsx-js-style');
+const Team = mongoose.model("Team");
+const TeamMember = mongoose.model("TeamMember");
+const User = mongoose.model("User");
+const Event = mongoose.model("Event");
+const Track = mongoose.model("Track");
+const GithubRepository = mongoose.model("GithubRepository");
+const EventRole = mongoose.model("EventRole");
+const multer = require("multer");
+const XLSX = require("xlsx-js-style");
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -21,7 +21,11 @@ const upload = multer({
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "application/vnd.ms-excel",
     ];
-    if (allowed.includes(file.mimetype) || file.originalname.endsWith('.xlsx') || file.originalname.endsWith('.xls')) {
+    if (
+      allowed.includes(file.mimetype) ||
+      file.originalname.endsWith(".xlsx") ||
+      file.originalname.endsWith(".xls")
+    ) {
       cb(null, true);
     } else {
       cb(new Error("Chỉ chấp nhận file Excel (.xlsx, .xls)"), false);
@@ -29,48 +33,77 @@ const upload = multer({
   },
 });
 
-const emailService = require('../notifications/emailService');
-const githubService = require('../github-ai/githubService');
-const captchaService = require('../auth/captchaService');
-const { ensureChatRoomForTeam } = require('../chat/chatRoomService');
+const emailService = require("../notifications/emailService");
+const githubService = require("../github-ai/githubService");
+const captchaService = require("../auth/captchaService");
+const { ensureChatRoomForTeam } = require("../chat/chatRoomService");
 
 /**
  * Normalizes university names to avoid duplicates and double prefixes.
  */
 function normalizeUniversityName(name) {
-  if (!name) return '';
+  if (!name) return "";
   let cleaned = name.trim();
 
   // 1. Remove duplicate "Trường Đại học Đại học" or "Đại học Đại học" prefixes
-  cleaned = cleaned.replace(/^(Trường\s+)?Đại\s+học\s+(Trường\s+)?Đại\s+học\s+/i, 'Trường Đại học ');
-  cleaned = cleaned.replace(/^(Trường\s+Đại\s+học\s+)+/i, 'Trường Đại học ');
-  cleaned = cleaned.replace(/^(Đại\s+học\s+)+/i, 'Đại học ');
+  cleaned = cleaned.replace(
+    /^(Trường\s+)?Đại\s+học\s+(Trường\s+)?Đại\s+học\s+/i,
+    "Trường Đại học ",
+  );
+  cleaned = cleaned.replace(/^(Trường\s+Đại\s+học\s+)+/i, "Trường Đại học ");
+  cleaned = cleaned.replace(/^(Đại\s+học\s+)+/i, "Đại học ");
 
   // 2. Standardize abbreviations for HCMC IT / Tech Universities
   const lowerCleaned = cleaned.toLowerCase();
-  if (lowerCleaned === 'fpt' || lowerCleaned === 'fpt university' || lowerCleaned === 'đại học fpt' || lowerCleaned === 'truong dai hoc fpt' || lowerCleaned.includes('fpt tp') || lowerCleaned.includes('fpt hcm')) {
-    cleaned = 'Trường Đại học FPT TP.HCM';
-  } else if (lowerCleaned === 'uit' || lowerCleaned === 'đại học công nghệ thông tin' || lowerCleaned === 'truong dai hoc cong nghe thong tin' || lowerCleaned.includes('công nghệ thông tin')) {
-    cleaned = 'Trường Đại học Công nghệ thông tin - ĐHQG TP.HCM';
-  } else if (lowerCleaned === 'hcmut' || lowerCleaned === 'đại học bách khoa tphcm' || lowerCleaned === 'đại học bách khoa tp.hcm' || (lowerCleaned.includes('bách khoa') && lowerCleaned.includes('hồ chí minh'))) {
-    cleaned = 'Trường Đại học Bách Khoa - ĐHQG TP.HCM';
-  } else if (lowerCleaned === 'hcmus' || lowerCleaned === 'đại học khoa học tự nhiên' || lowerCleaned === 'đại học khoa học tự nhiên tphcm' || (lowerCleaned.includes('tự nhiên') && lowerCleaned.includes('hồ chí minh'))) {
-    cleaned = 'Trường Đại học Khoa học tự nhiên - ĐHQG TP.HCM';
-  } else if (lowerCleaned === 'hcmute' || lowerCleaned === 'đại học sư phạm kỹ thuật' || lowerCleaned.includes('sư phạm kỹ thuật')) {
-    cleaned = 'Trường Đại học Sư phạm Kỹ thuật TP.HCM';
+  if (
+    lowerCleaned === "fpt" ||
+    lowerCleaned === "fpt university" ||
+    lowerCleaned === "đại học fpt" ||
+    lowerCleaned === "truong dai hoc fpt" ||
+    lowerCleaned.includes("fpt tp") ||
+    lowerCleaned.includes("fpt hcm")
+  ) {
+    cleaned = "Trường Đại học FPT TP.HCM";
+  } else if (
+    lowerCleaned === "uit" ||
+    lowerCleaned === "đại học công nghệ thông tin" ||
+    lowerCleaned === "truong dai hoc cong nghe thong tin" ||
+    lowerCleaned.includes("công nghệ thông tin")
+  ) {
+    cleaned = "Trường Đại học Công nghệ thông tin - ĐHQG TP.HCM";
+  } else if (
+    lowerCleaned === "hcmut" ||
+    lowerCleaned === "đại học bách khoa tphcm" ||
+    lowerCleaned === "đại học bách khoa tp.hcm" ||
+    (lowerCleaned.includes("bách khoa") && lowerCleaned.includes("hồ chí minh"))
+  ) {
+    cleaned = "Trường Đại học Bách Khoa - ĐHQG TP.HCM";
+  } else if (
+    lowerCleaned === "hcmus" ||
+    lowerCleaned === "đại học khoa học tự nhiên" ||
+    lowerCleaned === "đại học khoa học tự nhiên tphcm" ||
+    (lowerCleaned.includes("tự nhiên") && lowerCleaned.includes("hồ chí minh"))
+  ) {
+    cleaned = "Trường Đại học Khoa học tự nhiên - ĐHQG TP.HCM";
+  } else if (
+    lowerCleaned === "hcmute" ||
+    lowerCleaned === "đại học sư phạm kỹ thuật" ||
+    lowerCleaned.includes("sư phạm kỹ thuật")
+  ) {
+    cleaned = "Trường Đại học Sư phạm Kỹ thuật TP.HCM";
   }
 
   return cleaned.trim();
 }
 
 function getSemesterSuffix(event) {
-  if (!event || !event.semester || !event.year) return '';
+  if (!event || !event.semester || !event.year) return "";
   const semLower = event.semester.toLowerCase();
-  let semCode = '';
-  if (semLower === 'spring') semCode = 'sp';
-  else if (semLower === 'summer') semCode = 'su';
-  else if (semLower === 'fall') semCode = 'fa';
-  return semCode ? `_${semCode}${event.year}` : '';
+  let semCode = "";
+  if (semLower === "spring") semCode = "sp";
+  else if (semLower === "summer") semCode = "su";
+  else if (semLower === "fall") semCode = "fa";
+  return semCode ? `_${semCode}${event.year}` : "";
 }
 const {
   canUserAccessRoundExam,
@@ -78,39 +111,49 @@ const {
   sanitizeRoundForParticipant,
   sanitizeTrackExamForParticipant,
   isTrackExamOpen,
-  buildDriveUrl
-} = require('../events/examAccessService');
-const { ensureUserDriveAccess } = require('../events/driveAccessService');
-const Round = mongoose.model('Round');
-const { authenticateToken } = require('../auth/authMiddleware');
-const { addEmailJob, addInAppJob, isQueueAvailable } = require('../notifications/notificationQueue');
-const { createExternalTeam } = require('./externalTeamService');
+  buildDriveUrl,
+} = require("../events/examAccessService");
+const { ensureUserDriveAccess } = require("../events/driveAccessService");
+const Round = mongoose.model("Round");
+const { authenticateToken } = require("../auth/authMiddleware");
+const {
+  addEmailJob,
+  addInAppJob,
+  isQueueAvailable,
+} = require("../notifications/notificationQueue");
+const { createExternalTeam } = require("./externalTeamService");
 
 function generateTeamCode(teamName) {
   return teamName
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase()
-    .replace(/[^A-Z0-9]/g, '_')
-    .replace(/_+/g, '_')
-    .replace(/^_+|_+$/g, '');
+    .replace(/[^A-Z0-9]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
 }
 
 async function syncTeamToExternalSimulator(team) {
   try {
     if (team.externalTeamId || team.testApiKey) {
-      console.log(`[MQTT SERVICE] Team "${team.name}" is already synced to external API.`);
+      console.log(
+        `[MQTT SERVICE] Team "${team.name}" is already synced to external API.`,
+      );
       return;
     }
 
     if (!team.trackId) {
-      console.warn(`[MQTT SERVICE] Team "${team.name}" has no trackId assigned. Skipping external sync.`);
+      console.warn(
+        `[MQTT SERVICE] Team "${team.name}" has no trackId assigned. Skipping external sync.`,
+      );
       return;
     }
 
     const track = await Track.findById(team.trackId);
     if (!track || !track.environmentId) {
-      console.warn(`[MQTT SERVICE] Track not found or environmentId is empty for track "${team.trackId}". Skipping external sync.`);
+      console.warn(
+        `[MQTT SERVICE] Track not found or environmentId is empty for track "${team.trackId}". Skipping external sync.`,
+      );
       return;
     }
 
@@ -130,10 +173,12 @@ async function syncTeamToExternalSimulator(team) {
         result = await createExternalTeam(code, team.name, track.environmentId);
         syncSuccess = true;
       } catch (err) {
-        if (err.code === 'TEAM_CODE_EXISTS' && attempts < 3) {
-          const suffix = crypto.randomBytes(2).toString('hex').toUpperCase();
+        if (err.code === "TEAM_CODE_EXISTS" && attempts < 3) {
+          const suffix = crypto.randomBytes(2).toString("hex").toUpperCase();
           code = `${baseCode}_${suffix}`;
-          console.log(`[MQTT SERVICE] Team code conflicted. Retrying with new code: ${code}`);
+          console.log(
+            `[MQTT SERVICE] Team code conflicted. Retrying with new code: ${code}`,
+          );
         } else {
           throw err;
         }
@@ -141,77 +186,91 @@ async function syncTeamToExternalSimulator(team) {
     }
 
     if (result) {
-      team.externalTeamId = result.team?.id || '';
+      team.externalTeamId = result.team?.id || "";
       team.externalTeamCode = code;
-      team.accessCode = result.accessCode || '';
-      team.testApiKey = result.testApiKey || '';
-      team.judgeApiKey = result.judgeApiKey || '';
-      team.mqttUsername = result.mqttUsername || '';
-      team.mqttPassword = result.mqttPassword || '';
+      team.accessCode = result.accessCode || "";
+      team.testApiKey = result.testApiKey || "";
+      team.judgeApiKey = result.judgeApiKey || "";
+      team.mqttUsername = result.mqttUsername || "";
+      team.mqttPassword = result.mqttPassword || "";
       team.testTopic = `hackathon/${code.toLowerCase()}/test/telemetry`;
       team.judgeTopic = `hackathon/${code.toLowerCase()}/judge/telemetry`;
       await team.save();
 
-      console.log(`[MQTT SERVICE] Successfully synchronized team "${team.name}" to simulator. Code: ${code}`);
+      console.log(
+        `[MQTT SERVICE] Successfully synchronized team "${team.name}" to simulator. Code: ${code}`,
+      );
     }
   } catch (error) {
-    console.error(`[MQTT SERVICE] Failed to sync team "${team.name}" to external API:`, error.message);
+    console.error(
+      `[MQTT SERVICE] Failed to sync team "${team.name}" to external API:`,
+      error.message,
+    );
   }
 }
-
 
 /**
  * @route   GET /api/teams/check-eligibility
  * @desc    Check if a user is eligible to join a team for a specific event (not already in a team)
  * @access  Private (Authenticated Users)
  */
-router.get('/check-eligibility', authenticateToken, async (req, res) => {
+router.get("/check-eligibility", authenticateToken, async (req, res) => {
   const { email, eventId } = req.query;
 
   if (!email || !eventId) {
-    return res.status(400).json({ message: 'Thiếu thông tin email hoặc eventId.' });
+    return res
+      .status(400)
+      .json({ message: "Thiếu thông tin email hoặc eventId." });
   }
 
   try {
     // Find all active teams (confirmed or pending) in the event
-    const activeTeams = await Team.find({ eventId, status: { $in: ['confirmed', 'pending_confirm'] } });
-    const activeTeamIds = activeTeams.map(t => t._id);
+    const activeTeams = await Team.find({
+      eventId,
+      status: { $in: ["confirmed", "pending_confirm"] },
+    });
+    const activeTeamIds = activeTeams.map((t) => t._id);
 
-    const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
+    const existingUser = await User.findOne({
+      email: email.toLowerCase().trim(),
+    });
     if (!existingUser) {
       return res.json({
         eligible: true,
-        message: 'Hợp lệ (Thành viên chưa có tài khoản, hệ thống sẽ gửi thư mời đăng ký).'
+        message:
+          "Hợp lệ (Thành viên chưa có tài khoản, hệ thống sẽ gửi thư mời đăng ký).",
       });
     }
 
     const memberHasTeam = await TeamMember.findOne({
       teamId: { $in: activeTeamIds },
-      userId: existingUser._id
+      userId: existingUser._id,
     });
 
     if (memberHasTeam) {
       const team = await Team.findById(memberHasTeam.teamId);
-      const teamName = team ? team.name : 'nhóm khác';
+      const teamName = team ? team.name : "nhóm khác";
       return res.json({
         eligible: false,
-        message: `Thành viên này đã đăng ký tham gia đội "${teamName}" trong cuộc thi này.`
+        message: `Thành viên này đã đăng ký tham gia đội "${teamName}" trong cuộc thi này.`,
       });
     }
 
     return res.json({
       eligible: true,
-      message: 'Hợp lệ (Thành viên chưa có nhóm trong cuộc thi này).',
+      message: "Hợp lệ (Thành viên chưa có nhóm trong cuộc thi này).",
       user: {
         fullName: existingUser.fullName,
         studentId: existingUser.studentId,
         githubUsername: existingUser.githubUsername,
-        university: existingUser.university
-      }
+        university: existingUser.university,
+      },
     });
   } catch (err) {
-    console.error('Check eligibility error:', err);
-    return res.status(500).json({ message: 'Lỗi kiểm tra tính hợp lệ của thành viên.' });
+    console.error("Check eligibility error:", err);
+    return res
+      .status(500)
+      .json({ message: "Lỗi kiểm tra tính hợp lệ của thành viên." });
   }
 });
 
@@ -220,33 +279,37 @@ router.get('/check-eligibility', authenticateToken, async (req, res) => {
  * @desc    Check if a team name already exists for a specific event
  * @access  Private (Authenticated Users)
  */
-router.get('/check-name', authenticateToken, async (req, res) => {
+router.get("/check-name", authenticateToken, async (req, res) => {
   const { name, eventId } = req.query;
 
   if (!name || !eventId) {
-    return res.status(400).json({ message: 'Thiếu thông tin tên nhóm hoặc eventId.' });
+    return res
+      .status(400)
+      .json({ message: "Thiếu thông tin tên nhóm hoặc eventId." });
   }
 
   try {
     const existingTeam = await Team.findOne({
       eventId,
-      name: { $regex: new RegExp(`^${name.trim()}$`, 'i') }
+      name: { $regex: new RegExp(`^${name.trim()}$`, "i") },
     });
 
     if (existingTeam) {
       return res.json({
         exists: true,
-        message: 'Tên đội đã tồn tại trong cuộc thi.'
+        message: "Tên đội đã tồn tại trong cuộc thi.",
       });
     }
 
     return res.json({
       exists: false,
-      message: 'Tên nhóm hợp lệ.'
+      message: "Tên nhóm hợp lệ.",
     });
   } catch (err) {
-    console.error('Error checking team name:', err);
-    return res.status(500).json({ message: 'Lỗi hệ thống khi kiểm tra tên nhóm.' });
+    console.error("Error checking team name:", err);
+    return res
+      .status(500)
+      .json({ message: "Lỗi hệ thống khi kiểm tra tên nhóm." });
   }
 });
 
@@ -255,23 +318,45 @@ router.get('/check-name', authenticateToken, async (req, res) => {
  * @desc    Register a team and invite members
  * @access  Private (Participants)
  */
-router.post('/register', authenticateToken, async (req, res) => {
-  const { eventId, trackId, teamName, membersList, leaderInfo, captchaId, captchaValue } = req.body;
+router.post("/register", authenticateToken, async (req, res) => {
+  const {
+    eventId,
+    trackId,
+    teamName,
+    membersList,
+    leaderInfo,
+    captchaId,
+    captchaValue,
+  } = req.body;
 
   if (!eventId || !teamName || !membersList || !Array.isArray(membersList)) {
-    return res.status(400).json({ message: 'Đã xảy ra lỗi trong quá trình đăng ký.' });
+    return res
+      .status(400)
+      .json({ message: "Đã xảy ra lỗi trong quá trình đăng ký." });
+  }
+
+  if (membersList.length < 2) {
+    return res
+      .status(400)
+      .json({ message: "Số lượng thành viên không đủ (tối thiểu 3)." });
   }
 
   // Validate required fields for leader
   if (!leaderInfo || !leaderInfo.fullName || !leaderInfo.githubUsername) {
-    return res.status(400).json({ message: 'Họ tên Trưởng nhóm và GitHub Username là bắt buộc.' });
+    return res
+      .status(400)
+      .json({ message: "Họ tên Trưởng nhóm và GitHub Username là bắt buộc." });
   }
 
   // Validate required fields for members
   for (let i = 0; i < membersList.length; i++) {
     const m = membersList[i];
     if (!m.email || !m.fullName || !m.githubUsername) {
-      return res.status(400).json({ message: `Thành viên thứ ${i + 1} phải điền đầy đủ Email, Họ Tên và GitHub Username.` });
+      return res
+        .status(400)
+        .json({
+          message: `Thành viên thứ ${i + 1} phải điền đầy đủ Email, Họ Tên và GitHub Username.`,
+        });
     }
   }
 
@@ -279,14 +364,20 @@ router.post('/register', authenticateToken, async (req, res) => {
   try {
     // Validate Captcha
     if (!captchaService.verifyCaptcha(captchaId, captchaValue)) {
-      return res.status(400).json({ message: 'Mã xác thực Captcha không chính xác hoặc đã hết hạn.' });
+      return res
+        .status(400)
+        .json({
+          message: "Mã xác thực Captcha không chính xác hoặc đã hết hạn.",
+        });
     }
 
     // Find leader by email if provided, fallback to logged-in user
-    const User = mongoose.model('User');
+    const User = mongoose.model("User");
     let leader = null;
     if (leaderInfo.email) {
-      leader = await User.findOne({ email: leaderInfo.email.toLowerCase().trim() });
+      leader = await User.findOne({
+        email: leaderInfo.email.toLowerCase().trim(),
+      });
     }
     if (!leader) {
       leader = await User.findById(req.user._id);
@@ -295,48 +386,79 @@ router.post('/register', authenticateToken, async (req, res) => {
     if (leader) {
       if (leaderInfo.fullName) leader.fullName = leaderInfo.fullName;
       if (leaderInfo.studentId) leader.studentId = leaderInfo.studentId;
-      if (leaderInfo.githubUsername) leader.githubUsername = leaderInfo.githubUsername;
+      if (leaderInfo.githubUsername)
+        leader.githubUsername = leaderInfo.githubUsername;
       if (leaderInfo.university) leader.university = leaderInfo.university;
       await leader.save();
     } else {
-      return res.status(404).json({ message: 'Không tìm thấy thông tin trưởng nhóm.' });
+      return res
+        .status(404)
+        .json({ message: "Không tìm thấy thông tin trưởng nhóm." });
     }
 
     // 1. Verify Event is active & open for registration
     const event = await Event.findById(eventId);
-    if (!event) return res.status(404).json({ message: 'Không tìm thấy thông tin cuộc thi.' });
-    if (event.status !== 'registration') {
-      return res.status(400).json({ message: 'Cuộc thi hiện không mở đăng ký.' });
+    if (!event)
+      return res
+        .status(404)
+        .json({ message: "Không tìm thấy thông tin cuộc thi." });
+    if (event.status !== "registration") {
+      return res
+        .status(400)
+        .json({ message: "Cuộc thi hiện không mở đăng ký." });
     }
 
     // Check overall event capacity (both confirmed and pending_confirm)
-    const activeTeamsCount = await Team.countDocuments({ eventId, status: { $in: ['confirmed', 'pending_confirm'] } });
+    const activeTeamsCount = await Team.countDocuments({
+      eventId,
+      status: { $in: ["confirmed", "pending_confirm"] },
+    });
     if (event.maxTeams && activeTeamsCount >= event.maxTeams) {
-      return res.status(400).json({ message: 'Cuộc thi đã đạt giới hạn số lượng đội đăng ký dự kiến.' });
+      return res
+        .status(400)
+        .json({
+          message: "Cuộc thi đã đạt giới hạn số lượng đội đăng ký dự kiến.",
+        });
     }
 
     // Check track capacity if trackId is provided
     if (trackId) {
       const track = await Track.findById(trackId);
-      if (!track) return res.status(404).json({ message: 'Bảng đấu không tồn tại.' });
+      if (!track)
+        return res.status(404).json({ message: "Bảng đấu không tồn tại." });
 
-      const trackActiveCount = await Team.countDocuments({ trackId, status: { $in: ['confirmed', 'pending_confirm'] } });
+      const trackActiveCount = await Team.countDocuments({
+        trackId,
+        status: { $in: ["confirmed", "pending_confirm"] },
+      });
       if (track.maxTeams && trackActiveCount >= track.maxTeams) {
-        return res.status(400).json({ message: 'Bảng đấu này đã đạt giới hạn số lượng đội đăng ký.' });
+        return res
+          .status(400)
+          .json({
+            message: "Bảng đấu này đã đạt giới hạn số lượng đội đăng ký.",
+          });
       }
     }
 
     // 2. Validate that none of the members or the leader are already in another team in this event
-    const activeTeams = await Team.find({ eventId, status: { $in: ['confirmed', 'pending_confirm'] } });
-    const activeTeamIds = activeTeams.map(t => t._id);
+    const activeTeams = await Team.find({
+      eventId,
+      status: { $in: ["confirmed", "pending_confirm"] },
+    });
+    const activeTeamIds = activeTeams.map((t) => t._id);
 
     // Check leader
     const leaderHasTeam = await TeamMember.findOne({
       teamId: { $in: activeTeamIds },
-      userId: leader._id
+      userId: leader._id,
     });
     if (leaderHasTeam) {
-      return res.status(400).json({ message: 'Tài khoản trưởng nhóm đã đăng ký tham gia một nhóm khác trong cuộc thi này.' });
+      return res
+        .status(400)
+        .json({
+          message:
+            "Tài khoản trưởng nhóm đã đăng ký tham gia một nhóm khác trong cuộc thi này.",
+        });
     }
 
     // Check members
@@ -348,11 +470,11 @@ router.post('/register', authenticateToken, async (req, res) => {
       if (existingUser) {
         const memberHasTeam = await TeamMember.findOne({
           teamId: { $in: activeTeamIds },
-          userId: existingUser._id
+          userId: existingUser._id,
         });
         if (memberHasTeam) {
           return res.status(400).json({
-            message: `Thành viên với email "${email}" đã đăng ký tham gia một nhóm khác trong cuộc thi này.`
+            message: `Thành viên với email "${email}" đã đăng ký tham gia một nhóm khác trong cuộc thi này.`,
           });
         }
       }
@@ -363,7 +485,9 @@ router.post('/register', authenticateToken, async (req, res) => {
     if (trackId) nameFilter.trackId = trackId;
     const existingTeam = await Team.findOne(nameFilter);
     if (existingTeam) {
-      return res.status(400).json({ message: 'Tên đội đã tồn tại trong cuộc thi.' });
+      return res
+        .status(400)
+        .json({ message: "Tên đội đã tồn tại trong cuộc thi." });
     }
 
     // 3. Create the Team record
@@ -372,7 +496,7 @@ router.post('/register', authenticateToken, async (req, res) => {
       trackId: trackId || undefined,
       leaderId: leader._id,
       name: teamName,
-      status: 'pending_confirm'
+      status: "pending_confirm",
     });
     await team.save();
     createdTeamId = team._id;
@@ -382,9 +506,9 @@ router.post('/register', authenticateToken, async (req, res) => {
       teamId: team._id,
       eventId: team.eventId,
       userId: leader._id,
-      role: 'leader',
-      confirmStatus: 'confirmed',
-      confirmedAt: new Date()
+      role: "leader",
+      confirmStatus: "confirmed",
+      confirmedAt: new Date(),
     });
     await leaderMember.save();
 
@@ -392,37 +516,41 @@ router.post('/register', authenticateToken, async (req, res) => {
     let leaderRoleRecord = await EventRole.findOne({
       userId: leader._id,
       eventId,
-      status: 'active'
+      status: "active",
     });
 
     if (!leaderRoleRecord) {
       const newLeaderRole = new EventRole({
         userId: leader._id,
         eventId,
-        role: 'participant',
-        assignedBy: req.user._id
+        role: "participant",
+        assignedBy: req.user._id,
       });
       await newLeaderRole.save();
     }
 
     // 5. Loop through and invite other members
     for (const memberData of membersList) {
-      const { email, fullName, githubUsername, studentId, university } = memberData;
+      const { email, fullName, githubUsername, studentId, university } =
+        memberData;
       if (!email) continue;
 
       // Find or create User record for member
       let memberUser = await User.findOne({ email: email.toLowerCase() });
       if (!memberUser) {
         // Create user placeholder with random password (must set later)
-        const placeholderPass = crypto.randomBytes(8).toString('hex');
+        const placeholderPass = crypto.randomBytes(8).toString("hex");
         memberUser = new User({
           email: email.toLowerCase(),
-          passwordHash: crypto.createHash('sha256').update(placeholderPass).digest('hex'), // temp hash
-          fullName: fullName || email.split('@')[0],
-          studentId: studentId || '',
-          githubUsername: githubUsername || '',
-          university: university || '',
-          isApproved: true
+          passwordHash: crypto
+            .createHash("sha256")
+            .update(placeholderPass)
+            .digest("hex"), // temp hash
+          fullName: fullName || email.split("@")[0],
+          studentId: studentId || "",
+          githubUsername: githubUsername || "",
+          university: university || "",
+          isApproved: true,
         });
         await memberUser.save();
       } else {
@@ -441,25 +569,25 @@ router.post('/register', authenticateToken, async (req, res) => {
       }
 
       // Generate verification token
-      const token = crypto.randomBytes(32).toString('hex');
+      const token = crypto.randomBytes(32).toString("hex");
       const confirmTokenExpiry = new Date(Date.now() + 3600000 * 48); // 48h expiry
 
       const teamMember = new TeamMember({
         teamId: team._id,
         eventId: team.eventId,
         userId: memberUser._id,
-        role: 'member',
-        confirmStatus: 'pending',
+        role: "member",
+        confirmStatus: "pending",
         confirmTokenHash: token,
-        confirmTokenExpiry
+        confirmTokenExpiry,
       });
       await teamMember.save();
 
       // Send email invitation via job queue (non-blocking, with retry)
-      const inviteLink = `${req.protocol}://${req.get('host')}/api/teams/confirm-invite?token=${token}`;
+      const inviteLink = `${req.protocol}://${req.get("host")}/api/teams/confirm-invite?token=${token}`;
       if (isQueueAvailable()) {
         await addEmailJob({
-          type: 'team_invite',
+          type: "team_invite",
           email: memberUser.email,
           teamName,
           inviteLink,
@@ -467,43 +595,62 @@ router.post('/register', authenticateToken, async (req, res) => {
         // Send In-App Notification via queue
         await addInAppJob({
           userId: memberUser._id.toString(),
-          type: 'team_invite',
-          title: 'Lời mời vào đội',
+          type: "team_invite",
+          title: "Lời mời vào đội",
           body: `Bạn đã được mời vào đội "${teamName}". Hãy kiểm tra email để xác nhận!`,
         });
       } else {
         // Fallback: synchronous (Redis not available)
-        emailService.sendTeamInvitation(memberUser.email, teamName, inviteLink)
-          .catch(err => console.error(`[FALLBACK] Failed to send invitation email to ${memberUser.email}:`, err.message));
-        const Notification = mongoose.model('Notification');
+        emailService
+          .sendTeamInvitation(memberUser.email, teamName, inviteLink)
+          .catch((err) =>
+            console.error(
+              `[FALLBACK] Failed to send invitation email to ${memberUser.email}:`,
+              err.message,
+            ),
+          );
+        const Notification = mongoose.model("Notification");
         await new Notification({
           userId: memberUser._id,
-          type: 'team_invite',
-          title: 'Lời mời vào đội',
+          type: "team_invite",
+          title: "Lời mời vào đội",
           body: `Bạn đã được mời vào đội "${teamName}". Hãy kiểm tra email để xác nhận!`,
-          channel: 'in_app',
-          status: 'sent',
+          channel: "in_app",
+          status: "sent",
         }).save();
       }
     }
 
     // Check if team has any pending members. If none (e.g. registered with no additional members),
     // confirm the team immediately and auto-create repo!
-    const pendingMembers = await TeamMember.countDocuments({ teamId: team._id, confirmStatus: 'pending' });
+    const pendingMembers = await TeamMember.countDocuments({
+      teamId: team._id,
+      confirmStatus: "pending",
+    });
     if (pendingMembers === 0) {
-      team.status = 'confirmed';
+      team.status = "confirmed";
       await team.save();
 
       // Sync team to external simulator API for MQTT keys
       await syncTeamToExternalSimulator(team);
 
-      console.log(`[TEAM] Team "${team.name}" is now FULLY CONFIRMED immediately upon registration! Creating repo...`);
+      console.log(
+        `[TEAM] Team "${team.name}" is now FULLY CONFIRMED immediately upon registration! Creating repo...`,
+      );
 
       // Automatically create Github Repository
       const orgName = event ? event.githubOrgName : undefined;
       const suffix = getSemesterSuffix(event);
-      const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-') + suffix;
-      const gitResult = await githubService.createTeamRepository(slugRepoName, 'private', orgName);
+      const slugRepoName =
+        team.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "-")
+          .replace(/-+/g, "-") + suffix;
+      const gitResult = await githubService.createTeamRepository(
+        slugRepoName,
+        "private",
+        orgName,
+      );
 
       const actualOrgName = gitResult.owner || orgName;
 
@@ -515,53 +662,63 @@ router.post('/register', authenticateToken, async (req, res) => {
         repoName: slugRepoName,
         repoUrl: gitResult.repoUrl,
         githubRepoId: gitResult.githubRepoId,
-        syncStatus: 'not_synced'
+        syncStatus: "not_synced",
       });
       await newRepo.save();
 
       // Invite collaborators (the leader)
       if (req.user.githubUsername) {
-        await githubService.addCollaborator(slugRepoName, req.user.githubUsername, 'push', actualOrgName);
+        await githubService.addCollaborator(
+          slugRepoName,
+          req.user.githubUsername,
+          "push",
+          actualOrgName,
+        );
       }
 
-
-
       return res.status(201).json({
-        message: 'Đăng ký nhóm thành công! Nhóm đã được xác nhận lập tức và khởi tạo kho lưu trữ GitHub.',
+        message:
+          "Đăng ký nhóm thành công! Nhóm đã được xác nhận lập tức và khởi tạo kho lưu trữ GitHub.",
         teamId: team._id,
-        status: 'confirmed',
-        repository: newRepo
+        status: "confirmed",
+        repository: newRepo,
       });
     }
 
     res.status(201).json({
-      message: 'Đăng ký đội thành công! Đã gửi email xác nhận tham gia cho các thành viên.',
+      message:
+        "Đăng ký đội thành công! Đã gửi email xác nhận tham gia cho các thành viên.",
       teamId: team._id,
-      status: team.status
+      status: team.status,
     });
-
   } catch (error) {
-    console.error('Team Registration Error:', error.message);
+    console.error("Team Registration Error:", error.message);
     if (createdTeamId) {
       try {
-        console.log(`[ROLLBACK] Cleaning up team ${createdTeamId} due to registration error...`);
-        const TeamMember = mongoose.model('TeamMember');
-        const Team = mongoose.model('Team');
+        console.log(
+          `[ROLLBACK] Cleaning up team ${createdTeamId} due to registration error...`,
+        );
+        const TeamMember = mongoose.model("TeamMember");
+        const Team = mongoose.model("Team");
         await Team.deleteOne({ _id: createdTeamId });
         await TeamMember.deleteMany({ teamId: createdTeamId });
       } catch (rollbackError) {
-        console.error('[ROLLBACK ERROR] Failed to clean up team registration:', rollbackError.message);
+        console.error(
+          "[ROLLBACK ERROR] Failed to clean up team registration:",
+          rollbackError.message,
+        );
       }
     }
 
     // Xử lý lỗi trùng lặp duy nhất (Race condition / Concurrent registration)
     if (error.code === 11000) {
       return res.status(400).json({
-        message: 'Một hoặc nhiều thành viên (hoặc chính bạn) đã được đăng ký vào một đội khác trong cuộc thi này.'
+        message:
+          "Một hoặc nhiều thành viên (hoặc chính bạn) đã được đăng ký vào một đội khác trong cuộc thi này.",
       });
     }
 
-    res.status(500).json({ message: 'Đăng ký đội thất bại.' });
+    res.status(500).json({ message: "Đăng ký đội thất bại." });
   }
 });
 
@@ -570,10 +727,11 @@ router.post('/register', authenticateToken, async (req, res) => {
  * @desc    Confirm team participation link
  * @access  Public
  */
-router.get('/confirm-invite', async (req, res) => {
+router.get("/confirm-invite", async (req, res) => {
   const { token } = req.query;
 
-  const clientUrl = process.env.CLIENT_URL || 'https://www.seal-hackathon.io.vn';
+  const clientUrl =
+    process.env.CLIENT_URL || "https://www.seal-hackathon.io.vn";
 
   if (!token) {
     return res.status(400).send(`
@@ -615,7 +773,7 @@ router.get('/confirm-invite', async (req, res) => {
 
   try {
     const member = await TeamMember.findOne({
-      confirmTokenHash: token
+      confirmTokenHash: token,
     });
 
     if (!member) {
@@ -657,7 +815,7 @@ router.get('/confirm-invite', async (req, res) => {
     }
 
     // If already confirmed, render success page immediately
-    if (member.confirmStatus === 'confirmed') {
+    if (member.confirmStatus === "confirmed") {
       const team = await Team.findById(member.teamId);
       return res.send(`
         <!DOCTYPE html>
@@ -688,7 +846,7 @@ router.get('/confirm-invite', async (req, res) => {
               </svg>
             </div>
             <h1 class="text-2xl font-extrabold text-white mb-3 uppercase tracking-tight font-mono">ĐÃ XÁC NHẬN THAM GIA</h1>
-            <p class="text-sm text-slate-400 mb-8 font-sans leading-relaxed">Bạn đã xác nhận tham gia đội thi <strong>${team ? team.name : ''}</strong> từ trước. Bạn có thể đóng tab này hoặc nhấn nút bên dưới để quay lại hệ thống.</p>
+            <p class="text-sm text-slate-400 mb-8 font-sans leading-relaxed">Bạn đã xác nhận tham gia đội thi <strong>${team ? team.name : ""}</strong> từ trước. Bạn có thể đóng tab này hoặc nhấn nút bên dưới để quay lại hệ thống.</p>
             <a href="${clientUrl}/team-area" class="inline-block w-full py-3 border border-[#00f0ff] text-[#00f0ff] hover:bg-[#00f0ff] hover:text-[#0a141d] font-mono text-sm font-bold uppercase tracking-wider transition-all duration-300 shadow-[inset_0_0_10px_rgba(0,240,255,0.1)] hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] rounded">QUAY LẠI TRANG ĐỘI THI</a>
           </div>
         </body>
@@ -736,7 +894,7 @@ router.get('/confirm-invite', async (req, res) => {
     }
 
     // Confirm member
-    member.confirmStatus = 'confirmed';
+    member.confirmStatus = "confirmed";
     member.confirmedAt = new Date();
     await member.save();
 
@@ -748,22 +906,24 @@ router.get('/confirm-invite', async (req, res) => {
       let memberRoleRecord = await EventRole.findOne({
         userId: member.userId,
         eventId: team.eventId,
-        status: 'active'
+        status: "active",
       });
 
       if (!memberRoleRecord) {
         const newMemberRole = new EventRole({
           userId: member.userId,
           eventId: team.eventId,
-          role: 'participant',
-          assignedBy: team.leaderId
+          role: "participant",
+          assignedBy: team.leaderId,
         });
         await newMemberRole.save();
       }
     }
 
     const totalMembers = await TeamMember.find({ teamId: team._id });
-    const pendingCount = totalMembers.filter(m => m.confirmStatus !== 'confirmed').length;
+    const pendingCount = totalMembers.filter(
+      (m) => m.confirmStatus !== "confirmed",
+    ).length;
 
     // Notify Leader that a member confirmed
     const user = await User.findById(member.userId);
@@ -774,12 +934,19 @@ router.get('/confirm-invite', async (req, res) => {
         const track = await Track.findById(team.trackId);
         if (track?.roundId) {
           const round = await Round.findById(track.roundId);
-          if (round?.driveFileId && round.startTime && new Date() >= new Date(round.startTime)) {
+          if (
+            round?.driveFileId &&
+            round.startTime &&
+            new Date() >= new Date(round.startTime)
+          ) {
             await ensureUserDriveAccess(round.driveFileId, user.email);
           }
         }
       } catch (driveErr) {
-        console.error('[DRIVE] Re-sync on member confirm failed:', driveErr.message);
+        console.error(
+          "[DRIVE] Re-sync on member confirm failed:",
+          driveErr.message,
+        );
       }
     }
 
@@ -787,43 +954,55 @@ router.get('/confirm-invite', async (req, res) => {
       if (isQueueAvailable()) {
         await addInAppJob({
           userId: team.leaderId.toString(),
-          type: 'member_confirm',
-          title: 'Thành viên đã xác nhận',
-          body: `Thành viên ${user ? user.fullName : 'mới'} đã xác nhận tham gia đội "${team.name}".`,
+          type: "member_confirm",
+          title: "Thành viên đã xác nhận",
+          body: `Thành viên ${user ? user.fullName : "mới"} đã xác nhận tham gia đội "${team.name}".`,
         });
       } else {
         // Fallback: synchronous
-        const Notification = mongoose.model('Notification');
+        const Notification = mongoose.model("Notification");
         await new Notification({
           userId: team.leaderId,
-          type: 'member_confirm',
-          title: 'Thành viên đã xác nhận',
-          body: `Thành viên ${user ? user.fullName : 'mới'} đã xác nhận tham gia đội "${team.name}".`,
-          channel: 'in_app',
-          status: 'sent',
+          type: "member_confirm",
+          title: "Thành viên đã xác nhận",
+          body: `Thành viên ${user ? user.fullName : "mới"} đã xác nhận tham gia đội "${team.name}".`,
+          channel: "in_app",
+          status: "sent",
         }).save();
       }
     }
 
     if (pendingCount === 0) {
       // All confirmed! Promote team status
-      team.status = 'confirmed';
+      team.status = "confirmed";
       await team.save();
 
       // Sync team to external simulator API for MQTT keys
       await syncTeamToExternalSimulator(team);
 
-      console.log(`[TEAM] Team "${team.name}" is now FULLY CONFIRMED! Creating repo...`);
+      console.log(
+        `[TEAM] Team "${team.name}" is now FULLY CONFIRMED! Creating repo...`,
+      );
 
       // 1. Automatically create Github Repository
       const event = await Event.findById(team.eventId);
       const orgName = event ? event.githubOrgName : undefined;
       const suffix = getSemesterSuffix(event);
-      const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-') + suffix;
-      const populatedMembers = await TeamMember.find({ teamId: team._id }).populate('userId');
+      const slugRepoName =
+        team.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "-")
+          .replace(/-+/g, "-") + suffix;
+      const populatedMembers = await TeamMember.find({
+        teamId: team._id,
+      }).populate("userId");
 
       try {
-        const gitResult = await githubService.createTeamRepository(slugRepoName, 'private', orgName);
+        const gitResult = await githubService.createTeamRepository(
+          slugRepoName,
+          "private",
+          orgName,
+        );
 
         const actualOrgName = gitResult.owner || orgName;
 
@@ -835,41 +1014,44 @@ router.get('/confirm-invite', async (req, res) => {
           repoName: slugRepoName,
           repoUrl: gitResult.repoUrl,
           githubRepoId: gitResult.githubRepoId,
-          syncStatus: 'not_synced'
+          syncStatus: "not_synced",
         });
         await newRepo.save();
 
         // 2. Add collaborators
         for (const tm of populatedMembers) {
           if (tm.userId && tm.userId.githubUsername) {
-            await githubService.addCollaborator(slugRepoName, tm.userId.githubUsername, 'push', actualOrgName);
+            await githubService.addCollaborator(
+              slugRepoName,
+              tm.userId.githubUsername,
+              "push",
+              actualOrgName,
+            );
           }
         }
       } catch (gitErr) {
-        console.error('Lỗi tự động tạo repo GitHub:', gitErr.message);
+        console.error("Lỗi tự động tạo repo GitHub:", gitErr.message);
       }
-
-
 
       // Notify all team members that team is confirmed
       for (const tm of populatedMembers) {
         if (isQueueAvailable()) {
           await addInAppJob({
             userId: (tm.userId._id || tm.userId).toString(),
-            type: 'team_ready',
-            title: 'Đội đã sẵn sàng thi đấu',
+            type: "team_ready",
+            title: "Đội đã sẵn sàng thi đấu",
             body: `Tuyệt vời! Tất cả thành viên đội "${team.name}" đã xác nhận. Repository GitHub của bạn là ${slugRepoName}.`,
           });
         } else {
           // Fallback: synchronous
-          const Notification = mongoose.model('Notification');
+          const Notification = mongoose.model("Notification");
           await new Notification({
             userId: tm.userId._id || tm.userId,
-            type: 'team_ready',
-            title: 'Đội đã sẵn sàng thi đấu',
+            type: "team_ready",
+            title: "Đội đã sẵn sàng thi đấu",
             body: `Tuyệt vời! Tất cả thành viên đội "${team.name}" đã xác nhận. Repository GitHub của bạn là ${slugRepoName}.`,
-            channel: 'in_app',
-            status: 'sent',
+            channel: "in_app",
+            status: "sent",
           }).save();
         }
       }
@@ -911,10 +1093,10 @@ router.get('/confirm-invite', async (req, res) => {
       </body>
       </html>
     `);
-
   } catch (error) {
-    console.error('Invite Confirmation Error:', error.message);
-    const clientUrl = process.env.CLIENT_URL || 'https://www.seal-hackathon.io.vn';
+    console.error("Invite Confirmation Error:", error.message);
+    const clientUrl =
+      process.env.CLIENT_URL || "https://www.seal-hackathon.io.vn";
     res.status(500).send(`
       <!DOCTYPE html>
       <html class="dark" lang="vi">
@@ -958,52 +1140,58 @@ router.get('/confirm-invite', async (req, res) => {
  * @desc    Get previous teams the logged in user has participated in
  * @access  Private
  */
-router.get('/history', authenticateToken, async (req, res) => {
+router.get("/history", authenticateToken, async (req, res) => {
   try {
     const memberRecords = await TeamMember.find({
       userId: req.user._id,
-      confirmStatus: 'confirmed'
+      confirmStatus: "confirmed",
     });
 
     if (!memberRecords || memberRecords.length === 0) {
       return res.json([]);
     }
 
-    const teamIds = memberRecords.map(r => r.teamId);
+    const teamIds = memberRecords.map((r) => r.teamId);
 
     const teams = await Team.find({ _id: { $in: teamIds } })
-      .populate('eventId', 'name semester year status')
+      .populate("eventId", "name semester year status")
       .lean();
 
     const teamsWithMembers = [];
 
     for (const team of teams) {
       const allMembers = await TeamMember.find({ teamId: team._id })
-        .populate('userId', 'fullName email studentId githubUsername university')
+        .populate(
+          "userId",
+          "fullName email studentId githubUsername university",
+        )
         .lean();
 
       const otherMembers = allMembers
-        .filter(m => m.userId && m.userId._id.toString() !== req.user._id.toString())
-        .map(m => ({
-          email: m.userId.email || '',
-          fullName: m.userId.fullName || '',
-          githubUsername: m.userId.githubUsername || '',
-          studentId: m.userId.studentId || '',
-          university: m.userId.university || ''
+        .filter(
+          (m) =>
+            m.userId && m.userId._id.toString() !== req.user._id.toString(),
+        )
+        .map((m) => ({
+          email: m.userId.email || "",
+          fullName: m.userId.fullName || "",
+          githubUsername: m.userId.githubUsername || "",
+          studentId: m.userId.studentId || "",
+          university: m.userId.university || "",
         }));
 
       teamsWithMembers.push({
         _id: team._id,
         name: team.name,
         event: team.eventId,
-        members: otherMembers
+        members: otherMembers,
       });
     }
 
     res.json(teamsWithMembers);
   } catch (error) {
-    console.error('Fetch Team History Error:', error.message);
-    res.status(500).json({ message: 'Lỗi hệ thống khi tải lịch sử nhóm.' });
+    console.error("Fetch Team History Error:", error.message);
+    res.status(500).json({ message: "Lỗi hệ thống khi tải lịch sử nhóm." });
   }
 });
 
@@ -1012,11 +1200,18 @@ router.get('/history', authenticateToken, async (req, res) => {
  * @desc    Get logged in user's team details
  * @access  Private
  */
-router.get('/my-team', authenticateToken, async (req, res) => {
+router.get("/my-team", authenticateToken, async (req, res) => {
   try {
-    const memberRecords = await TeamMember.find({ userId: req.user._id, confirmStatus: 'confirmed' });
+    const memberRecords = await TeamMember.find({
+      userId: req.user._id,
+      confirmStatus: "confirmed",
+    });
     if (!memberRecords || memberRecords.length === 0) {
-      return res.status(404).json({ message: 'Bạn hiện không ở trong bất kỳ nhóm nào đã được xác nhận.' });
+      return res
+        .status(404)
+        .json({
+          message: "Bạn hiện không ở trong bất kỳ nhóm nào đã được xác nhận.",
+        });
     }
 
     let team = null;
@@ -1028,18 +1223,26 @@ router.get('/my-team', authenticateToken, async (req, res) => {
     // Find all confirmed records pointing to active teams that actually exist
     for (const record of memberRecords) {
       const foundTeam = await Team.findById(record.teamId)
-        .populate('eventId', 'name semester year status contestStart contestEnd registrationOpen registrationClose seminar commitSyncInterval zaloUrl')
-        .populate('mentorId', 'fullName email')
+        .populate(
+          "eventId",
+          "name semester year status contestStart contestEnd registrationOpen registrationClose seminar commitSyncInterval zaloUrl",
+        )
+        .populate("mentorId", "fullName email")
         .populate({
-          path: 'trackId',
-          select: 'name description startTime endTime roundId environmentId examDriveFileId examDriveFileName examDriveFileUrl isExamManualOpen',
+          path: "trackId",
+          select:
+            "name description startTime endTime roundId environmentId examDriveFileId examDriveFileName examDriveFileUrl isExamManualOpen",
           populate: {
-            path: 'roundId',
-            model: 'Round'
-          }
+            path: "roundId",
+            model: "Round",
+          },
         });
       if (foundTeam) {
-        if (targetEventId && foundTeam.eventId && foundTeam.eventId._id.toString() !== targetEventId) {
+        if (
+          targetEventId &&
+          foundTeam.eventId &&
+          foundTeam.eventId._id.toString() !== targetEventId
+        ) {
           continue;
         }
         // Skip orphan teams whose event has been deleted/removed
@@ -1053,11 +1256,12 @@ router.get('/my-team', authenticateToken, async (req, res) => {
     if (foundTeams.length > 0) {
       // Prioritize teams belonging to events that are NOT completed/cancelled, and whose contestEnd has not passed
       const activeTeams = foundTeams.filter(({ team }) => {
-        const isEnded = team.eventId && (
-          team.eventId.status === 'completed' ||
-          team.eventId.status === 'cancelled' ||
-          (team.eventId.contestEnd && new Date(team.eventId.contestEnd) <= new Date())
-        );
+        const isEnded =
+          team.eventId &&
+          (team.eventId.status === "completed" ||
+            team.eventId.status === "cancelled" ||
+            (team.eventId.contestEnd &&
+              new Date(team.eventId.contestEnd) <= new Date()));
         return !isEnded;
       });
 
@@ -1072,11 +1276,18 @@ router.get('/my-team', authenticateToken, async (req, res) => {
     }
 
     if (!team) {
-      return res.status(404).json({ message: 'Bạn hiện không ở trong bất kỳ nhóm nào đã được xác nhận và đang hoạt động.' });
+      return res
+        .status(404)
+        .json({
+          message:
+            "Bạn hiện không ở trong bất kỳ nhóm nào đã được xác nhận và đang hoạt động.",
+        });
     }
 
-    const members = await TeamMember.find({ teamId: team._id })
-      .populate('userId', 'fullName email studentId githubUsername avatarUrl university');
+    const members = await TeamMember.find({ teamId: team._id }).populate(
+      "userId",
+      "fullName email studentId githubUsername avatarUrl university",
+    );
 
     const repo = await GithubRepository.findOne({ teamId: team._id });
 
@@ -1090,7 +1301,10 @@ router.get('/my-team', authenticateToken, async (req, res) => {
         trackPlain.roundId = sanitizeRoundForParticipant(roundData);
       }
       // Attach per-track exam info — only expose link when exam is open
-      trackPlain.examAccess = sanitizeTrackExamForParticipant(trackPlain, roundData);
+      trackPlain.examAccess = sanitizeTrackExamForParticipant(
+        trackPlain,
+        roundData,
+      );
       // Remove raw exam fields so participant can't extract url directly from track object
       delete trackPlain.examDriveFileId;
       delete trackPlain.examDriveFileUrl;
@@ -1099,33 +1313,41 @@ router.get('/my-team', authenticateToken, async (req, res) => {
     }
 
     // Calculate event rounds and elimination status
-    const Round = mongoose.model('Round');
-    const allRounds = await Round.find({ eventId: team.eventId._id }).sort({ order: 1 });
-    const activeRound = allRounds.find(r => r.status === 'active' || r.status === 'scoring');
+    const Round = mongoose.model("Round");
+    const allRounds = await Round.find({ eventId: team.eventId._id }).sort({
+      order: 1,
+    });
+    const activeRound = allRounds.find(
+      (r) => r.status === "active" || r.status === "scoring",
+    );
 
     let isEliminated = false;
-    let eliminationMessage = '';
+    let eliminationMessage = "";
     let achievedResult = null;
 
-    if (team.status === 'disqualified') {
+    if (team.status === "disqualified") {
       isEliminated = true;
-      eliminationMessage = team.disqualifyReason || 'Đội thi của bạn đã bị loại khỏi cuộc thi.';
+      eliminationMessage =
+        team.disqualifyReason || "Đội thi của bạn đã bị loại khỏi cuộc thi.";
     } else if (trackPlain && trackPlain.roundId) {
       const teamRound = trackPlain.roundId;
-      const hasNextRound = allRounds.some(r => r.order > teamRound.order);
-      if (teamRound.status === 'completed' && hasNextRound) {
+      const hasNextRound = allRounds.some((r) => r.order > teamRound.order);
+      if (teamRound.status === "completed" && hasNextRound) {
         isEliminated = true;
         eliminationMessage = `Đội thi của bạn đã dừng bước tại vòng "${teamRound.name}" và không thể tiến vào vòng kế tiếp.`;
 
         // Fetch ranking/result achieved in this completed round
-        const Ranking = mongoose.model('Ranking');
-        const rankingDoc = await Ranking.findOne({ teamId: team._id, roundId: teamRound._id }).lean();
+        const Ranking = mongoose.model("Ranking");
+        const rankingDoc = await Ranking.findOne({
+          teamId: team._id,
+          roundId: teamRound._id,
+        }).lean();
         if (rankingDoc) {
           achievedResult = {
             score: rankingDoc.finalScore || rankingDoc.averageScore || 0,
             rank: rankingDoc.rank || 0,
             roundName: teamRound.name,
-            trackName: trackPlain.name
+            trackName: trackPlain.name,
           };
         }
       }
@@ -1141,23 +1363,32 @@ router.get('/my-team', authenticateToken, async (req, res) => {
     // Fetch active judge status from simulator
     let isJudgeActive = false;
     if (teamPlain.externalTeamCode) {
-      const { getJudgeActive } = require('./externalTeamService');
+      const { getJudgeActive } = require("./externalTeamService");
       try {
         const activeInfo = await getJudgeActive();
         const info = Array.isArray(activeInfo)
-          ? activeInfo.find(item => item.teamCode === teamPlain.externalTeamCode)
-          : (activeInfo && activeInfo.teamCode === teamPlain.externalTeamCode ? activeInfo : null);
+          ? activeInfo.find(
+              (item) => item.teamCode === teamPlain.externalTeamCode,
+            )
+          : activeInfo && activeInfo.teamCode === teamPlain.externalTeamCode
+            ? activeInfo
+            : null;
         if (info) {
           isJudgeActive = true;
         }
       } catch (err) {
-        console.warn('[SIMULATOR] Failed to fetch active judge status for my-team:', err.message);
+        console.warn(
+          "[SIMULATOR] Failed to fetch active judge status for my-team:",
+          err.message,
+        );
       }
     }
     teamPlain.isJudgeActive = isJudgeActive;
 
     // Fetch available tracks for this event
-    const eventTracks = await Track.find({ eventId: team.eventId._id }).select('name description maxTeams');
+    const eventTracks = await Track.find({ eventId: team.eventId._id }).select(
+      "name description maxTeams",
+    );
 
     // Check if the current user is the leader
     const isLeader = team.leaderId.toString() === req.user._id.toString();
@@ -1167,12 +1398,11 @@ router.get('/my-team', authenticateToken, async (req, res) => {
       members,
       repository: repo,
       tracks: eventTracks,
-      isLeader
+      isLeader,
     });
-
   } catch (error) {
-    console.error('Fetch My Team Error:', error.message);
-    res.status(500).json({ message: 'Lỗi hệ thống khi tải thông tin nhóm.' });
+    console.error("Fetch My Team Error:", error.message);
+    res.status(500).json({ message: "Lỗi hệ thống khi tải thông tin nhóm." });
   }
 });
 
@@ -1181,23 +1411,31 @@ router.get('/my-team', authenticateToken, async (req, res) => {
  * @desc    Update basic team members details by Team Leader
  * @access  Private (Team Leader)
  */
-router.put('/:teamId/basic-info', authenticateToken, async (req, res) => {
+router.put("/:teamId/basic-info", authenticateToken, async (req, res) => {
   const { teamId } = req.params;
   const { members } = req.body;
 
   try {
     const team = await Team.findById(teamId);
     if (!team) {
-      return res.status(404).json({ message: 'Không tìm thấy thông tin đội thi.' });
+      return res
+        .status(404)
+        .json({ message: "Không tìm thấy thông tin đội thi." });
     }
 
     // Auth check: Only leader can update
     if (team.leaderId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Chỉ trưởng nhóm mới có quyền cập nhật thông tin đội thi.' });
+      return res
+        .status(403)
+        .json({
+          message: "Chỉ trưởng nhóm mới có quyền cập nhật thông tin đội thi.",
+        });
     }
 
     if (!Array.isArray(members)) {
-      return res.status(400).json({ message: 'Danh sách thành viên không hợp lệ.' });
+      return res
+        .status(400)
+        .json({ message: "Danh sách thành viên không hợp lệ." });
     }
 
     const errors = [];
@@ -1208,52 +1446,76 @@ router.put('/:teamId/basic-info', authenticateToken, async (req, res) => {
     const payloadEmails = new Set();
 
     // Check registered emails in this event (for new members)
-    const registeredTeams = await Team.find({ eventId: team.eventId, status: { $in: ['confirmed', 'pending_confirm'] } });
-    const registeredTeamIds = registeredTeams.map(t => t._id);
-    const registeredMembers = await TeamMember.find({ teamId: { $in: registeredTeamIds } }).populate('userId', 'email');
-    const registeredEmails = new Set(registeredMembers.map(m => m.userId?.email?.toLowerCase()?.trim()).filter(Boolean));
+    const registeredTeams = await Team.find({
+      eventId: team.eventId,
+      status: { $in: ["confirmed", "pending_confirm"] },
+    });
+    const registeredTeamIds = registeredTeams.map((t) => t._id);
+    const registeredMembers = await TeamMember.find({
+      teamId: { $in: registeredTeamIds },
+    }).populate("userId", "email");
+    const registeredEmails = new Set(
+      registeredMembers
+        .map((m) => m.userId?.email?.toLowerCase()?.trim())
+        .filter(Boolean),
+    );
 
     // Get current members count
     const existingTeamMembers = await TeamMember.find({ teamId });
-    const existingMemberUserIds = new Set(existingTeamMembers.map(tm => tm.userId.toString()));
-    
+    const existingMemberUserIds = new Set(
+      existingTeamMembers.map((tm) => tm.userId.toString()),
+    );
+
     let totalProspectiveMembersCount = existingTeamMembers.length;
 
     for (let idx = 0; idx < members.length; idx++) {
       const m = members[idx];
-      
+
       if (m.isNew) {
         const { email, fullName, githubUsername, studentId, university } = m;
-        const normEmail = String(email || '').trim().toLowerCase();
+        const normEmail = String(email || "")
+          .trim()
+          .toLowerCase();
 
         if (!normEmail) {
           errors.push(`Dòng ${idx + 1}: Email của thành viên mới là bắt buộc.`);
           continue;
         }
         if (!fullName) {
-          errors.push(`Dòng ${idx + 1}: Họ tên của thành viên mới là bắt buộc.`);
+          errors.push(
+            `Dòng ${idx + 1}: Họ tên của thành viên mới là bắt buộc.`,
+          );
           continue;
         }
         if (!githubUsername) {
-          errors.push(`Dòng ${idx + 1}: GitHub Username của thành viên mới là bắt buộc.`);
+          errors.push(
+            `Dòng ${idx + 1}: GitHub Username của thành viên mới là bắt buộc.`,
+          );
           continue;
         }
 
         if (payloadEmails.has(normEmail)) {
-          errors.push(`Thành viên mới với email "${normEmail}" bị trùng lặp trong yêu cầu.`);
+          errors.push(
+            `Thành viên mới với email "${normEmail}" bị trùng lặp trong yêu cầu.`,
+          );
           continue;
         }
         payloadEmails.add(normEmail);
 
         if (registeredEmails.has(normEmail)) {
-          errors.push(`Email "${normEmail}" đã tham gia một nhóm khác trong cuộc thi này.`);
+          errors.push(
+            `Email "${normEmail}" đã tham gia một nhóm khác trong cuộc thi này.`,
+          );
           continue;
         }
 
         // Verify GitHub Username exists
-        const githubExists = await githubService.checkGithubUserExists(githubUsername);
+        const githubExists =
+          await githubService.checkGithubUserExists(githubUsername);
         if (!githubExists) {
-          errors.push(`GitHub Username "${githubUsername}" của thành viên mới "${fullName}" không tồn tại trên GitHub.`);
+          errors.push(
+            `GitHub Username "${githubUsername}" của thành viên mới "${fullName}" không tồn tại trên GitHub.`,
+          );
           continue;
         }
 
@@ -1262,15 +1524,16 @@ router.put('/:teamId/basic-info', authenticateToken, async (req, res) => {
           email: normEmail,
           fullName,
           githubUsername,
-          studentId: studentId || '',
-          university: university || ''
+          studentId: studentId || "",
+          university: university || "",
         });
-
       } else {
         const { userId, fullName, githubUsername, studentId, university } = m;
 
         if (!userId) {
-          errors.push(`Dòng ${idx + 1}: Thiếu userId của thành viên cần cập nhật.`);
+          errors.push(
+            `Dòng ${idx + 1}: Thiếu userId của thành viên cần cập nhật.`,
+          );
           continue;
         }
 
@@ -1289,9 +1552,12 @@ router.put('/:teamId/basic-info', authenticateToken, async (req, res) => {
         }
 
         // Verify GitHub username exists
-        const githubExists = await githubService.checkGithubUserExists(githubUsername);
+        const githubExists =
+          await githubService.checkGithubUserExists(githubUsername);
         if (!githubExists) {
-          errors.push(`GitHub Username "${githubUsername}" của thành viên "${fullName}" không tồn tại trên GitHub.`);
+          errors.push(
+            `GitHub Username "${githubUsername}" của thành viên "${fullName}" không tồn tại trên GitHub.`,
+          );
           continue;
         }
 
@@ -1300,8 +1566,8 @@ router.put('/:teamId/basic-info', authenticateToken, async (req, res) => {
           if (u) {
             u.fullName = fullName;
             u.githubUsername = githubUsername;
-            u.studentId = studentId || '';
-            u.university = university || '';
+            u.studentId = studentId || "";
+            u.university = university || "";
             await u.save();
           }
         });
@@ -1309,13 +1575,15 @@ router.put('/:teamId/basic-info', authenticateToken, async (req, res) => {
     }
 
     if (totalProspectiveMembersCount > 5) {
-      errors.push(`Tổng số lượng thành viên trong đội vượt quá giới hạn (tối đa 5 người).`);
+      errors.push(
+        `Tổng số lượng thành viên trong đội vượt quá giới hạn (tối đa 5 người).`,
+      );
     }
 
     if (errors.length > 0) {
       return res.status(400).json({
-        message: 'Cập nhật thất bại do dữ liệu không hợp lệ.',
-        errors
+        message: "Cập nhật thất bại do dữ liệu không hợp lệ.",
+        errors,
       });
     }
 
@@ -1325,94 +1593,105 @@ router.put('/:teamId/basic-info', authenticateToken, async (req, res) => {
     }
 
     // Invite new members
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
     for (const nMember of newMembersToCreate) {
       let memberUser = await User.findOne({ email: nMember.email });
       if (!memberUser) {
-        const placeholderPass = crypto.randomBytes(8).toString('hex');
+        const placeholderPass = crypto.randomBytes(8).toString("hex");
         memberUser = new User({
           email: nMember.email,
-          passwordHash: crypto.createHash('sha256').update(placeholderPass).digest('hex'),
+          passwordHash: crypto
+            .createHash("sha256")
+            .update(placeholderPass)
+            .digest("hex"),
           fullName: nMember.fullName,
           studentId: nMember.studentId,
           githubUsername: nMember.githubUsername,
           university: nMember.university,
-          isApproved: true
+          isApproved: true,
         });
         await memberUser.save();
       } else {
         if (nMember.fullName) memberUser.fullName = nMember.fullName;
         if (nMember.studentId) memberUser.studentId = nMember.studentId;
-        if (nMember.githubUsername) memberUser.githubUsername = nMember.githubUsername;
+        if (nMember.githubUsername)
+          memberUser.githubUsername = nMember.githubUsername;
         if (nMember.university) memberUser.university = nMember.university;
         await memberUser.save();
       }
 
-      const confirmToken = crypto.randomBytes(32).toString('hex');
+      const confirmToken = crypto.randomBytes(32).toString("hex");
       const confirmTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
       const teamMember = new TeamMember({
         teamId: team._id,
         eventId: team.eventId,
         userId: memberUser._id,
-        role: 'member',
-        confirmStatus: 'pending',
+        role: "member",
+        confirmStatus: "pending",
         confirmTokenHash: confirmToken,
-        confirmTokenExpiry
+        confirmTokenExpiry,
       });
       await teamMember.save();
 
       // Add participant EventRole
       await EventRole.findOneAndUpdate(
-        { userId: memberUser._id, eventId: team.eventId, role: 'participant' },
-        { status: 'active' },
-        { upsert: true, new: true }
+        { userId: memberUser._id, eventId: team.eventId, role: "participant" },
+        { status: "active" },
+        { upsert: true, new: true },
       );
 
       // Send invitation email
-      const inviteLink = `${req.protocol}://${req.get('host')}/api/teams/confirm-invite?token=${confirmToken}&memberId=${teamMember._id}`;
-      emailService.sendTeamInvitation(memberUser.email, team.name, inviteLink)
-        .catch(err => console.error(`[MEMBER ADD] Failed to send invitation to ${memberUser.email}:`, err.message));
+      const inviteLink = `${req.protocol}://${req.get("host")}/api/teams/confirm-invite?token=${confirmToken}&memberId=${teamMember._id}`;
+      emailService
+        .sendTeamInvitation(memberUser.email, team.name, inviteLink)
+        .catch((err) =>
+          console.error(
+            `[MEMBER ADD] Failed to send invitation to ${memberUser.email}:`,
+            err.message,
+          ),
+        );
     }
 
     // Update team status back to pending_confirm if new pending members were added
-    if (newMembersToCreate.length > 0 && team.status === 'confirmed') {
-      team.status = 'pending_confirm';
+    if (newMembersToCreate.length > 0 && team.status === "confirmed") {
+      team.status = "pending_confirm";
       await team.save();
     }
 
-    res.json({ message: 'Cập nhật thông tin và thêm thành viên thành công!' });
+    res.json({ message: "Cập nhật thông tin và thêm thành viên thành công!" });
   } catch (error) {
-    console.error('Update team members basic-info error:', error.message);
-    res.status(500).json({ message: 'Lỗi hệ thống khi cập nhật thông tin thành viên.' });
+    console.error("Update team members basic-info error:", error.message);
+    res
+      .status(500)
+      .json({ message: "Lỗi hệ thống khi cập nhật thông tin thành viên." });
   }
 });
-
-
 
 /**
  * @route   GET /api/teams/user-lookup
  * @desc    Lookup user by email to suggest profile for registration
  * @access  Private (Authenticated users)
  */
-router.get('/user-lookup', authenticateToken, async (req, res) => {
+router.get("/user-lookup", authenticateToken, async (req, res) => {
   const { email } = req.query;
   if (!email) {
-    return res.status(400).json({ message: 'Email là bắt buộc.' });
+    return res.status(400).json({ message: "Email là bắt buộc." });
   }
 
   try {
-    const user = await User.findOne({ email: email.toLowerCase().trim() })
-      .select('fullName studentId githubUsername university');
-    
+    const user = await User.findOne({
+      email: email.toLowerCase().trim(),
+    }).select("fullName studentId githubUsername university");
+
     if (!user) {
-      return res.status(404).json({ message: 'Không tìm thấy người dùng.' });
+      return res.status(404).json({ message: "Không tìm thấy người dùng." });
     }
 
     res.json({ user });
   } catch (error) {
-    console.error('User lookup error:', error.message);
-    res.status(500).json({ message: 'Lỗi hệ thống khi tìm kiếm người dùng.' });
+    console.error("User lookup error:", error.message);
+    res.status(500).json({ message: "Lỗi hệ thống khi tìm kiếm người dùng." });
   }
 });
 
@@ -1421,58 +1700,55 @@ router.get('/user-lookup', authenticateToken, async (req, res) => {
  * @desc    Download Excel template for importing teams
  * @access  Private (Authenticated users)
  */
-router.get('/import-template', authenticateToken, (req, res) => {
+router.get("/import-template", authenticateToken, (req, res) => {
   try {
     const wb = XLSX.utils.book_new();
-    
+
     // Headers
     const headers = [
-      'Tên Đội Ngũ *',
-      'Vai Trò *',
-      'Họ Tên *',
-      'Email *',
-      'GitHub Username *',
-      'MSSV',
-      'Trường Đại Học'
+      "Tên Đội Ngũ *",
+      "Vai Trò *",
+      "Họ Tên *",
+      "Email *",
+      "GitHub Username *",
+      "MSSV",
+      "Trường Đại Học",
     ];
 
     const sampleRows = [
       [
-        'Đội Thi Siêu Cấp',
-        'Trưởng nhóm',
-        req.user.fullName || 'Nguyễn Văn A',
+        "Đội Thi Siêu Cấp",
+        "Trưởng nhóm",
+        req.user.fullName || "Nguyễn Văn A",
         req.user.email,
-        req.user.githubUsername || 'nguyenvana-dev',
-        req.user.studentId || 'SE123456',
-        req.user.university || 'Đại học FPT'
+        req.user.githubUsername || "nguyenvana-dev",
+        req.user.studentId || "SE123456",
+        req.user.university || "Đại học FPT",
       ],
       [
-        '',
-        'Thành viên',
-        'Trần Thị B',
-        'member1@fe.edu.vn',
-        'tranthib-dev',
-        'SE123457',
-        'Đại học FPT'
-      ]
+        "",
+        "Thành viên",
+        "Trần Thị B",
+        "member1@fe.edu.vn",
+        "tranthib-dev",
+        "SE123457",
+        "Đại học FPT",
+      ],
     ];
 
-    const wsData = [
-      headers,
-      ...sampleRows
-    ];
+    const wsData = [headers, ...sampleRows];
 
     const ws = XLSX.utils.aoa_to_sheet(wsData);
 
     // Apply styling to headers
-    const range = XLSX.utils.decode_range(ws['!ref']);
+    const range = XLSX.utils.decode_range(ws["!ref"]);
     for (let c = range.s.c; c <= range.e.c; c++) {
       const cellRef = XLSX.utils.encode_cell({ r: 0, c });
       if (ws[cellRef]) {
         ws[cellRef].s = {
           font: { bold: true, color: { rgb: "FFFFFF" } },
           fill: { fgColor: { rgb: "0F172A" } },
-          alignment: { horizontal: "center", vertical: "center" }
+          alignment: { horizontal: "center", vertical: "center" },
         };
       }
     }
@@ -1482,17 +1758,23 @@ router.get('/import-template', authenticateToken, (req, res) => {
     for (let i = 0; i < headers.length; i++) {
       cols.push({ wch: Math.max(headers[i].length + 4, 18) });
     }
-    ws['!cols'] = cols;
+    ws["!cols"] = cols;
 
-    XLSX.utils.book_append_sheet(wb, ws, 'Template');
-    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    XLSX.utils.book_append_sheet(wb, ws, "Template");
+    const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=Template_Import_Teams.xlsx');
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=Template_Import_Teams.xlsx",
+    );
     res.send(buffer);
   } catch (error) {
-    console.error('Download template error:', error.message);
-    res.status(500).json({ message: 'Lỗi hệ thống khi tải template.' });
+    console.error("Download template error:", error.message);
+    res.status(500).json({ message: "Lỗi hệ thống khi tải template." });
   }
 });
 
@@ -1501,346 +1783,433 @@ router.get('/import-template', authenticateToken, (req, res) => {
  * @desc    Import teams from Excel file
  * @access  Private (Authenticated users)
  */
-router.post('/import', authenticateToken, upload.single('file'), async (req, res) => {
-  const { eventId } = req.body;
+router.post(
+  "/import",
+  authenticateToken,
+  upload.single("file"),
+  async (req, res) => {
+    const { eventId } = req.body;
 
-  if (!eventId) {
-    return res.status(400).json({ message: 'eventId là bắt buộc.' });
-  }
-
-  if (!req.file) {
-    return res.status(400).json({ message: 'Vui lòng upload file Excel (.xlsx).' });
-  }
-
-  let createdTeamIds = [];
-  try {
-    // 1. Verify Event is active & open for registration
-    const event = await Event.findById(eventId);
-    if (!event) return res.status(404).json({ message: 'Không tìm thấy thông tin cuộc thi.' });
-    
-    // Auth check: Is user admin or coordinator?
-    let isCoordinator = req.user.isSystemAdmin;
-    if (!isCoordinator) {
-      const coordinatorRole = await EventRole.findOne({
-        userId: req.user._id,
-        eventId,
-        role: 'coordinator',
-        status: 'active'
-      });
-      isCoordinator = !!coordinatorRole;
+    if (!eventId) {
+      return res.status(400).json({ message: "eventId là bắt buộc." });
     }
 
-    if (event.status !== 'registration' && !isCoordinator) {
-      return res.status(400).json({ message: 'Cuộc thi hiện không mở đăng ký.' });
+    if (!req.file) {
+      return res
+        .status(400)
+        .json({ message: "Vui lòng upload file Excel (.xlsx)." });
     }
 
-    // 2. Parse Excel
-    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    let createdTeamIds = [];
+    try {
+      // 1. Verify Event is active & open for registration
+      const event = await Event.findById(eventId);
+      if (!event)
+        return res
+          .status(404)
+          .json({ message: "Không tìm thấy thông tin cuộc thi." });
 
-    if (rawData.length < 2) {
-      return res.status(400).json({ message: 'File Excel trống hoặc không có dòng dữ liệu.' });
-    }
-
-    const headers = rawData[0];
-    const rows = rawData.slice(1);
-
-    // 3. Dry Run Validation
-    const errors = [];
-    const teamGroups = {}; // teamName -> { leader, members: [], rowNums: [] }
-    const allEmailsInSheet = new Set();
-    const allTeamNamesInSheet = new Set();
-
-    // Check capacity limit
-    const currentActiveTeamsCount = await Team.countDocuments({ eventId, status: { $in: ['confirmed', 'pending_confirm'] } });
-    
-    // Retrieve already registered emails in this event
-    const registeredTeams = await Team.find({ eventId, status: { $in: ['confirmed', 'pending_confirm'] } });
-    const registeredTeamIds = registeredTeams.map(t => t._id);
-    const registeredMembers = await TeamMember.find({ teamId: { $in: registeredTeamIds } }).populate('userId', 'email');
-    const registeredEmails = new Set(registeredMembers.map(m => m.userId?.email?.toLowerCase()?.trim()).filter(Boolean));
-    let currentTeamName = '';
-
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      const rowNum = i + 2; // Row number in Excel sheet
-
-      // Skip fully empty row
-      if (row.every(cell => cell === '')) continue;
-
-      let teamName = String(row[0] || '').trim();
-      if (!teamName) {
-        teamName = currentTeamName;
-      } else {
-        currentTeamName = teamName;
-      }
-
-      const roleStr = String(row[1] || '').trim().toLowerCase();
-      const fullName = String(row[2] || '').trim();
-      const email = String(row[3] || '').trim().toLowerCase();
-      const github = String(row[4] || '').trim();
-      const studentId = String(row[5] || '').trim();
-      const university = normalizeUniversityName(String(row[6] || '').trim());
-
-      if (!teamName) {
-        errors.push(`Dòng ${rowNum}: Tên Đội Ngũ là bắt buộc.`);
-        continue;
-      }
-      if (!roleStr) {
-        errors.push(`Dòng ${rowNum}: Vai Trò là bắt buộc (nhập "Trưởng nhóm" hoặc "Thành viên").`);
-        continue;
-      }
-      if (!fullName) {
-        errors.push(`Dòng ${rowNum}: Họ Tên là bắt buộc.`);
-        continue;
-      }
-      if (!email) {
-        errors.push(`Dòng ${rowNum}: Email là bắt buộc.`);
-        continue;
-      }
-      if (!github) {
-        errors.push(`Dòng ${rowNum}: GitHub Username là bắt buộc.`);
-        continue;
-      }
-
-      // Check if username exists on GitHub
-      const userExists = await githubService.checkGithubUserExists(github);
-      if (!userExists) {
-        errors.push(`Dòng ${rowNum}: GitHub Username "${github}" không tồn tại trên GitHub.`);
-      }
-
-
-
-      const isLeader = roleStr.includes('trưởng') || roleStr.includes('leader');
-
-      // Check email duplicate in sheet
-      if (allEmailsInSheet.has(email)) {
-        errors.push(`Dòng ${rowNum}: Email "${email}" bị trùng lặp trong file Excel.`);
-      }
-      allEmailsInSheet.add(email);
-
-      // Check email duplicate in DB
-      if (registeredEmails.has(email)) {
-        errors.push(`Dòng ${rowNum}: Email "${email}" đã tham gia nhóm khác trong cuộc thi này.`);
-      }
-
-      // Group by teamName
-      if (!teamGroups[teamName]) {
-        teamGroups[teamName] = {
-          leader: null,
-          members: [],
-          rowNums: []
-        };
-      }
-      
-      const memberInfo = {
-        email,
-        fullName,
-        githubUsername: github,
-        studentId,
-        university,
-        rowNum
-      };
-
-      teamGroups[teamName].rowNums.push(rowNum);
-
-      if (isLeader) {
-        if (teamGroups[teamName].leader) {
-          errors.push(`Dòng ${rowNum}: Đội "${teamName}" đã có Trưởng nhóm ở dòng ${teamGroups[teamName].leader.rowNum}. Mỗi đội chỉ được phép có 1 trưởng nhóm.`);
-        } else {
-          teamGroups[teamName].leader = memberInfo;
-        }
-      } else {
-        teamGroups[teamName].members.push(memberInfo);
-      }
-    }
-
-    const teamNames = Object.keys(teamGroups);
-
-    // Limit regular users to 1 team
-    if (!isCoordinator && teamNames.length > 1) {
-      return res.status(403).json({ message: 'Thí sinh chỉ được phép import đăng ký cho đúng 1 đội thi của mình.' });
-    }
-
-    const prospectiveTeamsCount = currentActiveTeamsCount + teamNames.length;
-    if (event.maxTeams && prospectiveTeamsCount > event.maxTeams) {
-      errors.push(`Tổng số lượng đội thi sau khi import (${prospectiveTeamsCount}) vượt quá giới hạn tối đa của cuộc thi (${event.maxTeams}).`);
-    }
-
-    for (const teamName of teamNames) {
-      const group = teamGroups[teamName];
-      
-      // 1. Verify leader exists
-      if (!group.leader) {
-        errors.push(`Đội "${teamName}": Thiếu thông tin Trưởng nhóm (phải có ít nhất 1 dòng khai báo vai trò "Trưởng nhóm").`);
-        continue;
-      }
-
-      // Security check for regular users
-      if (!isCoordinator && group.leader.email !== req.user.email.toLowerCase()) {
-        errors.push(`Đội "${teamName}": Email Trưởng Nhóm (${group.leader.email}) phải trùng khớp với email tài khoản đăng nhập của bạn (${req.user.email}).`);
-      }
-
-      // Check unique name in DB
-      const existingTeam = await Team.findOne({ eventId, name: teamName });
-      if (existingTeam) {
-        errors.push(`Đội "${teamName}": Tên nhóm đã tồn tại trong cuộc thi này.`);
-      }
-
-      // Check member count (e.g. max 4 members plus 1 leader = 5 members total)
-      if (group.members.length > 4) {
-        errors.push(`Đội "${teamName}": Số lượng thành viên phụ vượt quá giới hạn (tối đa 4 thành viên khác ngoài Trưởng nhóm).`);
-      }
-    }
-
-    if (errors.length > 0) {
-      return res.status(400).json({
-        message: 'Import không thành công do lỗi dữ liệu.',
-        errors
-      });
-    }
-
-    // 4. Save to Database
-    const importedTeams = [];
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-
-    for (const teamName of teamNames) {
-      const group = teamGroups[teamName];
-      const { leader, members } = group;
-
-      // Register or update Leader User
-      let leaderUser = await User.findOne({ email: leader.email });
-      if (!leaderUser) {
-        const placeholderPass = crypto.randomBytes(8).toString('hex');
-        leaderUser = new User({
-          email: leader.email,
-          passwordHash: crypto.createHash('sha256').update(placeholderPass).digest('hex'),
-          fullName: leader.fullName,
-          studentId: leader.studentId,
-          githubUsername: leader.githubUsername,
-          university: leader.university,
-          isApproved: true
-        });
-        await leaderUser.save();
-      } else {
-        if (leader.fullName) leaderUser.fullName = leader.fullName;
-        if (leader.studentId) leaderUser.studentId = leader.studentId;
-        if (leader.githubUsername) leaderUser.githubUsername = leader.githubUsername;
-        if (leader.university) leaderUser.university = leader.university;
-        await leaderUser.save();
-      }
-
-      // Create Team
-      const team = new Team({
-        eventId,
-        leaderId: leaderUser._id,
-        name: teamName,
-        status: 'pending_confirm'
-      });
-      await team.save();
-      createdTeamIds.push(team._id);
-
-      // Create Leader TeamMember
-      const leaderMember = new TeamMember({
-        teamId: team._id,
-        eventId: team.eventId,
-        userId: leaderUser._id,
-        role: 'leader',
-        confirmStatus: 'confirmed',
-        confirmedAt: new Date()
-      });
-      await leaderMember.save();
-
-      // Add participant EventRole for Leader
-      await EventRole.findOneAndUpdate(
-        { userId: leaderUser._id, eventId, role: 'participant' },
-        { status: 'active' },
-        { upsert: true, new: true }
-      );
-
-      // Invite other members
-      for (const mData of members) {
-        let memberUser = await User.findOne({ email: mData.email });
-        if (!memberUser) {
-          const placeholderPass = crypto.randomBytes(8).toString('hex');
-          memberUser = new User({
-            email: mData.email,
-            passwordHash: crypto.createHash('sha256').update(placeholderPass).digest('hex'),
-            fullName: mData.fullName,
-            studentId: mData.studentId,
-            githubUsername: mData.githubUsername,
-            university: mData.university,
-            isApproved: true
-          });
-          await memberUser.save();
-        } else {
-          if (mData.fullName) memberUser.fullName = mData.fullName;
-          if (mData.studentId) memberUser.studentId = mData.studentId;
-          if (mData.githubUsername) memberUser.githubUsername = mData.githubUsername;
-          if (mData.university) memberUser.university = mData.university;
-          await memberUser.save();
-        }
-
-        const confirmToken = crypto.randomBytes(32).toString('hex');
-        const confirmTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-        const teamMember = new TeamMember({
-          teamId: team._id,
+      // Auth check: Is user admin or coordinator?
+      let isCoordinator = req.user.isSystemAdmin;
+      if (!isCoordinator) {
+        const coordinatorRole = await EventRole.findOne({
+          userId: req.user._id,
           eventId,
-          userId: memberUser._id,
-          role: 'member',
-          confirmStatus: 'pending',
-          confirmTokenHash: confirmToken,
-          confirmTokenExpiry
+          role: "coordinator",
+          status: "active",
         });
-        await teamMember.save();
+        isCoordinator = !!coordinatorRole;
+      }
 
-        // Add participant EventRole for Member
+      if (event.status !== "registration" && !isCoordinator) {
+        return res
+          .status(400)
+          .json({ message: "Cuộc thi hiện không mở đăng ký." });
+      }
+
+      // 2. Parse Excel
+      const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const rawData = XLSX.utils.sheet_to_json(sheet, {
+        header: 1,
+        defval: "",
+      });
+
+      if (rawData.length < 2) {
+        return res
+          .status(400)
+          .json({ message: "File Excel trống hoặc không có dòng dữ liệu." });
+      }
+
+      const headers = rawData[0];
+      const rows = rawData.slice(1);
+
+      // 3. Dry Run Validation
+      const errors = [];
+      const teamGroups = {}; // teamName -> { leader, members: [], rowNums: [] }
+      const allEmailsInSheet = new Set();
+      const allTeamNamesInSheet = new Set();
+
+      // Check capacity limit
+      const currentActiveTeamsCount = await Team.countDocuments({
+        eventId,
+        status: { $in: ["confirmed", "pending_confirm"] },
+      });
+
+      // Retrieve already registered emails in this event
+      const registeredTeams = await Team.find({
+        eventId,
+        status: { $in: ["confirmed", "pending_confirm"] },
+      });
+      const registeredTeamIds = registeredTeams.map((t) => t._id);
+      const registeredMembers = await TeamMember.find({
+        teamId: { $in: registeredTeamIds },
+      }).populate("userId", "email");
+      const registeredEmails = new Set(
+        registeredMembers
+          .map((m) => m.userId?.email?.toLowerCase()?.trim())
+          .filter(Boolean),
+      );
+      let currentTeamName = "";
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowNum = i + 2; // Row number in Excel sheet
+
+        // Skip fully empty row
+        if (row.every((cell) => cell === "")) continue;
+
+        let teamName = String(row[0] || "").trim();
+        if (!teamName) {
+          teamName = currentTeamName;
+        } else {
+          currentTeamName = teamName;
+        }
+
+        const roleStr = String(row[1] || "")
+          .trim()
+          .toLowerCase();
+        const fullName = String(row[2] || "").trim();
+        const email = String(row[3] || "")
+          .trim()
+          .toLowerCase();
+        const github = String(row[4] || "").trim();
+        const studentId = String(row[5] || "").trim();
+        const university = normalizeUniversityName(String(row[6] || "").trim());
+
+        if (!teamName) {
+          errors.push(`Dòng ${rowNum}: Tên Đội Ngũ là bắt buộc.`);
+          continue;
+        }
+        if (!roleStr) {
+          errors.push(
+            `Dòng ${rowNum}: Vai Trò là bắt buộc (nhập "Trưởng nhóm" hoặc "Thành viên").`,
+          );
+          continue;
+        }
+        if (!fullName) {
+          errors.push(`Dòng ${rowNum}: Họ Tên là bắt buộc.`);
+          continue;
+        }
+        if (!email) {
+          errors.push(`Dòng ${rowNum}: Email là bắt buộc.`);
+          continue;
+        }
+        if (!github) {
+          errors.push(`Dòng ${rowNum}: GitHub Username là bắt buộc.`);
+          continue;
+        }
+
+        // Check if username exists on GitHub
+        const userExists = await githubService.checkGithubUserExists(github);
+        if (!userExists) {
+          errors.push(
+            `Dòng ${rowNum}: GitHub Username "${github}" không tồn tại trên GitHub.`,
+          );
+        }
+
+        const isLeader =
+          roleStr.includes("trưởng") || roleStr.includes("leader");
+
+        // Check email duplicate in sheet
+        if (allEmailsInSheet.has(email)) {
+          errors.push(
+            `Dòng ${rowNum}: Email "${email}" bị trùng lặp trong file Excel.`,
+          );
+        }
+        allEmailsInSheet.add(email);
+
+        // Check email duplicate in DB
+        if (registeredEmails.has(email)) {
+          errors.push(
+            `Dòng ${rowNum}: Email "${email}" đã tham gia nhóm khác trong cuộc thi này.`,
+          );
+        }
+
+        // Group by teamName
+        if (!teamGroups[teamName]) {
+          teamGroups[teamName] = {
+            leader: null,
+            members: [],
+            rowNums: [],
+          };
+        }
+
+        const memberInfo = {
+          email,
+          fullName,
+          githubUsername: github,
+          studentId,
+          university,
+          rowNum,
+        };
+
+        teamGroups[teamName].rowNums.push(rowNum);
+
+        if (isLeader) {
+          if (teamGroups[teamName].leader) {
+            errors.push(
+              `Dòng ${rowNum}: Đội "${teamName}" đã có Trưởng nhóm ở dòng ${teamGroups[teamName].leader.rowNum}. Mỗi đội chỉ được phép có 1 trưởng nhóm.`,
+            );
+          } else {
+            teamGroups[teamName].leader = memberInfo;
+          }
+        } else {
+          teamGroups[teamName].members.push(memberInfo);
+        }
+      }
+
+      const teamNames = Object.keys(teamGroups);
+
+      // Limit regular users to 1 team
+      if (!isCoordinator && teamNames.length > 1) {
+        return res
+          .status(403)
+          .json({
+            message:
+              "Thí sinh chỉ được phép import đăng ký cho đúng 1 đội thi của mình.",
+          });
+      }
+
+      const prospectiveTeamsCount = currentActiveTeamsCount + teamNames.length;
+      if (event.maxTeams && prospectiveTeamsCount > event.maxTeams) {
+        errors.push(
+          `Tổng số lượng đội thi sau khi import (${prospectiveTeamsCount}) vượt quá giới hạn tối đa của cuộc thi (${event.maxTeams}).`,
+        );
+      }
+
+      for (const teamName of teamNames) {
+        const group = teamGroups[teamName];
+
+        // 1. Verify leader exists
+        if (!group.leader) {
+          errors.push(
+            `Đội "${teamName}": Thiếu thông tin Trưởng nhóm (phải có ít nhất 1 dòng khai báo vai trò "Trưởng nhóm").`,
+          );
+          continue;
+        }
+
+        // Security check for regular users
+        if (
+          !isCoordinator &&
+          group.leader.email !== req.user.email.toLowerCase()
+        ) {
+          errors.push(
+            `Đội "${teamName}": Email Trưởng Nhóm (${group.leader.email}) phải trùng khớp với email tài khoản đăng nhập của bạn (${req.user.email}).`,
+          );
+        }
+
+        // Check unique name in DB
+        const existingTeam = await Team.findOne({ eventId, name: teamName });
+        if (existingTeam) {
+          errors.push(
+            `Đội "${teamName}": Tên nhóm đã tồn tại trong cuộc thi này.`,
+          );
+        }
+
+        // Check member count (e.g. max 4 members plus 1 leader = 5 members total)
+        if (group.members.length > 4) {
+          errors.push(
+            `Đội "${teamName}": Số lượng thành viên phụ vượt quá giới hạn (tối đa 4 thành viên khác ngoài Trưởng nhóm).`,
+          );
+        }
+
+        if (group.members.length < 2) {
+          errors.push(`"Số lượng thành viên không đủ (tối thiểu 3).`);
+        }
+      }
+
+      if (errors.length > 0) {
+        return res.status(400).json({
+          message: "Import không thành công do lỗi dữ liệu.",
+          errors,
+        });
+      }
+
+      // 4. Save to Database
+      const importedTeams = [];
+      const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+
+      for (const teamName of teamNames) {
+        const group = teamGroups[teamName];
+        const { leader, members } = group;
+
+        // Register or update Leader User
+        let leaderUser = await User.findOne({ email: leader.email });
+        if (!leaderUser) {
+          const placeholderPass = crypto.randomBytes(8).toString("hex");
+          leaderUser = new User({
+            email: leader.email,
+            passwordHash: crypto
+              .createHash("sha256")
+              .update(placeholderPass)
+              .digest("hex"),
+            fullName: leader.fullName,
+            studentId: leader.studentId,
+            githubUsername: leader.githubUsername,
+            university: leader.university,
+            isApproved: true,
+          });
+          await leaderUser.save();
+        } else {
+          if (leader.fullName) leaderUser.fullName = leader.fullName;
+          if (leader.studentId) leaderUser.studentId = leader.studentId;
+          if (leader.githubUsername)
+            leaderUser.githubUsername = leader.githubUsername;
+          if (leader.university) leaderUser.university = leader.university;
+          await leaderUser.save();
+        }
+
+        // Create Team
+        const team = new Team({
+          eventId,
+          leaderId: leaderUser._id,
+          name: teamName,
+          status: "pending_confirm",
+        });
+        await team.save();
+        createdTeamIds.push(team._id);
+
+        // Create Leader TeamMember
+        const leaderMember = new TeamMember({
+          teamId: team._id,
+          eventId: team.eventId,
+          userId: leaderUser._id,
+          role: "leader",
+          confirmStatus: "confirmed",
+          confirmedAt: new Date(),
+        });
+        await leaderMember.save();
+
+        // Add participant EventRole for Leader
         await EventRole.findOneAndUpdate(
-          { userId: memberUser._id, eventId, role: 'participant' },
-          { status: 'active' },
-          { upsert: true, new: true }
+          { userId: leaderUser._id, eventId, role: "participant" },
+          { status: "active" },
+          { upsert: true, new: true },
         );
 
-        // Send Email Invitation
-        const inviteLink = `${req.protocol}://${req.get('host')}/api/teams/confirm-invite?token=${confirmToken}&memberId=${teamMember._id}`;
-        emailService.sendTeamInvitation(memberUser.email, teamName, inviteLink)
-          .catch(err => console.error(`[IMPORT] Failed to send invitation to ${memberUser.email}:`, err.message));
+        // Invite other members
+        for (const mData of members) {
+          let memberUser = await User.findOne({ email: mData.email });
+          if (!memberUser) {
+            const placeholderPass = crypto.randomBytes(8).toString("hex");
+            memberUser = new User({
+              email: mData.email,
+              passwordHash: crypto
+                .createHash("sha256")
+                .update(placeholderPass)
+                .digest("hex"),
+              fullName: mData.fullName,
+              studentId: mData.studentId,
+              githubUsername: mData.githubUsername,
+              university: mData.university,
+              isApproved: true,
+            });
+            await memberUser.save();
+          } else {
+            if (mData.fullName) memberUser.fullName = mData.fullName;
+            if (mData.studentId) memberUser.studentId = mData.studentId;
+            if (mData.githubUsername)
+              memberUser.githubUsername = mData.githubUsername;
+            if (mData.university) memberUser.university = mData.university;
+            await memberUser.save();
+          }
+
+          const confirmToken = crypto.randomBytes(32).toString("hex");
+          const confirmTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+          const teamMember = new TeamMember({
+            teamId: team._id,
+            eventId,
+            userId: memberUser._id,
+            role: "member",
+            confirmStatus: "pending",
+            confirmTokenHash: confirmToken,
+            confirmTokenExpiry,
+          });
+          await teamMember.save();
+
+          // Add participant EventRole for Member
+          await EventRole.findOneAndUpdate(
+            { userId: memberUser._id, eventId, role: "participant" },
+            { status: "active" },
+            { upsert: true, new: true },
+          );
+
+          // Send Email Invitation
+          const inviteLink = `${req.protocol}://${req.get("host")}/api/teams/confirm-invite?token=${confirmToken}&memberId=${teamMember._id}`;
+          emailService
+            .sendTeamInvitation(memberUser.email, teamName, inviteLink)
+            .catch((err) =>
+              console.error(
+                `[IMPORT] Failed to send invitation to ${memberUser.email}:`,
+                err.message,
+              ),
+            );
+        }
+
+        // If registered with no additional members, auto confirm team
+        const pendingCount = await TeamMember.countDocuments({
+          teamId: team._id,
+          confirmStatus: "pending",
+        });
+        if (pendingCount === 0) {
+          team.status = "confirmed";
+          await team.save();
+        }
+
+        importedTeams.push(team);
       }
 
-      // If registered with no additional members, auto confirm team
-      const pendingCount = await TeamMember.countDocuments({ teamId: team._id, confirmStatus: 'pending' });
-      if (pendingCount === 0) {
-        team.status = 'confirmed';
-        await team.save();
+      res.json({
+        message: `Đã import thành công ${importedTeams.length} đội thi!`,
+        count: importedTeams.length,
+      });
+    } catch (error) {
+      console.error("Import teams error:", error.message);
+      if (createdTeamIds.length > 0) {
+        try {
+          console.log(
+            `[ROLLBACK] Cleaning up ${createdTeamIds.length} teams due to import error...`,
+          );
+          const Team = mongoose.model("Team");
+          const TeamMember = mongoose.model("TeamMember");
+          await Team.deleteMany({ _id: { $in: createdTeamIds } });
+          await TeamMember.deleteMany({ teamId: { $in: createdTeamIds } });
+        } catch (rollbackError) {
+          console.error(
+            "[ROLLBACK ERROR] Failed to clean up imported teams:",
+            rollbackError.message,
+          );
+        }
       }
-
-      importedTeams.push(team);
+      res
+        .status(500)
+        .json({ message: "Lỗi hệ thống khi import danh sách đội thi." });
     }
-
-    res.json({
-      message: `Đã import thành công ${importedTeams.length} đội thi!`,
-      count: importedTeams.length
-    });
-
-  } catch (error) {
-    console.error('Import teams error:', error.message);
-    if (createdTeamIds.length > 0) {
-      try {
-        console.log(`[ROLLBACK] Cleaning up ${createdTeamIds.length} teams due to import error...`);
-        const Team = mongoose.model('Team');
-        const TeamMember = mongoose.model('TeamMember');
-        await Team.deleteMany({ _id: { $in: createdTeamIds } });
-        await TeamMember.deleteMany({ teamId: { $in: createdTeamIds } });
-      } catch (rollbackError) {
-        console.error('[ROLLBACK ERROR] Failed to clean up imported teams:', rollbackError.message);
-      }
-    }
-    res.status(500).json({ message: 'Lỗi hệ thống khi import danh sách đội thi.' });
-  }
-});
+  },
+);
 
 /**
  * @route   GET /api/teams/my-team/exam-access
@@ -1848,51 +2217,67 @@ router.post('/import', authenticateToken, upload.single('file'), async (req, res
  *          Link Drive phải được admin set "Anyone with the link" — không cần OAuth cấp quyền.
  * @access  Private (Confirmed team member)
  */
-router.get('/my-team/exam-access', authenticateToken, async (req, res) => {
+router.get("/my-team/exam-access", authenticateToken, async (req, res) => {
   try {
     const memberRecord = await TeamMember.findOne({
       userId: req.user._id,
-      confirmStatus: 'confirmed'
+      confirmStatus: "confirmed",
     });
 
     if (!memberRecord) {
-      return res.status(403).json({ message: 'Bạn cần là thành viên đã xác nhận của đội để truy cập đề bài.' });
+      return res
+        .status(403)
+        .json({
+          message:
+            "Bạn cần là thành viên đã xác nhận của đội để truy cập đề bài.",
+        });
     }
 
-    const team = await Team.findById(memberRecord.teamId).populate('trackId', 'roundId name examDriveFileId examDriveFileUrl examDriveFileName isExamManualOpen');
-    if (!team || team.status !== 'confirmed') {
-      return res.status(403).json({ message: 'Đội của bạn chưa được xác nhận hoàn tất.' });
+    const team = await Team.findById(memberRecord.teamId).populate(
+      "trackId",
+      "roundId name examDriveFileId examDriveFileUrl examDriveFileName isExamManualOpen",
+    );
+    if (!team || team.status !== "confirmed") {
+      return res
+        .status(403)
+        .json({ message: "Đội của bạn chưa được xác nhận hoàn tất." });
     }
 
     const trackId = team.trackId?._id;
     if (!trackId) {
-      return res.status(404).json({ message: 'Đội chưa được gán bảng đấu.' });
+      return res.status(404).json({ message: "Đội chưa được gán bảng đấu." });
     }
 
     // ── Ưu tiên: kiểm tra link đề riêng của bảng (per-track) ──
     const trackAccess = await canUserAccessTrackExam(req.user._id, trackId);
     if (trackAccess.ok) {
       // Có link per-track → trả về luôn
-      return res.json({ accessUrl: trackAccess.accessUrl, source: 'track' });
+      return res.json({ accessUrl: trackAccess.accessUrl, source: "track" });
     }
 
     // Nếu bảng chưa có link riêng → fallback sang round-level (backward compat)
-    if (trackAccess.reason === 'no_material') {
+    if (trackAccess.reason === "no_material") {
       const roundId = team.trackId?.roundId;
       if (!roundId) {
-        return res.status(404).json({ message: 'Đội chưa được gán vòng thi / bảng đấu.' });
+        return res
+          .status(404)
+          .json({ message: "Đội chưa được gán vòng thi / bảng đấu." });
       }
       const access = await canUserAccessRoundExam(req.user._id, roundId);
       if (!access.ok) {
-        return res.status(403).json({ message: access.message, reason: access.reason });
+        return res
+          .status(403)
+          .json({ message: access.message, reason: access.reason });
       }
-      return res.json({ accessUrl: access.accessUrl, source: 'round' });
+      return res.json({ accessUrl: access.accessUrl, source: "round" });
     }
 
     // Bảng có link nhưng chưa mở
     const access = trackAccess;
     if (!access.ok) {
-      return res.status(403).json({ message: access.message, reason: access.reason });
+      return res
+        .status(403)
+        .json({ message: access.message, reason: access.reason });
     }
 
     // Trả về link Drive trực tiếp — thí sinh click vào là mở được ngay
@@ -1902,34 +2287,41 @@ router.get('/my-team/exam-access', authenticateToken, async (req, res) => {
       fileName: access.round.driveFileName,
       accessUrl,
       roundName: access.round.name,
-      message: 'Đề bài đã sẵn sàng. Nhấn vào link để mở Google Drive.'
+      message: "Đề bài đã sẵn sàng. Nhấn vào link để mở Google Drive.",
     });
   } catch (error) {
-    console.error('Exam Access Error:', error.message);
-    res.status(500).json({ message: 'Lỗi khi mở đề bài.', detail: error.message });
+    console.error("Exam Access Error:", error.message);
+    res
+      .status(500)
+      .json({ message: "Lỗi khi mở đề bài.", detail: error.message });
   }
 });
-
 
 /**
  * @route   POST /api/teams/submit-topic
  * @desc    Submit project topic details (Team Leader only)
  * @access  Private (Team Leader)
  */
-router.post('/submit-topic', authenticateToken, async (req, res) => {
+router.post("/submit-topic", authenticateToken, async (req, res) => {
   const { teamId, title, description, documentationLink } = req.body;
 
   if (!teamId || !title) {
-    return res.status(400).json({ message: 'ID nhóm và tên đề tài là bắt buộc.' });
+    return res
+      .status(400)
+      .json({ message: "ID nhóm và tên đề tài là bắt buộc." });
   }
 
   try {
     const team = await Team.findById(teamId);
-    if (!team) return res.status(404).json({ message: 'Không tìm thấy nhóm.' });
+    if (!team) return res.status(404).json({ message: "Không tìm thấy nhóm." });
 
     // Validate that user is the leader
     if (team.leaderId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Chỉ trưởng nhóm mới có quyền nộp thông tin đề tài.' });
+      return res
+        .status(403)
+        .json({
+          message: "Chỉ trưởng nhóm mới có quyền nộp thông tin đề tài.",
+        });
     }
 
     team.topicSubmission = {
@@ -1937,18 +2329,17 @@ router.post('/submit-topic', authenticateToken, async (req, res) => {
       description,
       documentationLink,
       submittedAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     await team.save();
     res.json({
-      message: 'Đã lưu chi tiết đề tài và đường dẫn thành công!',
-      submission: team.topicSubmission
+      message: "Đã lưu chi tiết đề tài và đường dẫn thành công!",
+      submission: team.topicSubmission,
     });
-
   } catch (error) {
-    console.error('Submit Topic Error:', error.message);
-    res.status(500).json({ message: 'Lỗi hệ thống khi lưu bài nộp.' });
+    console.error("Submit Topic Error:", error.message);
+    res.status(500).json({ message: "Lỗi hệ thống khi lưu bài nộp." });
   }
 });
 
@@ -1957,9 +2348,9 @@ router.post('/submit-topic', authenticateToken, async (req, res) => {
  * @desc    Get all teams in an event
  * @access  Private (Coordinator or Admin)
  */
-router.get('/all/:eventId', authenticateToken, async (req, res) => {
+router.get("/all/:eventId", authenticateToken, async (req, res) => {
   try {
-    const Event = mongoose.model('Event');
+    const Event = mongoose.model("Event");
     const event = await Event.findById(req.params.eventId);
     if (event && event.isArchived) {
       // Allow only System Admin or Coordinator
@@ -1968,13 +2359,17 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
         const coordRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: event._id,
-          role: { $in: ['coordinator', 'admin_view'] },
-          status: 'active'
+          role: { $in: ["coordinator", "admin_view"] },
+          status: "active",
         });
         authorized = !!coordRole;
       }
       if (!authorized) {
-        return res.status(403).json({ message: 'Sự kiện này đã bị ẩn. Bạn không có quyền truy cập.' });
+        return res
+          .status(403)
+          .json({
+            message: "Sự kiện này đã bị ẩn. Bạn không có quyền truy cập.",
+          });
       }
     }
 
@@ -1990,7 +2385,7 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
           userId: req.user._id,
           eventId: req.params.eventId,
           roundId: roundId,
-          status: 'active'
+          status: "active",
         };
         if (roleQuery) {
           criteria.role = roleQuery;
@@ -2002,7 +2397,7 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
         const criteria = {
           userId: req.user._id,
           eventId: req.params.eventId,
-          status: 'active'
+          status: "active",
         };
         if (roleQuery) {
           criteria.role = roleQuery;
@@ -2010,14 +2405,17 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
         userRole = await EventRole.findOne(criteria);
       }
 
-      if (userRole && userRole.role === 'mentor') {
-        const activeRound = await Round.findOne({ eventId: req.params.eventId, status: 'active' });
+      if (userRole && userRole.role === "mentor") {
+        const activeRound = await Round.findOne({
+          eventId: req.params.eventId,
+          status: "active",
+        });
 
         const mentorRoles = await EventRole.find({
           userId: req.user._id,
           eventId: req.params.eventId,
-          role: 'mentor',
-          status: 'active'
+          role: "mentor",
+          status: "active",
         });
 
         const activeRoundMentorRoles = [];
@@ -2025,7 +2423,10 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
           for (const role of mentorRoles) {
             if (role.trackId) {
               const track = await Track.findById(role.trackId);
-              if (track && track.roundId.toString() === activeRound._id.toString()) {
+              if (
+                track &&
+                track.roundId.toString() === activeRound._id.toString()
+              ) {
                 activeRoundMentorRoles.push(role);
               }
             } else {
@@ -2037,23 +2438,35 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
         }
 
         if (activeRound && activeRoundMentorRoles.length === 0) {
-          return res.status(403).json({ message: 'Bạn không được phân công cố vấn ở vòng thi này.' });
+          return res
+            .status(403)
+            .json({
+              message: "Bạn không được phân công cố vấn ở vòng thi này.",
+            });
         }
 
-        const trackIds = activeRoundMentorRoles.map(r => r.trackId).filter(id => id !== null && id !== undefined);
+        const trackIds = activeRoundMentorRoles
+          .map((r) => r.trackId)
+          .filter((id) => id !== null && id !== undefined);
 
         if (trackIds.length > 0) {
           query.trackId = { $in: trackIds };
         } else {
           query.mentorId = req.user._id;
         }
-      } else if (userRole && userRole.role === 'judge') {
+      } else if (userRole && userRole.role === "judge") {
         const roundId = req.query.roundId;
-        
+
         // 1. Resolve effective round (use active round if not queried)
         let effectiveRoundId = roundId;
-        if (!effectiveRoundId || !mongoose.Types.ObjectId.isValid(effectiveRoundId)) {
-          const activeRound = await Round.findOne({ eventId: req.params.eventId, status: 'active' });
+        if (
+          !effectiveRoundId ||
+          !mongoose.Types.ObjectId.isValid(effectiveRoundId)
+        ) {
+          const activeRound = await Round.findOne({
+            eventId: req.params.eventId,
+            status: "active",
+          });
           if (activeRound) {
             effectiveRoundId = activeRound._id;
           }
@@ -2063,29 +2476,44 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
         const judgeRoles = await EventRole.find({
           userId: req.user._id,
           eventId: req.params.eventId,
-          role: 'judge',
-          status: 'active'
+          role: "judge",
+          status: "active",
         });
 
         // 3. Find the role assigned to the track of the effective round
         let assignedRole = null;
-        if (effectiveRoundId && mongoose.Types.ObjectId.isValid(effectiveRoundId)) {
-          const TrackModel = mongoose.model('Track');
-          const roundTracks = await TrackModel.find({ roundId: effectiveRoundId });
-          const roundTrackIds = roundTracks.map(t => t._id.toString());
-          assignedRole = judgeRoles.find(role => role.trackId && roundTrackIds.includes(role.trackId.toString()));
+        if (
+          effectiveRoundId &&
+          mongoose.Types.ObjectId.isValid(effectiveRoundId)
+        ) {
+          const TrackModel = mongoose.model("Track");
+          const roundTracks = await TrackModel.find({
+            roundId: effectiveRoundId,
+          });
+          const roundTrackIds = roundTracks.map((t) => t._id.toString());
+          assignedRole = judgeRoles.find(
+            (role) =>
+              role.trackId && roundTrackIds.includes(role.trackId.toString()),
+          );
         }
 
         // 4. Fallback: if no role is matched for the effective round, take the first role with a trackId
         if (!assignedRole) {
-          assignedRole = judgeRoles.find(role => role.trackId);
+          assignedRole = judgeRoles.find((role) => role.trackId);
         }
 
         let isFinalRound = false;
-        if (effectiveRoundId && mongoose.Types.ObjectId.isValid(effectiveRoundId)) {
-          const RoundModel = mongoose.model('Round');
+        if (
+          effectiveRoundId &&
+          mongoose.Types.ObjectId.isValid(effectiveRoundId)
+        ) {
+          const RoundModel = mongoose.model("Round");
           const roundObj = await RoundModel.findById(effectiveRoundId);
-          if (roundObj && (roundObj.name.toLowerCase().includes('chung kết') || roundObj.advanceTopN === 0)) {
+          if (
+            roundObj &&
+            (roundObj.name.toLowerCase().includes("chung kết") ||
+              roundObj.advanceTopN === 0)
+          ) {
             isFinalRound = true;
           }
         }
@@ -2095,17 +2523,23 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
         } else {
           if (effectiveRoundId) {
             const roundDoc = await Round.findById(effectiveRoundId);
-            if (roundDoc && roundDoc.status === 'completed') {
+            if (roundDoc && roundDoc.status === "completed") {
               // Hide all teams from judges if the round is already locked/completed
               return res.json([]);
             }
           }
 
-          const trackIdToUse = assignedRole ? assignedRole.trackId : userRole.trackId;
+          const trackIdToUse = assignedRole
+            ? assignedRole.trackId
+            : userRole.trackId;
 
           if (trackIdToUse) {
             const track = await Track.findById(trackIdToUse);
-            if (track && effectiveRoundId && track.roundId.toString() !== effectiveRoundId.toString()) {
+            if (
+              track &&
+              effectiveRoundId &&
+              track.roundId.toString() !== effectiveRoundId.toString()
+            ) {
               // Queried/active round does not match the judge's assigned track's round
               return res.json([]);
             }
@@ -2115,11 +2549,11 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
           }
         }
       } else if (!userRole) {
-        let msg = 'Bạn không có quyền truy cập thông tin cuộc thi này.';
-        if (roleQuery === 'mentor') {
-          msg = 'Bạn không được phân công cố vấn ở cuộc thi này.';
-        } else if (roleQuery === 'judge') {
-          msg = 'Bạn không được phân công chấm điểm ở cuộc thi này.';
+        let msg = "Bạn không có quyền truy cập thông tin cuộc thi này.";
+        if (roleQuery === "mentor") {
+          msg = "Bạn không được phân công cố vấn ở cuộc thi này.";
+        } else if (roleQuery === "judge") {
+          msg = "Bạn không được phân công chấm điểm ở cuộc thi này.";
         }
         return res.status(403).json({ message: msg });
       }
@@ -2131,17 +2565,20 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
       const coordRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: req.params.eventId,
-        role: { $in: ['coordinator', 'admin_view'] },
-        status: 'active'
+        role: { $in: ["coordinator", "admin_view"] },
+        status: "active",
       });
       isCoordinator = !!coordRole;
     }
 
     // Support historical and current track/round query matching
-    const Ranking = mongoose.model('Ranking');
+    const Ranking = mongoose.model("Ranking");
     let effectiveRoundIdForRanking = req.query.roundId;
     if (!effectiveRoundIdForRanking) {
-      const activeRound = await Round.findOne({ eventId: req.params.eventId, status: 'active' });
+      const activeRound = await Round.findOne({
+        eventId: req.params.eventId,
+        status: "active",
+      });
       if (activeRound) {
         effectiveRoundIdForRanking = activeRound._id;
       }
@@ -2150,59 +2587,68 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
     let teamIdsFromRankings = [];
     if (query.trackId) {
       const rankings = await Ranking.find({ trackId: query.trackId });
-      teamIdsFromRankings = rankings.map(r => r.teamId);
+      teamIdsFromRankings = rankings.map((r) => r.teamId);
     } else if (effectiveRoundIdForRanking) {
-      const rankings = await Ranking.find({ roundId: effectiveRoundIdForRanking });
-      teamIdsFromRankings = rankings.map(r => r.teamId);
+      const rankings = await Ranking.find({
+        roundId: effectiveRoundIdForRanking,
+      });
+      teamIdsFromRankings = rankings.map((r) => r.teamId);
     }
 
     let finalQuery = { ...query };
     const isFilterRequested = !!req.query.roundId || !!req.query.trackId;
 
-    // Chỉ áp dụng bộ lọc giới hạn vòng đấu/bảng đấu nếu người dùng KHÔNG phải Admin/BTC, 
+    // Chỉ áp dụng bộ lọc giới hạn vòng đấu/bảng đấu nếu người dùng KHÔNG phải Admin/BTC,
     // HOẶC nếu họ chủ động truyền tham số bộ lọc (roundId/trackId) từ giao diện.
     if (isFilterRequested || !isCoordinator) {
       if (query.trackId) {
         delete finalQuery.trackId;
         finalQuery.$or = [
           { trackId: query.trackId },
-          { _id: { $in: teamIdsFromRankings } }
+          { _id: { $in: teamIdsFromRankings } },
         ];
       } else if (effectiveRoundIdForRanking) {
-        const TrackModel = mongoose.model('Track');
-        const roundTracks = await TrackModel.find({ roundId: effectiveRoundIdForRanking });
-        const roundTrackIds = roundTracks.map(t => t._id);
+        const TrackModel = mongoose.model("Track");
+        const roundTracks = await TrackModel.find({
+          roundId: effectiveRoundIdForRanking,
+        });
+        const roundTrackIds = roundTracks.map((t) => t._id);
 
         finalQuery.$or = [
           { currentRoundId: effectiveRoundIdForRanking },
           { trackId: { $in: roundTrackIds } },
-          { _id: { $in: teamIdsFromRankings } }
+          { _id: { $in: teamIdsFromRankings } },
         ];
       }
     }
 
     const teams = await Team.find(finalQuery)
-      .populate('trackId', 'name')
-      .populate('currentRoundId', 'name order status')
-      .populate('leaderId', 'fullName email')
-      .populate('mentorId', 'fullName email');
+      .populate("trackId", "name")
+      .populate("currentRoundId", "name order status")
+      .populate("leaderId", "fullName email")
+      .populate("mentorId", "fullName email");
 
-    const detailedTeams = await Promise.all(teams.map(async (t) => {
-      const members = await TeamMember.find({ teamId: t._id }).populate('userId', 'fullName email studentId university githubUsername confirmStatus');
-      const repo = await GithubRepository.findOne({ teamId: t._id });
-      const rankings = await Ranking.find({ teamId: t._id }).lean();
-      return {
-        ...t.toObject(),
-        members,
-        repository: repo,
-        rankings: rankings || []
-      };
-    }));
+    const detailedTeams = await Promise.all(
+      teams.map(async (t) => {
+        const members = await TeamMember.find({ teamId: t._id }).populate(
+          "userId",
+          "fullName email studentId university githubUsername confirmStatus",
+        );
+        const repo = await GithubRepository.findOne({ teamId: t._id });
+        const rankings = await Ranking.find({ teamId: t._id }).lean();
+        return {
+          ...t.toObject(),
+          members,
+          repository: repo,
+          rankings: rankings || [],
+        };
+      }),
+    );
 
     res.json(detailedTeams);
   } catch (error) {
-    console.error('Get All Teams Error:', error.message);
-    res.status(500).json({ message: 'Lỗi hệ thống khi tải danh sách nhóm.' });
+    console.error("Get All Teams Error:", error.message);
+    res.status(500).json({ message: "Lỗi hệ thống khi tải danh sách nhóm." });
   }
 });
 
@@ -2211,22 +2657,24 @@ router.get('/all/:eventId', authenticateToken, async (req, res) => {
  * @desc    Get team by ID with event, members, and repository details
  * @access  Private (Coordinator, Judge, or Admin)
  */
-router.get('/:teamId', authenticateToken, async (req, res) => {
+router.get("/:teamId", authenticateToken, async (req, res) => {
   try {
     const team = await Team.findById(req.params.teamId)
       .populate({
-        path: 'trackId',
-        select: 'name description roundId attachments environmentId examDriveFileId examDriveFileUrl examDriveFileName isExamManualOpen',
+        path: "trackId",
+        select:
+          "name description roundId attachments environmentId examDriveFileId examDriveFileUrl examDriveFileName isExamManualOpen",
         populate: {
-          path: 'roundId',
-          select: 'name driveFileName driveFileId driveFileUrl startTime advanceTopN'
-        }
+          path: "roundId",
+          select:
+            "name driveFileName driveFileId driveFileUrl startTime advanceTopN",
+        },
       })
-      .populate('leaderId', 'fullName email')
-      .populate('eventId', 'name status isArchived');
+      .populate("leaderId", "fullName email")
+      .populate("eventId", "name status isArchived");
 
     if (!team) {
-      return res.status(404).json({ message: 'Không tìm thấy đội thi.' });
+      return res.status(404).json({ message: "Không tìm thấy đội thi." });
     }
 
     // Block non-coordinators/non-admins if event is archived
@@ -2236,13 +2684,18 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
         const coordRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: team.eventId._id,
-          role: { $in: ['coordinator', 'admin_view'] },
-          status: 'active'
+          role: { $in: ["coordinator", "admin_view"] },
+          status: "active",
         });
         authorized = !!coordRole;
       }
       if (!authorized) {
-        return res.status(403).json({ message: 'Sự kiện của đội thi này đã bị ẩn. Bạn không có quyền truy cập.' });
+        return res
+          .status(403)
+          .json({
+            message:
+              "Sự kiện của đội thi này đã bị ẩn. Bạn không có quyền truy cập.",
+          });
       }
     }
 
@@ -2251,26 +2704,36 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
       const userRoles = await EventRole.find({
         userId: req.user._id,
         eventId: team.eventId,
-        status: 'active'
+        status: "active",
       });
 
       if (userRoles.length === 0) {
-        return res.status(403).json({ message: 'Bạn không có quyền truy cập thông tin của đội thi này.' });
+        return res
+          .status(403)
+          .json({
+            message: "Bạn không có quyền truy cập thông tin của đội thi này.",
+          });
       }
 
-      const activeRound = await Round.findOne({ eventId: team.eventId, status: 'active' });
+      const activeRound = await Round.findOne({
+        eventId: team.eventId,
+        status: "active",
+      });
       let isAuthorized = false;
 
       for (const roleObj of userRoles) {
-        if (roleObj.role === 'coordinator' || roleObj.role === 'admin_view') {
+        if (roleObj.role === "coordinator" || roleObj.role === "admin_view") {
           isAuthorized = true;
           break;
         }
 
-        if (roleObj.role === 'judge') {
+        if (roleObj.role === "judge") {
           if (roleObj.trackId && activeRound) {
             const track = await Track.findById(roleObj.trackId);
-            if (track && track.roundId.toString() !== activeRound._id.toString()) {
+            if (
+              track &&
+              track.roundId.toString() !== activeRound._id.toString()
+            ) {
               continue; // Skip role if it belongs to a different round
             }
           }
@@ -2278,7 +2741,10 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
           let isFinalRound = false;
           if (team.trackId && team.trackId.roundId) {
             const r = team.trackId.roundId;
-            if (r.name.toLowerCase().includes('chung kết') || r.advanceTopN === 0) {
+            if (
+              r.name.toLowerCase().includes("chung kết") ||
+              r.advanceTopN === 0
+            ) {
               isFinalRound = true;
             }
           }
@@ -2286,22 +2752,34 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
             isAuthorized = true;
             break;
           }
-          if (roleObj.trackId && team.trackId && roleObj.trackId.toString() === team.trackId._id.toString()) {
+          if (
+            roleObj.trackId &&
+            team.trackId &&
+            roleObj.trackId.toString() === team.trackId._id.toString()
+          ) {
             isAuthorized = true;
             break;
           }
         }
 
-        if (roleObj.role === 'mentor') {
+        if (roleObj.role === "mentor") {
           if (roleObj.trackId && activeRound) {
             const track = await Track.findById(roleObj.trackId);
-            if (track && track.roundId.toString() !== activeRound._id.toString()) {
+            if (
+              track &&
+              track.roundId.toString() !== activeRound._id.toString()
+            ) {
               continue; // Skip role if it belongs to a different round
             }
           }
 
-          const isTeamMentor = team.mentorId && team.mentorId.toString() === req.user._id.toString();
-          const isTrackMatch = roleObj.trackId && team.trackId && roleObj.trackId.toString() === team.trackId._id.toString();
+          const isTeamMentor =
+            team.mentorId &&
+            team.mentorId.toString() === req.user._id.toString();
+          const isTrackMatch =
+            roleObj.trackId &&
+            team.trackId &&
+            roleObj.trackId.toString() === team.trackId._id.toString();
           if (isTeamMentor || isTrackMatch) {
             isAuthorized = true;
             break;
@@ -2310,12 +2788,19 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
       }
 
       if (!isAuthorized) {
-        return res.status(403).json({ message: 'Bạn không có quyền truy cập thông tin của đội thi thuộc bảng đấu khác.' });
+        return res
+          .status(403)
+          .json({
+            message:
+              "Bạn không có quyền truy cập thông tin của đội thi thuộc bảng đấu khác.",
+          });
       }
     }
 
-    const members = await TeamMember.find({ teamId: team._id })
-      .populate('userId', 'fullName email studentId university githubUsername confirmStatus');
+    const members = await TeamMember.find({ teamId: team._id }).populate(
+      "userId",
+      "fullName email studentId university githubUsername confirmStatus",
+    );
 
     const repo = await GithubRepository.findOne({ teamId: team._id });
 
@@ -2325,27 +2810,35 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
       const r = teamPlain.trackId.roundId;
       teamPlain.trackId.roundId = {
         ...r,
-        hasExamMaterial: !!(r.driveFileId || r.driveFileUrl)
+        hasExamMaterial: !!(r.driveFileId || r.driveFileUrl),
       };
     }
 
     // Fetch environment code and active judge status if team has external code
     if (team.externalTeamCode) {
-      const { getJudgeActive, getEnvironment } = require('./externalTeamService');
+      const {
+        getJudgeActive,
+        getEnvironment,
+      } = require("./externalTeamService");
 
       let isJudgeActive = false;
-      let currentScenario = 'NORMAL';
+      let currentScenario = "NORMAL";
       try {
         const activeInfo = await getJudgeActive();
         const info = Array.isArray(activeInfo)
-          ? activeInfo.find(item => item.teamCode === team.externalTeamCode)
-          : (activeInfo && activeInfo.teamCode === team.externalTeamCode ? activeInfo : null);
+          ? activeInfo.find((item) => item.teamCode === team.externalTeamCode)
+          : activeInfo && activeInfo.teamCode === team.externalTeamCode
+            ? activeInfo
+            : null;
         if (info) {
           isJudgeActive = true;
           currentScenario = info.scenario;
         }
       } catch (err) {
-        console.warn('[SIMULATOR] Failed to fetch active judge status:', err.message);
+        console.warn(
+          "[SIMULATOR] Failed to fetch active judge status:",
+          err.message,
+        );
       }
       teamPlain.isJudgeActive = isJudgeActive;
       teamPlain.currentScenario = currentScenario;
@@ -2355,7 +2848,10 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
           const envInfo = await getEnvironment(team.trackId.environmentId);
           teamPlain.environmentCode = envInfo.code;
         } catch (err) {
-          console.warn('[SIMULATOR] Failed to fetch environment code:', err.message);
+          console.warn(
+            "[SIMULATOR] Failed to fetch environment code:",
+            err.message,
+          );
         }
       }
     }
@@ -2363,16 +2859,16 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
     const responseData = {
       ...teamPlain,
       members,
-      repository: repo
+      repository: repo,
     };
 
     res.json({
       ...responseData,
-      team: responseData
+      team: responseData,
     });
   } catch (error) {
-    console.error('Get Team By ID Error:', error.message);
-    res.status(500).json({ message: 'Lỗi hệ thống khi tải thông tin nhóm.' });
+    console.error("Get Team By ID Error:", error.message);
+    res.status(500).json({ message: "Lỗi hệ thống khi tải thông tin nhóm." });
   }
 });
 
@@ -2381,38 +2877,51 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
  * @desc    Assign a team to a track (specific or random) and provision GitHub Repo
  * @access  Private (Coordinator or Admin)
  */
-router.put('/:teamId/assign-track', authenticateToken, async (req, res) => {
+router.put("/:teamId/assign-track", authenticateToken, async (req, res) => {
   const { teamId } = req.params;
   const { trackId } = req.body; // can be a trackId or 'random'
 
   try {
     const team = await Team.findById(teamId);
-    if (!team) return res.status(404).json({ message: 'Không tìm thấy đội thi.' });
+    if (!team)
+      return res.status(404).json({ message: "Không tìm thấy đội thi." });
 
     // Auth check
     if (!req.user.isSystemAdmin) {
       const coordinatorRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: team.eventId,
-        role: 'coordinator',
-        status: 'active'
+        role: "coordinator",
+        status: "active",
       });
-      if (!coordinatorRole) return res.status(403).json({ message: 'Không có quyền truy cập. Yêu cầu vai trò Điều phối viên hoặc Quản trị viên.' });
+      if (!coordinatorRole)
+        return res
+          .status(403)
+          .json({
+            message:
+              "Không có quyền truy cập. Yêu cầu vai trò Điều phối viên hoặc Quản trị viên.",
+          });
     }
 
     let targetTrackId = trackId;
 
-    if (trackId === 'random') {
+    if (trackId === "random") {
       const tracks = await Track.find({ eventId: team.eventId });
       if (tracks.length === 0) {
-        return res.status(400).json({ message: 'Sự kiện chưa có bảng đấu nào. Vui lòng tạo bảng đấu trước.' });
+        return res
+          .status(400)
+          .json({
+            message:
+              "Sự kiện chưa có bảng đấu nào. Vui lòng tạo bảng đấu trước.",
+          });
       }
       const randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
       targetTrackId = randomTrack._id;
     }
 
     const track = await Track.findById(targetTrackId);
-    if (!track) return res.status(404).json({ message: 'Bảng đấu không tồn tại.' });
+    if (!track)
+      return res.status(404).json({ message: "Bảng đấu không tồn tại." });
 
     const event = await Event.findById(team.eventId);
     const orgName = event ? event.githubOrgName : undefined;
@@ -2421,17 +2930,21 @@ router.put('/:teamId/assign-track', authenticateToken, async (req, res) => {
     await team.save();
 
     // Sync team to external simulator if confirmed
-    if (team.status === 'confirmed') {
+    if (team.status === "confirmed") {
       try {
         await syncTeamToExternalSimulator(team);
       } catch (syncErr) {
-        console.error('[ASSIGN TRACK] Simulator sync failed:', syncErr.message);
+        console.error("[ASSIGN TRACK] Simulator sync failed:", syncErr.message);
       }
     }
 
     // Trigger GitHub Repo creation in the background
     const suffix = getSemesterSuffix(event);
-    const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-') + suffix;
+    const slugRepoName =
+      team.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "-")
+        .replace(/-+/g, "-") + suffix;
 
     // Check if repo already exists for this team
     const existingRepo = await GithubRepository.findOne({ teamId: team._id });
@@ -2439,7 +2952,8 @@ router.put('/:teamId/assign-track', authenticateToken, async (req, res) => {
       existingRepo.trackId = track._id;
       await existingRepo.save();
     } else {
-      githubService.createTeamRepository(slugRepoName, 'private', orgName)
+      githubService
+        .createTeamRepository(slugRepoName, "private", orgName)
         .then(async (gitResult) => {
           const actualOrgName = gitResult.owner || orgName;
 
@@ -2451,31 +2965,43 @@ router.put('/:teamId/assign-track', authenticateToken, async (req, res) => {
             repoName: slugRepoName,
             repoUrl: gitResult.repoUrl,
             githubRepoId: gitResult.githubRepoId,
-            syncStatus: 'not_synced'
+            syncStatus: "not_synced",
           });
           await newRepo.save();
 
-          const populatedMembers = await TeamMember.find({ teamId: team._id }).populate('userId');
+          const populatedMembers = await TeamMember.find({
+            teamId: team._id,
+          }).populate("userId");
           for (const tm of populatedMembers) {
             if (tm.userId && tm.userId.githubUsername) {
-              await githubService.addCollaborator(slugRepoName, tm.userId.githubUsername, 'push', actualOrgName);
+              await githubService.addCollaborator(
+                slugRepoName,
+                tm.userId.githubUsername,
+                "push",
+                actualOrgName,
+              );
             }
           }
-          console.log(`[ASSIGN TRACK] Provisioned GitHub repo and added collaborators for team: ${team.name}`);
+          console.log(
+            `[ASSIGN TRACK] Provisioned GitHub repo and added collaborators for team: ${team.name}`,
+          );
         })
         .catch((gitErr) => {
-          console.error(`[ASSIGN TRACK] Error provisioning GitHub repo for team ${team.name}:`, gitErr.message);
+          console.error(
+            `[ASSIGN TRACK] Error provisioning GitHub repo for team ${team.name}:`,
+            gitErr.message,
+          );
         });
     }
 
     // Create EventLog
-    const EventLog = mongoose.model('EventLog');
+    const EventLog = mongoose.model("EventLog");
     const newLog = new EventLog({
       eventId: team.eventId,
       actorId: req.user._id,
-      action: 'assign_team_track',
-      type: 'operation',
-      details: `Phân đội ${team.name} vào bảng đấu ${track.name}`
+      action: "assign_team_track",
+      type: "operation",
+      details: `Phân đội ${team.name} vào bảng đấu ${track.name}`,
     });
     await newLog.save();
 
@@ -2484,12 +3010,11 @@ router.put('/:teamId/assign-track', authenticateToken, async (req, res) => {
 
     res.json({
       message: `Đã phân đội ${team.name} vào bảng đấu ${track.name} thành công.`,
-      team
+      team,
     });
-
   } catch (error) {
-    console.error('Assign Track Error:', error.message);
-    res.status(500).json({ message: 'Server error during track assignment.' });
+    console.error("Assign Track Error:", error.message);
+    res.status(500).json({ message: "Server error during track assignment." });
   }
 });
 
@@ -2498,26 +3023,33 @@ router.put('/:teamId/assign-track', authenticateToken, async (req, res) => {
  * @desc    Get details of a single team by ID
  * @access  Private
  */
-router.get('/:teamId', authenticateToken, async (req, res) => {
+router.get("/:teamId", authenticateToken, async (req, res) => {
   try {
     const team = await Team.findById(req.params.teamId)
-      .populate('eventId', 'name semester year status contestEnd registrationClose')
+      .populate(
+        "eventId",
+        "name semester year status contestEnd registrationClose",
+      )
       .populate({
-        path: 'trackId',
-        select: 'name description roundId',
+        path: "trackId",
+        select: "name description roundId",
         populate: {
-          path: 'roundId',
-          select: 'name driveFileName driveFileId startTime'
-        }
+          path: "roundId",
+          select: "name driveFileName driveFileId startTime",
+        },
       })
-      .populate('mentorId', 'fullName email');
+      .populate("mentorId", "fullName email");
 
     if (!team) {
-      return res.status(404).json({ message: 'Không tìm thấy thông tin đội thi.' });
+      return res
+        .status(404)
+        .json({ message: "Không tìm thấy thông tin đội thi." });
     }
 
-    const members = await TeamMember.find({ teamId: team._id })
-      .populate('userId', 'fullName email studentId githubUsername avatarUrl');
+    const members = await TeamMember.find({ teamId: team._id }).populate(
+      "userId",
+      "fullName email studentId githubUsername avatarUrl",
+    );
 
     const repo = await GithubRepository.findOne({ teamId: team._id });
 
@@ -2529,18 +3061,20 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
         name: r.name,
         driveFileName: r.driveFileName,
         hasExamMaterial: !!r.driveFileId,
-        startTime: r.startTime
+        startTime: r.startTime,
       };
     }
 
     res.json({
       team: teamObj,
       members,
-      repository: repo
+      repository: repo,
     });
   } catch (error) {
-    console.error('Fetch Single Team Error:', error.message);
-    res.status(500).json({ message: 'Lỗi hệ thống khi tải thông tin chi tiết nhóm.' });
+    console.error("Fetch Single Team Error:", error.message);
+    res
+      .status(500)
+      .json({ message: "Lỗi hệ thống khi tải thông tin chi tiết nhóm." });
   }
 });
 
@@ -2549,50 +3083,69 @@ router.get('/:teamId', authenticateToken, async (req, res) => {
  * @desc    Assign a mentor to a specific team and ensure their chat room is created
  * @access  Private (Coordinator or Admin)
  */
-router.put('/:teamId/assign-mentor', authenticateToken, async (req, res) => {
+router.put("/:teamId/assign-mentor", authenticateToken, async (req, res) => {
   const { teamId } = req.params;
   const { mentorId } = req.body; // Can be a User ID or null/empty to unassign
 
   try {
     const team = await Team.findById(teamId);
-    if (!team) return res.status(404).json({ message: 'Không tìm thấy đội thi.' });
+    if (!team)
+      return res.status(404).json({ message: "Không tìm thấy đội thi." });
 
     // Auth check
     if (!req.user.isSystemAdmin) {
       const coordinatorRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: team.eventId,
-        role: 'coordinator',
-        status: 'active'
+        role: "coordinator",
+        status: "active",
       });
       if (!coordinatorRole) {
-        return res.status(403).json({ message: 'Không có quyền truy cập. Yêu cầu vai trò Điều phối viên hoặc Quản trị viên.' });
+        return res
+          .status(403)
+          .json({
+            message:
+              "Không có quyền truy cập. Yêu cầu vai trò Điều phối viên hoặc Quản trị viên.",
+          });
       }
     }
 
     // If mentorId is provided, verify they are actually registered as a mentor for this track/event
     if (mentorId) {
-      const User = mongoose.model('User');
+      const User = mongoose.model("User");
       const mentor = await User.findById(mentorId);
-      if (!mentor) return res.status(404).json({ message: 'Mentor không tồn tại.' });
+      if (!mentor)
+        return res.status(404).json({ message: "Mentor không tồn tại." });
 
       const mentorRole = await EventRole.findOne({
         userId: mentorId,
         eventId: team.eventId,
-        role: 'mentor',
-        status: 'active'
+        role: "mentor",
+        status: "active",
       });
       if (!mentorRole) {
-        return res.status(400).json({ message: 'Người dùng được chọn không phải là Mentor của sự kiện này.' });
+        return res
+          .status(400)
+          .json({
+            message:
+              "Người dùng được chọn không phải là Mentor của sự kiện này.",
+          });
       }
 
       // Check if this mentor is already assigned to another team in this event
       const alreadyMentoring = await Team.findOne({
         eventId: team.eventId,
-        mentorId: mentorId
+        mentorId: mentorId,
       });
-      if (alreadyMentoring && alreadyMentoring._id.toString() !== teamId.toString()) {
-        return res.status(400).json({ message: `Mentor này đã được phân công quản lý một đội thi khác (${alreadyMentoring.name}) trong cuộc thi.` });
+      if (
+        alreadyMentoring &&
+        alreadyMentoring._id.toString() !== teamId.toString()
+      ) {
+        return res
+          .status(400)
+          .json({
+            message: `Mentor này đã được phân công quản lý một đội thi khác (${alreadyMentoring.name}) trong cuộc thi.`,
+          });
       }
     }
 
@@ -2601,15 +3154,15 @@ router.put('/:teamId/assign-mentor', authenticateToken, async (req, res) => {
 
     // If a mentor is assigned, ensure the chat room is created for them and this team
     if (mentorId) {
-      const { ensureChatRoomForTeam } = require('../chat/chatRoomService');
+      const { ensureChatRoomForTeam } = require("../chat/chatRoomService");
       await ensureChatRoomForTeam(team);
     }
 
     // Create EventLog
-    const EventLog = mongoose.model('EventLog');
-    let logDetailsMsg = '';
+    const EventLog = mongoose.model("EventLog");
+    let logDetailsMsg = "";
     if (mentorId) {
-      const User = mongoose.model('User');
+      const User = mongoose.model("User");
       const mentorObj = await User.findById(mentorId);
       const mentorName = mentorObj ? mentorObj.fullName : mentorId;
       logDetailsMsg = `Gán Mentor "${mentorName}" cho đội thi "${team.name}"`;
@@ -2619,20 +3172,21 @@ router.put('/:teamId/assign-mentor', authenticateToken, async (req, res) => {
     const newLog = new EventLog({
       eventId: team.eventId,
       actorId: req.user._id,
-      action: mentorId ? 'assign_team_mentor' : 'unassign_team_mentor',
-      type: 'operation',
-      details: logDetailsMsg
+      action: mentorId ? "assign_team_mentor" : "unassign_team_mentor",
+      type: "operation",
+      details: logDetailsMsg,
     });
     await newLog.save();
 
     res.json({
-      message: mentorId ? 'Đã gán Mentor cho đội thi thành công.' : 'Đã hủy gán Mentor cho đội thi.',
-      team
+      message: mentorId
+        ? "Đã gán Mentor cho đội thi thành công."
+        : "Đã hủy gán Mentor cho đội thi.",
+      team,
     });
-
   } catch (error) {
-    console.error('Assign Mentor Error:', error.message);
-    res.status(500).json({ message: 'Lỗi hệ thống khi phân công Mentor.' });
+    console.error("Assign Mentor Error:", error.message);
+    res.status(500).json({ message: "Lỗi hệ thống khi phân công Mentor." });
   }
 });
 
@@ -2641,23 +3195,25 @@ router.put('/:teamId/assign-mentor', authenticateToken, async (req, res) => {
  * @desc    Manually sync MQTT credentials for a team
  * @access  Private (Admin, Coordinator, or Team Leader)
  */
-router.post('/:teamId/sync-mqtt', authenticateToken, async (req, res) => {
+router.post("/:teamId/sync-mqtt", authenticateToken, async (req, res) => {
   const { teamId } = req.params;
 
   try {
     const team = await Team.findById(teamId);
     if (!team) {
-      return res.status(404).json({ message: 'Không tìm thấy đội thi.' });
+      return res.status(404).json({ message: "Không tìm thấy đội thi." });
     }
 
     // Auth check: System Admin, Coordinator of the event, or the team leader themselves
-    let hasAccess = req.user.isSystemAdmin || team.leaderId.toString() === req.user._id.toString();
+    let hasAccess =
+      req.user.isSystemAdmin ||
+      team.leaderId.toString() === req.user._id.toString();
     if (!hasAccess) {
       const coordinatorRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: team.eventId,
-        role: 'coordinator',
-        status: 'active'
+        role: "coordinator",
+        status: "active",
       });
       if (coordinatorRole) {
         hasAccess = true;
@@ -2665,41 +3221,58 @@ router.post('/:teamId/sync-mqtt', authenticateToken, async (req, res) => {
     }
 
     if (!hasAccess) {
-      return res.status(403).json({ message: 'Bạn không có quyền thực hiện hành động này.' });
+      return res
+        .status(403)
+        .json({ message: "Bạn không có quyền thực hiện hành động này." });
     }
 
     // Check if track and environmentId are present
     if (!team.trackId) {
-      return res.status(400).json({ message: 'Đội thi chưa được phân vào bảng đấu.' });
+      return res
+        .status(400)
+        .json({ message: "Đội thi chưa được phân vào bảng đấu." });
     }
 
     const track = await Track.findById(team.trackId);
     if (!track || !track.environmentId) {
-      return res.status(400).json({ message: 'Bảng đấu của đội thi chưa được cấu hình Environment ID.' });
+      return res
+        .status(400)
+        .json({
+          message: "Bảng đấu của đội thi chưa được cấu hình Environment ID.",
+        });
     }
 
     // If already registered on external system, fetch latest credentials using code
     if (team.externalTeamCode) {
       try {
-        const { fetchExternalKeys } = require('./externalTeamService');
+        const { fetchExternalKeys } = require("./externalTeamService");
         const result = await fetchExternalKeys(team.externalTeamCode);
 
-        team.testApiKey = result.testApiKey || team.testApiKey || '';
-        team.judgeApiKey = result.judgeApiKey || team.judgeApiKey || '';
-        team.mqttUsername = result.mqttUsername || team.mqttUsername || '';
-        team.mqttPassword = result.mqttPassword || team.mqttPassword || '';
-        team.testTopic = result.testTopic || team.testTopic || `hackathon/${team.externalTeamCode.toLowerCase()}/test/telemetry`;
-        team.judgeTopic = result.judgeTopic || team.judgeTopic || `hackathon/${team.externalTeamCode.toLowerCase()}/judge/telemetry`;
+        team.testApiKey = result.testApiKey || team.testApiKey || "";
+        team.judgeApiKey = result.judgeApiKey || team.judgeApiKey || "";
+        team.mqttUsername = result.mqttUsername || team.mqttUsername || "";
+        team.mqttPassword = result.mqttPassword || team.mqttPassword || "";
+        team.testTopic =
+          result.testTopic ||
+          team.testTopic ||
+          `hackathon/${team.externalTeamCode.toLowerCase()}/test/telemetry`;
+        team.judgeTopic =
+          result.judgeTopic ||
+          team.judgeTopic ||
+          `hackathon/${team.externalTeamCode.toLowerCase()}/judge/telemetry`;
         await team.save();
 
         return res.json({
-          message: 'Đồng bộ khóa MQTT thành công từ hệ thống simulator!',
-          team
+          message: "Đồng bộ khóa MQTT thành công từ hệ thống simulator!",
+          team,
         });
       } catch (err) {
-        console.error('[MQTT SERVICE] fetch keys error during manual sync:', err.message);
+        console.error(
+          "[MQTT SERVICE] fetch keys error during manual sync:",
+          err.message,
+        );
         return res.status(502).json({
-          message: `Không thể đồng bộ khóa từ simulator: ${err.message}`
+          message: `Không thể đồng bộ khóa từ simulator: ${err.message}`,
         });
       }
     } else {
@@ -2717,43 +3290,51 @@ router.post('/:teamId/sync-mqtt', authenticateToken, async (req, res) => {
       while (!syncSuccess && attempts < 3) {
         try {
           attempts++;
-          const { createExternalTeam } = require('./externalTeamService');
-          result = await createExternalTeam(code, team.name, track.environmentId);
+          const { createExternalTeam } = require("./externalTeamService");
+          result = await createExternalTeam(
+            code,
+            team.name,
+            track.environmentId,
+          );
           syncSuccess = true;
         } catch (err) {
-          if (err.code === 'TEAM_CODE_EXISTS' && attempts < 3) {
-            const suffix = crypto.randomBytes(2).toString('hex').toUpperCase();
+          if (err.code === "TEAM_CODE_EXISTS" && attempts < 3) {
+            const suffix = crypto.randomBytes(2).toString("hex").toUpperCase();
             code = `${baseCode}_${suffix}`;
           } else {
-            console.error('[MQTT SERVICE] create team error during manual sync:', err.message);
+            console.error(
+              "[MQTT SERVICE] create team error during manual sync:",
+              err.message,
+            );
             return res.status(err.status || 500).json({
-              message: `Lỗi kết nối simulator: ${err.message}`
+              message: `Lỗi kết nối simulator: ${err.message}`,
             });
           }
         }
       }
 
       if (result) {
-        team.externalTeamId = result.team?.id || '';
+        team.externalTeamId = result.team?.id || "";
         team.externalTeamCode = code;
-        team.accessCode = result.accessCode || '';
-        team.testApiKey = result.testApiKey || '';
-        team.judgeApiKey = result.judgeApiKey || '';
-        team.mqttUsername = result.mqttUsername || '';
-        team.mqttPassword = result.mqttPassword || '';
+        team.accessCode = result.accessCode || "";
+        team.testApiKey = result.testApiKey || "";
+        team.judgeApiKey = result.judgeApiKey || "";
+        team.mqttUsername = result.mqttUsername || "";
+        team.mqttPassword = result.mqttPassword || "";
         team.testTopic = `hackathon/${code.toLowerCase()}/test/telemetry`;
         team.judgeTopic = `hackathon/${code.toLowerCase()}/judge/telemetry`;
         await team.save();
 
         return res.json({
-          message: 'Đăng ký và khởi tạo khóa MQTT thành công từ hệ thống simulator!',
-          team
+          message:
+            "Đăng ký và khởi tạo khóa MQTT thành công từ hệ thống simulator!",
+          team,
         });
       }
     }
   } catch (error) {
-    console.error('Manual Sync Error:', error.message);
-    res.status(500).json({ message: 'Lỗi hệ thống khi đồng bộ khóa MQTT.' });
+    console.error("Manual Sync Error:", error.message);
+    res.status(500).json({ message: "Lỗi hệ thống khi đồng bộ khóa MQTT." });
   }
 });
 
@@ -2762,18 +3343,20 @@ router.post('/:teamId/sync-mqtt', authenticateToken, async (req, res) => {
  * @desc    Toggle active status of the judge environment for a team
  * @access  Private (System Admin or Event Judge/Coordinator)
  */
-router.patch('/:teamId/judge', authenticateToken, async (req, res) => {
+router.patch("/:teamId/judge", authenticateToken, async (req, res) => {
   const { teamId } = req.params;
   const { active } = req.body;
 
   try {
     const team = await Team.findById(teamId);
     if (!team) {
-      return res.status(404).json({ message: 'Không tìm thấy đội thi.' });
+      return res.status(404).json({ message: "Không tìm thấy đội thi." });
     }
 
     if (!team.externalTeamId) {
-      return res.status(400).json({ message: 'Đội thi chưa được đồng bộ với hệ thống Simulator.' });
+      return res
+        .status(400)
+        .json({ message: "Đội thi chưa được đồng bộ với hệ thống Simulator." });
     }
 
     // Auth check: System Admin, or Event Coordinator/Judge
@@ -2782,8 +3365,8 @@ router.patch('/:teamId/judge', authenticateToken, async (req, res) => {
       const role = await EventRole.findOne({
         userId: req.user._id,
         eventId: team.eventId,
-        role: { $in: ['coordinator', 'judge'] },
-        status: 'active'
+        role: { $in: ["coordinator", "judge"] },
+        status: "active",
       });
       if (role) {
         hasAccess = true;
@@ -2791,36 +3374,41 @@ router.patch('/:teamId/judge', authenticateToken, async (req, res) => {
     }
 
     if (!hasAccess) {
-      return res.status(403).json({ message: 'Bạn không có quyền thực hiện hành động này.' });
+      return res
+        .status(403)
+        .json({ message: "Bạn không có quyền thực hiện hành động này." });
     }
 
-    const { toggleJudgeActive } = require('./externalTeamService');
+    const { toggleJudgeActive } = require("./externalTeamService");
     await toggleJudgeActive(team.externalTeamId, active);
 
     // Emit real-time status change to team members and live room
     try {
-      const socketModule = require('../chat/socket');
+      const socketModule = require("../chat/socket");
       const io = socketModule.getIO();
 
       // Emit to live room (for judges/admins)
-      io.to(`live:${team.eventId}`).emit('judge_active_toggled', {
+      io.to(`live:${team.eventId}`).emit("judge_active_toggled", {
         teamId: team._id.toString(),
         isJudgeActive: active,
         judgeApiKey: active ? team.judgeApiKey : null,
-        judgeTopic: active ? team.judgeTopic : null
+        judgeTopic: active ? team.judgeTopic : null,
       });
 
       // Emit to each team member
-      const TeamMember = mongoose.model('TeamMember');
+      const TeamMember = mongoose.model("TeamMember");
       const members = await TeamMember.find({ teamId: team._id });
       for (const member of members) {
         if (member.userId) {
-          io.to(`user:${member.userId.toString()}`).emit('judge_active_toggled', {
-            teamId: team._id.toString(),
-            isJudgeActive: active,
-            judgeApiKey: active ? team.judgeApiKey : null,
-            judgeTopic: active ? team.judgeTopic : null
-          });
+          io.to(`user:${member.userId.toString()}`).emit(
+            "judge_active_toggled",
+            {
+              teamId: team._id.toString(),
+              isJudgeActive: active,
+              judgeApiKey: active ? team.judgeApiKey : null,
+              judgeTopic: active ? team.judgeTopic : null,
+            },
+          );
         }
       }
 
@@ -2828,38 +3416,50 @@ router.patch('/:teamId/judge', authenticateToken, async (req, res) => {
       if (active) {
         const otherTeams = await Team.find({
           trackId: team.trackId,
-          _id: { $ne: team._id }
+          _id: { $ne: team._id },
         });
         for (const other of otherTeams) {
-          io.to(`live:${team.eventId}`).emit('judge_active_toggled', {
+          io.to(`live:${team.eventId}`).emit("judge_active_toggled", {
             teamId: other._id.toString(),
             isJudgeActive: false,
             judgeApiKey: null,
-            judgeTopic: null
+            judgeTopic: null,
           });
 
           // Also notify team members of other teams
           const otherMembers = await TeamMember.find({ teamId: other._id });
           for (const member of otherMembers) {
             if (member.userId) {
-              io.to(`user:${member.userId.toString()}`).emit('judge_active_toggled', {
-                teamId: other._id.toString(),
-                isJudgeActive: false,
-                judgeApiKey: null,
-                judgeTopic: null
-              });
+              io.to(`user:${member.userId.toString()}`).emit(
+                "judge_active_toggled",
+                {
+                  teamId: other._id.toString(),
+                  isJudgeActive: false,
+                  judgeApiKey: null,
+                  judgeTopic: null,
+                },
+              );
             }
           }
         }
       }
     } catch (socketErr) {
-      console.warn('Socket emit judge_active_toggled failed:', socketErr.message);
+      console.warn(
+        "Socket emit judge_active_toggled failed:",
+        socketErr.message,
+      );
     }
 
-    res.json({ message: active ? 'Đã bật môi trường chấm thi.' : 'Đã tắt môi trường chấm thi.' });
+    res.json({
+      message: active
+        ? "Đã bật môi trường chấm thi."
+        : "Đã tắt môi trường chấm thi.",
+    });
   } catch (error) {
-    console.error('Toggle Judge Active Error:', error.message);
-    res.status(error.status || 500).json({ message: `Lỗi kết nối simulator: ${error.message}` });
+    console.error("Toggle Judge Active Error:", error.message);
+    res
+      .status(error.status || 500)
+      .json({ message: `Lỗi kết nối simulator: ${error.message}` });
   }
 });
 
@@ -2868,18 +3468,20 @@ router.patch('/:teamId/judge', authenticateToken, async (req, res) => {
  * @desc    Update judge scenario for a team
  * @access  Private (System Admin or Event Judge/Coordinator)
  */
-router.patch('/:teamId/judge-scenario', authenticateToken, async (req, res) => {
+router.patch("/:teamId/judge-scenario", authenticateToken, async (req, res) => {
   const { teamId } = req.params;
   const { scenario } = req.body;
 
   try {
     const team = await Team.findById(teamId);
     if (!team) {
-      return res.status(404).json({ message: 'Không tìm thấy đội thi.' });
+      return res.status(404).json({ message: "Không tìm thấy đội thi." });
     }
 
     if (!team.externalTeamId) {
-      return res.status(400).json({ message: 'Đội thi chưa được đồng bộ với hệ thống Simulator.' });
+      return res
+        .status(400)
+        .json({ message: "Đội thi chưa được đồng bộ với hệ thống Simulator." });
     }
 
     // Auth check: System Admin, or Event Coordinator/Judge
@@ -2888,8 +3490,8 @@ router.patch('/:teamId/judge-scenario', authenticateToken, async (req, res) => {
       const role = await EventRole.findOne({
         userId: req.user._id,
         eventId: team.eventId,
-        role: { $in: ['coordinator', 'judge'] },
-        status: 'active'
+        role: { $in: ["coordinator", "judge"] },
+        status: "active",
       });
       if (role) {
         hasAccess = true;
@@ -2897,16 +3499,20 @@ router.patch('/:teamId/judge-scenario', authenticateToken, async (req, res) => {
     }
 
     if (!hasAccess) {
-      return res.status(403).json({ message: 'Bạn không có quyền thực hiện hành động này.' });
+      return res
+        .status(403)
+        .json({ message: "Bạn không có quyền thực hiện hành động này." });
     }
 
-    const { updateJudgeScenario } = require('./externalTeamService');
+    const { updateJudgeScenario } = require("./externalTeamService");
     await updateJudgeScenario(team.externalTeamId, scenario);
 
-    res.json({ message: 'Đã cập nhật kịch bản chấm thi.' });
+    res.json({ message: "Đã cập nhật kịch bản chấm thi." });
   } catch (error) {
-    console.error('Update Judge Scenario Error:', error.message);
-    res.status(error.status || 500).json({ message: `Lỗi kết nối simulator: ${error.message}` });
+    console.error("Update Judge Scenario Error:", error.message);
+    res
+      .status(error.status || 500)
+      .json({ message: `Lỗi kết nối simulator: ${error.message}` });
   }
 });
 
@@ -2915,14 +3521,16 @@ router.patch('/:teamId/judge-scenario', authenticateToken, async (req, res) => {
  * @desc    Get all judge scenarios
  * @access  Private (System Admin or Event Judge/Coordinator)
  */
-router.get('/judge/scenarios', authenticateToken, async (req, res) => {
+router.get("/judge/scenarios", authenticateToken, async (req, res) => {
   try {
-    const { getJudgeScenarios } = require('./externalTeamService');
+    const { getJudgeScenarios } = require("./externalTeamService");
     const result = await getJudgeScenarios();
     res.json(result);
   } catch (error) {
-    console.error('Get Judge Scenarios Error:', error.message);
-    res.status(error.status || 500).json({ message: `Lỗi kết nối simulator: ${error.message}` });
+    console.error("Get Judge Scenarios Error:", error.message);
+    res
+      .status(error.status || 500)
+      .json({ message: `Lỗi kết nối simulator: ${error.message}` });
   }
 });
 
@@ -2931,24 +3539,28 @@ router.get('/judge/scenarios', authenticateToken, async (req, res) => {
  * @desc    Get live sensors data
  * @access  Private (System Admin or Event Judge/Coordinator)
  */
-router.get('/judge/live', authenticateToken, async (req, res) => {
+router.get("/judge/live", authenticateToken, async (req, res) => {
   const { teamId } = req.query;
   if (!teamId) {
-    return res.status(400).json({ message: 'Thiếu tham số teamId.' });
+    return res.status(400).json({ message: "Thiếu tham số teamId." });
   }
 
   try {
     const team = await Team.findById(teamId);
     if (!team || !team.externalTeamId) {
-      return res.status(404).json({ message: 'Đội thi chưa được đồng bộ hoặc không tồn tại.' });
+      return res
+        .status(404)
+        .json({ message: "Đội thi chưa được đồng bộ hoặc không tồn tại." });
     }
 
-    const { getJudgeLive } = require('./externalTeamService');
+    const { getJudgeLive } = require("./externalTeamService");
     const result = await getJudgeLive(team.externalTeamId);
     res.json(result);
   } catch (error) {
-    console.error('Get Judge Live Error:', error.message);
-    res.status(error.status || 500).json({ message: `Lỗi kết nối simulator: ${error.message}` });
+    console.error("Get Judge Live Error:", error.message);
+    res
+      .status(error.status || 500)
+      .json({ message: `Lỗi kết nối simulator: ${error.message}` });
   }
 });
 
@@ -2957,28 +3569,30 @@ router.get('/judge/live', authenticateToken, async (req, res) => {
  * @desc    Delete a team (only team leader can delete)
  * @access  Private
  */
-router.delete('/:teamId', authenticateToken, async (req, res) => {
+router.delete("/:teamId", authenticateToken, async (req, res) => {
   const { teamId } = req.params;
 
   try {
-    const Team = mongoose.model('Team');
-    const TeamMember = mongoose.model('TeamMember');
-    const GithubRepository = mongoose.model('GithubRepository');
+    const Team = mongoose.model("Team");
+    const TeamMember = mongoose.model("TeamMember");
+    const GithubRepository = mongoose.model("GithubRepository");
 
     const team = await Team.findById(teamId);
     if (!team) {
-      return res.status(404).json({ message: 'Không tìm thấy đội thi.' });
+      return res.status(404).json({ message: "Không tìm thấy đội thi." });
     }
 
     // Check if the user is the leader of the team
     const memberRecord = await TeamMember.findOne({
       teamId,
       userId: req.user._id,
-      role: 'leader'
+      role: "leader",
     });
 
     if (!memberRecord) {
-      return res.status(403).json({ message: 'Chỉ có trưởng nhóm mới có quyền xóa đội thi.' });
+      return res
+        .status(403)
+        .json({ message: "Chỉ có trưởng nhóm mới có quyền xóa đội thi." });
     }
 
     // Delete related records
@@ -2986,10 +3600,10 @@ router.delete('/:teamId', authenticateToken, async (req, res) => {
     await TeamMember.deleteMany({ teamId });
     await GithubRepository.deleteMany({ teamId });
 
-    res.json({ message: 'Xóa đội thi thành công.' });
+    res.json({ message: "Xóa đội thi thành công." });
   } catch (error) {
-    console.error('Delete Team Error:', error);
-    res.status(500).json({ message: 'Xóa đội thi thất bại.' });
+    console.error("Delete Team Error:", error);
+    res.status(500).json({ message: "Xóa đội thi thất bại." });
   }
 });
 

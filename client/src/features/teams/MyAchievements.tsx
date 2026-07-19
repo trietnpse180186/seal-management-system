@@ -68,14 +68,18 @@ export default function MyAchievements() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-24 text-center font-mono">
-        <p className="text-slate-400 text-sm animate-pulse">Đang tải thành tích lịch sử...</p>
+      <div className="team-area-light relative overflow-hidden font-sans bg-slate-50 text-slate-900 min-h-screen flex items-center justify-center font-mono">
+        <p className="text-slate-455 text-sm animate-pulse">Đang tải thành tích lịch sử...</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12 font-mono">
+    <div className="team-area-light relative overflow-hidden font-sans bg-slate-50 text-slate-900 min-h-screen">
+      {/* Background Grid & Glow */}
+      <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle_at_15%_15%,rgba(242,112,36,0.08)_0%,transparent_40%),radial-gradient(circle_at_85%_85%,rgba(242,112,36,0.05)_0%,transparent_40%)]"></div>
+
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12 font-mono">
       {/* Header section */}
       <div>
         <h1 className="text-3xl font-extrabold text-white flex items-center gap-3">
@@ -88,16 +92,13 @@ export default function MyAchievements() {
       </div>
 
       {teams.length === 0 ? (
-        <div className="glass p-12 rounded-3xl border border-slate-800 text-center text-slate-500 max-w-xl mx-auto space-y-4">
-          <Trophy size={48} className="mx-auto text-slate-700 animate-pulse" />
-          <p className="text-sm font-semibold text-slate-400">Chưa tìm thấy thành tích lịch sử nào</p>
-          <p className="text-xs text-slate-500 font-sans leading-relaxed">
-            Bạn chưa hoàn tất tham gia đội thi nào trong quá khứ hoặc chưa xác nhận tham gia. Hãy đăng ký đội thi ở cuộc thi mới nhất để bắt đầu hành trình của mình!
-          </p>
+        <div className="glass p-12 rounded-3xl text-center max-w-xl mx-auto space-y-4 bg-white/70 backdrop-blur-md border border-slate-200">
+          <Trophy size={48} className="mx-auto text-slate-400" />
+          <p className="text-sm font-bold text-slate-700">Bạn chưa có thành tích nào</p>
           <div className="pt-2">
             <button
               onClick={() => navigate("/guest-portal")}
-              className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase rounded-xl transition-all cursor-pointer font-sans"
+              className="px-6 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase rounded-xl transition-all cursor-pointer font-sans"
             >
               Trở về Trang chủ
             </button>
@@ -210,15 +211,15 @@ export default function MyAchievements() {
                                 <div className="flex items-center gap-2">
                                   {!isFinalRound && (
                                     <>
-                                      {ach.isAdvanced ? (
-                                        <span className="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-bold">
-                                          ĐÃ ĐI TIẾP
-                                        </span>
-                                      ) : ach.roundId?.status === "completed" ? (
-                                        <span className="text-[9px] bg-slate-800 text-slate-500 border border-slate-750 px-2 py-0.5 rounded">
-                                          DỪNG BƯỚC
-                                        </span>
-                                      ) : (
+                                       {ach.isAdvanced ? (
+                                         <span className="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-bold">
+                                           ĐÃ ĐI TIẾP
+                                         </span>
+                                       ) : ach.roundId?.status === "completed" ? (
+                                         <span className="text-[9px] bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded font-bold">
+                                           DỪNG BƯỚC
+                                         </span>
+                                       ) : (
                                         <span className="text-[9px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded font-bold animate-pulse">
                                           ĐANG CHẤM
                                         </span>
@@ -245,6 +246,7 @@ export default function MyAchievements() {
           })}
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -417,8 +417,17 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <p className="text-cyan-400 text-lg font-semibold animate-pulse">Đang tải Nền tảng SEAL Hackathon...</p>
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center relative overflow-hidden font-sans">
+        {/* Glow Effects */}
+        <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle_at_15%_15%,rgba(242,112,36,0.08)_0%,transparent_40%),radial-gradient(circle_at_85%_85%,rgba(242,112,36,0.05)_0%,transparent_40%)]"></div>
+        
+        {/* Spinner & Text */}
+        <div className="relative z-10 flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-4 border-[#F27024]/20 border-t-[#F27024] rounded-full animate-spin"></div>
+          <p className="text-[#F27024] text-sm font-bold tracking-wider uppercase animate-pulse">
+            Đang tải Nền tảng SEAL...
+          </p>
+        </div>
       </div>
     );
   }

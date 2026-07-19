@@ -36,6 +36,45 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const socketRef = useRef<Socket | null>(null);
+  const [hasTeam, setHasTeam] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const checkTeamStatus = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setHasTeam(false);
+        return;
+      }
+      try {
+        const res = await axios.get("http://localhost:5000/api/teams/my-team", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.data && res.data.team) {
+          const team = res.data.team;
+          const isEventEnded = team && (
+            team.eventId?.status === 'completed' ||
+            team.eventId?.status === 'cancelled' ||
+            (team.eventId?.contestEnd && new Date(team.eventId.contestEnd) <= new Date())
+          );
+          if (team && !isEventEnded) {
+            setHasTeam(true);
+          } else {
+            setHasTeam(false);
+          }
+        } else {
+          setHasTeam(false);
+        }
+      } catch (err) {
+        setHasTeam(false);
+      }
+    };
+
+    if (user) {
+      checkTeamStatus();
+    } else {
+      setHasTeam(false);
+    }
+  }, [user, location.pathname]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -200,7 +239,13 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
   const isActive = (path: string) => location.pathname === path;
 
   const isLandingPage = location.pathname === "/";
-  const usesLightShell = isLandingPage || isAuthPage || location.pathname === "/album";
+  const usesLightShell =
+    isLandingPage ||
+    isAuthPage ||
+    location.pathname === "/album" ||
+    location.pathname === "/guest-portal" ||
+    location.pathname === "/team-area" ||
+    location.pathname === "/my-achievements";
 
   const linkClass = (path: string, forceActive?: boolean) => {
     const active = forceActive !== undefined ? forceActive : isActive(path);
@@ -284,7 +329,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                   </Link>
                   <Link to="/team-area" className={linkClass("/team-area")}>
                     <GitBranch size={16} />
-                    <span>Khu vực đội thi</span>
+                    <span>{hasTeam ? "Khu vực đội thi" : "Đăng ký đội thi"}</span>
                   </Link>
                   <Link to="/my-achievements" className={linkClass("/my-achievements")}>
                     <Award size={16} />
@@ -421,7 +466,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                   )}
                 </div>
 
-                <div className="text-right hidden sm:block font-mono">
+                <div className="text-right hidden sm:block font-sans">
                   <p className={`text-sm font-semibold ${usesLightShell ? "text-slate-800" : "text-slate-200"}`}>
                     {user.fullName}
                   </p>

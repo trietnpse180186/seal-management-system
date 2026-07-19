@@ -355,3 +355,301 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 12px rgba(242, 112, 36, 0.35);
 }
 
+/* Participant Pages - Light Theme & FPT Orange Styling */
+.team-area-light {
+  background-color: #faf9f6 !important; /* Milk white / Trắng sữa background */
+  color: #1e293b !important;
+}
+
+.team-area-light .text-white {
+  color: #0f172a !important;
+}
+
+.team-area-light .text-slate-200 {
+  color: #1e293b !important;
+}
+
+.team-area-light .text-slate-300 {
+  color: #334155 !important;
+}
+
+.team-area-light .text-slate-350 {
+  color: #334155 !important;
+}
+
+.team-area-light .text-slate-355 {
+  color: #334155 !important;
+}
+
+.team-area-light .text-slate-400 {
+  color: #475569 !important;
+}
+
+.team-area-light .text-slate-450 {
+  color: #475569 !important;
+}
+
+.team-area-light .text-slate-455 {
+  color: #475569 !important;
+}
+
+.team-area-light .text-slate-500 {
+  color: #64748b !important;
+}
+
+.team-area-light .text-slate-550 {
+  color: #64748b !important;
+}
+
+.team-area-light .text-cyan-400 {
+  color: #f27024 !important;
+}
+
+.team-area-light .text-cyan-glow {
+  text-shadow: 0 0 8px rgba(242, 112, 36, 0.4) !important;
+}
+
+.team-area-light .bg-cyan-950 {
+  background-color: rgba(242, 112, 36, 0.1) !important;
+}
+
+.team-area-light .bg-cyan-950\/50 {
+  background-color: rgba(242, 112, 36, 0.1) !important;
+}
+
+.team-area-light .bg-cyan-950\/40 {
+  background-color: rgba(242, 112, 36, 0.1) !important;
+}
+
+.team-area-light .bg-cyan-950\/25 {
+  background-color: rgba(242, 112, 36, 0.08) !important;
+}
+
+.team-area-light .bg-cyan-950\/20 {
+  background-color: rgba(242, 112, 36, 0.05) !important;
+}
+
+.team-area-light .border-cyan-500\/30 {
+  border-color: rgba(242, 112, 36, 0.3) !important;
+}
+
+.team-area-light .border-cyan-500\/40 {
+  border-color: rgba(242, 112, 36, 0.4) !important;
+}
+
+.team-area-light .border-cyan-500\/20 {
+  border-color: rgba(242, 112, 36, 0.2) !important;
+}
+
+.team-area-light .border-cyan-800\/30 {
+  border-color: rgba(242, 112, 36, 0.2) !important;
+}
+
+.team-area-light .border-cyan-800\/60 {
+  border-color: rgba(242, 112, 36, 0.4) !important;
+}
+
+.team-area-light .bg-cyan-400 {
+  background-color: #f27024 !important;
+}
+
+.team-area-light .text-cyan-300 {
+  color: #f27024 !important;
+}
+
+.team-area-light .bg-cyan-600 {
+  background-color: #f27024 !important;
+  border-color: #f27024 !important;
+  color: white !important;
+}
+
+.team-area-light .bg-cyan-600:hover {
+  background-color: #e05e1b !important;
+  box-shadow: 0 0 15px rgba(242, 112, 36, 0.4) !important;
+}
+
+.team-area-light .shadow-cyan-600\/25 {
+  box-shadow: 0 10px 15px -3px rgba(242, 112, 36, 0.1), 0 4px 6px -4px rgba(242, 112, 36, 0.1) !important;
+}
+
+.team-area-light .bg-slate-900\/10 {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.team-area-light .bg-slate-900\/30 {
+  background-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.team-area-light .bg-slate-900\/40 {
+  background-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.team-area-light .bg-slate-900\/60 {
+  background-color: rgba(255, 255, 255, 0.55) !important;
+}
+
+.team-area-light .glass {
+  background: rgba(253, 251, 247, 0.95) !important; /* Warm milk white card background */
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02) !important;
+}
+
+.team-area-light .glass:hover {
+  border-color: rgba(242, 112, 36, 0.3) !important;
+  box-shadow: 0 10px 30px rgba(242, 112, 36, 0.05) !important;
+}
+
+.team-area-light .border-slate-800 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.team-area-light .border-slate-850 {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+.team-area-light .border-slate-900 {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+.team-area-light .bg-slate-950 {
+  background-color: #faf9f6 !important; /* Soft milk white background */
+}
+
+.team-area-light .bg-slate-955 {
+  background-color: #ffffff !important;
+}
+
+.team-area-light .bg-slate-955\/80 {
+  background-color: rgba(15, 23, 42, 0.45) !important;
+}
+
+.team-area-light .bg-slate-950\/70 {
+  background-color: #faf9f6 !important;
+}
+
+.team-area-light .bg-slate-955\/30 {
+  background-color: #faf9f6 !important;
+}
+
+.team-area-light .bg-slate-950\/60 {
+  background-color: #faf9f6 !important;
+}
+
+.team-area-light .bg-slate-950\/40 {
+  background-color: #faf9f6 !important;
+}
+
+.team-area-light .bg-slate-950\/30 {
+  background-color: #faf9f6 !important;
+}
+
+.team-area-light .bg-slate-900 {
+  background-color: #ffffff !important;
+}
+
+.team-area-light .border-slate-800\/80 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.team-area-light .border-slate-800\/60 {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+.team-area-light .bg-indigo-500\/5 {
+  background-color: rgba(242, 112, 36, 0.02) !important;
+}
+
+.team-area-light .bg-cyan-500\/5 {
+  background-color: rgba(242, 112, 36, 0.03) !important;
+}
+
+.team-area-light .bg-cyan-500\/10 {
+  background-color: rgba(242, 112, 36, 0.08) !important;
+}
+
+.team-area-light .border-cyan-500\/35 {
+  border-color: rgba(242, 112, 36, 0.25) !important;
+}
+
+
+
+.team-area-light .bg-cyan-950\/80 {
+  background-color: #ffffff !important;
+}
+
+.team-area-light .bg-gradient-to-r {
+  background: linear-gradient(to right, rgba(242, 112, 36, 0.04), rgba(255, 255, 255, 0.8), rgba(242, 112, 36, 0.04)) !important;
+}
+
+.team-area-light .bg-gradient-to-br {
+  background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.9), rgba(242, 112, 36, 0.03)) !important;
+}
+
+.team-area-light .shadow-cyan-900\/20 {
+  box-shadow: 0 4px 12px rgba(242, 112, 36, 0.1) !important;
+}
+
+.team-area-light .bg-gradient-to-r.from-cyan-600 {
+  background: linear-gradient(to right, #f27024, #e05e1b) !important;
+}
+
+.team-area-light .bg-gradient-to-r.from-cyan-600:hover {
+  background: linear-gradient(to right, #e05e1b, #c64c12) !important;
+}
+
+/* Autocomplete / inputs inside light team area */
+.team-area-light input, 
+.team-area-light select, 
+.team-area-light textarea {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  color: #0f172a !important;
+}
+
+.team-area-light input:focus, 
+.team-area-light select:focus, 
+.team-area-light textarea:focus {
+  border-color: #f27024 !important;
+  box-shadow: 0 0 0 2px rgba(242, 112, 36, 0.15), 0 0 10px rgba(242, 112, 36, 0.2) !important;
+}
+
+.team-area-light .glow-cyan,
+.team-area-light .glow-blue {
+  box-shadow: 0 0 20px rgba(242, 112, 36, 0.06) !important;
+}
+
+/* Hover effects */
+.team-area-light .hover\:border-cyan-500\/30:hover {
+  border-color: rgba(242, 112, 36, 0.4) !important;
+}
+
+
+
+.team-area-light .btn-primary {
+  background-color: #f27024 !important;
+  border-color: #f27024 !important;
+  color: white !important;
+}
+
+.team-area-light .btn-primary:hover {
+  background-color: #e05e1b !important;
+  box-shadow: 0 0 20px rgba(242, 112, 36, 0.4) !important;
+}
+
+.team-area-light .border-rose-500\/20 {
+  border-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+.team-area-light .text-amber-400.bg-amber-500\/10 {
+  color: #b45309 !important; /* amber-700 */
+  background-color: rgba(245, 158, 11, 0.1) !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+
+.team-area-light .border-slate-800\/80 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+

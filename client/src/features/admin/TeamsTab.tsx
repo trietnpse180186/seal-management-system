@@ -77,7 +77,7 @@ export default function TeamsTab({
           <button
             onClick={handleExportTeams}
             disabled={exporting || teamsList.length === 0}
-            className="text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 cursor-pointer border border-slate-700/80 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 cursor-pointer border border-slate-700/80 shadow-md disabled:opacity-50 disabled:cursor-not-allowed btn-import-export"
           >
             <Download size={14} className="text-cyan-400" />
             <span>{exporting ? "Đang xuất..." : "Xuất Excel"}</span>

@@ -328,7 +328,7 @@ export default function AdminGradesView() {
           <button
             onClick={() => handleExportGradingSheet(false)}
             disabled={!selectedRoundId || exportingSummary}
-            className="text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 cursor-pointer border border-slate-700/80 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 cursor-pointer border border-slate-700/80 shadow-md disabled:opacity-50 disabled:cursor-not-allowed btn-import-export"
           >
             <Download size={14} className="text-cyan-400" />
             <span>{exportingSummary ? "Đang xuất..." : "Xuất Điểm Tổng Hợp"}</span>
@@ -337,7 +337,7 @@ export default function AdminGradesView() {
           <button
             onClick={() => handleExportGradingSheet(true)}
             disabled={!selectedRoundId || exportingJudge || !gradingsData?.gradings?.length}
-            className="text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 bg-cyan-950/40 hover:bg-cyan-950/60 cursor-pointer border border-cyan-500/25 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 bg-cyan-950/40 hover:bg-cyan-950/60 cursor-pointer border border-cyan-500/25 shadow-md disabled:opacity-50 disabled:cursor-not-allowed btn-import-export"
           >
             <Download size={14} className="text-cyan-400" />
             <span>{exportingJudge ? "Đang xuất..." : "Xuất Phiếu Điểm Giám Khảo"}</span>

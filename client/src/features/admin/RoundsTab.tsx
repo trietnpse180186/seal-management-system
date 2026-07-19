@@ -1038,7 +1038,7 @@ export default function RoundsTab({
                     <button
                       type="button"
                       onClick={() => handleExportRubric(rubric._id)}
-                      className="bg-slate-800 hover:bg-slate-750 border border-slate-750 text-[9px] font-bold px-2.5 py-1 rounded text-slate-200 cursor-pointer shadow-md hover:text-white transition-all"
+                      className="bg-slate-800 hover:bg-slate-750 border border-slate-750 text-[9px] font-bold px-2.5 py-1 rounded text-slate-200 cursor-pointer shadow-md hover:text-white transition-all btn-import-export"
                     >
                       XUẤT JSON (EXPORT)
                     </button>
@@ -1174,7 +1174,7 @@ export default function RoundsTab({
                     <button
                       type="button"
                       onClick={handleDownloadTemplate}
-                      className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-[10px] font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-all"
+                      className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-[10px] font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-all btn-import-export"
                     >
                       <Download size={12} />
                       Tải Template Excel
@@ -1182,7 +1182,7 @@ export default function RoundsTab({
                     <button
                       type="button"
                       onClick={handleExportCriteria}
-                      className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-[10px] font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-all"
+                      className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-[10px] font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-all btn-import-export"
                     >
                       <Download size={12} />
                       Xuất Excel hiện tại
@@ -1191,7 +1191,7 @@ export default function RoundsTab({
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="flex items-center gap-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-all"
+                        className="flex items-center gap-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-3 py-1.5 rounded-lg cursor-pointer transition-all btn-import-export"
                       >
                         <Upload size={12} />
                         Import từ Excel

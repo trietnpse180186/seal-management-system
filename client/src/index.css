@@ -940,29 +940,49 @@ body {
 
 /* Sidebar Nav Links */
 .coordinator-light-theme aside nav a {
-  color: #475569 !important;
-}
-
-.coordinator-light-theme aside nav a:hover {
-  background-color: rgba(0, 0, 0, 0.03) !important;
-  color: #0f172a !important;
-  border-color: rgba(0, 0, 0, 0.05) !important;
-}
-
-.coordinator-light-theme aside nav a.bg-cyan-500\/10 {
-  background-color: rgba(242, 112, 36, 0.08) !important;
-  color: #f27024 !important;
-  border-color: rgba(242, 112, 36, 0.15) !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  font-family: 'Inter', 'Plus Jakarta Sans', 'Outfit', sans-serif !important;
+  font-size: 1.0rem !important; /* text-xs equivalent */
+  font-weight: 500 !important;
+  padding: 0.5rem 1.0rem !important; /* py-2 px-4 */
+  border-radius: 0.5rem !important; /* rounded-lg */
+  transition: all 0.2s ease-in-out !important;
+  color: #334155 !important; /* text-slate-700 */
+  border: 1px solid transparent !important;
+  background-color: transparent !important;
   box-shadow: none !important;
 }
 
-.coordinator-light-theme aside nav a div.bg-cyan-500 {
-  background-color: #f27024 !important;
-  box-shadow: 0 0 8px rgba(242, 112, 36, 0.6) !important;
+.coordinator-light-theme aside nav a div.absolute {
+  display: none !important;
+}
+
+.coordinator-light-theme aside nav a:hover {
+  color: #f27024 !important; /* hover:text-[#F27024] */
+  background-color: #f1f5f9 !important; /* hover:bg-slate-100 */
+  border-color: transparent !important;
+}
+
+.coordinator-light-theme aside nav a.bg-cyan-500\/10 {
+  background-color: rgba(242, 112, 36, 0.1) !important; /* bg-[#F27024]/10 */
+  color: #f27024 !important; /* text-[#F27024] */
+  border: 1px solid rgba(242, 112, 36, 0.2) !important; /* border-[#F27024]/20 */
+  box-shadow: 0 0 15px -3px rgba(242, 112, 36, 0.2) !important;
+}
+
+.coordinator-light-theme aside nav a.bg-cyan-500\/10:hover {
+  background-color: rgba(242, 112, 36, 0.15) !important;
+  color: #f27024 !important;
 }
 
 .coordinator-light-theme aside nav a svg {
   color: #64748b !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.coordinator-light-theme aside nav a:hover svg {
+  color: #f27024 !important;
 }
 
 .coordinator-light-theme aside nav a.bg-cyan-500\/10 svg {

@@ -40,7 +40,7 @@ export default function TeamsTab({
         {
           headers: { Authorization: `Bearer ${token}` },
           responseType: "blob",
-        }
+        },
       );
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement("a");
@@ -77,7 +77,7 @@ export default function TeamsTab({
           <button
             onClick={handleExportTeams}
             disabled={exporting || teamsList.length === 0}
-            className="text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 cursor-pointer border border-slate-700/80 shadow-md disabled:opacity-50 disabled:cursor-not-allowed btn-import-export"
+            className="text-xs font-bold px-4 py-2 rounded-xl font-mono transition-all flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 cursor-pointer border border-slate-700/80 shadow-md disabled:opacity-50 disabled:cursor-not-allowed btn-import-export"
           >
             <Download size={14} className="text-cyan-400" />
             <span>{exporting ? "Đang xuất..." : "Xuất Excel"}</span>
@@ -90,17 +90,14 @@ export default function TeamsTab({
                 disabled={
                   loading ||
                   tracks.length === 0 ||
-                  !teamsList.some(
-                    (t) => t.status === "confirmed" && !t.trackId,
-                  )
+                  !teamsList.some((t) => t.status === "confirmed" && !t.trackId)
                 }
-                className={`text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 ${tracks.length > 0 &&
-                  teamsList.some(
-                    (t) => t.status === "confirmed" && !t.trackId,
-                  )
-                  ? "bg-cyan-500 hover:bg-cyan-500 cursor-pointer shadow-lg shadow-cyan-500/25"
-                  : "bg-slate-800/80 text-slate-500 cursor-not-allowed border border-slate-700/50"
-                  }`}
+                className={`text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 ${
+                  tracks.length > 0 &&
+                  teamsList.some((t) => t.status === "confirmed" && !t.trackId)
+                    ? "bg-cyan-500 hover:bg-cyan-500 cursor-pointer shadow-lg shadow-cyan-500/25"
+                    : "bg-slate-800/80 text-slate-500 cursor-not-allowed border border-slate-700/50"
+                }`}
               >
                 Chia bảng ngẫu nhiên vào Track
               </button>
@@ -109,7 +106,6 @@ export default function TeamsTab({
                   * Cần tạo Bảng đấu (Track) trước
                 </span>
               )}
-
             </div>
           )}
         </div>
@@ -122,8 +118,7 @@ export default function TeamsTab({
           <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider font-mono mb-3 flex items-center gap-2">
             <span>
               ✓ Đội thi đã Xác nhận (
-              {teamsList.filter((t) => t.status === "confirmed").length}
-              )
+              {teamsList.filter((t) => t.status === "confirmed").length})
             </span>
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -144,26 +139,35 @@ export default function TeamsTab({
                       </h5>
                     </div>
                     <div className="flex flex-col items-end gap-1">
-                      {selectedEvent?.status !== "registration" && selectedEvent?.status !== "upcoming" && team.currentRoundId && (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                          {(() => {
-                            if (typeof team.currentRoundId === "object") {
-                              return team.currentRoundId?.name || "";
-                            }
-                            const rObj = (rounds || []).find((r: any) => r._id === team.currentRoundId);
-                            return rObj ? rObj.name : team.currentRoundId;
-                          })()}
-                        </span>
-                      )}
+                      {selectedEvent?.status !== "registration" &&
+                        selectedEvent?.status !== "upcoming" &&
+                        team.currentRoundId && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                            {(() => {
+                              if (typeof team.currentRoundId === "object") {
+                                return team.currentRoundId?.name || "";
+                              }
+                              const rObj = (rounds || []).find(
+                                (r: any) => r._id === team.currentRoundId,
+                              );
+                              return rObj ? rObj.name : team.currentRoundId;
+                            })()}
+                          </span>
+                        )}
                       <span
-                        className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${team.trackId
-                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                          : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                          }`}
+                        className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${
+                          team.trackId
+                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                            : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                        }`}
                       >
                         {team.trackId?.name
-                          ? (team.trackId.name.startsWith("Bảng") ? team.trackId.name : `Bảng ${team.trackId.name}`)
-                          : (team.trackId ? "Đã gán" : "Chưa chia bảng")}
+                          ? team.trackId.name.startsWith("Bảng")
+                            ? team.trackId.name
+                            : `Bảng ${team.trackId.name}`
+                          : team.trackId
+                            ? "Đã gán"
+                            : "Chưa chia bảng"}
                       </span>
                     </div>
                   </div>
@@ -200,18 +204,29 @@ export default function TeamsTab({
                         {!readOnly && (
                           <button
                             onClick={() => handleSyncRepo(team.repository._id)}
-                            disabled={loading || syncingRepoId === team.repository._id}
+                            disabled={
+                              loading || syncingRepoId === team.repository._id
+                            }
                             title="Đồng bộ commit và chạy AI đánh giá thủ công ngay lập tức"
-                            className={`text-[9px] font-mono px-1.5 py-0.5 rounded border transition-all inline-flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed ${syncingRepoId === team.repository._id
+                            className={`text-[9px] font-mono px-1.5 py-0.5 rounded border transition-all inline-flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed ${
+                              syncingRepoId === team.repository._id
                                 ? "bg-cyan-950/40 text-cyan-500 border-cyan-500/20"
                                 : "bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border-cyan-500/20 hover:border-cyan-500/40"
-                              }`}
+                            }`}
                           >
                             <RefreshCw
                               size={9}
-                              className={syncingRepoId === team.repository._id ? "animate-spin" : ""}
+                              className={
+                                syncingRepoId === team.repository._id
+                                  ? "animate-spin"
+                                  : ""
+                              }
                             />
-                            <span>{syncingRepoId === team.repository._id ? "Đang đồng bộ..." : "Đồng bộ AI"}</span>
+                            <span>
+                              {syncingRepoId === team.repository._id
+                                ? "Đang đồng bộ..."
+                                : "Đồng bộ AI"}
+                            </span>
                           </button>
                         )}
                       </p>
@@ -236,7 +251,8 @@ export default function TeamsTab({
                           <span>
                             • {m.userId?.fullName}{" "}
                             {m.userId?.studentId && `(${m.userId.studentId}) `}
-                            {m.userId?.university && `- ${m.userId.university} `}
+                            {m.userId?.university &&
+                              `- ${m.userId.university} `}
                             {m.role === "leader" && (
                               <span className="text-[9px] text-cyan-400 font-mono font-bold">
                                 (Trưởng nhóm)
@@ -244,8 +260,7 @@ export default function TeamsTab({
                             )}
                           </span>
                           <span className="text-slate-500 font-mono">
-                            {m.userId?.githubUsername ||
-                              "Chưa liên kết Git"}
+                            {m.userId?.githubUsername || "Chưa liên kết Git"}
                           </span>
                         </div>
                       ))}
@@ -260,9 +275,7 @@ export default function TeamsTab({
                       </p>
                       <div className="flex gap-2">
                         <button
-                          onClick={() =>
-                            handleAssignTrack(team._id, "random")
-                          }
+                          onClick={() => handleAssignTrack(team._id, "random")}
                           disabled={loading || tracks.length === 0}
                           className="flex-1 bg-cyan-500 hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-slate-500 text-[10px] text-white font-bold py-1.5 px-2 rounded-lg font-mono transition-all flex items-center justify-center gap-1 cursor-pointer disabled:cursor-not-allowed border border-cyan-500/20"
                         >
@@ -280,13 +293,24 @@ export default function TeamsTab({
                             disabled={loading}
                             options={tracks
                               .filter((track: any) => {
-                                const currentTrackId = team.trackId?._id || team.trackId;
-                                const isCurrentTrack = track._id === currentTrackId;
-                                return isCurrentTrack || (track.name.toLowerCase() !== "bảng chung kết" && !track.name.toLowerCase().includes("chung kết"));
+                                const currentTrackId =
+                                  team.trackId?._id || team.trackId;
+                                const isCurrentTrack =
+                                  track._id === currentTrackId;
+                                return (
+                                  isCurrentTrack ||
+                                  (track.name.toLowerCase() !==
+                                    "bảng chung kết" &&
+                                    !track.name
+                                      .toLowerCase()
+                                      .includes("chung kết"))
+                                );
                               })
                               .map((track: any) => ({
                                 value: track._id,
-                                label: track.name.startsWith("Bảng") ? track.name : `Bảng ${track.name}`,
+                                label: track.name.startsWith("Bảng")
+                                  ? track.name
+                                  : `Bảng ${track.name}`,
                               }))}
                             placeholder="-- Chọn Bảng đấu --"
                             className="flex-1"
@@ -302,12 +326,11 @@ export default function TeamsTab({
                   )}
                 </div>
               ))}
-            {teamsList.filter((t) => t.status === "confirmed")
-              .length === 0 && (
-                <p className="col-span-2 text-xs text-slate-500 italic text-center py-2">
-                  Chưa có đội thi nào xác nhận hoàn tất.
-                </p>
-              )}
+            {teamsList.filter((t) => t.status === "confirmed").length === 0 && (
+              <p className="col-span-2 text-xs text-slate-500 italic text-center py-2">
+                Chưa có đội thi nào xác nhận hoàn tất.
+              </p>
+            )}
           </div>
         </div>
 
@@ -315,11 +338,7 @@ export default function TeamsTab({
         <div>
           <h4 className="text-xs font-bold text-amber-500 uppercase tracking-wider font-mono mb-3">
             Đội thi đang chờ xác nhận (
-            {
-              teamsList.filter((t) => t.status === "pending_confirm")
-                .length
-            }
-            )
+            {teamsList.filter((t) => t.status === "pending_confirm").length})
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {teamsList
@@ -331,10 +350,10 @@ export default function TeamsTab({
                 >
                   <div className="flex justify-between items-start">
                     <div>
-                      <span className="text-[10px] font-bold text-slate-500 font-mono">
+                      <span className="text-[10px] font-bold text-[#F27024] font-mono">
                         ĐỘI CHỜ DUYỆT
                       </span>
-                      <h5 className="font-bold text-slate-400 text-sm">
+                      <h5 className="font-bold text-slate-200 text-sm">
                         {team.name}
                       </h5>
                     </div>
@@ -343,37 +362,76 @@ export default function TeamsTab({
                     </span>
                   </div>
 
-                  {/* Members with status */}
-                  <div className="space-y-1">
-                    {team.members?.map((m: any) => (
-                      <div
-                        key={m.userId?._id}
-                        className="flex justify-between items-center text-[10px]"
-                      >
-                        <span className="text-slate-400">
-                          • {m.userId?.fullName}
-                        </span>
-                        <span
-                          className={`text-[9px] font-mono px-1 rounded border ${m.confirmStatus === "confirmed"
-                            ? "text-emerald-400 bg-emerald-500/5 border-emerald-500/10"
-                            : "text-amber-500 bg-amber-500/10 border-amber-500/20"
-                            }`}
+                  {/* Leader & Repo Info */}
+                  <div className="text-[11px] text-slate-400 space-y-1">
+                    <p>
+                      Trưởng nhóm:{" "}
+                      <strong className="text-slate-350 font-bold">
+                        {team.leaderId?.fullName || "Chưa thiết lập"}
+                      </strong>{" "}
+                      {team.leaderId?.email && `(${team.leaderId.email})`}
+                    </p>
+                    {team.repository ? (
+                      <p className="flex items-center gap-2 flex-wrap">
+                        <span>Repository:</span>
+                        <a
+                          href={team.repository.repoUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-cyan-400 hover:underline"
                         >
-                          {m.confirmStatus === "confirmed"
-                            ? "Đã nhận"
-                            : "Chờ xác nhận"}
-                        </span>
-                      </div>
-                    ))}
+                          {team.repository.repoName}
+                        </a>
+                      </p>
+                    ) : (
+                      <p className="text-slate-500 italic">
+                        GitHub Repo: Chưa cấp phát (chờ chia bảng)
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Members with status */}
+                  <div className="border-t border-slate-800/80 pt-2">
+                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                      Thành viên ({team.members?.length || 0}):
+                    </p>
+                    <div className="space-y-1">
+                      {team.members?.map((m: any) => (
+                        <div
+                          key={m.userId?._id}
+                          className="flex justify-between items-center text-[10px]"
+                        >
+                          <span className="text-slate-400">
+                            • {m.userId?.fullName}{" "}
+                            {m.userId?.studentId && `(${m.userId.studentId}) `}
+                            {m.userId?.university && `- ${m.userId.university} `}
+                            {m.role === "leader" && (
+                              <span className="text-[#F27024] font-bold">(Trưởng nhóm)</span>
+                            )}
+                          </span>
+                          <span
+                            className={`text-[9px] font-mono px-1 rounded border ${
+                              m.confirmStatus === "confirmed"
+                                ? "text-emerald-400 bg-emerald-500/5 border-emerald-500/10"
+                                : "text-amber-500 bg-amber-500/10 border-amber-500/20"
+                            }`}
+                          >
+                            {m.confirmStatus === "confirmed"
+                              ? "Đã nhận"
+                              : "Chờ xác nhận"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               ))}
-            {teamsList.filter((t) => t.status === "pending_confirm")
-              .length === 0 && (
-                <p className="col-span-2 text-xs text-slate-500 italic text-center py-2">
-                  Không có nhóm nào ở trạng thái chờ xác nhận.
-                </p>
-              )}
+            {teamsList.filter((t) => t.status === "pending_confirm").length ===
+              0 && (
+              <p className="col-span-2 text-xs text-slate-500 italic text-center py-2">
+                Không có nhóm nào ở trạng thái chờ xác nhận.
+              </p>
+            )}
           </div>
         </div>
       </div>

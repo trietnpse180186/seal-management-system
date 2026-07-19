@@ -62,7 +62,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-dark flex flex-col">
+    <div className={`min-h-screen ${location.pathname === '/login' ? 'bg-[#f5efe8]' : 'bg-gradient-dark'} flex flex-col`}>
       {!isJudgeRoute && !isAdminRoute && <Navbar user={user} roles={roles} onLogout={handleLogout} />}
       
       <main className="flex-1">

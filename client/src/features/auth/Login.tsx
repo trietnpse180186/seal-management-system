@@ -890,7 +890,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             {isRegister ? 'Đăng ký Tài khoản' : 'Đăng nhập'}
           </h1>
           <p className="text-on-surface-variant text-xs font-sans">
-            {isRegister ? 'Khởi tạo thông tin của bạn để tham gia cuộc thi.' : 'Xác thực tài khoản của bạn để bắt đầu phiên làm việc.'}
+            {isRegister}
           </p>
         </div>
 
@@ -1052,7 +1052,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             <div className="w-full border-t border-slate-200"></div>
           </div>
           <span className="relative px-3 text-[10px] uppercase tracking-wider text-slate-500 bg-white font-mono">
-            Hoặc đăng nhập bằng
+            Hoặc
           </span>
         </div>
 

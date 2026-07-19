@@ -65,6 +65,14 @@ const EventSchema = new Schema({
       { title: 'Điều 10. Quy định chung và hiệu lực', description: 'Ban Tổ Chức có toàn quyền giải thích và điều chỉnh điều lệ khi cần thiết. Mọi tình huống không quy định sẽ do BTC xem xét quyết định đảm bảo công bằng. Hiệu lệ kể từ ngày công bố.' }
     ]
   },
+  customTimeline: {
+    type: [{
+      time: { type: String, required: true },
+      title: { type: String, required: true },
+      description: { type: String }
+    }],
+    default: []
+  },
   seminar: {
     scheduledAt: { type: Date },
     scheduledEnd: { type: Date },

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -9,7 +9,7 @@ html {
 
 :root {
   --font-sans: 'Inter', 'Plus Jakarta Sans', 'Outfit', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-mono: 'Inter', 'Plus Jakarta Sans', 'Outfit', sans-serif;
   --fpt-orange: #f27024;
 }
 
@@ -106,9 +106,9 @@ input:focus, select:focus, textarea:focus {
   background-color: rgba(15, 23, 42, 0.8);
 }
 
-/* JetBrains Mono Utility */
+/* Font Utility */
 .font-mono-tech {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Inter', 'Plus Jakarta Sans', 'Outfit', sans-serif;
 }
 
 /* Cyberpunk HUD elements */
@@ -573,8 +573,6 @@ input:focus, select:focus, textarea:focus {
   border-color: rgba(242, 112, 36, 0.25) !important;
 }
 
-
-
 .team-area-light .bg-cyan-950\/80 {
   background-color: #ffffff !important;
 }
@@ -625,8 +623,6 @@ input:focus, select:focus, textarea:focus {
   border-color: rgba(242, 112, 36, 0.4) !important;
 }
 
-
-
 .team-area-light .btn-primary {
   background-color: #f27024 !important;
   border-color: #f27024 !important;
@@ -652,4 +648,19 @@ input:focus, select:focus, textarea:focus {
   border-color: rgba(0, 0, 0, 0.08) !important;
 }
 
+/* Tăng kích thước tất cả các text khác title */
+body {
+  font-size: 1.0625rem; /* Tăng từ 1rem (16px) lên ~17px */
+}
 
+.text-xs {
+  font-size: 0.85rem !important; /* Tăng từ 0.75rem (12px) lên ~13.6px */
+}
+
+.text-sm {
+  font-size: 0.95rem !important; /* Tăng từ 0.875rem (14px) lên ~15.2px */
+}
+
+.text-base {
+  font-size: 1.0625rem !important; /* Tăng từ 1rem (16px) lên ~17px */
+}

@@ -138,7 +138,7 @@ export default function AdminLayout({ user, roles, onLogout }: AdminLayoutProps)
   };
 
   return (
-    <div className="min-h-screen bg-[#070d1f] text-slate-300 flex font-sans selection:bg-cyan-500/30">
+    <div className="min-h-screen bg-[#faf9f6] text-slate-800 flex font-sans selection:bg-orange-500/20 coordinator-light-theme">
       {/* SideNavBar */}
       <aside className="fixed left-0 top-0 h-full w-[280px] bg-slate-900/40 backdrop-blur-2xl border-r border-white/5 flex flex-col z-20 shadow-2xl">
 

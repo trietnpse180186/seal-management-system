@@ -419,15 +419,27 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
 
                   {/* Notifications Dropdown */}
                   {showNotifications && (
-                    <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50">
-                      <div className="flex justify-between items-center p-3 border-b border-slate-800 sticky top-0 bg-slate-900/95 backdrop-blur z-10">
-                        <h4 className="text-sm font-semibold text-white">
+                    <div className={`absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto border rounded-xl shadow-2xl z-50 ${
+                      usesLightShell 
+                        ? "bg-[#faf9f6] border-slate-200 text-slate-800" 
+                        : "bg-slate-900 border-slate-700 text-slate-200"
+                    }`}>
+                      <div className={`flex justify-between items-center p-3 border-b sticky top-0 backdrop-blur z-10 ${
+                        usesLightShell 
+                          ? "bg-[#faf9f6]/95 border-slate-200 text-slate-800" 
+                          : "bg-slate-900/95 border-slate-800 text-white"
+                      }`}>
+                        <h4 className="text-sm font-semibold">
                           Thông báo
                         </h4>
                         {unreadCount > 0 && (
                           <button
                             onClick={markAllAsRead}
-                            className="text-xs text-cyan-400 hover:text-cyan-300"
+                            className={`text-xs ${
+                              usesLightShell 
+                                ? "text-[#F27024] hover:text-[#e05e1b]" 
+                                : "text-cyan-400 hover:text-cyan-300"
+                            }`}
                           >
                             Đánh dấu đã đọc
                           </button>
@@ -436,7 +448,7 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
                       <div className="flex flex-col">
                         {notifications.length === 0 ? (
                           <div className="p-6 text-center text-xs text-slate-500 flex flex-col items-center gap-2">
-                            <Bell size={24} className="text-slate-700" />
+                            <Bell size={24} className="text-slate-400" />
                             Chưa có thông báo nào.
                           </div>
                         ) : (
@@ -446,33 +458,50 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
                               onClick={() => {
                                 if (!notif.isRead) markAsRead(notif._id);
                               }}
-                              className={`p-3 border-b border-slate-800/50 cursor-pointer transition-colors flex gap-3 items-start ${!notif.isRead
-                                ? "bg-cyan-950/20 hover:bg-cyan-950/30"
-                                : "hover:bg-slate-800/50"
-                                }`}
+                              className={`p-3 border-b cursor-pointer transition-colors flex gap-3 items-start ${
+                                !notif.isRead
+                                  ? usesLightShell 
+                                    ? "bg-[#F27024]/5 hover:bg-[#F27024]/10 border-slate-200/50" 
+                                    : "bg-cyan-950/20 hover:bg-cyan-950/30 border-slate-800/50"
+                                  : usesLightShell 
+                                    ? "hover:bg-slate-100/50 border-slate-200/50" 
+                                    : "hover:bg-slate-800/50 border-slate-800/50"
+                              }`}
                             >
-                              <div className={`mt-0.5 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm ${notif.type === 'chat_message'
-                                ? 'bg-blue-500/20 text-blue-400'
-                                : 'bg-cyan-500/20 text-cyan-400'
-                                }`}>
+                              <div className={`mt-0.5 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm ${
+                                notif.type === 'chat_message'
+                                  ? 'bg-blue-500/20 text-blue-400'
+                                  : usesLightShell 
+                                    ? 'bg-[#F27024]/10 text-[#F27024]' 
+                                    : 'bg-cyan-500/20 text-cyan-400'
+                              }`}>
                                 {notif.type === 'chat_message'
                                   ? <MessageSquare size={14} />
                                   : <Bell size={14} />}
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <p className={`text-xs font-semibold truncate ${!notif.isRead ? "text-cyan-300" : "text-slate-300"
-                                  }`}>
+                              <div className="flex-1 min-w-0 font-sans">
+                                <p className={`text-xs font-semibold truncate ${
+                                  !notif.isRead 
+                                    ? usesLightShell 
+                                      ? "text-slate-900 font-bold" 
+                                      : "text-cyan-300" 
+                                    : "text-slate-600"
+                                }`}>
                                   {notif.title}
                                 </p>
-                                <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">
+                                <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
                                   {notif.body}
                                 </p>
-                                <p className="text-[10px] text-slate-500 mt-1.5">
+                                <p className="text-[10px] text-slate-400 mt-1.5">
                                   {new Date(notif.createdAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
                                 </p>
                               </div>
                               {!notif.isRead && (
-                                <div className="flex-shrink-0 mt-1.5 w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
+                                <div className={`flex-shrink-0 mt-1.5 w-2 h-2 rounded-full ${
+                                  usesLightShell 
+                                    ? "bg-[#F27024] shadow-[0_0_6px_rgba(242,112,36,0.8)]" 
+                                    : "bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]"
+                                }`} />
                               )}
                             </div>
                           ))

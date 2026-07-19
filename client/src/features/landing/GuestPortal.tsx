@@ -828,17 +828,17 @@ export default function GuestPortal({ user }: GuestPortalProps) {
             {
               title: "Điều 1. Chủ đề và phạm vi thi đấu",
               description:
-                "Cuộc thi gồm 03 Track thuộc các lĩnh vực vận hành thông minh khác nhau. Chủ đề cụ thể của từng Track được Ban Tổ chức bảo mật và chỉ công bố thông qua hình thức bốc thăm trong buổi gặp mặt trước ngày thi đấu.\n\nMỗi đội sẽ phát triển một sản phẩm AI dựa trên dữ liệu cảm biến và hệ thống thiết bị do Ban Tổ chức cung cấp. Giải pháp cần thể hiện rõ vai trò của AI trong ít nhất một nhiệm vụ như phát hiện bất thường, dự báo, chẩn đoán nguyên nhân hoặc đề xuất hành động.",
+                "Cuộc thi gồm 03 Track thuộc các lĩnh vực vận hành thông minh khác nhau. Chủ đề\ncụ thể của từng Track được Ban Tổ chức bảo mật và chỉ công bố thông qua hình thức\nbốc thăm trong buổi gặp mặt trước ngày thi đấu.\nMỗi đội sẽ phát triển một sản phẩm AI dựa trên dữ liệu cảm biến và hệ thống thiết bị\ndo Ban Tổ chức cung cấp. Giải pháp cần thể hiện rõ vai trò của AI trong ít nhất một\nnhiệm vụ như phát hiện bất thường, dự báo, chẩn đoán nguyên nhân hoặc đề xuất hành\nđộng.",
             },
             {
               title: "Điều 2. Cấu trúc và lịch trình cuộc thi",
               description:
-                "Ngày 1: Khai mạc và chuẩn bị thi đấu\n14h00 – 17h00: Khai mạc, phổ biến thể lệ, bốc thăm Track, công bố chủ đề và chia bảng thi đấu.\n● Các đội lần lượt bốc thăm một trong ba Track.\n● Ban Tổ chức công bố 01 chủ đề tương ứng cho mỗi Track.\n● Các đội được chia bảng tùy theo số lượng đăng ký thực tế và được bố trí vị trí thi đấu.\n● Mỗi đội được cấp repository, tài khoản và thông tin kết nối với hệ thống mô phỏng.\n● Các đội tiến hành kiểm tra internet, API, MQTT và môi trường phát triển.\n● Thành viên phải có mặt đầy đủ trong Ngày 1 để tham gia bốc thăm và tiếp nhận thông tin thi đấu.\n\nNgày 2: Thi đấu và bế mạc\n● 07h00 – 14h00: Thi đấu chính thức, xây dựng và hoàn thiện sản phẩm.\n● 14h00 – 15h30: Trình bày và chấm điểm vòng bảng.\n● 15h30 – 17h00: Vòng chung kết.\n● 17h00 – 18h00: Trao giải và bế mạc.",
+                "Ngày 1: Khai mạc và chuẩn bị thi đấu\n14h00 – 17h00: Khai mạc, phổ biến thể lệ, bốc thăm Track, công bố chủ đề và chia\nbảng thi đấu.\n● Các đội lần lượt bốc thăm một trong ba Track.\n● Ban Tổ chức công bố 01 chủ đề tương ứng cho mỗi Track.\n● Các đội được chia bảng tùy theo số lượng đăng ký thực tế và được bố trí vị trí thi\nđấu.\n● Mỗi đội được cấp repository, tài khoản và thông tin kết nối với hệ thống mô\nphỏng.\n● Các đội tiến hành kiểm tra internet, API, MQTT và môi trường phát triển.\n● Thành viên phải có mặt đầy đủ trong Ngày 1 để tham gia bốc thăm và tiếp nhận\nthông tin thi đấu.\nNgày 2: Thi đấu và bế mạc\n● 07h00 – 14h00: Thi đấu chính thức, xây dựng và hoàn thiện sản phẩm.\n● 14h00 – 15h30: Trình bày và chấm điểm vòng bảng.\n● 15h30 – 17h00: Vòng chung kết.\n● 17h00 – 18h00: Trao giải và bế mạc.",
             },
             {
               title: "Điều 3. Quy định thi đấu",
               description:
-                "- Thời gian thi đấu chính thức: 07h00 – 14h00.\n- Đội hoặc thành viên đến trễ quá 60 phút sẽ không được tham gia, trừ trường hợp đặc biệt được Ban Tổ chức chấp thuận.\n- Mã nguồn phải được lưu trữ trên GitHub, GitLab hoặc nền tảng tương đương; tài liệu có thể quản lý bằng Jira, Confluence hoặc Notion.\n- Các đội trình bày bằng slide và demo trực tiếp sản phẩm.\n- Các đội được phép sử dụng các mô hình, thư viện và nền tảng AI phù hợp như TensorFlow, PyTorch, scikit-learn, Hugging Face, OpenAI SDK, Google Gemini SDK, LangGraph hoặc công cụ tương đương.\n- Giải pháp phải thể hiện rõ vai trò của AI trong phân tích dữ liệu, phát hiện bất thường, dự báo, chẩn đoán hoặc đề xuất hành động.\n- Sản phẩm chỉ trực quan hóa dữ liệu hoặc cảnh báo bằng điều kiện cố định sẽ không được xem là đáp ứng đầy đủ yêu cầu về AI.\n- Vòng bảng: 5 phút trình bày, 3 phút trả lời câu hỏi.\n- Vòng chung kết: 7 phút trình bày, 3 phút trả lời câu hỏi.",
+                "- Thời gian thi đấu chính thức: 07h00 – 14h00.\n- Đội hoặc thành viên đến trễ quá 60 phút sẽ không được tham gia, trừ trường\nhợp đặc biệt được Ban Tổ chức chấp thuận.\n- Mã nguồn phải được lưu trữ trên GitHub, GitLab hoặc nền tảng tương đương; tài\nliệu có thể quản lý bằng Jira, Confluence hoặc Notion.\n- Các đội trình bày bằng slide và demo trực tiếp sản phẩm.\n- Các đội được phép sử dụng các mô hình, thư viện và nền tảng AI phù hợp như\nTensorFlow, PyTorch, scikit-learn, Hugging Face, OpenAI SDK, Google Gemini\nSDK, LangGraph hoặc công cụ tương đương.\n- Giải pháp phải thể hiện rõ vai trò của AI trong phân tích dữ liệu, phát hiện bất\nthường, dự báo, chẩn đoán hoặc đề xuất hành động.\n- Sản phẩm chỉ trực quan hóa dữ liệu hoặc cảnh báo bằng điều kiện cố định sẽ\nkhông được xem là đáp ứng đầy đủ yêu cầu về AI.\n- Vòng bảng: 5 phút trình bày, 3 phút trả lời câu hỏi.\n- Vòng chung kết: 7 phút trình bày, 3 phút trả lời câu hỏi.",
             },
             {
               title: "Điều 4. Cơ cấu thi đấu và chia bảng",
@@ -848,32 +848,22 @@ export default function GuestPortal({ user }: GuestPortalProps) {
             {
               title: "Điều 5. Vòng chung kết và điều kiện xét chọn",
               description:
-                "- Sau vòng bảng, 02 đội có điểm cao nhất của mỗi bảng được chọn vào vòng chung kết, tổng cộng 06 đội.\n- Trường hợp thiếu suất hoặc có các đội bằng điểm, Ban Tổ chức sẽ xét đội có điểm cao tiếp theo hoặc tổ chức phần đánh giá bổ sung tối đa 10 phút.",
+                "- Sau vòng bảng, 02 đội có điểm cao nhất của mỗi bảng được chọn vào vòng\nchung kết, tổng cộng 06 đội.\n- Trường hợp thiếu suất hoặc có các đội bằng điểm, Ban Tổ chức sẽ xét đội có\nđiểm cao tiếp theo hoặc tổ chức phần đánh giá bổ sung tối đa 10 phút.",
             },
             {
               title: "Điều 6. Tiêu chí chấm điểm",
               description:
-                "1. Vòng bảng:\n+ Xử lý dữ liệu thời gian thực và độ chính xác: 30%\n+ Hiệu quả ứng dụng AI: 30%\n+ Tính phù hợp với Domain và trải nghiệm người dùng: 20%\n+ Ý tưởng, Demo và Pitching: 20%\n\n2. Vòng chung kết:\n+ Độ hoàn thiện và ổn định của sản phẩm: 30%\n+ Năng lực phân tích và hỗ trợ quyết định của AI: 30%\n+ Tính sáng tạo, khả năng mở rộng và ứng dụng thực tế: 20%\n+ Kỹ năng Demo, trình bày và phản biện: 20@",
+                "1. Vòng bảng:\n+ Xử lý dữ liệu thời gian thực và độ chính xác: 30%\n+ Hiệu quả ứng dụng AI: 30%\n+ Tính phù hợp với Domain và trải nghiệm người dùng: 20%\n+ Ý tưởng, Demo và Pitching: 20%\n2. Vòng chung kết:\n+ Độ hoàn thiện và ổn định của sản phẩm: 30%\n+ Năng lực phân tích và hỗ trợ quyết định của AI: 30%\n+ Tính sáng tạo, khả năng mở rộng và ứng dụng thực tế: 20%\n+ Kỹ năng Demo, trình bày và phản biện: 20%",
             },
             {
               title: "Điều 7. Quy định về đạo đức và bản quyền",
               description:
-                "+ Nghiêm cấm mọi hành vi gian lận, đạo nhái, vi phạm bản quyền hoặc can thiệp trái phép vào hệ thống thi đấu.\n+ Sản phẩm nộp dự thi phải là kết quả làm việc của chính đội thi trong thời gian cuộc thi.\n+ BTC có quyền loại bỏ hoặc thu hồi kết quả nếu phát hiện vi phạm.",
+                "+ Nghiêm cấm mọi hành vi gian lận, đạo nhái, vi phạm bản quyền hoặc can thiệp\ntrái phép vào hệ thống thi đấu.\n+ Sản phẩm nộp dự thi phải là kết quả làm việc của chính đội thi trong thời gian\ncuộc thi.\n+ BTC có quyền loại bỏ hoặc thu hồi kết quả nếu phát hiện vi phạm.",
             },
             {
               title: "Điều 8. Đối tượng tham gia",
               description:
-                "Sinh viên ngành Công nghệ thông tin đang theo học tại trường Đại học FPT cơ sở TP.HCM và các trường Đại học khác trên địa bàn TP.HCM được mời theo thư mời của BTC.",
-            },
-            {
-              title: "IV. Quy chế thể lệ khác",
-              description:
-                "- Sinh viên đã tốt nghiệp không được tham gia cuộc thi.\n- Một thí sinh chỉ được tham gia một đội thi.\n- Ngôn ngữ & công cụ linh hoạt theo năng lực Team.\n- Các thí sinh đảm bảo tham gia đầy đủ các nội dung của thi: Workshop, Khai mạc và họp đội thi, Code - thuyết trình và Bế mạc.\n- Trong suốt quá trình cuộc thi diễn ra, các thí sinh không được phép rời khỏi khu vực dự thi. Mọi trường hợp khác cần có sự đồng ý, ý kiến từ Ban tổ chức.\n- Đội thi có hành động gian lận, sao chép bài thi khác sẽ bị loại khỏi cuộc thi.\n- Sau thời gian kết thúc đăng ký các đội thi không được thay đổi thành viên.\n- Thí sinh cần tuân thủ tuyệt đối theo mọi quy định và điều lệ của cuộc thi, cung cấp các thông tin mà Ban tổ chức yêu cầu. Nếu thí sinh vi phạm, Ban tổ chức có toàn quyền quyết định hủy kết quả dự thi của thí sinh hoặc đội thi đó.\n- Ban tổ chức có quyền sử dụng toàn bộ hình ảnh của thí sinh cho các mục đích truyền thông trước, trong và sau sự kiện.\n- Bản quyền sản phẩm thuộc Team, BTC được quyền sử dụng cho truyền thông và đào tạo.",
-            },
-            {
-              title: "V. Cơ cấu giải thưởng SEAL Hackathon",
-              description:
-                "- Giấy chứng nhận: Tất cả các thí sinh tham gia cuộc thi.\n- 01 Giải Nhất: x.000.000 đồng + giấy chứng nhận + hoa;\n- 01 Giải Nhì: x.000.000 đồng + giấy chứng nhận + hoa;\n- 01 Giải Ba: x.000.000 đồng + giấy chứng nhận + hoa;\n- 01 Giải Khuyến khích: x.000.000 đồng + giấy chứng nhận;",
+                "Sinh viên ngành Công nghệ thông tin đang theo học tại trường Đại học FPT cơ sở\nTP.HCM và các trường Đại học khác trên địa bàn TP.HCM được mời theo thư mời của\nBTC.",
             },
           ];
 

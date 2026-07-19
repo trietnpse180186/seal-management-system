@@ -1700,3 +1700,30 @@ body {
   backdrop-filter: blur(8px) !important;
   -webkit-backdrop-filter: blur(8px) !important;
 }
+
+/* Make small font sizes under coordinator light theme larger (approx 2x) */
+.coordinator-light-theme .text-\[10px\],
+.coordinator-light-theme .text-\[11px\],
+.coordinator-light-theme .text-\[9px\],
+.coordinator-light-theme .text-\[10px\] *,
+.coordinator-light-theme .text-\[11px\] *,
+.coordinator-light-theme .text-\[9px\] * {
+  font-size: 16px !important;
+}
+
+.coordinator-light-theme .text-\[12px\],
+.coordinator-light-theme .text-xs,
+.coordinator-light-theme .text-\[12px\] *,
+.coordinator-light-theme .text-xs * {
+  font-size: 17px !important;
+}
+
+.coordinator-light-theme .text-sm,
+.coordinator-light-theme .text-sm * {
+  font-size: 18px !important;
+}
+
+.coordinator-light-theme .font-mono.text-xs,
+.coordinator-light-theme .font-mono.text-xs * {
+  font-size: 17px !important;
+}

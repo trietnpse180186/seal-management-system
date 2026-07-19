@@ -1689,3 +1689,14 @@ body {
 .coordinator-light-theme .shadow-lg {
   box-shadow: none !important;
 }
+
+/* White backdrop blur overlay for modals, confirm dialogs and popups in light theme */
+.coordinator-light-theme div.fixed.inset-0[class*="bg-slate-"],
+.coordinator-light-theme div.fixed.inset-0[class*="bg-black"],
+.coordinator-light-theme div.fixed.inset-0.bg-black\/70,
+.coordinator-light-theme div.fixed.inset-0.bg-slate-955\/80,
+.coordinator-light-theme div.fixed.inset-0.bg-slate-950\/80 {
+  background-color: rgba(255, 255, 255, 0.45) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}

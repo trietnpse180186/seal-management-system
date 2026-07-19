@@ -890,7 +890,18 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                   </span>
                 </h2>
                 <a
-                  href="http://localhost:5000/THÔNG%20TIN%20VỀ%20CUỘC%20THI.pdf"
+                  href={`${(() => {
+                    let apiBase = import.meta.env.VITE_API_URL;
+                    if (!apiBase) {
+                      const hostname = window.location.hostname;
+                      if (hostname && hostname !== 'localhost' && hostname !== '127.0.0.1') {
+                        apiBase = window.location.origin;
+                      } else {
+                        apiBase = 'http://localhost:5000';
+                      }
+                    }
+                    return apiBase;
+                  })()}/THÔNG%20TIN%20VỀ%20CUỘC%20THI.pdf`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 px-5 py-2.5 border border-[#F27024]/30 hover:border-[#F27024]/80 bg-[#F27024]/5 hover:bg-[#F27024]/10 rounded-xl text-xs font-mono font-bold text-[#F27024] hover:text-[#F27024] transition-all cursor-pointer shadow-lg shadow-[#F27024]/5 hover:scale-[1.02]"

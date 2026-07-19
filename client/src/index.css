@@ -799,7 +799,7 @@ input:focus, select:focus, textarea:focus {
   background-color: #ffffff !important;
   border: 1px solid rgba(0, 0, 0, 0.12) !important;
   color: #0f172a !important;
-  font-size: 0.95rem !important;
+  font-size: 1.0625rem !important;
 }
 
 .team-area-light input:focus, 
@@ -846,17 +846,37 @@ input:focus, select:focus, textarea:focus {
 
 /* Tăng kích thước tất cả các text khác title */
 body {
-  font-size: 1.125rem; /* Tăng lên ~18px */
+  font-size: 1.25rem; /* Tăng lên ~20px */
 }
 
 .text-xs {
-  font-size: 0.9rem !important; /* Tăng lên ~14.4px */
-}
-
-.text-sm {
   font-size: 1.0rem !important; /* Tăng lên ~16px */
 }
 
-.text-base {
+.text-sm {
   font-size: 1.125rem !important; /* Tăng lên ~18px */
+}
+
+.text-base {
+  font-size: 1.25rem !important; /* Tăng lên ~20px */
+}
+
+/* Profile Modal Light Theme overrides to fix dark background when focused */
+.profile-modal-light input {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+.profile-modal-light input:focus {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #f27024 !important;
+  box-shadow: 0 0 0 2px rgba(242, 112, 36, 0.15), 0 0 10px rgba(242, 112, 36, 0.2) !important;
+}
+
+.profile-modal-light input:disabled {
+  background-color: #f8fafc !important;
+  color: #64748b !important;
+  border-color: #e2e8f0 !important;
 }

@@ -227,7 +227,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-955/80 backdrop-blur-sm p-4 animate-fade-in animate-duration-150">
           <div className={`relative w-full max-w-md p-6 rounded-2xl shadow-2xl transition-all duration-300 font-sans ${
             usesLightShell 
-              ? "bg-[#faf9f6] border border-slate-200 text-slate-800" 
+              ? "bg-[#faf9f6] border border-slate-200 text-slate-800 profile-modal-light" 
               : "bg-[#0c1322] border border-cyan-500/30 text-slate-200 shadow-[0_0_30px_rgba(6,182,212,0.15)]"
           }`}>
             {/* Top decorative line */}

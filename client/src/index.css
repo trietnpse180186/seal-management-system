@@ -1661,7 +1661,9 @@ body {
 }
 
 .coordinator-light-theme .bg-slate-955\/40,
-.coordinator-light-theme .bg-slate-950\/40 {
+.coordinator-light-theme .bg-slate-950\/40,
+.coordinator-light-theme .bg-slate-900\/40,
+.coordinator-light-theme .bg-slate-900\/10 {
   background-color: #ffffff !important;
   border-color: #cbd5e1 !important;
 }

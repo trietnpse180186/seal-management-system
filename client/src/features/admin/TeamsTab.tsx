@@ -327,7 +327,7 @@ export default function TeamsTab({
               .map((team: any) => (
                 <div
                   key={team._id}
-                  className="bg-slate-900/10 p-4 rounded-xl border border-slate-800/40 space-y-3 opacity-75"
+                  className="bg-slate-900/40 p-4 rounded-xl border border-slate-800 hover:border-slate-700 transition-all space-y-3"
                 >
                   <div className="flex justify-between items-start">
                     <div>

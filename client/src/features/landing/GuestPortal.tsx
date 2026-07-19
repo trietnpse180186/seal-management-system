@@ -913,8 +913,8 @@ export default function GuestPortal({ user }: GuestPortalProps) {
 
               {/* Highlights Dashboard Grid */}
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 text-left">
-                {/* Left Highlight (Điều 8: Tiêu chí chấm điểm) - Spans 7 cols on XL */}
-                <div className="xl:col-span-7 bg-slate-50/50 p-6 rounded-2xl border border-slate-200/60 flex flex-col">
+                {/* Left Highlight (Điều 8: Tiêu chí chấm điểm) - Spans 6 cols on XL */}
+                <div className="xl:col-span-6 bg-slate-50/50 p-6 rounded-2xl border border-slate-200/60 flex flex-col">
                   <div className="space-y-4 flex-1 flex flex-col">
                     <h3 className="text-xs text-[#F27024] font-extrabold uppercase font-mono tracking-widest flex items-center gap-2.5 pb-2 border-b border-slate-200">
                       <Award size={18} className="text-[#F27024]" />
@@ -983,8 +983,8 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                   </div>
                 </div>
 
-                {/* Right Highlight (Quy chế thi đấu cốt lõi) - Spans 5 cols on XL */}
-                <div className="xl:col-span-5 bg-slate-50/50 p-6 rounded-2xl border border-slate-200/60 flex flex-col">
+                {/* Right Highlight (Quy chế thi đấu cốt lõi) - Spans 6 cols on XL */}
+                <div className="xl:col-span-6 bg-slate-50/50 p-6 rounded-2xl border border-slate-200/60 flex flex-col">
                   <div className="space-y-4 w-full flex-1 flex flex-col">
                     <h3 className="text-xs text-[#F27024] font-extrabold uppercase font-mono tracking-widest flex items-center gap-2.5 pb-2 border-b border-slate-200">
                       <Terminal size={18} className="text-[#F27024]" />

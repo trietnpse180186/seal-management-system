@@ -7,20 +7,40 @@ import {
   StyleSheet,
   ActivityIndicator,
   KeyboardAvoidingView,
+  NativeModules,
   Platform,
   ScrollView,
+  TurboModuleRegistry,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import api from '../api/api';
 import socketService from '../api/socketService';
-import { firebaseAuth, firebaseWebClientId } from '../config/firebase';
 import { ShieldAlert } from 'lucide-react-native';
 
+const googleServices = require('../../google-services.json');
+const androidClient = googleServices.client?.[0];
+const firebaseWebClientId = androidClient?.oauth_client?.find((client) => client.client_type === 3)?.client_id;
+
 let isGoogleSigninConfigured = false;
+const GOOGLE_SIGNIN_NATIVE_MODULE = 'RNGoogleSignin';
+
+const hasGoogleSigninNativeModule = () => {
+  try {
+    return Boolean(
+      TurboModuleRegistry?.get?.(GOOGLE_SIGNIN_NATIVE_MODULE) ||
+        NativeModules?.[GOOGLE_SIGNIN_NATIVE_MODULE]
+    );
+  } catch (err) {
+    return Boolean(NativeModules?.[GOOGLE_SIGNIN_NATIVE_MODULE]);
+  }
+};
 
 const getGoogleSigninModule = () => {
+  if (!hasGoogleSigninNativeModule()) {
+    return null;
+  }
+
   const googleSigninModule = require('@react-native-google-signin/google-signin');
 
   if (!isGoogleSigninConfigured) {
@@ -32,6 +52,39 @@ const getGoogleSigninModule = () => {
   }
 
   return googleSigninModule;
+};
+
+const getGoogleLoginErrorMessage = (err, statusCodes) => {
+  const code = err?.code || err?.nativeErrorCode;
+  const message = String(err?.message || '');
+
+  if (code === statusCodes?.SIGN_IN_CANCELLED) {
+    return '';
+  }
+
+  if (code === statusCodes?.IN_PROGRESS) {
+    return 'Dang co mot phien dang nhap Google dang chay.';
+  }
+
+  if (code === statusCodes?.PLAY_SERVICES_NOT_AVAILABLE) {
+    return 'Google Play Services khong kha dung hoac can cap nhat.';
+  }
+
+  if (
+    code === 'DEVELOPER_ERROR' ||
+    message.includes('DEVELOPER_ERROR') ||
+    message.includes('ApiException: 10')
+  ) {
+    return 'Google Sign-In chua khop Android package/SHA-1. Kiem tra OAuth Android client trong Firebase/Google Cloud roi build lai APK.';
+  }
+
+  if (err?.response?.data?.message) {
+    return err.response.data.message;
+  }
+
+  return code
+    ? `Dang nhap Google that bai (${code}). Vui long thu lai.`
+    : 'Dang nhap Google that bai. Vui long thu lai.';
 };
 
 export default function LoginScreen({ navigation }) {
@@ -74,6 +127,15 @@ export default function LoginScreen({ navigation }) {
     await redirectUser(user, roles || []);
   };
 
+  const completeGoogleLoginWithIdToken = async (idToken) => {
+    if (!idToken) {
+      setError('Khong lay duoc Google ID token. Kiem tra Web Client ID va Android OAuth Client trong google-services.json.');
+      return;
+    }
+
+    const res = await api.post('/auth/google', { idToken });
+    await saveSession(res.data);
+  };
   const handleGoogleLogin = async () => {
     setError('');
     setLoading(true);
@@ -83,11 +145,20 @@ export default function LoginScreen({ navigation }) {
       googleSigninModule = getGoogleSigninModule();
     } catch (err) {
       console.log('Google Sign-In native module error:', err);
-      setError('Google native login chi hoat dong tren APK/EAS development build, khong ho tro Expo Go.');
+      googleSigninModule = null;
+    }
+
+    if (!firebaseWebClientId) {
+      setError('Khong tim thay Firebase Web Client ID trong google-services.json.');
       setLoading(false);
       return;
     }
 
+    if (!googleSigninModule) {
+      setError('Google login chi hoat dong tren APK/EAS build. Hay build APK moi de test.');
+      setLoading(false);
+      return;
+    }
     const {
       GoogleSignin,
       isCancelledResponse,
@@ -96,11 +167,6 @@ export default function LoginScreen({ navigation }) {
     } = googleSigninModule;
 
     try {
-      if (!firebaseWebClientId) {
-        setError('Khong tim thay Firebase Web Client ID trong google-services.json.');
-        return;
-      }
-
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       const signInResult = await GoogleSignin.signIn();
 
@@ -114,36 +180,13 @@ export default function LoginScreen({ navigation }) {
         idToken = tokens.idToken;
       }
 
-      if (!idToken) {
-        setError('Khong lay duoc Google ID token. Hay kiem tra Firebase Google Auth.');
-        return;
-      }
-
-      const googleCredential = GoogleAuthProvider.credential(idToken);
-      const firebaseCredential = await signInWithCredential(firebaseAuth, googleCredential);
-      const firebaseIdToken = await firebaseCredential.user.getIdToken();
-
-      const res = await api.post('/auth/firebase-google', { firebaseIdToken });
-      await saveSession(res.data);
+      await completeGoogleLoginWithIdToken(idToken);
     } catch (err) {
       console.log('Google login error:', err);
 
-      if (isErrorWithCode(err)) {
-        if (err.code === statusCodes.IN_PROGRESS) {
-          setError('Dang co mot phien dang nhap Google dang chay.');
-          return;
-        }
-
-        if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-          setError('Google Play Services khong kha dung hoac can cap nhat.');
-          return;
-        }
-      }
-
-      if (err.response?.data?.message) {
-        setError(err.response.data.message);
-      } else {
-        setError('Dang nhap Google that bai. Vui long thu lai.');
+      const googleErrorMessage = getGoogleLoginErrorMessage(err, isErrorWithCode(err) ? statusCodes : null);
+      if (googleErrorMessage) {
+        setError(googleErrorMessage);
       }
     } finally {
       setLoading(false);

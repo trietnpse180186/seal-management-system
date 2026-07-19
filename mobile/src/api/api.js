@@ -9,7 +9,6 @@ let currentApiUrl = DEFAULT_API_URL;
 
 const api = axios.create({
   baseURL: currentApiUrl,
-  timeout: 10000,
 });
 
 // Khởi tạo Base URL từ bộ nhớ máy

@@ -9,8 +9,9 @@ gsap.registerPlugin(ScrollTrigger);
 
 export default function About() {
   const containerRef = useRef<HTMLDivElement>(null);
+  // @ts-ignore
   const [activeEvent, setActiveEvent] = useState<any>(null);
-  const [currentTime, setCurrentTime] = useState(new Date());
+  // const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -32,10 +33,10 @@ export default function About() {
     };
     fetchEvents();
 
-    const timer = setInterval(() => {
+    /* const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
-    return () => clearInterval(timer);
+    return () => clearInterval(timer); */
   }, []);
 
   useGSAP(() => {
@@ -76,7 +77,7 @@ export default function About() {
     );
   }, { scope: containerRef });
 
-  const getCountdownText = () => {
+  /* const getCountdownText = () => {
     if (!activeEvent) return null;
 
     const now = currentTime.getTime();
@@ -168,15 +169,15 @@ export default function About() {
       return `${days} ngày ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
     }
     return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-  };
+  }; */
 
   return (
     <section ref={containerRef} className="py-24 bg-white relative border-y border-slate-200" id="about">
       {/* Background radial glow */}
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_50%_10%,rgba(242,112,36,0.03)_0%,transparent_50%)]"></div>
-      
+
       <div className="max-w-7xl mx-auto px-6 relative z-10">
-        
+
         {/* Header */}
         <div className="about-header max-w-3xl mb-16 space-y-4">
           <span className="font-mono text-xs text-[#F27024] uppercase tracking-widest block font-semibold">
@@ -185,109 +186,43 @@ export default function About() {
           <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 uppercase tracking-tight font-sans">
             Hệ thống Hackathon
           </h2>
-          <p className="text-slate-600 text-base leading-relaxed font-sans">
-            Mỗi năm SEAL tổ chức 03 Hackathon, tương ứng với 3 học kỳ: Spring, Summer, Fall:
-          </p>
         </div>
-
-        {/* Active Contest Countdown Banner */}
-        {activeEvent && (
-          <div className="border border-[#F27024]/20 bg-[#F27024]/5 p-6 sm:p-8 rounded-none hover:border-[#F27024]/40 transition-all duration-350 mb-12 relative overflow-hidden backdrop-blur-sm">
-            {/* Ambient subtle glow */}
-            <div className="absolute right-0 top-0 w-80 h-full bg-[#F27024]/5 rounded-full blur-3xl pointer-events-none"></div>
-            
-            <div className="flex flex-col lg:flex-row items-center justify-between gap-6 relative z-10">
-              <div className="space-y-3 max-w-2xl text-left">
-                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#F27024] animate-pulse"></span>
-                  <span className="text-[10px] font-mono tracking-widest text-[#F27024] font-extrabold uppercase">
-                    [CUỘC THI ĐANG DIỄN RA]
-                  </span>
-                </div>
-                <h3 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-wide leading-tight">
-                  {activeEvent.name}
-                </h3>
-                <p className="text-xs text-slate-600 leading-relaxed font-sans">
-                  {activeEvent.description || activeEvent.mainGoal}
-                </p>
-                <div className="flex flex-wrap gap-x-6 gap-y-2 pt-2 text-[10px] font-mono text-slate-500 uppercase">
-                  <span>Học kỳ: Kỳ {activeEvent.semester} {activeEvent.year}</span>
-                  <span>Thời lượng: {activeEvent.durationText || '48 GIỜ'}</span>
-                  <span>Thành viên: {activeEvent.memberLimitText || '2-4 operators'}</span>
-                  <span>Giải thưởng: <strong className="text-[#F27024] font-bold">{activeEvent.prizePoolText || '$50,000 USD'}</strong></span>
-                  {activeEvent.zaloUrl && (
-                    <span>
-                      Zalo hỗ trợ:{" "}
-                      <a
-                        href={activeEvent.zaloUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[#F27024] hover:text-[#F27024]/80 font-bold hover:underline"
-                      >
-                        [Tham gia ngay]
-                      </a>
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Countdown box */}
-              {(() => {
-                const countdown = getCountdownText();
-                if (!countdown) return null;
-                return (
-                  <div className={`p-5 rounded-none border ${countdown.colorClass} space-y-2.5 min-w-[280px] w-full lg:w-auto`}>
-                    <p className="text-[10px] font-bold uppercase tracking-wider font-mono text-center opacity-85">
-                      {countdown.label}
-                    </p>
-                    {countdown.timeText && (
-                      <p className="text-2xl sm:text-3xl font-black text-center font-mono tracking-widest text-orange-glow">
-                        {countdown.timeText}
-                      </p>
-                    )}
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-        )}
 
         {/* Hackathon Grid */}
         <div className="hackathon-grid grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
-          
-          {/* Card 1: Emerging Technologies */}
-          <div className="hackathon-card border border-slate-200 p-8 flex flex-col bg-slate-50 rounded-none hover:border-[#F27024]/40 hover:shadow-md transition-all duration-350 opacity-0">
-            <div className="w-12 h-12 rounded-none border border-[#F27024]/20 flex items-center justify-center mb-6 bg-[#F27024]/10 text-[#F27024]">
-              <Cpu size={22} />
-            </div>
-            <h3 className="text-lg font-bold text-slate-900 mb-3 font-sans">Emerging Technologies</h3>
-            <p className="text-slate-600 text-sm leading-relaxed font-sans">
-              Tập trung vào các công nghệ mới và xu hướng tiên tiến như AI, IoT, Blockchain, cùng các lĩnh vực nghiên cứu đột phá trong ngành công nghệ.
-            </p>
-          </div>
 
-          {/* Card 2: Product & User Experience */}
-          <div className="hackathon-card border border-slate-200 p-8 flex flex-col bg-slate-50 rounded-none hover:border-[#F27024]/40 hover:shadow-md transition-all duration-350 opacity-0">
-            <div className="w-12 h-12 rounded-none border border-[#F27024]/20 flex items-center justify-center mb-6 bg-[#F27024]/10 text-[#F27024]">
-              <Layers size={22} />
-            </div>
-            <h3 className="text-lg font-bold text-slate-900 mb-3 font-sans">Product & User Experience</h3>
-            <p className="text-slate-600 text-sm leading-relaxed font-sans">
-              Tập trung vào việc phát triển sản phẩm hướng đến người dùng, tối ưu trải nghiệm thực tế và thúc đẩy thương mại hóa các ý tưởng sáng tạo.
-            </p>
-          </div>
-
-          {/* Card 3: SDLC & Professional Working */}
+          {/* Card 1: SDLC & Professional Working */}
           <div className="hackathon-card border border-slate-200 p-8 flex flex-col bg-slate-50 rounded-none hover:border-[#F27024]/40 hover:shadow-md transition-all duration-350 opacity-0">
             <div className="w-12 h-12 rounded-none border border-[#F27024]/20 flex items-center justify-center mb-6 bg-[#F27024]/10 text-[#F27024]">
               <Terminal size={22} />
             </div>
             <h3 className="text-lg font-bold text-slate-900 mb-3 font-sans">SDLC & Professional Working</h3>
             <p className="text-slate-600 text-sm leading-relaxed font-sans">
-              Tập trung vào các chủ đề liên quan đến vòng đời phát triển phần mềm (SDLC) và kỹ năng làm việc chuyên nghiệp, giúp sinh viên phát triển khả năng làm việc trong môi trường công nghiệp thực tế.
+              Tập trung vào các chủ đề liên quan đến vòng đời phát triển phần mềm (SDLC) và kỹ năng làm việc chuyên nghiệp.
             </p>
           </div>
 
+          {/* Card 2: Emerging Technologies */}
+          <div className="hackathon-card border border-slate-200 p-8 flex flex-col bg-slate-50 rounded-none hover:border-[#F27024]/40 hover:shadow-md transition-all duration-350 opacity-0">
+            <div className="w-12 h-12 rounded-none border border-[#F27024]/20 flex items-center justify-center mb-6 bg-[#F27024]/10 text-[#F27024]">
+              <Cpu size={22} />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 mb-3 font-sans">Emerging Technologies</h3>
+            <p className="text-slate-600 text-sm leading-relaxed font-sans">
+              Tập trung vào công nghệ mới và xu hướng AI, IoT, Blockchain cùng các hướng nghiên cứu hiện đại.
+            </p>
+          </div>
+
+          {/* Card 3: Product & User Experience */}
+          <div className="hackathon-card border border-slate-200 p-8 flex flex-col bg-slate-50 rounded-none hover:border-[#F27024]/40 hover:shadow-md transition-all duration-350 opacity-0">
+            <div className="w-12 h-12 rounded-none border border-[#F27024]/20 flex items-center justify-center mb-6 bg-[#F27024]/10 text-[#F27024]">
+              <Layers size={22} />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 mb-3 font-sans">Product & User Experience</h3>
+            <p className="text-slate-600 text-sm leading-relaxed font-sans">
+              Tập trung vào phát triển sản phẩm hướng người dùng, trải nghiệm thực tế và thương mại hóa ý tưởng.
+            </p>
+          </div>
         </div>
 
       </div>

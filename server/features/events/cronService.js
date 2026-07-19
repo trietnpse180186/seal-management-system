@@ -550,6 +550,14 @@ async function syncRepo(repoId) {
 
         const aiResult = combinedResult.commit_review;
         const aggResult = combinedResult.repository_review;
+        const hardConstraints = combinedResult.hard_constraints_validation;
+
+        if (aiResult && hardConstraints) {
+          aiResult.hard_constraints_validation = hardConstraints;
+        }
+        if (aggResult && hardConstraints) {
+          aggResult.hard_constraints_validation = hardConstraints;
+        }
 
         // 1. Save Per-Push Commit Review
         if (aiResult) {

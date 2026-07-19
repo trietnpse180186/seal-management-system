@@ -7,19 +7,19 @@ export default function ExpertDashboard({ roles = [] }: any) {
   const isMentor = roles?.some((r: any) => r.role === 'mentor');
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-8 animate-fadeIn">
+    <div className="max-w-6xl mx-auto px-4 py-8 space-y-8 animate-fadeIn font-sans">
       {/* Grid of Roles */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Judge Section */}
         {isJudge && (
-          <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all flex flex-col justify-between space-y-6">
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-[#F27024]/30 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-6">
             <div className="space-y-4">
-              <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+              <div className="w-12 h-12 rounded-xl bg-[#F27024]/10 border border-[#F27024]/20 flex items-center justify-center text-[#F27024]">
                 <Award size={24} />
               </div>
               <div className="space-y-1">
-                <h3 className="text-lg font-bold text-white font-mono uppercase tracking-wider">Hội Đồng Giám Khảo</h3>
-                <p className="text-slate-400 text-xs">
+                <h3 className="text-lg font-bold text-slate-800 tracking-normal">Hội đồng Giám khảo</h3>
+                <p className="text-slate-500 text-xs leading-relaxed">
                   Thực hiện chấm điểm các dự án thi đấu, đánh giá các tiêu chí chuyên môn và xem xét lịch sử hoạt động mã nguồn của các đội thi trong bảng đấu được giao.
                 </p>
               </div>
@@ -27,7 +27,7 @@ export default function ExpertDashboard({ roles = [] }: any) {
 
             <button
               onClick={() => navigate('/expert/projects')}
-              className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold uppercase tracking-wider rounded-lg text-xs transition-all shadow-[0_0_15px_rgba(6,182,212,0.3)] flex items-center justify-center gap-2"
+              className="w-full py-3 bg-[#F27024] hover:bg-[#d95f1f] text-white font-bold uppercase tracking-wider rounded-xl text-xs transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer shadow-[#F27024]/10"
             >
               <CheckSquare size={14} /> Đi tới Danh sách Chấm điểm
             </button>
@@ -36,14 +36,14 @@ export default function ExpertDashboard({ roles = [] }: any) {
 
         {/* Mentor Section */}
         {isMentor && (
-          <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-emerald-500/30 transition-all flex flex-col justify-between space-y-6">
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-[#F27024]/30 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-6">
             <div className="space-y-4">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <div className="w-12 h-12 rounded-xl bg-[#F27024]/10 border border-[#F27024]/20 flex items-center justify-center text-[#F27024]">
                 <Users size={24} />
               </div>
               <div className="space-y-1">
-                <h3 className="text-lg font-bold text-white font-mono uppercase tracking-wider">Cố Vấn & Hướng Dẫn</h3>
-                <p className="text-slate-400 text-xs">
+                <h3 className="text-lg font-bold text-slate-800 tracking-normal">Cố vấn & Hướng dẫn</h3>
+                <p className="text-slate-500 text-xs leading-relaxed">
                   Theo dõi tiến độ hoàn thành đề tài, kiểm tra mã nguồn, hỗ trợ kỹ thuật và giao tiếp trực tiếp qua kênh trao đổi thảo luận với các đội thi được phân công hướng dẫn.
                 </p>
               </div>
@@ -51,7 +51,7 @@ export default function ExpertDashboard({ roles = [] }: any) {
 
             <button
               onClick={() => navigate('/expert/mentored-teams')}
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold uppercase tracking-wider rounded-lg text-xs transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2"
+              className="w-full py-3 bg-[#F27024] hover:bg-[#d95f1f] text-white font-bold uppercase tracking-wider rounded-xl text-xs transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer shadow-[#F27024]/10"
             >
               <Users size={14} /> Đi tới Các Đội Hướng Dẫn
             </button>

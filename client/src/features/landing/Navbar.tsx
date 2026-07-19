@@ -419,7 +419,7 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
 
                   {/* Notifications Dropdown */}
                   {showNotifications && (
-                    <div className={`absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto border rounded-xl shadow-2xl z-50 ${
+                    <div className={`absolute right-0 mt-2 w-[420px] max-h-96 overflow-y-auto border rounded-xl shadow-2xl z-50 ${
                       usesLightShell 
                         ? "bg-[#faf9f6] border-slate-200 text-slate-800" 
                         : "bg-slate-900 border-slate-700 text-slate-200"
@@ -480,7 +480,7 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
                                   : <Bell size={14} />}
                               </div>
                               <div className="flex-1 min-w-0 font-sans">
-                                <p className={`text-xs font-semibold truncate ${
+                                <p className={`text-xs font-semibold ${
                                   !notif.isRead 
                                     ? usesLightShell 
                                       ? "text-slate-900 font-bold" 
@@ -489,7 +489,7 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
                                 }`}>
                                   {notif.title}
                                 </p>
-                                <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
+                                <p className="text-xs text-slate-500 mt-0.5 whitespace-normal break-words leading-relaxed">
                                   {notif.body}
                                 </p>
                                 <p className="text-[10px] text-slate-400 mt-1.5">

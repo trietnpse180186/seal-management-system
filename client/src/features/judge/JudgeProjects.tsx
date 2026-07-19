@@ -181,7 +181,6 @@ export default function JudgeProjects() {
       statusFilter === "all" ||
       (statusFilter === "graded" && isGraded) ||
       (statusFilter === "pending" && !isGraded);
-
     return matchSearch && matchFilter;
   });
 
@@ -192,40 +191,39 @@ export default function JudgeProjects() {
       {/* Page Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h2 className="text-3xl font-extrabold text-white tracking-tight drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]">
+          <h2 className="text-3xl font-extrabold text-slate-800 tracking-tight">
             Chấm điểm
           </h2>
-          <p className="text-slate-400 text-xs mt-1">
-            Đánh giá và chấm điểm chất lượng mã nguồn, giải pháp kỹ thuật của
-            các đội thi.
+          <p className="text-slate-500 text-sm mt-1">
+            Đánh giá và chấm điểm chất lượng mã nguồn, giải pháp kỹ thuật của các đội thi.
           </p>
         </div>
       </div>
 
       {/* Selectors & Filter Row */}
-      <div className="bg-slate-900/40 backdrop-blur-md p-6 rounded-xl border border-white/10 shadow-lg flex flex-col md:flex-row gap-6 justify-between items-start md:items-center animate-fadeIn">
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-6 justify-between items-start md:items-center animate-fadeIn">
         <div className="flex flex-wrap gap-8 items-center w-full md:w-auto">
           {activeEvent ? (
             <>
               <div>
-                <p className="text-[9px] font-bold uppercase text-slate-500 tracking-wider">Cuộc thi đang diễn ra</p>
-                <p className="text-sm font-extrabold text-white mt-1 font-mono uppercase drop-shadow-[0_0_5px_rgba(255,255,255,0.1)]">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-normal">Cuộc thi đang diễn ra</p>
+                <p className="text-sm font-extrabold text-slate-800 mt-1 uppercase">
                   {activeEvent.name}
                 </p>
               </div>
-              <div className="w-px h-8 bg-white/10 hidden sm:block"></div>
+              <div className="w-px h-8 bg-slate-200 hidden sm:block"></div>
               <div>
-                <p className="text-[9px] font-bold uppercase text-slate-500 tracking-wider">Vòng thi hiện tại</p>
-                <p className="text-sm font-extrabold text-cyan-400 mt-1 font-mono uppercase drop-shadow-[0_0_5px_rgba(34,211,238,0.2)]">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-normal">Vòng thi hiện tại</p>
+                <p className="text-sm font-extrabold text-[#F27024] mt-1 uppercase">
                   {activeRound ? (activeRound.advanceTopN > 0 ? `${activeRound.name} (Lấy Top ${activeRound.advanceTopN})` : activeRound.name) : "Không có vòng thi active"}
                 </p>
               </div>
               {assignedTrack && (
                 <>
-                  <div className="w-px h-8 bg-white/10 hidden sm:block"></div>
+                  <div className="w-px h-8 bg-slate-200 hidden sm:block"></div>
                   <div>
-                    <p className="text-[9px] font-bold uppercase text-slate-500 tracking-wider">Bảng đấu được phân công</p>
-                    <p className="text-sm font-extrabold text-teal-400 mt-1 font-mono uppercase drop-shadow-[0_0_5px_rgba(20,184,166,0.2)]">
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-normal">Bảng đấu được phân công</p>
+                    <p className="text-sm font-extrabold text-emerald-600 mt-1 uppercase">
                       {assignedTrack.name}
                     </p>
                   </div>
@@ -233,8 +231,8 @@ export default function JudgeProjects() {
               )}
             </>
           ) : (
-            <div className="text-xs text-rose-400 font-semibold font-mono uppercase">
-              Hiện tại không có cuộc thi nào đang diễn ra (Ongoing).
+            <div className="text-sm text-rose-600 font-bold uppercase">
+              Hiện tại không có cuộc thi nào đang diễn ra.
             </div>
           )}
         </div>
@@ -242,7 +240,7 @@ export default function JudgeProjects() {
         {/* Filter Tab buttons & Search */}
         <div className="flex flex-col sm:flex-row gap-4 items-center w-full md:w-auto">
           <div className="relative w-full sm:w-64">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-cyan-400">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#F27024]">
               <Search size={14} />
             </span>
             <input
@@ -250,34 +248,34 @@ export default function JudgeProjects() {
               placeholder="Tìm kiếm dự án, đội..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-slate-800/80 border border-white/10 rounded-full text-xs pl-9 pr-4 py-2 w-full text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 shadow-inner"
+              className="bg-slate-50 border border-slate-200 rounded-full text-xs pl-9 pr-4 py-2 w-full text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#F27024]/30 focus:border-[#F27024] shadow-inner"
             />
           </div>
 
-          <div className="flex bg-slate-900/60 p-0.5 rounded-lg border border-white/5 shrink-0 shadow-inner">
+          <div className="flex bg-slate-100 p-0.5 rounded-xl border border-slate-200 shrink-0">
             <button
               onClick={() => setStatusFilter("all")}
-              className={`px-3 py-1 text-[10px] font-bold rounded uppercase transition-all ${statusFilter === "all"
-                ? "bg-cyan-500 text-white shadow-[0_0_10px_rgba(6,182,212,0.4)]"
-                : "text-slate-500 hover:text-slate-300"
+              className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${statusFilter === "all"
+                ? "bg-[#F27024] text-white shadow-sm"
+                : "text-slate-500 hover:text-slate-800"
                 }`}
             >
               Tất cả
             </button>
             <button
               onClick={() => setStatusFilter("pending")}
-              className={`px-3 py-1 text-[10px] font-bold rounded uppercase transition-all ${statusFilter === "pending"
-                ? "bg-amber-500 text-slate-900 shadow-[0_0_10px_rgba(245,158,11,0.4)]"
-                : "text-slate-500 hover:text-slate-300"
+              className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${statusFilter === "pending"
+                ? "bg-amber-500 text-white shadow-sm"
+                : "text-slate-500 hover:text-slate-800"
                 }`}
             >
               Chưa chấm
             </button>
             <button
               onClick={() => setStatusFilter("graded")}
-              className={`px-3 py-1 text-[10px] font-bold rounded uppercase transition-all ${statusFilter === "graded"
-                ? "bg-emerald-500 text-slate-900 shadow-[0_0_10px_rgba(16,185,129,0.4)]"
-                : "text-slate-500 hover:text-slate-300"
+              className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${statusFilter === "graded"
+                ? "bg-emerald-600 text-white shadow-sm"
+                : "text-slate-500 hover:text-slate-800"
                 }`}
             >
               Đã chấm
@@ -287,48 +285,52 @@ export default function JudgeProjects() {
       </div>
 
       {/* Projects Data Table */}
-      <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 rounded-xl shadow-lg overflow-hidden">
+      <div className="bg-white border border-slate-200 shadow-sm rounded-2xl overflow-hidden">
         {loading ? (
-          <div className="text-center py-20 text-slate-500 text-xs animate-pulse font-mono">
-            [ĐANG TẢI DANH SÁCH DỰ ÁN...]
+          <div className="text-center py-20 text-slate-500 text-sm animate-pulse">
+            Đang tải danh sách dự án...
           </div>
         ) : error ? (
-          <div className="text-center py-20 text-rose-400/90 text-sm font-semibold font-sans px-4">
+          <div className="text-center py-20 text-rose-600 text-sm font-semibold px-4">
             {error}
           </div>
         ) : filteredTeams.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-900/80 border-b border-white/10 text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500">
                   <th className="px-6 py-4">Tên đội thi (Team)</th>
                   <th className="px-6 py-4">Trạng thái chấm</th>
                   <th className="px-6 py-4">Điểm</th>
                   <th className="px-6 py-4 text-right">Thao tác</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5 text-xs text-slate-300">
+              <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
                 {filteredTeams.map((team) => {
                   const isGraded = gradedTeams[team._id];
                   const scoreObj = teamScores[team._id];
                   return (
                     <tr
                       key={team._id}
-                      className={`hover:bg-cyan-950/20 transition-all ${team._id === highlightedTeamId ? 'bg-amber-500/10 border-l-4 border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.15)] animate-pulse' : ''}`}
+                      className={`transition-all ${
+                        team._id === highlightedTeamId
+                          ? "bg-amber-50/50 border-l-4 border-amber-500 shadow-sm animate-pulse"
+                          : "hover:bg-slate-50"
+                      }`}
                     >
                       {/* Column 1: Team Info */}
                       <td className="px-6 py-5 whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-black font-mono shadow-[0_0_10px_rgba(6,182,212,0.2)] text-sm">
+                          <div className="w-9 h-9 rounded-lg bg-[#F27024]/10 border border-[#F27024]/20 flex items-center justify-center text-[#F27024] font-bold text-sm">
                             {team.name.charAt(0)}
                           </div>
                           <div>
                             <div className="flex items-center">
-                              <span className="text-[16px] font-black text-white block drop-shadow-[0_0_5px_rgba(255,255,255,0.2)]">
+                              <span className="text-base font-bold text-slate-800 block">
                                 {team.name}
                               </span>
                               {team._id === highlightedTeamId && (
-                                <span className="bg-amber-500 text-slate-950 font-extrabold text-[8px] uppercase px-1.5 py-0.5 rounded tracking-wider animate-pulse ml-2 shadow-[0_0_8px_rgba(245,158,11,0.5)]">
+                                <span className="bg-amber-100 text-amber-800 font-extrabold text-[10px] uppercase px-2 py-0.5 rounded-md tracking-normal animate-pulse ml-2">
                                   Đang chấm
                                 </span>
                               )}
@@ -337,16 +339,14 @@ export default function JudgeProjects() {
                         </div>
                       </td>
 
-
-
                       {/* Column 3: Status */}
                       <td className="px-6 py-5 whitespace-nowrap">
                         {isGraded ? (
-                          <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider shadow-[0_0_10px_rgba(16,185,129,0.1)]">
+                          <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-250 px-2.5 py-0.5 rounded-lg text-xs font-bold uppercase tracking-normal">
                             <Check size={10} /> Đã chấm
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider shadow-[0_0_10px_rgba(6,182,212,0.1)]">
+                          <span className="inline-flex items-center gap-1 bg-[#F27024]/10 text-[#F27024] border border-[#F27024]/20 px-2.5 py-0.5 rounded-lg text-xs font-bold uppercase tracking-normal">
                             Chờ chấm
                           </span>
                         )}
@@ -355,11 +355,11 @@ export default function JudgeProjects() {
                       {/* Column 3.5: Score */}
                       <td className="px-6 py-5 whitespace-nowrap">
                         {isGraded ? (
-                          <span className="text-cyan-450 font-mono font-bold text-xs bg-cyan-500/5 border border-cyan-500/20 px-2 py-1 rounded">
+                          <span className="text-[#F27024] font-bold text-sm bg-[#F27024]/5 border border-[#F27024]/20 px-2.5 py-1 rounded-lg">
                             {scoreObj?.totalWeightedScore !== undefined ? scoreObj.totalWeightedScore : '0'}/{rubric ? rubric.maxCriterionScore : 10}đ
                           </span>
                         ) : (
-                          <span className="text-slate-500 italic text-[11px] font-mono">
+                          <span className="text-slate-400 italic text-sm">
                             chưa chấm
                           </span>
                         )}
@@ -370,9 +370,9 @@ export default function JudgeProjects() {
                         {!isRoundCompleted && (
                           <button
                             onClick={() => navigate(`/expert/score/${team._id}?roundId=${selectedRoundId}`)}
-                            className={`inline-flex items-center gap-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(6,182,212,0.2)] ${isGraded
-                              ? "bg-slate-800 border border-white/10 text-slate-300 hover:bg-slate-700 hover:text-white"
-                              : "bg-cyan-500 hover:bg-cyan-500 text-white hover:shadow-[0_0_15px_rgba(6,182,212,0.5)]"
+                            className={`inline-flex items-center gap-1 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${isGraded
+                              ? "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                              : "bg-[#F27024] hover:bg-[#d95f1f] text-white"
                               }`}
                           >
                             <span>{isGraded ? "Xem & Sửa" : "Bắt đầu chấm"}</span>
@@ -387,9 +387,9 @@ export default function JudgeProjects() {
             </table>
           </div>
         ) : (
-          <div className="text-center py-20 py-24 bg-slate-900/20">
-            <AlertCircle size={36} className="mx-auto text-slate-500 mb-2 drop-shadow-[0_0_5px_rgba(100,116,139,0.5)]" />
-            <p className="text-xs uppercase tracking-wider text-slate-400">
+          <div className="text-center py-20 bg-slate-50">
+            <AlertCircle size={36} className="mx-auto text-slate-400 mb-2" />
+            <p className="text-sm text-slate-500">
               Không tìm thấy đội thi nào phù hợp với bộ lọc.
             </p>
           </div>

@@ -367,6 +367,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
                 {!isEditing ? (
                   <>
                     <button
+                      key="close-btn"
                       type="button"
                       onClick={() => setIsProfileOpen(false)}
                       className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
@@ -378,8 +379,13 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
                       Đóng
                     </button>
                     <button
+                      key="edit-btn"
                       type="button"
-                      onClick={() => setIsEditing(true)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsEditing(true);
+                      }}
                       className={`px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
                         usesLightShell 
                           ? "bg-[#F27024] hover:bg-[#e05e1b] text-white shadow-lg shadow-[#F27024]/20" 
@@ -392,8 +398,10 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
                 ) : (
                   <>
                     <button
+                      key="cancel-btn"
                       type="button"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.preventDefault();
                         setIsEditing(false);
                         if (user) {
                           setFormData({
@@ -414,6 +422,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
                       Hủy
                     </button>
                     <button
+                      key="submit-btn"
                       type="submit"
                       disabled={isSaving}
                       className={`px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer ${

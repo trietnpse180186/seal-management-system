@@ -334,17 +334,17 @@ export default function Gallery({ user, roles }: GalleryProps) {
 
       {/* Lightbox / Details Modal */}
       {lightboxPhoto && createPortal(
-        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-md flex flex-col justify-between p-4 z-[9999] animate-fadeIn text-slate-300">
+        <div className="fixed inset-0 bg-[linear-gradient(135deg,#fff7f2_0%,#f8fafc_48%,#eef4ff_100%)] backdrop-blur-sm flex flex-col justify-between p-4 sm:p-6 z-[9999] animate-fadeIn text-slate-900">
           {/* Top Bar */}
-          <div className="flex justify-between items-center w-full max-w-6xl mx-auto py-2 z-10">
-            <div className="font-mono text-left">
-              <p className="text-sm font-bold text-white truncate max-w-md">{lightboxPhoto.name}</p>
-              <p className="text-[10px] text-slate-400">{lightboxPhoto.size}</p>
+          <div className="flex justify-between items-center w-full max-w-7xl mx-auto py-2 z-10">
+            <div className="font-mono text-left min-w-0">
+              <p className="text-sm sm:text-base font-extrabold text-slate-900 truncate max-w-[70vw]">{lightboxPhoto.name}</p>
+              <p className="text-[10px] text-slate-500">{lightboxPhoto.size}</p>
             </div>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setLightboxPhoto(null)}
-                className="bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white p-2.5 rounded-xl border border-slate-800 transition-all cursor-pointer"
+                className="bg-white hover:bg-[#F27024]/5 text-slate-500 hover:text-[#F27024] p-2.5 rounded-[6px] border border-[#F27024]/20 hover:border-[#F27024]/45 transition-all cursor-pointer shadow-sm active:scale-95"
               >
                 <X size={18} />
               </button>
@@ -352,11 +352,11 @@ export default function Gallery({ user, roles }: GalleryProps) {
           </div>
 
           {/* Main Container with Prev/Next buttons */}
-          <div className="flex-1 flex items-center justify-between max-w-6xl mx-auto w-full relative overflow-hidden p-4 gap-4">
+          <div className="flex-1 flex items-center justify-between max-w-7xl mx-auto w-full relative overflow-hidden p-2 sm:p-4 gap-3 sm:gap-5">
             {/* Prev Button */}
             <button
               onClick={handlePrevPhoto}
-              className="p-3.5 rounded-full bg-slate-900/60 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-[#F27024]/40 transition-all cursor-pointer shadow-lg active:scale-95 shrink-0"
+              className="p-3.5 rounded-full bg-white/95 hover:bg-[#F27024] text-[#F27024] hover:text-white border border-[#F27024]/20 hover:border-[#F27024] transition-all cursor-pointer shadow-[0_18px_45px_rgba(15,23,42,0.10)] active:scale-95 shrink-0"
               title="Ảnh trước"
             >
               <ChevronLeft size={24} />
@@ -367,14 +367,14 @@ export default function Gallery({ user, roles }: GalleryProps) {
               <img
                 src={lightboxPhoto.url}
                 alt={lightboxPhoto.name}
-                className="max-w-full max-h-full object-contain rounded-2xl border border-white/5 shadow-2xl animate-scaleUp"
+                className="max-w-full max-h-full object-contain rounded-[6px] border border-[#F27024]/20 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.14)] animate-scaleUp"
               />
             </div>
 
             {/* Next Button */}
             <button
               onClick={handleNextPhoto}
-              className="p-3.5 rounded-full bg-slate-900/60 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-[#F27024]/40 transition-all cursor-pointer shadow-lg active:scale-95 shrink-0"
+              className="p-3.5 rounded-full bg-white/95 hover:bg-[#F27024] text-[#F27024] hover:text-white border border-[#F27024]/20 hover:border-[#F27024] transition-all cursor-pointer shadow-[0_18px_45px_rgba(15,23,42,0.10)] active:scale-95 shrink-0"
               title="Ảnh sau"
             >
               <ChevronRight size={24} />

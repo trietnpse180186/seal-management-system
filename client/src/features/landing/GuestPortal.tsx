@@ -1111,12 +1111,15 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                               .filter((sentence: string) => sentence.trim().length > 0)
                               .map((sentence: string, sIdx: number) => {
                                 if (sentence.includes("Milestone 1") && sentence.includes("Milestone 2")) {
-                                  const parts = sentence.split(/(?:gồm:\s*|,\s*|\s+và\s+)(?=Milestone \d|Technical Review|Vòng chung kết)/i);
+                                  const parts = sentence.split(/(?:gồm:?\s*|,\s*|\s+và\s+)(?=Milestone \d|Technical Review|Vòng chung kết)/i);
+                                  const introText = parts[0].trim().endsWith("gồm") || parts[0].trim().endsWith("gồm:")
+                                    ? parts[0]
+                                    : `${parts[0]} gồm:`;
                                   return (
                                     <div key={sIdx} className="space-y-1.5">
                                       <p className="flex items-start gap-2">
                                         <span className="text-[#F27024] font-extrabold select-none shrink-0">•</span>
-                                        <span>{parts[0]} gồm:</span>
+                                        <span>{introText}</span>
                                       </p>
                                       <div className="pl-4 space-y-1.5">
                                         {parts.slice(1).map((part, pIdx) => (

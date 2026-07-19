@@ -420,6 +420,12 @@ export default function RegisterTeam() {
       return;
     }
 
+    if (members.length < 2) {
+      setError('Số lượng thành viên không đủ (tối thiểu 3).');
+      setLoading(false);
+      return;
+    }
+
     // Validate members
     for (let i = 0; i < members.length; i++) {
       const m = members[i];
@@ -558,29 +564,33 @@ export default function RegisterTeam() {
 
   if (checkingTeam || loadingEvents) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-24 text-center font-mono">
-        <p className="text-slate-400 text-lg animate-pulse">Đang tải thông tin...</p>
+      <div className="team-area-light relative overflow-hidden font-sans bg-slate-50 text-slate-900 min-h-screen flex items-center justify-center font-mono">
+        <p className="text-slate-450 text-lg animate-pulse">Đang tải thông tin...</p>
       </div>
     );
   }
 
   if (alreadyHasTeam) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-24 text-center font-mono space-y-6">
-        <div className="inline-flex bg-cyan-500/10 p-4 rounded-full text-cyan-400 mb-2 border border-cyan-500/20">
-          <Users size={40} />
-        </div>
-        <h3 className="text-2xl font-bold text-white">Bạn đã tham gia đội thi "{existingTeamName}"</h3>
-        <p className="text-slate-400 max-w-md mx-auto text-sm leading-relaxed">
-          Hệ thống ghi nhận bạn đã là thành viên chính thức của một đội thi đang hoạt động.
-        </p>
-        <div>
-          <Link
-            to="/team-area"
-            className="inline-flex items-center justify-center px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all"
-          >
-            Vào Khu vực Đội thi
-          </Link>
+      <div className="team-area-light relative overflow-hidden font-sans bg-slate-50 text-slate-900 min-h-screen flex items-center justify-center py-24">
+        {/* Background Grid & Glow */}
+        <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle_at_15%_15%,rgba(242,112,36,0.08)_0%,transparent_40%),radial-gradient(circle_at_85%_85%,rgba(242,112,36,0.05)_0%,transparent_40%)]"></div>
+        <div className="glass p-8 rounded-3xl border border-slate-200 max-w-xl mx-auto space-y-6 relative z-10 bg-white/70 backdrop-blur-md text-center shadow-lg">
+          <div className="inline-flex bg-[#F27024]/10 p-4 rounded-full text-[#F27024] mb-2 border border-[#F27024]/20">
+            <Users size={40} />
+          </div>
+          <h3 className="text-2xl font-bold text-slate-900">Bạn đã tham gia đội thi "{existingTeamName}"</h3>
+          <p className="text-slate-600 max-w-md mx-auto text-sm leading-relaxed font-sans">
+            Hệ thống ghi nhận bạn đã là thành viên chính thức của một đội thi đang hoạt động.
+          </p>
+          <div>
+            <Link
+              to="/team-area"
+              className="inline-flex items-center justify-center px-6 py-3 bg-[#F27024] hover:bg-[#e05e1b] text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md shadow-[#F27024]/15"
+            >
+              Vào Khu vực Đội thi
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -588,40 +598,49 @@ export default function RegisterTeam() {
 
   if (events.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-12 font-mono">
-        <div className="flex items-center gap-3 mb-8">
-          <div>
-            <h1 className="text-3xl font-extrabold text-white">
-              <span className="text-cyan-400 text-cyan-glow font-mono-tech">ĐĂNG KÝ ĐỘI THI</span>
-            </h1>
-            <p className="text-slate-400 text-sm mt-1">Thành lập nhóm và mời các thành viên tham gia</p>
+      <div className="team-area-light relative overflow-hidden font-sans bg-slate-50 text-slate-900 min-h-screen py-12">
+        <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle_at_15%_15%,rgba(242,112,36,0.08)_0%,transparent_40%),radial-gradient(circle_at_85%_85%,rgba(242,112,36,0.05)_0%,transparent_40%)]"></div>
+        <div className="relative z-10 max-w-4xl mx-auto px-4 font-mono">
+          <div className="flex items-center gap-3 mb-8 text-left">
+            <div>
+              <h1 className="text-3xl font-extrabold text-slate-900">
+                <span className="text-[#F27024] text-orange-glow font-mono-tech">ĐĂNG KÝ ĐỘI THI</span>
+              </h1>
+              <p className="text-slate-500 text-sm mt-1 font-sans">Thành lập nhóm và mời các thành viên tham gia</p>
+            </div>
           </div>
-        </div>
-        <div className="glass glow-blue p-8 rounded-3xl text-center mb-8 border-cyan-500/30 font-mono space-y-4">
-          <div className="inline-flex bg-cyan-500/10 p-4 rounded-full text-cyan-400 mb-2 border border-cyan-500/20">
-            <Calendar size={40} />
+          <div className="glass p-8 rounded-3xl text-center mb-8 border border-slate-200 space-y-4 bg-white/70 backdrop-blur-md">
+            <div className="inline-flex bg-[#F27024]/10 p-4 rounded-full text-[#F27024] mb-2 border border-[#F27024]/20">
+              <Calendar size={40} />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 uppercase tracking-tight">
+              Hiện đang không có cuộc thi nào mở đăng ký
+            </h3>
+            <p className="text-slate-655 max-w-md mx-auto text-sm leading-relaxed font-sans">
+              Vui lòng theo dõi thông tin từ Ban tổ chức để cập nhật các sự kiện Hackathon mới nhất sắp diễn ra.
+            </p>
           </div>
-          <h3 className="text-xl font-bold text-white uppercase tracking-tight text-cyan-glow">
-            Hiện đang không có cuộc thi nào mở đăng ký
-          </h3>
-          <p className="text-slate-400 max-w-md mx-auto text-sm leading-relaxed">
-            Vui lòng theo dõi thông tin từ Ban tổ chức để cập nhật các sự kiện Hackathon mới nhất sắp diễn ra.
-          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12 font-mono">
+    <div className="team-area-light relative overflow-hidden font-sans bg-slate-50 text-slate-900 min-h-screen">
+      {/* Background Grid & Glow */}
+      <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle_at_15%_15%,rgba(242,112,36,0.08)_0%,transparent_40%),radial-gradient(circle_at_85%_85%,rgba(242,112,36,0.05)_0%,transparent_40%)]"></div>
+
+
+
+      <div className="relative z-10 max-w-4xl mx-auto px-4 py-12 font-mono">
 
       <div className="flex items-center gap-3 mb-8">
 
         <div>
-          <h1 className="text-3xl font-extrabold text-white">
-            <span className="text-cyan-400 text-cyan-glow font-mono-tech">ĐĂNG KÝ ĐỘI THI</span>
+          <h1 className="text-3xl font-extrabold text-slate-900">
+            <span className="text-[#F27024] text-orange-glow font-mono-tech">ĐĂNG KÝ ĐỘI THI</span>
           </h1>
-          <p className="text-slate-400 text-sm mt-1">Thành lập nhóm và mời các thành viên tham gia</p>
+          <p className="text-slate-500 text-sm mt-1 font-sans">Thành lập nhóm và mời các thành viên tham gia (yêu cầu tối thiểu 3 thành viên bao gồm cả Trưởng nhóm)</p>
         </div>
       </div>
 
@@ -645,15 +664,15 @@ export default function RegisterTeam() {
               <span className="text-cyan-400">ĐĂNG KÝ BẰNG FILE EXCEL</span>
             </h2>
 
-            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between text-xs text-slate-400 bg-slate-900/40 p-4 rounded-xl border border-slate-800">
-              <div className="space-y-1">
-                <p className="font-bold text-white uppercase tracking-wider">Tải File Excel Mẫu</p>
+            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between text-xs text-slate-500 bg-slate-50/50 p-4 rounded-xl border border-slate-200">
+              <div className="space-y-1 text-left">
+                <p className="font-bold text-slate-800 uppercase tracking-wider">Tải File Excel Mẫu</p>
                 <p className="text-[11px]">Điền đầy đủ thông tin trưởng nhóm & các thành viên theo mẫu chuẩn.</p>
               </div>
               <button
                 type="button"
                 onClick={handleDownloadTemplate}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 hover:border-cyan-500/30 font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer text-[10px]"
+                className="btn-fpt flex items-center gap-2 px-4 py-2 font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer text-[10px]"
               >
                 <Download size={14} />
                 Tải file mẫu
@@ -661,8 +680,8 @@ export default function RegisterTeam() {
             </div>
 
             <form onSubmit={handleImportSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">Chọn file Excel đăng ký</label>
+              <div className="space-y-2 text-left">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">Chọn file Excel đăng ký</label>
                 <div className="flex gap-2">
                   <div className="flex-1 relative">
                     <input
@@ -674,16 +693,16 @@ export default function RegisterTeam() {
                     />
                     <label
                       htmlFor="excel-file-upload"
-                      className="flex items-center gap-2 w-full bg-slate-900/50 border border-slate-800 text-slate-300 px-3 py-2 rounded-lg text-xs hover:border-cyan-500/50 hover:text-white transition-all font-mono cursor-pointer"
+                      className="flex items-center gap-2 w-full bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-xs hover:border-[#F27024]/50 hover:text-slate-900 transition-all font-mono cursor-pointer"
                     >
-                      <Upload size={14} className="text-cyan-400" />
+                      <Upload size={14} className="text-[#F27024]" />
                       {importFile ? importFile.name : 'Chọn file .xlsx hoặc .xls'}
                     </label>
                   </div>
                   <button
                     type="submit"
                     disabled={importing || !importFile || !selectedEventId}
-                    className="bg-cyan-500 hover:bg-cyan-600 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-bold px-6 py-2 rounded-lg text-xs uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap"
+                    className="btn-primary font-bold px-6 py-2 rounded-lg text-xs uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {importing ? 'Đang import...' : 'Bắt đầu Import'}
                   </button>
@@ -1112,6 +1131,7 @@ export default function RegisterTeam() {
         </>
       )}
 
+      </div>
     </div>
   );
 }

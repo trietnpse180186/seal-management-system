@@ -54,6 +54,15 @@ export default function AdminDashboard() {
       const sock = io(socketUrl, { auth: { token } });
       socketRef.current = sock;
       sock.on("new_event_log", (newLog: any) => {
+        if (newLog.type === 'system') return;
+        if (newLog.details && (
+          newLog.details.includes('Lỗi hệ thống') || 
+          newLog.details.includes('/favicon.ico') || 
+          newLog.details.includes('Not Found') ||
+          newLog.details.toLowerCase().includes('system error')
+        )) {
+          return;
+        }
         setLogs((prev) => [newLog, ...prev]);
       });
       return () => {
@@ -93,7 +102,19 @@ export default function AdminDashboard() {
       const res = await axios.get("http://localhost:5000/api/events/all/logs", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setLogs(res.data || []);
+      const cleanLogs = (res.data || []).filter((log: any) => {
+        if (log.type === 'system') return false;
+        if (log.details && (
+          log.details.includes('Lỗi hệ thống') || 
+          log.details.includes('/favicon.ico') || 
+          log.details.includes('Not Found') ||
+          log.details.toLowerCase().includes('system error')
+        )) {
+          return false;
+        }
+        return true;
+      });
+      setLogs(cleanLogs);
     } catch (err) {
       console.error("Lỗi lấy nhật ký hoạt động:", err);
     }
@@ -140,20 +161,17 @@ export default function AdminDashboard() {
                 key={e._id}
                 onClick={() => handleEventDoubleClick(e)}
                 onDoubleClick={() => handleEventDoubleClick(e)}
-                className="w-full text-left p-5 rounded-2xl border transition-all duration-300 flex flex-col justify-between h-40 border-slate-800 bg-slate-900/30 hover:border-slate-700 hover:bg-slate-900/40 text-slate-400 cursor-pointer"
+                className="w-full text-left p-5 rounded-2xl border transition-all duration-300 flex flex-col justify-between h-32 border-slate-800 bg-slate-900/30 hover:border-slate-700 hover:bg-slate-900/40 text-slate-400 cursor-pointer"
               >
                 <div>
                   <div className="flex justify-between items-start w-full">
-                    <span className="font-mono text-sm tracking-tight text-slate-200">
+                    <span className="font-bold text-sm tracking-tight text-slate-200">
                       {e.name}
                     </span>
                     <span className="text-[10px] bg-slate-950 px-2 py-0.5 rounded font-mono border border-slate-800 text-slate-350">
                       {e.semester} {e.year}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 mt-2 line-clamp-3 font-sans font-normal leading-normal">
-                    {e.description || "Chưa có mô tả chi tiết."}
-                  </p>
                 </div>
 
                 <div className="flex justify-between items-center w-full mt-4 pt-2 border-t border-slate-800/40 text-[10px] font-mono">
@@ -191,8 +209,7 @@ export default function AdminDashboard() {
                 { value: 'all', label: 'Tất cả' },
                 { value: 'operation', label: 'Thao tác' },
                 { value: 'grading', label: 'Chấm điểm' },
-                { value: 'error', label: 'Lỗi' },
-                { value: 'system', label: 'Hệ thống' }
+                { value: 'error', label: 'Lỗi' }
               ].map((btn) => (
                 <button
                   key={btn.value}
@@ -203,8 +220,6 @@ export default function AdminDashboard() {
                         ? 'bg-rose-500 text-white shadow-[0_0_10px_rgba(244,63,94,0.4)]'
                         : btn.value === 'grading'
                         ? 'bg-amber-500 text-slate-900 shadow-[0_0_10px_rgba(245,158,11,0.4)]'
-                        : btn.value === 'system'
-                        ? 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.4)]'
                         : 'bg-cyan-500 text-white shadow-[0_0_10px_rgba(6,182,212,0.4)]'
                       : 'text-slate-500 hover:text-slate-350'
                   }`}
@@ -247,7 +262,7 @@ export default function AdminDashboard() {
                         <div className="flex-1 min-w-0 pt-1.5 flex justify-between space-x-4">
                           <div>
                             <p className="text-sm text-slate-200">
-                              <span className="text-cyan-405 font-bold font-mono mr-2 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20 text-[10px]">
+                              <span className="text-cyan-400 font-bold font-mono mr-2 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20 text-[10px]">
                                 {log.eventId?.name || "HỆ THỐNG"}
                               </span>
                               {log.details}{" "}

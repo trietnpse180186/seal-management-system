@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Calendar, ChevronLeft, ChevronRight, Clock } from "lucide-react";
+import { useLocation } from "react-router-dom";
 
 interface CustomDateTimePickerProps {
   value: string; // Format: YYYY-MM-DDTHH:MM
@@ -47,6 +48,8 @@ function TimeSelect({
   disabledOptions?: number[];
 }) {
   const listRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+  const usesLightShell = location.pathname === '/' || location.pathname === '/team-area' || location.pathname === '/register-team' || location.pathname === '/login' || location.pathname === '/achievements' || location.pathname === '/guest-portal' || location.pathname.startsWith('/admin');
 
   // Scroll selected item into center on mount/value change
   useEffect(() => {
@@ -61,7 +64,11 @@ function TimeSelect({
   return (
     <div
       ref={listRef}
-      className="w-16 h-[128px] overflow-y-auto scrollbar-none bg-slate-900 border border-slate-700 rounded-lg"
+      className={`w-16 h-[128px] overflow-y-auto scrollbar-none border rounded-lg ${
+        usesLightShell
+          ? "bg-white border-slate-200 text-slate-800"
+          : "bg-slate-900 border border-slate-700 text-slate-400"
+      }`}
       style={{ scrollbarWidth: "none" }}
     >
       {options.map((o) => {
@@ -75,9 +82,15 @@ function TimeSelect({
             onClick={() => onChange(o)}
             className={`w-full h-8 flex items-center justify-center text-xs font-mono font-semibold transition-all ${
               isDisabled
-                ? "text-slate-800 opacity-20 cursor-not-allowed"
+                ? usesLightShell
+                  ? "text-slate-350 opacity-40 cursor-not-allowed"
+                  : "text-slate-800 opacity-20 cursor-not-allowed"
                 : active
-                ? "bg-cyan-500 text-slate-950 font-bold cursor-pointer"
+                ? usesLightShell
+                  ? "bg-[#F27024] text-white font-bold cursor-pointer"
+                  : "bg-cyan-500 text-slate-955 font-bold cursor-pointer"
+                : usesLightShell
+                ? "text-slate-600 hover:bg-slate-100 hover:text-[#F27024] cursor-pointer"
                 : "text-slate-400 hover:bg-slate-800 hover:text-white cursor-pointer"
             }`}
           >
@@ -99,7 +112,9 @@ export default function CustomDateTimePicker({
 }: CustomDateTimePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  
+  const location = useLocation();
+  const usesLightShell = location.pathname === '/' || location.pathname === '/team-area' || location.pathname === '/register-team' || location.pathname === '/login' || location.pathname === '/achievements' || location.pathname === '/guest-portal' || location.pathname.startsWith('/admin');
+
   // Date state
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -179,6 +194,9 @@ export default function CustomDateTimePicker({
     return false;
   };
 
+  const hoursArray = Array.from({ length: 24 }, (_, i) => i);
+  const minutesArray = Array.from({ length: 60 }, (_, i) => i);
+
   // Time clamping effect to ensure selected hour/min are always valid
   useEffect(() => {
     if (!value || !selectedDate) return;
@@ -201,93 +219,67 @@ export default function CustomDateTimePicker({
       if (validMin !== undefined) currentMin = validMin;
     }
 
-    const isDateChanged = dateObj.getTime() !== selectedDate.getTime();
-    const isChanged =
-      currentHour !== selectedHour ||
-      currentMin !== selectedMinute ||
-      isDateChanged;
+    if (currentHour !== selectedHour) setSelectedHour(currentHour);
+    if (currentMin !== selectedMinute) setSelectedMinute(currentMin);
+  }, [selectedDate, minDate, maxDate]);
 
-    if (isChanged) {
-      if (isDateChanged) setSelectedDate(dateObj);
-      if (currentHour !== selectedHour) setSelectedHour(currentHour);
-      if (currentMin !== selectedMinute) setSelectedMinute(currentMin);
-
-      // Notify parent of the auto-clamped valid date time value
-      const newDate = new Date(dateObj);
-      newDate.setHours(currentHour, currentMin, 0, 0);
-
-      const y = newDate.getFullYear();
-      const m = String(newDate.getMonth() + 1).padStart(2, "0");
-      const d = String(newDate.getDate()).padStart(2, "0");
-      const h = String(newDate.getHours()).padStart(2, "0");
-      const mi = String(newDate.getMinutes()).padStart(2, "0");
-
-      onChange(`${y}-${m}-${d}T${h}:${mi}`);
-    }
-  }, [value, selectedDate, minDate, maxDate, selectedHour, selectedMinute]);
-
-  // Click outside listener
+  // Click outside handling
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+    if (!isOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
   const toggleOpen = () => {
     if (!disabled) setIsOpen(!isOpen);
   };
 
-  // Helper formatting functions
   const displayFormat = (date: Date | null) => {
     if (!date) return "";
-    const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, "0");
     const d = String(date.getDate()).padStart(2, "0");
-    
+    const y = date.getFullYear();
     const hr = date.getHours();
-    const ampmStr = hr >= 12 ? "PM" : "AM";
+    const min = String(date.getMinutes()).padStart(2, "0");
+    const ampm = hr >= 12 ? "PM" : "AM";
     const hr12 = hr % 12 === 0 ? 12 : hr % 12;
-    const hrStr = String(hr12).padStart(2, "0");
-    const minStr = String(date.getMinutes()).padStart(2, "0");
-    return `${m}/${d}/${y} ${hrStr}:${minStr} ${ampmStr}`;
+    return `${m}/${d}/${y} ${String(hr12).padStart(2, "0")}:${min} ${ampm}`;
   };
 
-  const validate = (date: Date | null, hr24: number, min: number): string => {
+  const validate = (date: Date | null, hr: number, min: number): string => {
     if (!date) return "";
-    const newDate = new Date(date);
-    newDate.setHours(hr24, min, 0, 0);
-
+    const combined = getCombinedDate(date, hr, min);
+    if (!combined) return "";
+    
     const now = new Date();
-    if (newDate < now) {
+    if (combined < now) {
       return "Không chọn thời gian quá khứ";
     }
-
+    
     if (minDate) {
       const minD = new Date(minDate);
-      if (newDate <= minD) {
-        return `Thời gian phải sau ${displayFormat(minD)}`;
+      if (combined < minD) {
+        return "Thời gian không hợp lệ (trước mốc tối thiểu)";
       }
     }
-
+    
     if (maxDate) {
       const maxD = new Date(maxDate);
-      if (newDate > maxD) {
-        return `Thời gian phải trước hoặc bằng ${displayFormat(maxD)}`;
+      if (combined > maxD) {
+        return "Thời gian không hợp lệ (vượt mốc tối đa)";
       }
     }
-
+    
     return "";
   };
 
   const handleSelectDay = (date: Date) => {
+    if (isDateDisabled(date)) return;
     setSelectedDate(date);
     const err = validate(date, selectedHour, selectedMinute);
     setTimeError(err);
@@ -305,99 +297,44 @@ export default function CustomDateTimePicker({
     setTimeError(err);
   };
 
-  const handlePrevMonth = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
-  };
-
-  const handleNextMonth = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
-  };
-
-  const handleClear = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setSelectedDate(null);
-    setTimeError("");
-    onChange("");
-    setIsOpen(false);
-  };
-
-  const handleToday = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const today = new Date();
-    setSelectedDate(today);
-    setCurrentMonth(today);
-    
-    setSelectedHour(today.getHours());
-    setSelectedMinute(today.getMinutes());
-    
-    const err = validate(today, today.getHours(), today.getMinutes());
-    setTimeError(err);
-  };
-
   const handleConfirm = () => {
-    if (!selectedDate) return;
     const err = validate(selectedDate, selectedHour, selectedMinute);
     if (err) {
       setTimeError(err);
       return;
     }
-    
-    const newDate = new Date(selectedDate);
-    newDate.setHours(selectedHour, selectedMinute, 0, 0);
-    
-    const y = newDate.getFullYear();
-    const m = String(newDate.getMonth() + 1).padStart(2, "0");
-    const d = String(newDate.getDate()).padStart(2, "0");
-    const h = String(newDate.getHours()).padStart(2, "0");
-    const mi = String(newDate.getMinutes()).padStart(2, "0");
-    
-    onChange(`${y}-${m}-${d}T${h}:${mi}`);
+    if (selectedDate) {
+      const formatted = toOutputString(selectedDate, selectedHour, selectedMinute);
+      onChange(formatted);
+    }
     setIsOpen(false);
   };
 
-  // Calendar calculations
-  const year = currentMonth.getFullYear();
-  const month = currentMonth.getMonth();
-  const firstDayIndex = new Date(year, month, 1).getDay();
-  const totalDays = new Date(year, month + 1, 0).getDate();
-  const prevTotalDays = new Date(year, month, 0).getDate();
+  const toOutputString = (date: Date, hr: number, min: number): string => {
+    const y = date.getFullYear();
+    const mo = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    const h = String(hr).padStart(2, "0");
+    const m = String(min).padStart(2, "0");
+    return `${y}-${mo}-${d}T${h}:${m}`;
+  };
 
-  const cells = [];
-  
-  // Previous month padding
-  for (let i = firstDayIndex - 1; i >= 0; i--) {
-    const dayNum = prevTotalDays - i;
-    cells.push({
-      day: dayNum,
-      isCurrentMonth: false,
-      date: new Date(year, month - 1, dayNum),
-    });
-  }
+  const handleClear = () => {
+    onChange("");
+    setSelectedDate(null);
+    setIsOpen(false);
+  };
 
-  // Current month
-  for (let i = 1; i <= totalDays; i++) {
-    cells.push({
-      day: i,
-      isCurrentMonth: true,
-      date: new Date(year, month, i),
-    });
-  }
-
-  // Next month padding
-  const remainingCells = 42 - cells.length;
-  for (let i = 1; i <= remainingCells; i++) {
-    cells.push({
-      day: i,
-      isCurrentMonth: false,
-      date: new Date(year, month + 1, i),
-    });
-  }
+  const handleToday = () => {
+    const now = new Date();
+    if (isDateDisabled(now)) return;
+    setSelectedDate(now);
+    setSelectedHour(now.getHours());
+    setSelectedMinute(now.getMinutes());
+    setCurrentMonth(now);
+    const err = validate(now, now.getHours(), now.getMinutes());
+    setTimeError(err);
+  };
 
   const isSameDay = (d1: Date, d2: Date) => {
     return (
@@ -427,47 +364,103 @@ export default function CustomDateTimePicker({
     return false;
   };
 
-  const hoursArray = Array.from({ length: 24 }, (_, i) => i);
-  const minutesArray = Array.from({ length: 60 }, (_, i) => i);
+  // Calendar calculations
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
+  const firstDayIndex = new Date(year, month, 1).getDay();
+  const totalDays = new Date(year, month + 1, 0).getDate();
+  const prevTotal = new Date(year, month, 0).getDate();
+
+  const cells: { day: number; isCurrentMonth: boolean; date: Date }[] = [];
+  for (let i = firstDayIndex - 1; i >= 0; i--) {
+    cells.push({
+      day: prevTotal - i,
+      isCurrentMonth: false,
+      date: new Date(year, month - 1, prevTotal - i),
+    });
+  }
+  for (let i = 1; i <= totalDays; i++) {
+    cells.push({
+      day: i,
+      isCurrentMonth: true,
+      date: new Date(year, month, i),
+    });
+  }
+  const rowRem = cells.length % 7 === 0 ? 0 : 7 - (cells.length % 7);
+  for (let i = 1; i <= rowRem; i++) {
+    cells.push({
+      day: i,
+      isCurrentMonth: false,
+      date: new Date(year, month + 1, i),
+    });
+  }
+
+  const handlePrevMonth = () => {
+    setCurrentMonth(new Date(year, month - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentMonth(new Date(year, month + 1, 1));
+  };
 
   return (
     <div ref={containerRef} className="relative w-full">
       {/* Input Display Area */}
       <div
         onClick={toggleOpen}
-        className={`w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none flex justify-between items-center cursor-pointer select-none transition-all ${
-          disabled ? "opacity-50 cursor-not-allowed" : ""
-        } ${isOpen ? "border-cyan-500/80 shadow-[0_0_10px_rgba(0,240,255,0.1)]" : ""}`}
+        className={`w-full border rounded-xl px-4 py-2.5 text-xs flex justify-between items-center cursor-pointer select-none transition-all ${
+          usesLightShell
+            ? "bg-white border-slate-300 hover:border-[#F27024] text-slate-800"
+            : "bg-slate-900/80 border-slate-700 hover:border-cyan-500/50 text-white"
+        } ${disabled ? "opacity-50 cursor-not-allowed" : ""} ${
+          isOpen
+            ? usesLightShell
+              ? "border-[#F27024] shadow-[0_0_10px_rgba(242,112,36,0.15)]"
+              : "border-cyan-500/80 shadow-[0_0_10px_rgba(0,240,255,0.1)]"
+            : ""
+        }`}
       >
-        <span className={value ? "text-white font-mono" : "text-slate-500"}>
+        <span className={value ? usesLightShell ? "text-slate-800 font-mono" : "text-white font-mono" : "text-slate-400"}>
           {value ? displayFormat(getCombinedDate(selectedDate, selectedHour, selectedMinute)) : placeholder}
         </span>
-        <Calendar size={16} className="text-cyan-300 hover:text-cyan-400 shrink-0 cursor-pointer transition-colors" />
+        <Calendar size={16} className={usesLightShell ? "text-[#F27024] shrink-0 cursor-pointer" : "text-cyan-300 hover:text-cyan-400 shrink-0 cursor-pointer transition-colors"} />
       </div>
 
       {/* Popover DateTime Picker Dropdown */}
       {isOpen && (
-        <div className="absolute z-50 mt-2 p-4 bg-slate-950 border border-slate-800 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8),0_0_15px_rgba(0,240,255,0.05)] flex gap-4 animate-fadeIn select-none right-0 md:left-0 md:right-auto min-w-[500px]">
+        <div className={`absolute z-50 mt-2 p-4 border rounded-2xl flex gap-4 animate-fadeIn select-none right-0 md:left-0 md:right-auto min-w-[500px] ${
+          usesLightShell
+            ? "bg-white border-slate-200 shadow-[0_10px_40px_rgba(0,0,0,0.08)] text-slate-800"
+            : "bg-slate-955 border border-slate-800 shadow-[0_10px_40px_rgba(0,0,0,0.8),0_0_15px_rgba(0,240,255,0.05)] text-slate-300"
+        }`}>
           {/* LEFT: Calendar Section */}
-          <div className="w-[260px] border-r border-slate-800/80 pr-4">
+          <div className={`w-[260px] border-r pr-4 ${usesLightShell ? 'border-slate-200' : 'border-slate-800/80'}`}>
             {/* Header: Prev, Month/Year, Next */}
             <div className="flex justify-between items-center mb-3">
               <button
                 type="button"
                 onClick={handlePrevMonth}
-                className="p-1.5 rounded-lg border border-slate-800 hover:border-cyan-500/30 hover:bg-cyan-500/10 text-slate-400 hover:text-cyan-400 transition-all cursor-pointer"
+                className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                  usesLightShell 
+                    ? "border-slate-200 hover:border-[#F27024]/40 hover:bg-[#F27024]/10 text-slate-600 hover:text-[#F27024]" 
+                    : "border-slate-800 hover:border-cyan-500/30 hover:bg-cyan-500/10 text-slate-400 hover:text-cyan-400"
+                }`}
               >
                 <ChevronLeft size={14} />
               </button>
               
-              <span className="text-xs font-bold text-white font-mono uppercase tracking-wider">
+              <span className={`text-xs font-bold font-mono uppercase tracking-wider ${usesLightShell ? "text-slate-800" : "text-white"}`}>
                 {MONTHS[month]} {year}
               </span>
               
               <button
                 type="button"
                 onClick={handleNextMonth}
-                className="p-1.5 rounded-lg border border-slate-800 hover:border-cyan-500/30 hover:bg-cyan-500/10 text-slate-400 hover:text-cyan-400 transition-all cursor-pointer"
+                className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                  usesLightShell 
+                    ? "border-slate-200 hover:border-[#F27024]/40 hover:bg-[#F27024]/10 text-slate-600 hover:text-[#F27024]" 
+                    : "border-slate-800 hover:border-cyan-500/30 hover:bg-cyan-500/10 text-slate-400 hover:text-cyan-400"
+                }`}
               >
                 <ChevronRight size={14} />
               </button>
@@ -497,13 +490,23 @@ export default function CustomDateTimePicker({
                     disabled={isDisabled}
                     className={`w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-mono font-semibold transition-all ${
                       isDisabled
-                        ? "text-slate-800 opacity-20 cursor-not-allowed"
+                        ? usesLightShell
+                          ? "text-slate-350 opacity-40 cursor-not-allowed"
+                          : "text-slate-800 opacity-20 cursor-not-allowed"
                         : !cell.isCurrentMonth
-                        ? "text-slate-600 hover:text-slate-400 hover:bg-slate-900 cursor-pointer"
+                        ? usesLightShell
+                          ? "text-slate-350 hover:text-slate-500 hover:bg-slate-100 cursor-pointer"
+                          : "text-slate-600 hover:text-slate-400 hover:bg-slate-900 cursor-pointer"
                         : isSelected
-                        ? "bg-cyan-500 text-slate-950 font-bold shadow-[0_0_12px_rgba(0,240,255,0.4)] cursor-pointer"
+                        ? usesLightShell
+                          ? "bg-[#F27024] text-white font-bold shadow-[0_0_12px_rgba(242,112,36,0.35)] cursor-pointer"
+                          : "bg-cyan-500 text-slate-950 font-bold shadow-[0_0_12px_rgba(0,240,255,0.4)] cursor-pointer"
                         : isToday
-                        ? "border border-cyan-500/50 text-cyan-400 cursor-pointer"
+                        ? usesLightShell
+                          ? "border border-[#F27024]/50 text-[#F27024] cursor-pointer"
+                          : "border border-cyan-500/50 text-cyan-400 cursor-pointer"
+                        : usesLightShell
+                        ? "text-slate-700 hover:bg-slate-100 hover:text-[#F27024] cursor-pointer"
                         : "text-slate-300 hover:bg-slate-900 hover:text-white cursor-pointer"
                     }`}
                   >
@@ -514,7 +517,7 @@ export default function CustomDateTimePicker({
             </div>
 
             {/* Bottom Controls */}
-            <div className="flex justify-between items-center mt-4 pt-3 border-t border-slate-900">
+            <div className={`flex justify-between items-center mt-4 pt-3 border-t ${usesLightShell ? 'border-slate-200' : 'border-slate-900'}`}>
               <button
                 type="button"
                 onClick={handleClear}
@@ -526,7 +529,9 @@ export default function CustomDateTimePicker({
               <button
                 type="button"
                 onClick={handleToday}
-                className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+                className={`text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                  usesLightShell ? 'text-[#F27024] hover:text-[#e05e1b]' : 'text-cyan-400 hover:text-cyan-300'
+                }`}
               >
                 Hôm nay
               </button>
@@ -536,9 +541,9 @@ export default function CustomDateTimePicker({
           {/* RIGHT: Time Selection Section */}
           <div className="flex-grow flex flex-col justify-between pl-4">
             <div>
-              <div className="border-b border-slate-800/80 pb-2 mb-3 flex items-center gap-1.5">
-                <Clock size={12} className="text-cyan-400" />
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Thời gian</span>
+              <div className={`border-b pb-2 mb-3 flex items-center gap-1.5 ${usesLightShell ? 'border-slate-200' : 'border-slate-800/80'}`}>
+                <Clock size={12} className={usesLightShell ? 'text-[#F27024]' : 'text-cyan-400'} />
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Thời gian</span>
               </div>
 
               <div className="flex items-center justify-center gap-2 h-[128px] mb-4">
@@ -559,7 +564,7 @@ export default function CustomDateTimePicker({
             </div>
 
             {/* OK Button */}
-            <div className="pt-2 border-t border-slate-900 flex flex-col gap-2">
+            <div className={`pt-2 border-t flex flex-col gap-2 ${usesLightShell ? 'border-slate-200' : 'border-slate-900'}`}>
               {timeError && (
                 <span className="text-[10px] text-rose-500 font-bold font-mono text-center">
                   {timeError}
@@ -569,7 +574,11 @@ export default function CustomDateTimePicker({
                 type="button"
                 onClick={handleConfirm}
                 disabled={!!timeError || !selectedDate}
-                className="w-full py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold uppercase tracking-wider font-mono rounded-xl transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_16px_rgba(0,240,255,0.25)]"
+                className={`w-full py-2 text-xs font-bold uppercase tracking-wider font-mono rounded-xl transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${
+                  usesLightShell
+                    ? "bg-[#F27024] hover:bg-[#e05e1b] text-white shadow-[0_0_16px_rgba(242,112,36,0.25)]"
+                    : "bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-[0_0_16px_rgba(0,240,255,0.25)]"
+                }`}
               >
                 Xác nhận
               </button>

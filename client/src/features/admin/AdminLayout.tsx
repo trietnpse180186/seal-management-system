@@ -138,7 +138,7 @@ export default function AdminLayout({ user, roles, onLogout }: AdminLayoutProps)
   };
 
   return (
-    <div className="min-h-screen bg-[#070d1f] text-slate-300 flex font-sans selection:bg-cyan-500/30">
+    <div className="min-h-screen bg-[#faf9f6] text-slate-800 flex font-sans selection:bg-orange-500/20 coordinator-light-theme">
       {/* SideNavBar */}
       <aside className="fixed left-0 top-0 h-full w-[280px] bg-slate-900/40 backdrop-blur-2xl border-r border-white/5 flex flex-col z-20 shadow-2xl">
 
@@ -222,7 +222,7 @@ export default function AdminLayout({ user, roles, onLogout }: AdminLayoutProps)
 
               {/* Notifications Dropdown */}
               {showNotifications && (
-                <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-slate-900 border border-slate-700 rounded-xl shadow-[0_0_20px_rgba(0,0,0,0.5)] z-50">
+                <div className="absolute right-0 mt-2 w-[420px] max-h-96 overflow-y-auto bg-slate-900 border border-slate-700 rounded-xl shadow-[0_0_20px_rgba(0,0,0,0.5)] z-50">
                   <div className="flex justify-between items-center p-3 border-b border-slate-800 sticky top-0 bg-slate-900/95 backdrop-blur z-10">
                     <h4 className="text-sm font-semibold text-white font-mono">
                       Thông báo
@@ -252,11 +252,11 @@ export default function AdminLayout({ user, roles, onLogout }: AdminLayoutProps)
                           className={`p-3 border-b border-slate-800/50 cursor-pointer transition-colors ${notif.status === "pending" ? "bg-cyan-950/20 hover:bg-cyan-950/30" : "hover:bg-slate-800/50"}`}
                         >
                           <p
-                            className={`text-xs font-semibold ${notif.status === "pending" ? "text-cyan-300" : "text-slate-300"}`}
+                            className={`text-xs font-semibold whitespace-normal break-words ${notif.status === "pending" ? "text-cyan-300" : "text-slate-300"}`}
                           >
                             {notif.title}
                           </p>
-                          <p className="text-xs text-slate-400 mt-1">
+                          <p className="text-xs text-slate-400 mt-1 whitespace-normal break-words leading-relaxed">
                             {notif.body}
                           </p>
                           <p className="text-[10px] text-slate-500 mt-2">

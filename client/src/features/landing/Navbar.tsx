@@ -16,15 +16,17 @@ import {
   Camera,
   Calendar,
   UserPlus,
+  UserCog,
 } from "lucide-react";
 
 interface NavbarProps {
   user: any;
   roles: any[];
   onLogout: () => void;
+  onOpenProfile?: () => void;
 }
 
-export default function Navbar({ user, roles, onLogout }: NavbarProps) {
+export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarProps) {
   const location = useLocation();
   const isLoginPage = location.pathname === "/login";
   const isAuthPage = 
@@ -36,6 +38,59 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const socketRef = useRef<Socket | null>(null);
+  const [hasTeam, setHasTeam] = useState<boolean | null>(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  useEffect(() => {
+    const checkTeamStatus = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setHasTeam(false);
+        return;
+      }
+      try {
+        const res = await axios.get("http://localhost:5000/api/teams/my-team", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.data && res.data.team) {
+          const team = res.data.team;
+          const isEventEnded = team && (
+            team.eventId?.status === 'completed' ||
+            team.eventId?.status === 'cancelled' ||
+            (team.eventId?.contestEnd && new Date(team.eventId.contestEnd) <= new Date())
+          );
+          if (team && !isEventEnded) {
+            setHasTeam(true);
+          } else {
+            setHasTeam(false);
+          }
+        } else {
+          setHasTeam(false);
+        }
+      } catch (err) {
+        setHasTeam(false);
+      }
+    };
+
+    if (user) {
+      checkTeamStatus();
+    } else {
+      setHasTeam(false);
+    }
+  }, [user, location.pathname]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -200,7 +255,13 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
   const isActive = (path: string) => location.pathname === path;
 
   const isLandingPage = location.pathname === "/";
-  const usesLightShell = isLandingPage || isAuthPage || location.pathname === "/album";
+  const usesLightShell =
+    isLandingPage ||
+    isAuthPage ||
+    location.pathname === "/album" ||
+    location.pathname === "/guest-portal" ||
+    location.pathname === "/team-area" ||
+    location.pathname === "/my-achievements";
 
   const linkClass = (path: string, forceActive?: boolean) => {
     const active = forceActive !== undefined ? forceActive : isActive(path);
@@ -284,7 +345,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                   </Link>
                   <Link to="/team-area" className={linkClass("/team-area")}>
                     <GitBranch size={16} />
-                    <span>Khu vực đội thi</span>
+                    <span>{hasTeam ? "Khu vực đội thi" : "Đăng ký đội thi"}</span>
                   </Link>
                   <Link to="/my-achievements" className={linkClass("/my-achievements")}>
                     <Award size={16} />
@@ -358,15 +419,27 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
 
                   {/* Notifications Dropdown */}
                   {showNotifications && (
-                    <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50">
-                      <div className="flex justify-between items-center p-3 border-b border-slate-800 sticky top-0 bg-slate-900/95 backdrop-blur z-10">
-                        <h4 className="text-sm font-semibold text-white">
+                    <div className={`absolute right-0 mt-2 w-[420px] max-h-96 overflow-y-auto border rounded-xl shadow-2xl z-50 ${
+                      usesLightShell 
+                        ? "bg-[#faf9f6] border-slate-200 text-slate-800" 
+                        : "bg-slate-900 border-slate-700 text-slate-200"
+                    }`}>
+                      <div className={`flex justify-between items-center p-3 border-b sticky top-0 backdrop-blur z-10 ${
+                        usesLightShell 
+                          ? "bg-[#faf9f6]/95 border-slate-200 text-slate-800" 
+                          : "bg-slate-900/95 border-slate-800 text-white"
+                      }`}>
+                        <h4 className="text-sm font-semibold">
                           Thông báo
                         </h4>
                         {unreadCount > 0 && (
                           <button
                             onClick={markAllAsRead}
-                            className="text-xs text-cyan-400 hover:text-cyan-300"
+                            className={`text-xs ${
+                              usesLightShell 
+                                ? "text-[#F27024] hover:text-[#e05e1b]" 
+                                : "text-cyan-400 hover:text-cyan-300"
+                            }`}
                           >
                             Đánh dấu đã đọc
                           </button>
@@ -375,7 +448,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                       <div className="flex flex-col">
                         {notifications.length === 0 ? (
                           <div className="p-6 text-center text-xs text-slate-500 flex flex-col items-center gap-2">
-                            <Bell size={24} className="text-slate-700" />
+                            <Bell size={24} className="text-slate-400" />
                             Chưa có thông báo nào.
                           </div>
                         ) : (
@@ -385,33 +458,50 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                               onClick={() => {
                                 if (!notif.isRead) markAsRead(notif._id);
                               }}
-                              className={`p-3 border-b border-slate-800/50 cursor-pointer transition-colors flex gap-3 items-start ${!notif.isRead
-                                ? "bg-cyan-950/20 hover:bg-cyan-950/30"
-                                : "hover:bg-slate-800/50"
-                                }`}
+                              className={`p-3 border-b cursor-pointer transition-colors flex gap-3 items-start ${
+                                !notif.isRead
+                                  ? usesLightShell 
+                                    ? "bg-[#F27024]/5 hover:bg-[#F27024]/10 border-slate-200/50" 
+                                    : "bg-cyan-950/20 hover:bg-cyan-950/30 border-slate-800/50"
+                                  : usesLightShell 
+                                    ? "hover:bg-slate-100/50 border-slate-200/50" 
+                                    : "hover:bg-slate-800/50 border-slate-800/50"
+                              }`}
                             >
-                              <div className={`mt-0.5 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm ${notif.type === 'chat_message'
-                                ? 'bg-blue-500/20 text-blue-400'
-                                : 'bg-cyan-500/20 text-cyan-400'
-                                }`}>
+                              <div className={`mt-0.5 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm ${
+                                notif.type === 'chat_message'
+                                  ? 'bg-blue-500/20 text-blue-400'
+                                  : usesLightShell 
+                                    ? 'bg-[#F27024]/10 text-[#F27024]' 
+                                    : 'bg-cyan-500/20 text-cyan-400'
+                              }`}>
                                 {notif.type === 'chat_message'
                                   ? <MessageSquare size={14} />
                                   : <Bell size={14} />}
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <p className={`text-xs font-semibold truncate ${!notif.isRead ? "text-cyan-300" : "text-slate-300"
-                                  }`}>
+                              <div className="flex-1 min-w-0 font-sans">
+                                <p className={`text-xs font-semibold ${
+                                  !notif.isRead 
+                                    ? usesLightShell 
+                                      ? "text-slate-900 font-bold" 
+                                      : "text-cyan-300" 
+                                    : "text-slate-600"
+                                }`}>
                                   {notif.title}
                                 </p>
-                                <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">
+                                <p className="text-xs text-slate-500 mt-0.5 whitespace-normal break-words leading-relaxed">
                                   {notif.body}
                                 </p>
-                                <p className="text-[10px] text-slate-500 mt-1.5">
+                                <p className="text-[10px] text-slate-400 mt-1.5">
                                   {new Date(notif.createdAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
                                 </p>
                               </div>
                               {!notif.isRead && (
-                                <div className="flex-shrink-0 mt-1.5 w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
+                                <div className={`flex-shrink-0 mt-1.5 w-2 h-2 rounded-full ${
+                                  usesLightShell 
+                                    ? "bg-[#F27024] shadow-[0_0_6px_rgba(242,112,36,0.8)]" 
+                                    : "bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]"
+                                }`} />
                               )}
                             </div>
                           ))
@@ -421,7 +511,7 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                   )}
                 </div>
 
-                <div className="text-right hidden sm:block font-mono">
+                <div className="text-right hidden sm:block font-sans">
                   <p className={`text-sm font-semibold ${usesLightShell ? "text-slate-800" : "text-slate-200"}`}>
                     {user.fullName}
                   </p>
@@ -438,17 +528,59 @@ export default function Navbar({ user, roles, onLogout }: NavbarProps) {
                   </p>
                 </div>
 
-                <div className={`h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold font-mono ${usesLightShell ? "bg-[#F27024]/10 text-[#F27024] border border-[#F27024]/25 shadow-[0_0_10px_rgba(242,112,36,0.12)]" : "bg-cyan-950/50 text-cyan-400 border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)]"}`}>
-                  {user.fullName.charAt(0)}
-                </div>
+                <div className="relative" ref={userMenuRef}>
+                  <button
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className={`h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold font-mono transition-all hover:scale-105 active:scale-95 cursor-pointer ${
+                      usesLightShell
+                        ? "bg-[#F27024]/10 text-[#F27024] border border-[#F27024]/25 shadow-[0_0_10px_rgba(242,112,36,0.12)] hover:bg-[#F27024]/20 hover:border-[#F27024]/40"
+                        : "bg-cyan-950/50 text-cyan-400 border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)] hover:bg-cyan-950/80 hover:border-cyan-500/50"
+                    }`}
+                    title="Menu tài khoản"
+                  >
+                    <span>{user.fullName.charAt(0)}</span>
+                  </button>
 
-                <button
-                  onClick={onLogout}
-                  className="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all duration-200"
-                  title="Đăng xuất"
-                >
-                  <LogOut size={18} />
-                </button>
+                  {showUserMenu && (
+                    <div
+                      className={`absolute right-0 mt-2 w-48 rounded-xl border shadow-2xl p-1.5 z-[9999] font-sans ${
+                        usesLightShell
+                          ? "bg-[#faf9f6] border-slate-200 text-slate-800"
+                          : "bg-[#0c1322] border-cyan-500/30 text-slate-200 shadow-[0_0_20px_rgba(6,182,212,0.15)]"
+                      }`}
+                    >
+                      <button
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          onOpenProfile?.();
+                        }}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg text-left transition-colors cursor-pointer ${
+                          usesLightShell
+                            ? "hover:bg-slate-100 text-slate-700"
+                            : "hover:bg-cyan-950/30 text-slate-300 hover:text-cyan-400"
+                        }`}
+                      >
+                        <UserCog size={14} className={usesLightShell ? "text-[#F27024]" : "text-cyan-400"} />
+                        <span>Hồ sơ</span>
+                      </button>
+                      <div className={`my-1 border-t ${usesLightShell ? "border-slate-200" : "border-slate-800"}`}></div>
+                      <button
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          onLogout();
+                        }}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg text-left transition-colors cursor-pointer text-rose-500 hover:text-rose-600 ${
+                          usesLightShell
+                            ? "hover:bg-rose-50/50"
+                            : "hover:bg-rose-500/10"
+                        }`}
+                      >
+                        <LogOut size={14} />
+                        <span>Đăng xuất</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               !isLoginPage && (

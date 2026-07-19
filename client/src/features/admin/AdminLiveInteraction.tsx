@@ -2,15 +2,15 @@ import { useState, useEffect, useRef } from "react";
 import { useOutletContext } from "react-router-dom";
 import axios from "axios";
 import { io, Socket } from "socket.io-client";
-import { 
-  Sparkles, 
-  Tv, 
-  ListFilter, 
-  UserCheck, 
-  Edit3, 
-  Save, 
-  Activity, 
-  ChevronRight
+import {
+  Sparkles,
+  Tv,
+  ListFilter,
+  UserCheck,
+  Edit3,
+  Save,
+  Activity,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import CustomSelect from "../shared/CustomSelect";
@@ -34,12 +34,16 @@ export default function AdminLiveInteraction() {
   const [criteria, setCriteria] = useState<any[]>([]);
 
   // Live Sync states
-  const [highlightedTeamId, setHighlightedTeamId] = useState<string | null>(null);
+  const [highlightedTeamId, setHighlightedTeamId] = useState<string | null>(
+    null,
+  );
   const [liveLogs, setLiveLogs] = useState<any[]>([]);
 
   // Score Override Panel states
   const [selectedJudgeId, setSelectedJudgeId] = useState("");
-  const [overrideScores, setOverrideScores] = useState<{ [criterionId: string]: number }>({});
+  const [overrideScores, setOverrideScores] = useState<{
+    [criterionId: string]: number;
+  }>({});
   const [overrideComment, setOverrideComment] = useState("");
   const [isSubmittingOverride, setIsSubmittingOverride] = useState(false);
 
@@ -74,7 +78,12 @@ export default function AdminLiveInteraction() {
     fetchJudges();
 
     // Socket Connection
-    const socketUrl = import.meta.env.VITE_API_URL || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.origin : 'http://localhost:5000');
+    const socketUrl =
+      import.meta.env.VITE_API_URL ||
+      (window.location.hostname !== "localhost" &&
+      window.location.hostname !== "127.0.0.1"
+        ? window.location.origin
+        : "http://localhost:5000");
     const socket = io(socketUrl, { auth: { token } });
     socketRef.current = socket;
 
@@ -95,7 +104,10 @@ export default function AdminLiveInteraction() {
       console.log("Socket Event: score_updated in AdminLiveInteraction:", data);
       if (data.roundId === selectedRoundIdRef.current) {
         fetchLiveRankings();
-        if (selectedTeamRef.current && selectedTeamRef.current.teamId._id === data.teamId) {
+        if (
+          selectedTeamRef.current &&
+          selectedTeamRef.current.teamId._id === data.teamId
+        ) {
           fetchJudgeScoresForTeam();
         }
       }
@@ -103,7 +115,10 @@ export default function AdminLiveInteraction() {
 
     // Real-time EventLogs pushing to live center
     socket.on("new_event_log", (newLog: any) => {
-      if (newLog.eventId?._id === selectedEventId || newLog.eventId === selectedEventId) {
+      if (
+        newLog.eventId?._id === selectedEventId ||
+        newLog.eventId === selectedEventId
+      ) {
         setLiveLogs((prev) => [newLog, ...prev].slice(0, 15)); // keep last 15 logs
       }
     });
@@ -140,7 +155,7 @@ export default function AdminLiveInteraction() {
   const fetchEvents = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/events", {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       setEvents(res.data);
       if (res.data.length > 0) {
@@ -153,9 +168,12 @@ export default function AdminLiveInteraction() {
 
   const fetchEventDetails = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/events/${selectedEventId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await axios.get(
+        `http://localhost:5000/api/events/${selectedEventId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
       setRounds(res.data.rounds || []);
       if (res.data.rounds && res.data.rounds.length > 0) {
         setSelectedRoundId(res.data.rounds[0]._id);
@@ -167,10 +185,15 @@ export default function AdminLiveInteraction() {
 
   const fetchJudges = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/events/${selectedEventId}/roles`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const judgeRoles = res.data.filter((r: any) => r.role === "judge" && r.userId);
+      const res = await axios.get(
+        `http://localhost:5000/api/events/${selectedEventId}/roles`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      const judgeRoles = res.data.filter(
+        (r: any) => r.role === "judge" && r.userId,
+      );
       setJudges(judgeRoles.map((r: any) => r.userId));
       if (judgeRoles.length > 0) {
         setSelectedJudgeId(judgeRoles[0].userId._id);
@@ -182,9 +205,12 @@ export default function AdminLiveInteraction() {
 
   const fetchLiveRankings = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/grades/live-ranking/${selectedRoundId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await axios.get(
+        `http://localhost:5000/api/grades/live-ranking/${selectedRoundId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
       setTeams(res.data.standings || []);
     } catch (err) {
       console.error(err);
@@ -193,9 +219,12 @@ export default function AdminLiveInteraction() {
 
   const fetchRubric = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/rubrics/round/${selectedRoundId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await axios.get(
+        `http://localhost:5000/api/rubrics/round/${selectedRoundId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
       if (res.data && res.data.rubric) {
         const activeRubric = res.data.rubric;
         setRubric(activeRubric);
@@ -211,14 +240,17 @@ export default function AdminLiveInteraction() {
     }
   };
 
-
-
   const fetchJudgeScoresForTeam = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/grades/team/${selectedTeam.teamId._id}/round/${selectedRoundId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const judgeScore = res.data.scores?.find((s: any) => s.judgeId?._id === selectedJudgeId);
+      const res = await axios.get(
+        `http://localhost:5000/api/grades/team/${selectedTeam.teamId._id}/round/${selectedRoundId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      const judgeScore = res.data.scores?.find(
+        (s: any) => s.judgeId?._id === selectedJudgeId,
+      );
       if (judgeScore) {
         const scoresMap: { [criterionId: string]: number } = {};
         judgeScore.details?.forEach((d: any) => {
@@ -244,7 +276,7 @@ export default function AdminLiveInteraction() {
       socketRef.current.emit("coordinator_select_team", {
         eventId: selectedEventId,
         teamId: null,
-        roundId: selectedRoundId
+        roundId: selectedRoundId,
       });
       setHighlightedTeamId(null);
       toast.success("Đã tắt highlight đội thi");
@@ -253,17 +285,19 @@ export default function AdminLiveInteraction() {
       socketRef.current.emit("coordinator_select_team", {
         eventId: selectedEventId,
         teamId,
-        roundId: selectedRoundId
+        roundId: selectedRoundId,
       });
       setHighlightedTeamId(teamId);
-      toast.success(`Đang highlight đội thi: ${teams.find(t => t.teamId._id === teamId)?.teamId.name}`);
+      toast.success(
+        `Đang highlight đội thi: ${teams.find((t) => t.teamId._id === teamId)?.teamId.name}`,
+      );
     }
   };
 
   const handleScoreChange = (criterionId: string, val: number) => {
-    setOverrideScores(prev => ({
+    setOverrideScores((prev) => ({
       ...prev,
-      [criterionId]: val
+      [criterionId]: val,
     }));
   };
 
@@ -274,29 +308,39 @@ export default function AdminLiveInteraction() {
     }
 
     // Verify all criteria are scored
-    const emptyCriteria = criteria.filter(c => overrideScores[c._id] === undefined);
+    const emptyCriteria = criteria.filter(
+      (c) => overrideScores[c._id] === undefined,
+    );
     if (emptyCriteria.length > 0) {
-      toast.error(`Vui lòng nhập điểm cho tất cả tiêu chí: ${emptyCriteria.map(c => c.code).join(", ")}`);
+      toast.error(
+        `Vui lòng nhập điểm cho tất cả tiêu chí: ${emptyCriteria.map((c) => c.code).join(", ")}`,
+      );
       return;
     }
 
     setIsSubmittingOverride(true);
     try {
-      const details = Object.entries(overrideScores).map(([critId, scoreVal]) => ({
-        criterionId: critId,
-        scoreValue: scoreVal
-      }));
+      const details = Object.entries(overrideScores).map(
+        ([critId, scoreVal]) => ({
+          criterionId: critId,
+          scoreValue: scoreVal,
+        }),
+      );
 
-      await axios.post("http://localhost:5000/api/grades/submit", {
-        teamId: selectedTeam.teamId._id,
-        roundId: selectedRoundId,
-        rubricId: rubric._id,
-        judgeId: selectedJudgeId, // override judge
-        details,
-        overallComment: overrideComment
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axios.post(
+        "http://localhost:5000/api/grades/submit",
+        {
+          teamId: selectedTeam.teamId._id,
+          roundId: selectedRoundId,
+          rubricId: rubric._id,
+          judgeId: selectedJudgeId, // override judge
+          details,
+          overallComment: overrideComment,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
 
       toast.success("Đã cập nhật điểm số thành công!");
       fetchLiveRankings(); // reload list rankings
@@ -309,7 +353,9 @@ export default function AdminLiveInteraction() {
   };
 
   // Group teams by track
-  const groupedTeams: { [trackId: string]: { trackName: string, items: any[] } } = {};
+  const groupedTeams: {
+    [trackId: string]: { trackName: string; items: any[] };
+  } = {};
   teams.forEach((item) => {
     const trackId = item.trackId?._id || "unassigned";
     const trackName = item.trackId?.name || "Chưa phân bảng";
@@ -321,12 +367,13 @@ export default function AdminLiveInteraction() {
 
   const eventOptions = events.map((ev) => ({
     value: ev._id,
-    label: `${ev.name} (${ev.semester})`
+    label: `${ev.name} (${ev.semester})`,
   }));
 
-  const roundOptions = rounds.length > 0
-    ? rounds.map((rd) => ({ value: rd._id, label: rd.name }))
-    : [];
+  const roundOptions =
+    rounds.length > 0
+      ? rounds.map((rd) => ({ value: rd._id, label: rd.name }))
+      : [];
 
   return (
     <div className="space-y-6 font-sans text-slate-300">
@@ -351,7 +398,9 @@ export default function AdminLiveInteraction() {
         <div className="flex flex-wrap gap-3 items-center w-full md:w-auto relative z-30">
           {/* Event Selector */}
           <div className="flex flex-col gap-1 w-full sm:w-64">
-            <span className="text-[10px] uppercase font-bold text-slate-500 font-mono tracking-widest">Cuộc thi</span>
+            <span className="text-[10px] uppercase font-bold text-slate-500 font-mono tracking-widest">
+              Cuộc thi
+            </span>
             <CustomSelect
               value={selectedEventId}
               onChange={setSelectedEventId}
@@ -363,7 +412,9 @@ export default function AdminLiveInteraction() {
 
           {/* Round Selector */}
           <div className="flex flex-col gap-1 w-full sm:w-48">
-            <span className="text-[10px] uppercase font-bold text-slate-500 font-mono tracking-widest">Vòng thi</span>
+            <span className="text-[10px] uppercase font-bold text-slate-500 font-mono tracking-widest">
+              Vòng thi
+            </span>
             <CustomSelect
               value={selectedRoundId}
               onChange={setSelectedRoundId}
@@ -387,8 +438,8 @@ export default function AdminLiveInteraction() {
                 <ListFilter size={16} className="text-cyan-400" />
                 <span>DANH SÁCH ĐỘI & ĐIỂM SỐ LIVE</span>
               </h3>
-              <button 
-                onClick={fetchLiveRankings} 
+              <button
+                onClick={fetchLiveRankings}
                 className="text-[10px] font-mono text-cyan-400 hover:text-cyan-300 transition-colors"
               >
                 Tải lại
@@ -409,9 +460,11 @@ export default function AdminLiveInteraction() {
 
                     <div className="space-y-2">
                       {group.items.map((item, idx) => {
-                        const isHighlighted = highlightedTeamId === item.teamId._id;
-                        const isSelected = selectedTeam?.teamId._id === item.teamId._id;
-                        const rank = item.trackRank || (idx + 1);
+                        const isHighlighted =
+                          highlightedTeamId === item.teamId._id;
+                        const isSelected =
+                          selectedTeam?.teamId._id === item.teamId._id;
+                        const rank = item.trackRank || idx + 1;
                         return (
                           <div
                             key={item.teamId._id}
@@ -420,8 +473,8 @@ export default function AdminLiveInteraction() {
                               isSelected
                                 ? "bg-slate-900/60 border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.1)]"
                                 : isHighlighted
-                                ? "bg-amber-500/10 border-amber-500/40"
-                                : "bg-slate-950/40 border-slate-850 hover:bg-slate-900/30"
+                                  ? "bg-amber-500/10 border-amber-500/40"
+                                  : "bg-slate-950/40 border-slate-850 hover:bg-slate-900/30"
                             }`}
                           >
                             {/* Left glowing marker */}
@@ -431,15 +484,17 @@ export default function AdminLiveInteraction() {
 
                             <div className="flex items-center gap-3">
                               {/* Rank Badge */}
-                              <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold font-mono text-[10px] ${
-                                rank === 1 
-                                  ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" 
-                                  : rank === 2 
-                                  ? "bg-slate-300/20 text-slate-300 border border-slate-300/30" 
-                                  : rank === 3 
-                                  ? "bg-amber-700/20 text-amber-600 border border-amber-700/30"
-                                  : "bg-slate-900 text-slate-500 border border-slate-800"
-                              }`}>
+                              <div
+                                className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold font-mono text-[10px] ${
+                                  rank === 1
+                                    ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                                    : rank === 2
+                                      ? "bg-slate-300/20 text-slate-300 border border-slate-300/30"
+                                      : rank === 3
+                                        ? "bg-amber-700/20 text-amber-600 border border-amber-700/30"
+                                        : "bg-slate-900 text-slate-500 border border-slate-800"
+                                }`}
+                              >
                                 {rank}
                               </div>
 
@@ -455,7 +510,8 @@ export default function AdminLiveInteraction() {
                                   )}
                                 </div>
                                 <span className="text-[10px] text-slate-500 block truncate max-w-[200px] mt-0.5">
-                                  {item.teamId.topicSubmission?.title || "Chưa nộp đề tài"}
+                                  {item.teamId.topicSubmission?.title ||
+                                    "Chưa nộp đề tài"}
                                 </span>
                               </div>
                             </div>
@@ -464,13 +520,18 @@ export default function AdminLiveInteraction() {
                             <div className="text-right flex items-center gap-4">
                               <div>
                                 <span className="text-xs font-mono font-bold text-cyan-400 block">
-                                  {item.averageScore > 0 ? `${item.averageScore}đ` : "--"}
+                                  {item.averageScore > 0
+                                    ? `${item.averageScore}đ`
+                                    : "--"}
                                 </span>
                                 <span className="text-[9px] text-slate-500 block font-mono">
                                   {item.judgeCount} Giám khảo
                                 </span>
                               </div>
-                              <ChevronRight size={14} className="text-slate-600 group-hover:text-cyan-400 transition-colors" />
+                              <ChevronRight
+                                size={14}
+                                className="text-slate-600 group-hover:text-cyan-400 transition-colors"
+                              />
                             </div>
                           </div>
                         );
@@ -495,7 +556,10 @@ export default function AdminLiveInteraction() {
             <div className="space-y-2.5 max-h-[180px] overflow-y-auto text-[10px] font-mono pr-1">
               {liveLogs.length > 0 ? (
                 liveLogs.map((log, lIdx) => (
-                  <div key={lIdx} className="flex gap-2 pb-2 border-b border-slate-900/50 last:border-0 last:pb-0">
+                  <div
+                    key={lIdx}
+                    className="flex gap-2 pb-2 border-b border-slate-900/50 last:border-0 last:pb-0"
+                  >
                     <span className="text-slate-500 shrink-0">
                       {new Date(log.createdAt).toLocaleTimeString()}
                     </span>
@@ -522,13 +586,17 @@ export default function AdminLiveInteraction() {
                     <span className="text-slate-500 text-[10px] font-bold font-mono uppercase bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
                       ĐỘI THI
                     </span>
-                    <span className="text-[10px] text-cyan-400 font-mono">ID: {selectedTeam.teamId._id}</span>
+                    <span className="text-[10px] text-cyan-400 font-mono">
+                      ID: {selectedTeam.teamId._id}
+                    </span>
                   </div>
                   <h3 className="text-lg font-extrabold text-white tracking-wide">
                     {selectedTeam.teamId.name}
                   </h3>
                   <p className="text-xs text-slate-400 font-medium">
-                    Đề tài: {selectedTeam.teamId.topicSubmission?.title || "Chưa đăng ký đề tài"}
+                    Đề tài:{" "}
+                    {selectedTeam.teamId.topicSubmission?.title ||
+                      "Chưa đăng ký đề tài"}
                   </p>
                 </div>
 
@@ -544,8 +612,8 @@ export default function AdminLiveInteraction() {
                   >
                     <Sparkles size={14} />
                     <span>
-                      {highlightedTeamId === selectedTeam.teamId._id 
-                        ? "BỎ SPOTLIGHT" 
+                      {highlightedTeamId === selectedTeam.teamId._id
+                        ? "BỎ SPOTLIGHT"
                         : "SPOTLIGHT"}
                     </span>
                   </button>
@@ -560,10 +628,15 @@ export default function AdminLiveInteraction() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {selectedTeam.judges && selectedTeam.judges.length > 0 ? (
                     selectedTeam.judges.map((j: any, jIdx: number) => (
-                      <div key={jIdx} className="bg-slate-900/30 p-3 rounded-xl border border-slate-850 flex justify-between items-center text-xs">
+                      <div
+                        key={jIdx}
+                        className="bg-slate-900/30 p-3 rounded-xl border border-slate-850 flex justify-between items-center text-xs"
+                      >
                         <div className="flex items-center gap-2">
                           <UserCheck size={14} className="text-slate-500" />
-                          <span className="font-bold text-slate-200">{j.fullName}</span>
+                          <span className="font-bold text-slate-200">
+                            {j.fullName}
+                          </span>
                         </div>
                         <span className="font-mono font-bold text-cyan-400 bg-cyan-900/10 border border-cyan-900/20 px-2 py-0.5 rounded">
                           {j.score}đ
@@ -587,7 +660,7 @@ export default function AdminLiveInteraction() {
                       CẬP NHẬT/GHI ĐÈ ĐIỂM SỐ THAY GIÁM KHẢO
                     </h4>
                   </div>
-                  
+
                   {/* Select Judge to Override */}
                   <select
                     value={selectedJudgeId}
@@ -604,7 +677,8 @@ export default function AdminLiveInteraction() {
 
                 {readOnly ? (
                   <p className="text-center py-4 text-xs text-slate-500 font-mono italic">
-                    Bạn đang ở chế độ xem. Không có quyền sửa đổi hay ghi đè điểm số.
+                    Bạn đang ở chế độ xem. Không có quyền sửa đổi hay ghi đè
+                    điểm số.
                   </p>
                 ) : rubric ? (
                   <div className="space-y-4">
@@ -613,13 +687,18 @@ export default function AdminLiveInteraction() {
                       {criteria.map((c) => {
                         const val = overrideScores[c._id];
                         return (
-                          <div key={c._id} className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-slate-950/40 p-3 rounded-xl border border-white/5">
+                          <div
+                            key={c._id}
+                            className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-slate-950/40 p-3 rounded-xl border border-white/5"
+                          >
                             <div className="space-y-0.5">
                               <div className="flex items-center gap-1.5">
                                 <span className="font-extrabold font-mono text-[10px] text-cyan-400 bg-cyan-900/10 px-1.5 py-0.5 rounded border border-cyan-900/25">
                                   {c.code}
                                 </span>
-                                <span className="text-xs font-bold text-slate-200">{c.name}</span>
+                                <span className="text-xs font-bold text-slate-200">
+                                  {c.name}
+                                </span>
                               </div>
                               <p className="text-[10px] text-slate-500 truncate max-w-sm">
                                 Trọng số: {c.weight}% | Tối đa: {c.maxScore}đ
@@ -634,10 +713,17 @@ export default function AdminLiveInteraction() {
                                 max={c.maxScore}
                                 step={0.5}
                                 value={val !== undefined ? val : ""}
-                                onChange={(e) => handleScoreChange(c._id, parseFloat(e.target.value) || 0)}
+                                onChange={(e) =>
+                                  handleScoreChange(
+                                    c._id,
+                                    parseFloat(e.target.value) || 0,
+                                  )
+                                }
                                 className="bg-slate-900 border border-slate-750 text-slate-200 text-xs px-2 py-1 w-16 text-center rounded-lg font-bold font-mono focus:outline-none focus:ring-1 focus:ring-cyan-500"
                               />
-                              <span className="text-xs text-slate-500 font-mono">/ {c.maxScore}đ</span>
+                              <span className="text-xs text-slate-500 font-mono">
+                                / {c.maxScore}đ
+                              </span>
                             </div>
                           </div>
                         );
@@ -665,12 +751,17 @@ export default function AdminLiveInteraction() {
                       className="w-full bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 font-black text-xs uppercase py-2.5 rounded-xl tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_0_20px_rgba(6,182,212,0.3)]"
                     >
                       <Save size={14} />
-                      <span>{isSubmittingOverride ? "Đang xử lý..." : "Cập nhật & Chốt điểm"}</span>
+                      <span>
+                        {isSubmittingOverride
+                          ? "Đang xử lý..."
+                          : "Cập nhật & Chốt điểm"}
+                      </span>
                     </button>
                   </div>
                 ) : (
                   <p className="text-center py-4 text-xs text-slate-500 font-mono italic">
-                    Chưa kích hoạt hoặc chưa khóa Rubric cho vòng thi này. Không thể sửa điểm.
+                    Chưa kích hoạt hoặc chưa khóa Rubric cho vòng thi này. Không
+                    thể sửa điểm.
                   </p>
                 )}
               </div>
@@ -683,7 +774,8 @@ export default function AdminLiveInteraction() {
                   LIVE CONTROL PANEL
                 </h3>
                 <p className="text-xs text-slate-500 max-w-sm mt-1 mx-auto leading-relaxed">
-                  Chọn một đội thi bất kỳ từ danh sách bên trái để mở trung tâm highlight và cập nhật điểm số live của họ.
+                  Chọn một đội thi bất kỳ từ danh sách bên trái để mở trung tâm
+                  highlight và cập nhật điểm số live của họ.
                 </p>
               </div>
             </div>

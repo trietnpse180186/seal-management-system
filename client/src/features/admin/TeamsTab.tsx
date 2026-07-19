@@ -338,7 +338,7 @@ export default function TeamsTab({
                         {team.name}
                       </h5>
                     </div>
-                    <span className="text-[10px] bg-slate-800 text-slate-500 px-2 py-0.5 rounded font-mono font-bold">
+                    <span className="text-[10px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2 py-0.5 rounded font-mono font-bold">
                       Chờ duyệt
                     </span>
                   </div>
@@ -354,9 +354,9 @@ export default function TeamsTab({
                           • {m.userId?.fullName}
                         </span>
                         <span
-                          className={`text-[9px] font-mono px-1 rounded ${m.confirmStatus === "confirmed"
-                            ? "text-emerald-400 bg-emerald-500/5"
-                            : "text-slate-500 bg-slate-800"
+                          className={`text-[9px] font-mono px-1 rounded border ${m.confirmStatus === "confirmed"
+                            ? "text-emerald-400 bg-emerald-500/5 border-emerald-500/10"
+                            : "text-amber-500 bg-amber-500/10 border-amber-500/20"
                             }`}
                         >
                           {m.confirmStatus === "confirmed"

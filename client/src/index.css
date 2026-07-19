@@ -1211,16 +1211,16 @@ body {
 }
 
 /* Inactive filter buttons wrapper in logs */
-.coordinator-light-theme .flex.bg-slate-900\/60 {
+.coordinator-light-theme .flex.bg-slate-900\/60.p-0\.5 {
   background-color: #f1f5f9 !important;
   border-color: rgba(0, 0, 0, 0.06) !important;
 }
 
-.coordinator-light-theme .flex.bg-slate-900\/60 button {
+.coordinator-light-theme .flex.bg-slate-900\/60.p-0\.5 button {
   color: #64748b !important; /* slate-500 */
 }
 
-.coordinator-light-theme .flex.bg-slate-900\/60 button:hover {
+.coordinator-light-theme .flex.bg-slate-900\/60.p-0\.5 button:hover {
   color: #1e293b !important; /* slate-800 */
 }
 

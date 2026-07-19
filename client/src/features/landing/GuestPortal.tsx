@@ -826,44 +826,54 @@ export default function GuestPortal({ user }: GuestPortalProps) {
         {(() => {
           const defaultRules = [
             {
-              title: "Điều 1. Chủ đề và phạm vi thi đấu",
+              title: "Điều 1. Mục tiêu và sứ mệnh cuộc thi",
               description:
-                "Cuộc thi gồm 03 Track thuộc các lĩnh vực vận hành thông minh khác nhau. Chủ đề\ncụ thể của từng Track được Ban Tổ chức bảo mật và chỉ công bố thông qua hình thức\nbốc thăm trong buổi gặp mặt trước ngày thi đấu.\nMỗi đội sẽ phát triển một sản phẩm AI dựa trên dữ liệu cảm biến và hệ thống thiết bị\ndo Ban Tổ chức cung cấp. Giải pháp cần thể hiện rõ vai trò của AI trong ít nhất một\nnhiệm vụ như phát hiện bất thường, dự báo, chẩn đoán nguyên nhân hoặc đề xuất hành\nđộng.",
+                "Thông qua cuộc thi, các đội xây dựng sản phẩm có khả năng giám sát hệ thống, phát hiện bất thường, dự báo rủi ro, chẩn đoán sự cố và hỗ trợ người dùng đưa ra quyết định trong các lĩnh vực vận hành thông minh.",
             },
             {
-              title: "Điều 2. Cấu trúc và lịch trình cuộc thi",
+              title: "Điều 2. Đối tượng tham gia",
               description:
-                "Ngày 1: Khai mạc và chuẩn bị thi đấu\n14h00 – 17h00: Khai mạc, phổ biến thể lệ, bốc thăm Track, công bố chủ đề và chia\nbảng thi đấu.\n● Các đội lần lượt bốc thăm một trong ba Track.\n● Ban Tổ chức công bố 01 chủ đề tương ứng cho mỗi Track.\n● Các đội được chia bảng tùy theo số lượng đăng ký thực tế và được bố trí vị trí thi\nđấu.\n● Mỗi đội được cấp repository, tài khoản và thông tin kết nối với hệ thống mô\nphỏng.\n● Các đội tiến hành kiểm tra internet, API, MQTT và môi trường phát triển.\n● Thành viên phải có mặt đầy đủ trong Ngày 1 để tham gia bốc thăm và tiếp nhận\nthông tin thi đấu.\nNgày 2: Thi đấu và bế mạc\n● 07h00 – 14h00: Thi đấu chính thức, xây dựng và hoàn thiện sản phẩm.\n● 14h00 – 15h30: Trình bày và chấm điểm vòng bảng.\n● 15h30 – 17h00: Vòng chung kết.\n● 17h00 – 18h00: Trao giải và bế mạc.",
+                "Sinh viên, học viên, hoặc nhóm nghiên cứu trong lĩnh vực CNTT, Khoa học dữ liệu, AI, tự động hóa hoặc các ngành liên quan. Mỗi đội thi gồm từ 3 đến 5 thành viên, có thể đến từ cùng hoặc khác trường/đơn vị. Mỗi cá nhân chỉ được đăng ký tham gia duy nhất một đội.",
             },
             {
-              title: "Điều 3. Quy định thi đấu",
+              title: "Điều 3. Chủ đề và phạm vi thi đấu",
               description:
-                "- Thời gian thi đấu chính thức: 07h00 – 14h00.\n- Đội hoặc thành viên đến trễ quá 60 phút sẽ không được tham gia, trừ trường\nhợp đặc biệt được Ban Tổ chức chấp thuận.\n- Mã nguồn phải được lưu trữ trên GitHub, GitLab hoặc nền tảng tương đương; tài\nliệu có thể quản lý bằng Jira, Confluence hoặc Notion.\n- Các đội trình bày bằng slide và demo trực tiếp sản phẩm.\n- Các đội được phép sử dụng các mô hình, thư viện và nền tảng AI phù hợp như\nTensorFlow, PyTorch, scikit-learn, Hugging Face, OpenAI SDK, Google Gemini\nSDK, LangGraph hoặc công cụ tương đương.\n- Giải pháp phải thể hiện rõ vai trò của AI trong phân tích dữ liệu, phát hiện bất\nthường, dự báo, chẩn đoán hoặc đề xuất hành động.\n- Sản phẩm chỉ trực quan hóa dữ liệu hoặc cảnh báo bằng điều kiện cố định sẽ\nkhông được xem là đáp ứng đầy đủ yêu cầu về AI.\n- Vòng bảng: 5 phút trình bày, 3 phút trả lời câu hỏi.\n- Vòng chung kết: 7 phút trình bày, 3 phút trả lời câu hỏi.",
+                "Các đội phát triển một sản phẩm ứng dụng AI để tiếp nhận, xử lý và phân tích dữ liệu IoT theo thời gian thực trong một lĩnh vực cụ thể. Cuộc thi gồm 03 Track chuyên môn khác nhau, bảo mật chủ đề và bốc thăm trước ngày thi đấu. Sản phẩm phải thể hiện rõ vai trò của AI (phát hiện bất thường, dự báo, chẩn đoán, đề xuất hành động). Sản phẩm chỉ trực quan hóa dữ liệu hoặc cảnh báo bằng điều kiện cố định sẽ không được xem là đáp ứng đầy đủ yêu cầu.",
             },
             {
-              title: "Điều 4. Cơ cấu thi đấu và chia bảng",
+              title: "Điều 4. Cấu trúc và lịch trình cuộc thi",
               description:
-                "- Cuộc thi gồm 03 Track, tương ứng với 03 lĩnh vực chuyên môn khác nhau.\n- Mỗi Track được tổ chức thành một bảng thi đấu, tối đa 08 đội mỗi bảng.\n- Các đội được phân vào Track bằng hình thức bốc thăm.\n- Ban Tổ chức bảo đảm tính ngẫu nhiên và công bằng trong quá trình chia bảng.",
+                "Ngày 1: Khai mạc, chọn track, bốc thăm chủ đề và chia bảng thi đấu. Ngày 2: Thi đấu chính thức (07h00 - 15h00) gồm Milestone 1 (nộp Slide ý tưởng trước 10h00), Milestone 2 (Thuyết trình ý tưởng 5-8 phút & Hoàn thiện sản phẩm), Technical Review (chấm sản phẩm trực tiếp tại bàn) và Vòng chung kết (Top 3 đội trình diễn).",
             },
             {
-              title: "Điều 5. Vòng chung kết và điều kiện xét chọn",
+              title: "Điều 5. Quy định thi đấu",
               description:
-                "- Sau vòng bảng, 02 đội có điểm cao nhất của mỗi bảng được chọn vào vòng\nchung kết, tổng cộng 06 đội.\n- Trường hợp thiếu suất hoặc có các đội bằng điểm, Ban Tổ chức sẽ xét đội có\nđiểm cao tiếp theo hoặc tổ chức phần đánh giá bổ sung tối đa 10 phút.",
+                "Thời gian thi đấu chính thức: 07h00 – 15h00. Trễ quá 60 phút sẽ bị loại. Lưu trữ mã nguồn trên GitHub/GitLab; tài liệu quản lý trên Jira, Confluence hoặc Notion. Sản phẩm trình bày dưới dạng slide. Các đội được phép tự do sử dụng mô hình AI (XGBoost, LSTM, Transformer, GPT, Gemini, Claude, Llama, Qwen, Mistral...). Vòng bảng thuyết trình 5 phút + Q&A 3 phút. Vòng chung kết thuyết trình 7 phút + Q&A 3 phút.",
             },
             {
-              title: "Điều 6. Tiêu chí chấm điểm",
+              title: "Điều 6. Cơ cấu thi đấu và chia bảng",
               description:
-                "1. Vòng bảng:\n+ Xử lý dữ liệu thời gian thực và độ chính xác: 30%\n+ Hiệu quả ứng dụng AI: 30%\n+ Tính phù hợp với Domain và trải nghiệm người dùng: 20%\n+ Ý tưởng, Demo và Pitching: 20%\n2. Vòng chung kết:\n+ Độ hoàn thiện và ổn định của sản phẩm: 30%\n+ Năng lực phân tích và hỗ trợ quyết định của AI: 30%\n+ Tính sáng tạo, khả năng mở rộng và ứng dụng thực tế: 20%\n+ Kỹ năng Demo, trình bày và phản biện: 20%",
+                "Sau khi các đội chọn Track, BTC sẽ chia bảng, mỗi bảng tối đa 6 đội. Mỗi Track có thể gồm nhiều bảng, tùy vào số lượng đội đăng ký thực tế.",
             },
             {
-              title: "Điều 7. Quy định về đạo đức và bản quyền",
+              title: "Điều 7. Vòng chung kết và điều kiện xét chọn",
               description:
-                "+ Nghiêm cấm mọi hành vi gian lận, đạo nhái, vi phạm bản quyền hoặc can thiệp\ntrái phép vào hệ thống thi đấu.\n+ Sản phẩm nộp dự thi phải là kết quả làm việc của chính đội thi trong thời gian\ncuộc thi.\n+ BTC có quyền loại bỏ hoặc thu hồi kết quả nếu phát hiện vi phạm.",
+                "Ban Tổ Chức lựa chọn tổng cộng 08 đội có thành tích cao nhất vào Chung kết. Mỗi bảng chọn số lượng đội bằng nhau để đảm bảo công bằng. Trường hợp xét chọn bổ sung sẽ dựa trên điểm số trung bình so sánh giữa các bảng và có thể áp dụng penalty evaluation (mini test tối đa 10 phút).",
             },
             {
-              title: "Điều 8. Đối tượng tham gia",
+              title: "Điều 8. Tiêu chí chấm điểm",
               description:
-                "Sinh viên ngành Công nghệ thông tin đang theo học tại trường Đại học FPT cơ sở\nTP.HCM và các trường Đại học khác trên địa bàn TP.HCM được mời theo thư mời của\nBTC.",
+                "Chấm điểm phân loại theo thang điểm. Vòng bảng: Xử lý dữ liệu thực tế (25%), Hiệu quả AI (25%), Kiến trúc & Tích hợp (20%), Phù hợp Domain & UX (15%), Ý tưởng & Pitching (15%). Vòng chung kết: Độ hoàn thiện (25%), Năng lực phân tích AI (25%), Độ tin cậy & An toàn (20%), Sáng tạo (15%), Demo & Phản biện (15%).",
+            },
+            {
+              title: "Điều 9. Quy định về đạo đức và bản quyền",
+              description:
+                "Nghiêm cấm mọi hành vi gian lận, đạo nhái, vi phạm bản quyền hoặc can thiệp trái phép vào hệ thống thi đấu. Sản phẩm nộp dự thi phải là kết quả làm việc của chính đội thi trong thời gian cuộc thi.",
+            },
+            {
+              title: "Điều 10. Quy định chung và hiệu lực",
+              description:
+                "Ban Tổ Chức có toàn quyền giải thích và điều chỉnh điều lệ khi cần thiết. Mọi tình huống không quy định sẽ do BTC xem xét quyết định đảm bảo công bằng. Hiệu lực kể từ ngày công bố.",
             },
           ];
 
@@ -917,19 +927,20 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                         </span>
                         <div className="space-y-3">
                           {[
-                            { label: "Xử lý dữ liệu thời gian thực và độ chính xác", val: "30%" },
-                            { label: "Hiệu quả ứng dụng AI", val: "30%" },
-                            { label: "Tính phù hợp với Domain và trải nghiệm người dùng", val: "20%" },
-                            { label: "Ý tưởng, Demo và Pitching", val: "20%" },
+                            { label: "Xử lý dữ liệu thực tế", val: "25%" },
+                            { label: "Hiệu quả ứng dụng AI", val: "25%" },
+                            { label: "Kiến trúc & Tích hợp", val: "20%" },
+                            { label: "Phù hợp Domain & UX", val: "15%" },
+                            { label: "Ý tưởng & Pitching", val: "15%" },
                           ].map((item, i) => (
                             <div key={i} className="space-y-1">
                               <div className="flex justify-between text-xs text-slate-700">
-                                <span className="text-left leading-tight">{item.label}</span>
-                                <span className="text-[#F27024] font-mono font-bold shrink-0 pl-2">
+                                <span>{item.label}</span>
+                                <span className="text-[#F27024] font-mono font-bold">
                                   {item.val}
                                 </span>
                               </div>
-                              <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                              <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                                 <div
                                   className="h-full bg-gradient-to-r from-[#F27024]/80 to-[#F27024] rounded-full shadow-[0_0_8px_rgba(242,112,36,0.3)]"
                                   style={{ width: item.val }}
@@ -945,19 +956,20 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                         </span>
                         <div className="space-y-3">
                           {[
-                            { label: "Độ hoàn thiện và ổn định của sản phẩm", val: "30%" },
-                            { label: "Năng lực phân tích và hỗ trợ quyết định của AI", val: "30%" },
-                            { label: "Tính sáng tạo, khả năng mở rộng và ứng dụng thực tế", val: "20%" },
-                            { label: "Kỹ năng Demo, trình bày và phản biện", val: "20%" },
+                            { label: "Độ hoàn thiện & Ổn định", val: "25%" },
+                            { label: "Năng lực phân tích AI", val: "25%" },
+                            { label: "Độ tin cậy & An toàn", val: "20%" },
+                            { label: "Sáng tạo & Thực tế", val: "15%" },
+                            { label: "Trình bày & Phản biện", val: "15%" },
                           ].map((item, i) => (
                             <div key={i} className="space-y-1">
                               <div className="flex justify-between text-xs text-slate-700">
-                                <span className="text-left leading-tight">{item.label}</span>
-                                <span className="text-[#F27024] font-mono font-bold shrink-0 pl-2">
+                                <span>{item.label}</span>
+                                <span className="text-[#F27024] font-mono font-bold">
                                   {item.val}
                                 </span>
                               </div>
-                              <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                              <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                                 <div
                                   className="h-full bg-gradient-to-r from-[#F27024]/80 to-[#F27024] rounded-full shadow-[0_0_8px_rgba(242,112,36,0.3)]"
                                   style={{ width: item.val }}
@@ -1093,9 +1105,15 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                           <h4 className="text-sm sm:text-base font-extrabold text-slate-800 group-hover:text-[#F27024] transition-colors leading-snug">
                             {r.title.replace(/^Điều\s+\d+\.\s*/i, "")}
                           </h4>
-                          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-sans font-normal whitespace-pre-line">
-                            {r.description}
-                          </p>
+                          <div className="text-xs sm:text-sm text-slate-600 leading-relaxed font-sans font-normal space-y-1.5">
+                            {(r.description || "")
+                              .split(/(?<=\.)\s+/)
+                              .filter((sentence: string) => sentence.trim().length > 0)
+                              .map((sentence: string, sIdx: number) => (
+                                <p key={sIdx}>{sentence}</p>
+                              ))
+                            }
+                          </div>
                         </div>
                       </div>
                     );

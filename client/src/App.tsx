@@ -48,7 +48,7 @@ function RedirectToExpertMentorTeam() {
   return <Navigate to={`/expert/mentored-team/${teamId}`} replace />;
 }
 
-function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
+function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: any) {
   const location = useLocation();
   const isJudgeRoute = location.pathname.startsWith('/judge') || location.pathname.startsWith('/expert');
   const isAdminRoute = location.pathname.startsWith('/admin');
@@ -63,7 +63,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout }: any) {
 
   return (
     <div className={`min-h-screen ${location.pathname === '/login' ? 'bg-[#f5efe8]' : 'bg-gradient-dark'} flex flex-col`}>
-      {!isJudgeRoute && !isAdminRoute && <Navbar user={user} roles={roles} onLogout={handleLogout} />}
+      {!isJudgeRoute && !isAdminRoute && <Navbar user={user} roles={roles} onLogout={handleLogout} onUpdateUser={setUser} />}
       
       <main className="flex-1">
         <Routes>
@@ -441,6 +441,7 @@ export default function App() {
             roles={roles} 
             handleLoginSuccess={handleLoginSuccess} 
             handleLogout={handleLogout} 
+            setUser={setUser}
           />
           <Toaster position="top-right" theme="dark" closeButton richColors />
         </ConfirmProvider>

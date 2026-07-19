@@ -1424,13 +1424,114 @@ body {
 }
 
 /* Non-import/export action buttons sync styling (e.g. Random track division button) */
-.coordinator-light-theme button.bg-slate-800:not(.btn-import-export) {
+.coordinator-light-theme button.bg-slate-800:not(.btn-import-export):not(.btn-sync-repo) {
   background-color: #ffffff !important;
   color: #f27024 !important;
   border: 1px solid rgba(242, 112, 36, 0.25) !important;
 }
 
-.coordinator-light-theme button.bg-slate-800:not(.btn-import-export):hover {
+.coordinator-light-theme button.bg-slate-800:not(.btn-import-export):not(.btn-sync-repo):hover {
   background-color: rgba(242, 112, 36, 0.08) !important;
   color: #e05e1b !important;
+}
+
+/* Force white text on buttons that should have white text in light theme */
+.coordinator-light-theme button.text-white,
+.coordinator-light-theme button.bg-cyan-500,
+.coordinator-light-theme button.bg-cyan-600,
+.coordinator-light-theme button.bg-amber-600,
+.coordinator-light-theme button.bg-\[\#F27024\],
+.coordinator-light-theme button.bg-rose-600,
+.coordinator-light-theme button.bg-emerald-600,
+.coordinator-light-theme button.btn-primary {
+  color: #ffffff !important;
+}
+
+/* White background + rose/red text/border for delete and lock contest buttons */
+.coordinator-light-theme .btn-delete-contest,
+.coordinator-light-theme .btn-lock-contest {
+  background-color: #ffffff !important;
+  color: #ef4444 !important; /* rose/red text */
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+  box-shadow: 0 2px 10px rgba(239, 68, 68, 0.05) !important;
+}
+
+.coordinator-light-theme .btn-delete-contest:hover,
+.coordinator-light-theme .btn-lock-contest:hover {
+  background-color: rgba(239, 68, 68, 0.06) !important;
+  color: #dc2626 !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+}
+
+.coordinator-light-theme .btn-delete-contest svg,
+.coordinator-light-theme .btn-lock-contest svg {
+  color: #ef4444 !important;
+}
+
+.coordinator-light-theme .btn-delete-contest:hover svg,
+.coordinator-light-theme .btn-lock-contest:hover svg {
+  color: #dc2626 !important;
+}
+
+/* White background + orange text/border for sync repo and reload logs buttons */
+.coordinator-light-theme .btn-sync-repo,
+.coordinator-light-theme .btn-reload-logs {
+  background-color: #ffffff !important;
+  color: #f27024 !important;
+  border: 1px solid rgba(242, 112, 36, 0.25) !important;
+  box-shadow: 0 2px 10px rgba(242, 112, 36, 0.05) !important;
+}
+
+.coordinator-light-theme .btn-sync-repo:hover,
+.coordinator-light-theme .btn-reload-logs:hover {
+  background-color: rgba(242, 112, 36, 0.08) !important;
+  color: #e05e1b !important;
+  border-color: rgba(242, 112, 36, 0.4) !important;
+}
+
+.coordinator-light-theme .btn-sync-repo svg,
+.coordinator-light-theme .btn-reload-logs svg {
+  color: #f27024 !important;
+}
+
+.coordinator-light-theme .btn-sync-repo:hover svg,
+.coordinator-light-theme .btn-reload-logs:hover svg {
+  color: #e05e1b !important;
+}
+
+/* Overriding grey boxes to beautiful light orange (cam nhạt) under light theme */
+.coordinator-light-theme .bg-slate-955\/60,
+.coordinator-light-theme .bg-slate-955\/80,
+.coordinator-light-theme .bg-slate-950\/60,
+.coordinator-light-theme .bg-slate-955\/40,
+.coordinator-light-theme .bg-slate-950\/40,
+.coordinator-light-theme .bg-slate-955\/30,
+.coordinator-light-theme .bg-slate-950\/30 {
+  background-color: rgba(242, 112, 36, 0.04) !important;
+  border-color: rgba(242, 112, 36, 0.15) !important;
+}
+
+.coordinator-light-theme .bg-slate-950\/60 span.text-slate-400,
+.coordinator-light-theme .bg-slate-955\/60 span.text-slate-400,
+.coordinator-light-theme .bg-slate-950\/60 span.text-slate-550,
+.coordinator-light-theme .bg-slate-955\/60 span.text-slate-550,
+.coordinator-light-theme .bg-slate-950\/40 span.text-slate-400,
+.coordinator-light-theme .bg-slate-955\/40 span.text-slate-400,
+.coordinator-light-theme .bg-slate-950\/40 span.text-slate-500,
+.coordinator-light-theme .bg-slate-955\/40 span.text-slate-500,
+.coordinator-light-theme .bg-slate-950\/30 p,
+.coordinator-light-theme .bg-slate-955\/30 p,
+.coordinator-light-theme .bg-slate-950\/30 span,
+.coordinator-light-theme .bg-slate-950\/30 strong {
+  color: #475569 !important;
+}
+
+.coordinator-light-theme .bg-slate-955\/30 strong,
+.coordinator-light-theme .bg-slate-955\/30 span {
+  color: #334155 !important;
+}
+
+.coordinator-light-theme .bg-slate-950\/60 span.text-slate-500,
+.coordinator-light-theme .bg-slate-955\/60 span.text-slate-500 {
+  color: #64748b !important;
 }

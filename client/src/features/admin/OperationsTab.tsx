@@ -303,7 +303,7 @@ export default function OperationsTab({
                   <div>
                     <button
                       onClick={handleSyncAllRepos}
-                      className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-400 hover:text-cyan-300 font-mono text-xs font-bold border border-slate-700 hover:border-cyan-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-400 hover:text-cyan-300 font-mono text-xs font-bold border border-slate-700 hover:border-cyan-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer btn-sync-repo"
                     >
                       <RefreshCw size={14} />
                       ĐỒNG BỘ PHÂN TÍCH TỪ AI
@@ -684,7 +684,7 @@ export default function OperationsTab({
             <button
               onClick={() => updateEventStatus("completed")}
               disabled={updatingEvent}
-              className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-mono text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-rose-600/10"
+              className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-mono text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-rose-600/10 btn-lock-contest"
             >
               <ShieldAlert size={14} />
               KẾT THÚC HACKATHON

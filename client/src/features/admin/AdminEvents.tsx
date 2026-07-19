@@ -2190,7 +2190,7 @@ export default function AdminEvents({
               {!readOnly && currentUser?.isSystemAdmin && (
                 <button
                   onClick={handleDeleteEvent}
-                  className="bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 hover:text-rose-200 px-3.5 py-2 rounded-xl border border-rose-800/40 text-xs font-mono flex items-center gap-1.5 cursor-pointer shrink-0 transition-all shadow-md active:scale-95 z-20"
+                  className="bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 hover:text-rose-200 px-3.5 py-2 rounded-xl border border-rose-800/40 text-xs font-mono flex items-center gap-1.5 cursor-pointer shrink-0 transition-all shadow-md active:scale-95 z-20 btn-delete-contest"
                   title="Quyền Super-Admin: Xóa vĩnh viễn cuộc thi này"
                 >
                   <Trash2 size={14} />
@@ -2920,7 +2920,7 @@ export default function AdminEvents({
               </div>
               <button
                 onClick={fetchEventLogs}
-                className="bg-slate-950 hover:bg-slate-900 text-slate-300 hover:text-white px-3 py-1.5 rounded-xl border border-slate-800 text-xs font-mono transition-all cursor-pointer"
+                className="bg-slate-950 hover:bg-slate-900 text-slate-300 hover:text-white px-3 py-1.5 rounded-xl border border-slate-800 text-xs font-mono transition-all cursor-pointer btn-reload-logs"
               >
                 Tải lại nhật ký
               </button>

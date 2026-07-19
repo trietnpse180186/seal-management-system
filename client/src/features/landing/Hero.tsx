@@ -173,7 +173,7 @@ export default function Hero({ user, roles }: HeroProps) {
       {/* Light overlay to ensure text readability */}
       <div className="absolute inset-0 bg-slate-50/80 z-[1]"></div>
 
-      <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center relative z-10 w-full">
+      <div className="max-w-7xl mx-auto px-6 py-12 grid md:grid-cols-2 gap-12 items-center relative z-10 w-full">
         {/* Left Intro Text */}
         <div className="space-y-6 text-center md:text-left">
           {/* Live scrolling registration badge */}
@@ -192,11 +192,11 @@ export default function Hero({ user, roles }: HeroProps) {
           <h1 className="hero-title text-3xl sm:text-5xl lg:text-5xl font-extrabold tracking-tight text-[#F27024] leading-tight uppercase font-sans opacity-0">
             LẬP TRÌNH TƯƠNG LAI:
             <br />
-            <span className="text-slate-900">SEAL HACKATHON</span>
+            <span className="text-slate-900 mt-4">SEAL HACKATHON</span>
           </h1>
 
           <p className="hero-desc text-slate-700 text-base sm:text-lg max-w-xl leading-relaxed mx-auto md:mx-0 font-sans opacity-0">
-            SEAL HACKATHON là cuộc thi học thuật và trải nghiệm công nghệ dành cho các sinh viên ngành Công nghệ thông tin từ Trường Đại học FPT tại TP.HCM và các trường Đại học khác trong địa bàn thành phố Hồ Chí Minh.
+            SEAL HACKATHON là sân chơi học thuật và trải nghiệm công nghệ dành cho sinh viên ngành Công nghệ thông tin đang theo học tại Trường Đại học FPT cơ sở TP.HCM và các trường Đại học khác trên địa bàn thành phố Hồ Chí Minh.
           </p>
 
           <div className="hero-btn pt-4 flex flex-col sm:flex-row gap-4 justify-center md:justify-start opacity-0">

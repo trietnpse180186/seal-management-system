@@ -7,11 +7,11 @@ export default function Footer() {
         <div className="flex flex-col gap-1 items-center md:items-start">
           <span className="font-mono text-sm font-bold text-[#F27024]">SEAL_HACKATHON</span>
           <p className="font-mono text-[10px] text-slate-500">
-            [SYSTEM_READY] &copy; 2026 SEAL_HACKATHON. ALL_RIGHTS_RESERVED.
+            &copy; 2026 SEAL_HACKATHON. ALL_RIGHTS_RESERVED.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[12px] text-slate-650">Powered by</span>
+          <span className="font-mono text-[12px] text-slate-500">Powered by</span>
           <img
             alt="FPT Logo"
             className="h-12"

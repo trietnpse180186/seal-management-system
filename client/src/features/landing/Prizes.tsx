@@ -154,7 +154,7 @@ export default function Prizes() {
         <div className="prize-header flex flex-col md:flex-row justify-between items-center md:items-end mb-16 gap-4 opacity-0">
           <div>
             <span className="font-mono text-xs text-[#F27024] uppercase font-semibold">
-              CƠ_CẤU_GIẢI_THƯỞNG
+              CƠ CẤU GIẢI THƯỞNG
             </span>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 uppercase tracking-tight font-sans mt-1">
               GIẢI THƯỞNG CUỘC THI {activeEvent ? activeEvent.name : 'SEAL HACKATHON SPRING 2026'}

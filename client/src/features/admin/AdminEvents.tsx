@@ -183,6 +183,10 @@ export default function AdminEvents({
   const [editPhase2Description, setEditPhase2Description] = useState("");
   const [editPhase3Description, setEditPhase3Description] = useState("");
   const [editRules, setEditRules] = useState<any[]>([]);
+  const [editCustomTimeline, setEditCustomTimeline] = useState<any[]>([]);
+  const [portalSubTab, setPortalSubTab] = useState<"candidate" | "timeline" | null>(null);
+  const [newMilestoneTime, setNewMilestoneTime] = useState("");
+  const [newMilestoneTitle, setNewMilestoneTitle] = useState("");
 
   // Track Schedule States
   const [_selectedTrackForSchedule, _setSelectedTrackForSchedule] = useState<any>(null);
@@ -937,6 +941,7 @@ export default function AdminEvents({
       { title: "Giới hạn đội thi", description: "Mỗi đội phải có từ 2 đến 4 thành viên. Không cho phép tham gia cá nhân hoặc đội thi có số lượng vượt mức quy định." },
       { title: "Ranh giới Đạo đức", description: "Bất kỳ hành vi gian lận hoặc tấn công phá hoại hạ tầng bên ngoài phạm vi quy định sẽ dẫn đến việc truất quyền thi đấu ngay lập tức." }
     ]);
+    setEditCustomTimeline(eventObj.customTimeline || []);
 
     // If we are currently on the 'events' tab/route, sync URL
     if (defaultTab === "events") {
@@ -1177,6 +1182,48 @@ export default function AdminEvents({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSaveCustomTimeline = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEvent) return;
+
+    setLoading(true);
+    try {
+      const res = await axios.put(
+        `http://localhost:5000/api/events/${selectedEvent._id}`,
+        {
+          customTimeline: editCustomTimeline,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setSelectedEvent(res.data.event);
+      setEditCustomTimeline(res.data.event.customTimeline || []);
+      toast.success("Cập nhật lịch trình cuộc thi thành công!");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Lỗi khi cập nhật lịch trình cuộc thi.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddMilestone = () => {
+    if (!newMilestoneTime.trim() || !newMilestoneTitle.trim()) {
+      toast.error("Vui lòng nhập đầy đủ Thời gian và Hoạt động!");
+      return;
+    }
+    const updated = [...editCustomTimeline, { time: newMilestoneTime, title: newMilestoneTitle, description: "" }];
+    setEditCustomTimeline(updated);
+    setNewMilestoneTime("");
+    setNewMilestoneTitle("");
+  };
+
+  const handleRemoveMilestone = (idx: number) => {
+    const updated = [...editCustomTimeline];
+    updated.splice(idx, 1);
+    setEditCustomTimeline(updated);
   };
 
   const handleCreateTrack = async (e: React.FormEvent) => {
@@ -2308,13 +2355,13 @@ export default function AdminEvents({
                 GitHub & AI Đánh giá
               </button>
               <button
-                onClick={() => setActiveTab("portal")}
+                onClick={() => { setActiveTab("portal"); setPortalSubTab(null); }}
                 className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${activeTab === "portal"
                   ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
                   : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
                   }`}
               >
-                Nội dung Portal
+                Nội dung hiển thị
               </button>
               <button
                 onClick={() => setActiveTab("logs")}
@@ -3161,204 +3208,404 @@ export default function AdminEvents({
           <div className="glass p-6 rounded-2xl relative animate-fadeIn">
             <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-3xl"></div>
             <div>
-              <h3 className="text-md font-bold text-white mb-4 flex items-center gap-1.5 font-mono">
-                <Info size={16} className="text-cyan-400" />
-                <span>Nội dung hiển thị Portal: {selectedEvent.name}</span>
-              </h3>
-              <p className="text-slate-400 text-xs mb-6">
-                Chỉnh sửa các nội dung hiển thị cho thí sinh trên trang chủ Guest Portal (Thông tin, Lộ trình, Quy định cuộc thi).
-              </p>
-
-              <form onSubmit={handleSavePortalContent} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Left Column: General info */}
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider font-mono">
-                        Mục tiêu chính
-                      </label>
-                      <textarea
-                        rows={4}
-                        required
-                        value={editMainGoal}
-                        onChange={(e) => setEditMainGoal(e.target.value)}
-                        className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
-                        placeholder="Mục tiêu chính của cuộc thi..."
-                        disabled={readOnly}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider font-mono">
-                          Thời gian
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={editDurationText}
-                          onChange={(e) => setEditDurationText(e.target.value)}
-                          className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
-                          placeholder="48 GIỜ"
-                          disabled={readOnly}
-                        />
+              {/* Option Cards when portalSubTab is null */}
+              {portalSubTab === null && (
+                <div className="py-6">
+                  <h3 className="text-xs font-bold text-slate-400 mb-8 uppercase tracking-wider font-mono text-center">
+                    -- Vui lòng chọn nội dung cấu hình hiển thị --
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+                    {/* Card 1: Candidate Portal */}
+                    <div
+                      onClick={() => setPortalSubTab("candidate")}
+                      className="glass p-8 rounded-2xl border border-slate-800 hover:border-cyan-500/50 hover:shadow-[0_0_30px_rgba(6,182,212,0.15)] transition-all duration-300 cursor-pointer group text-center flex flex-col items-center justify-center min-h-[220px]"
+                    >
+                      <div className="w-16 h-16 bg-cyan-950/40 text-cyan-400 border border-cyan-500/20 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <Info size={32} />
                       </div>
-                      <div>
-                        <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider font-mono">
-                          Thành viên
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={editMemberLimitText}
-                          onChange={(e) => setEditMemberLimitText(e.target.value)}
-                          className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
-                          placeholder="2-4 OPERATORS"
-                          disabled={readOnly}
-                        />
+                      <h4 className="text-md font-bold text-white mb-2 font-mono group-hover:text-cyan-400 transition-colors">
+                        Nội dung hiển thị trong trang thí sinh
+                      </h4>
+                      <p className="text-slate-400 text-xs leading-relaxed max-w-xs">
+                        Chỉnh sửa thông tin chung, mục tiêu, quy định và mô tả các giai đoạn cho Guest Portal.
+                      </p>
+                    </div>
+
+                    {/* Card 2: Custom Timeline */}
+                    <div
+                      onClick={() => setPortalSubTab("timeline")}
+                      className="glass p-8 rounded-2xl border border-slate-800 hover:border-[#F27024]/50 hover:shadow-[0_0_30px_rgba(242,112,36,0.15)] transition-all duration-300 cursor-pointer group text-center flex flex-col items-center justify-center min-h-[220px]"
+                    >
+                      <div className="w-16 h-16 bg-[#F27024]/5 text-[#F27024] border border-[#F27024]/20 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <Calendar size={32} />
                       </div>
-                      <div>
-                        <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider font-mono">
-                          Giải thưởng
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={editPrizePoolText}
-                          onChange={(e) => setEditPrizePoolText(e.target.value)}
-                          className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
-                          placeholder="$50,000 USD"
-                          disabled={readOnly}
-                        />
-                      </div>
+                      <h4 className="text-md font-bold text-white mb-2 font-mono group-hover:text-[#F27024] transition-colors">
+                        Lịch trình cuộc thi
+                      </h4>
+                      <p className="text-slate-400 text-xs leading-relaxed max-w-xs">
+                        Thiết lập các mốc thời gian chi tiết của sự kiện hiển thị trên Landing Page.
+                      </p>
                     </div>
+                  </div>
+                </div>
+              )}
 
+              {/* Edit Portal Content */}
+              {portalSubTab === "candidate" && (
+                <div>
+                  <div className="flex justify-between items-center mb-6">
                     <div>
-                      <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider font-mono">
-                        Mô tả Giai đoạn 1 (Đăng ký)
-                      </label>
-                      <textarea
-                        rows={3}
-                        required
-                        value={editPhase1Description}
-                        onChange={(e) => setEditPhase1Description(e.target.value)}
-                        className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
-                        placeholder="Mô tả giai đoạn đăng ký..."
-                        disabled={readOnly}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider font-mono">
-                        Mô tả Giai đoạn 2 (Thi đấu)
-                      </label>
-                      <textarea
-                        rows={3}
-                        required
-                        value={editPhase2Description}
-                        onChange={(e) => setEditPhase2Description(e.target.value)}
-                        className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
-                        placeholder="Mô tả giai đoạn thi đấu..."
-                        disabled={readOnly}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider font-mono">
-                        Mô tả Giai đoạn 3 (Kết thúc)
-                      </label>
-                      <textarea
-                        rows={3}
-                        required
-                        value={editPhase3Description}
-                        onChange={(e) => setEditPhase3Description(e.target.value)}
-                        className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
-                        placeholder="Mô tả giai đoạn tổng kết..."
-                        disabled={readOnly}
-                      />
+                      <h3 className="text-md font-bold text-white flex items-center gap-1.5 font-mono">
+                        <Info size={16} className="text-cyan-400" />
+                        <span>Nội dung hiển thị trang thí sinh:</span>
+                      </h3>
+                      <p className="text-slate-400 text-xs mt-1">
+                        Chỉnh sửa các nội dung hiển thị cho thí sinh trên trang chủ Guest Portal (Thông tin, Lộ trình, Quy định cuộc thi).
+                      </p>
                     </div>
                   </div>
 
-                  {/* Right Column: Quy định (Rules) */}
-                  <div className="space-y-4">
-                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider font-mono">
-                      Quy định cuộc thi (Rules)
-                    </label>
+                  <form onSubmit={handleSavePortalContent} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Left Column: General info */}
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider font-mono">
+                            Mục tiêu chính
+                          </label>
+                          <textarea
+                            rows={4}
+                            required
+                            value={editMainGoal}
+                            onChange={(e) => setEditMainGoal(e.target.value)}
+                            className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
+                            placeholder="Mục tiêu chính của cuộc thi..."
+                            disabled={readOnly}
+                          />
+                        </div>
 
-                    <div className="space-y-4 max-h-[480px] overflow-y-auto pr-2 custom-scrollbar">
-                      {editRules.map((rule, idx) => (
-                        <div key={idx} className="border border-slate-800 p-4 rounded-xl space-y-3 bg-slate-900/30 animate-fadeIn">
-                          <div className="flex justify-between items-center">
-                            <span className="text-[10px] font-bold text-cyan-400 font-mono">Quy định #{idx + 1}</span>
-                            {!readOnly && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const updated = [...editRules];
-                                  updated.splice(idx, 1);
-                                  setEditRules(updated);
-                                }}
-                                className="text-xs text-rose-450 hover:text-rose-450 cursor-pointer font-mono"
-                              >
-                                Xóa
-                              </button>
-                            )}
-                          </div>
-                          <div className="space-y-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider font-mono">
+                              Thời gian
+                            </label>
                             <input
                               type="text"
                               required
-                              value={rule.title || ""}
-                              placeholder="Tiêu đề quy định"
-                              onChange={(e) => {
-                                const updated = [...editRules];
-                                updated[idx] = { ...updated[idx], title: e.target.value };
-                                setEditRules(updated);
-                              }}
-                              className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
+                              value={editDurationText}
+                              onChange={(e) => setEditDurationText(e.target.value)}
+                              className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
+                              placeholder="48 GIỜ"
                               disabled={readOnly}
                             />
-                            <textarea
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider font-mono">
+                              Thành viên
+                            </label>
+                            <input
+                              type="text"
                               required
-                              value={rule.description || ""}
-                              placeholder="Chi tiết quy định..."
-                              rows={2}
-                              onChange={(e) => {
-                                const updated = [...editRules];
-                                updated[idx] = { ...updated[idx], description: e.target.value };
-                                setEditRules(updated);
-                              }}
-                              className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
+                              value={editMemberLimitText}
+                              onChange={(e) => setEditMemberLimitText(e.target.value)}
+                              className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
+                              placeholder="2-4 OPERATORS"
+                              disabled={readOnly}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider font-mono">
+                              Giải thưởng
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={editPrizePoolText}
+                              onChange={(e) => setEditPrizePoolText(e.target.value)}
+                              className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
+                              placeholder="$50,000 USD"
                               disabled={readOnly}
                             />
                           </div>
                         </div>
-                      ))}
+
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider font-mono">
+                            Mô tả Giai đoạn 1 (Đăng ký)
+                          </label>
+                          <textarea
+                            rows={3}
+                            required
+                            value={editPhase1Description}
+                            onChange={(e) => setEditPhase1Description(e.target.value)}
+                            className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
+                            placeholder="Mô tả giai đoạn đăng ký..."
+                            disabled={readOnly}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider font-mono">
+                            Mô tả Giai đoạn 2 (Thi đấu)
+                          </label>
+                          <textarea
+                            rows={3}
+                            required
+                            value={editPhase2Description}
+                            onChange={(e) => setEditPhase2Description(e.target.value)}
+                            className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
+                            placeholder="Mô tả giai đoạn thi đấu..."
+                            disabled={readOnly}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider font-mono">
+                            Mô tả Giai đoạn 3 (Kết thúc)
+                          </label>
+                          <textarea
+                            rows={3}
+                            required
+                            value={editPhase3Description}
+                            onChange={(e) => setEditPhase3Description(e.target.value)}
+                            className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
+                            placeholder="Mô tả giai đoạn tổng kết..."
+                            disabled={readOnly}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Right Column: Quy định (Rules) */}
+                      <div className="space-y-4">
+                        <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider font-mono">
+                          Quy định cuộc thi (Rules)
+                        </label>
+
+                        <div className="space-y-4 max-h-[480px] overflow-y-auto pr-2 custom-scrollbar">
+                          {editRules.map((rule, idx) => (
+                            <div key={idx} className="border border-slate-800 p-4 rounded-xl space-y-3 bg-slate-900/30 animate-fadeIn">
+                              <div className="flex justify-between items-center">
+                                <span className="text-[10px] font-bold text-cyan-400 font-mono">Quy định #{idx + 1}</span>
+                                {!readOnly && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updated = [...editRules];
+                                      updated.splice(idx, 1);
+                                      setEditRules(updated);
+                                    }}
+                                    className="text-xs text-rose-450 hover:text-rose-450 cursor-pointer font-mono"
+                                  >
+                                    Xóa
+                                  </button>
+                                )}
+                              </div>
+                              <div className="space-y-2">
+                                <input
+                                  type="text"
+                                  required
+                                  value={rule.title || ""}
+                                  placeholder="Tiêu đề quy định"
+                                  onChange={(e) => {
+                                    const updated = [...editRules];
+                                    updated[idx] = { ...updated[idx], title: e.target.value };
+                                    setEditRules(updated);
+                                  }}
+                                  className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
+                                  disabled={readOnly}
+                                />
+                                <textarea
+                                  required
+                                  value={rule.description || ""}
+                                  placeholder="Chi tiết quy định..."
+                                  rows={2}
+                                  onChange={(e) => {
+                                    const updated = [...editRules];
+                                    updated[idx] = { ...updated[idx], description: e.target.value };
+                                    setEditRules(updated);
+                                  }}
+                                  className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
+                                  disabled={readOnly}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                          {!readOnly && (
+                            <button
+                              type="button"
+                              onClick={() => setEditRules([...editRules, { title: "", description: "" }])}
+                              className="w-full py-2 border border-dashed border-slate-700 rounded-xl text-slate-400 text-xs hover:text-cyan-400 hover:border-cyan-500/50 transition-colors font-mono cursor-pointer"
+                            >
+                              + Thêm quy định mới
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-4 border-t border-slate-800/85">
+                      <button
+                        type="button"
+                        onClick={() => setPortalSubTab(null)}
+                        className="px-5 py-2.5 border border-slate-700 hover:border-slate-500 text-slate-300 rounded-xl text-xs font-bold font-mono transition-all cursor-pointer"
+                      >
+                        Quay lại lựa chọn
+                      </button>
                       {!readOnly && (
                         <button
-                          type="button"
-                          onClick={() => setEditRules([...editRules, { title: "", description: "" }])}
-                          className="w-full py-2 border border-dashed border-slate-700 rounded-xl text-slate-400 text-xs hover:text-cyan-400 hover:border-cyan-500/50 transition-colors font-mono cursor-pointer"
+                          type="submit"
+                          disabled={loading}
+                          className="px-6 py-2.5 bg-cyan-500 hover:bg-cyan-600 disabled:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all uppercase tracking-wider cursor-pointer shadow-lg shadow-cyan-500/20 active:scale-95"
                         >
-                          + Thêm quy định mới
+                          {loading ? "Đang lưu..." : "Lưu nội dung Portal"}
                         </button>
                       )}
                     </div>
-                  </div>
+                  </form>
                 </div>
+              )}
 
-                {!readOnly && (
-                  <div className="pt-4">
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full bg-cyan-500 hover:bg-cyan-600 disabled:bg-slate-800 text-white font-bold text-xs py-3 rounded-xl transition-all uppercase tracking-wider cursor-pointer shadow-lg shadow-cyan-500/20"
-                    >
-                      {loading ? "Đang lưu..." : "Lưu nội dung Portal"}
-                    </button>
+              {/* Edit Custom Timeline */}
+              {portalSubTab === "timeline" && (
+                <div>
+                  <div className="flex justify-between items-center mb-6">
+                    <div>
+                      <h3 className="text-md font-bold text-white flex items-center gap-1.5 font-mono">
+                        <Calendar size={16} className="text-[#F27024]" />
+                        <span>Lịch trình cuộc thi: {selectedEvent.name}</span>
+                      </h3>
+                      <p className="text-slate-400 text-xs mt-1">
+                        Cài đặt lịch trình chi tiết hiển thị trên Landing Page thay vì các mốc thời gian kỹ thuật của hệ thống.
+                      </p>
+                    </div>
                   </div>
-                )}
-              </form>
+
+                  <form onSubmit={handleSaveCustomTimeline} className="space-y-6">
+                    {/* List of current custom milestones */}
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-slate-400 mb-2 tracking-wider font-mono">
+                        Các mốc lịch trình hiện tại ({editCustomTimeline.length})
+                      </label>
+                      <div className="space-y-3 mb-6 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+                        {editCustomTimeline.length === 0 ? (
+                          <div className="border border-dashed border-slate-800 p-8 rounded-xl text-center text-slate-500 text-xs font-mono bg-slate-900/10">
+                            Chưa có mốc lịch trình tùy chỉnh nào. Hãy thêm mốc mới bên dưới hoặc sử dụng lịch trình hệ thống mặc định.
+                          </div>
+                        ) : (
+                          editCustomTimeline.map((item, idx) => (
+                            <div key={idx} className="flex gap-4 items-center justify-between border border-slate-800 p-4 rounded-xl bg-slate-900/30 animate-fadeIn">
+                              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <span className="text-[10px] text-slate-500 font-mono block mb-1">MỐC THỜI GIAN</span>
+                                  <input
+                                    type="text"
+                                    required
+                                    value={item.time}
+                                    onChange={(e) => {
+                                      const updated = [...editCustomTimeline];
+                                      updated[idx] = { ...updated[idx], time: e.target.value };
+                                      setEditCustomTimeline(updated);
+                                    }}
+                                    className="w-full bg-slate-900/80 border border-slate-700 hover:border-[#F27024]/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#F27024]/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
+                                    disabled={readOnly}
+                                  />
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-slate-500 font-mono block mb-1">HOẠT ĐỘNG CHÍNH</span>
+                                  <input
+                                    type="text"
+                                    required
+                                    value={item.title}
+                                    onChange={(e) => {
+                                      const updated = [...editCustomTimeline];
+                                      updated[idx] = { ...updated[idx], title: e.target.value };
+                                      setEditCustomTimeline(updated);
+                                    }}
+                                    className="w-full bg-slate-900/80 border border-slate-700 hover:border-[#F27024]/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#F27024]/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
+                                    disabled={readOnly}
+                                  />
+                                </div>
+                              </div>
+                              {!readOnly && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveMilestone(idx)}
+                                  className="text-rose-500 hover:text-rose-400 p-2 rounded-xl hover:bg-rose-500/10 transition-colors shrink-0 active:scale-95 cursor-pointer"
+                                  title="Xóa mốc"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Add new milestone form */}
+                    {!readOnly && (
+                      <div className="border border-slate-800/80 p-5 rounded-2xl bg-slate-900/40 space-y-4">
+                        <span className="text-xs font-bold text-cyan-400 block font-mono uppercase tracking-wider">
+                          + Thêm mốc lịch trình mới
+                        </span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[10px] font-mono text-slate-400 mb-1.5 uppercase tracking-wider">
+                              Thời gian
+                            </label>
+                            <input
+                              type="text"
+                              value={newMilestoneTime}
+                              onChange={(e) => setNewMilestoneTime(e.target.value)}
+                              placeholder="Ví dụ: 20h00 - 21h30 ngày 13/8/2026 (online)"
+                              className="w-full bg-slate-900 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-mono text-slate-400 mb-1.5 uppercase tracking-wider">
+                              Hoạt động chính
+                            </label>
+                            <input
+                              type="text"
+                              value={newMilestoneTitle}
+                              onChange={(e) => setNewMilestoneTitle(e.target.value)}
+                              placeholder="Ví dụ: Workshop training..."
+                              className="w-full bg-slate-900 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono"
+                            />
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleAddMilestone}
+                          className="px-4 py-2 bg-[#F27024]/10 hover:bg-[#F27024] text-[#F27024] hover:text-white border border-[#F27024]/20 rounded-xl text-xs font-bold font-mono transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                        >
+                          Thêm vào danh sách
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Save custom timeline */}
+                    <div className="flex gap-3 pt-4 border-t border-slate-800/85">
+                      <button
+                        type="button"
+                        onClick={() => setPortalSubTab(null)}
+                        className="px-5 py-2.5 border border-slate-700 hover:border-slate-500 text-slate-300 rounded-xl text-xs font-bold font-mono transition-all cursor-pointer"
+                      >
+                        Quay lại lựa chọn
+                      </button>
+                      {!readOnly && (
+                        <button
+                          type="submit"
+                          disabled={loading}
+                          className="px-6 py-2.5 bg-cyan-500 hover:bg-cyan-600 disabled:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all uppercase tracking-wider cursor-pointer shadow-lg shadow-cyan-500/20 active:scale-95"
+                        >
+                          {loading ? "Đang lưu..." : "Lưu lịch trình tùy chỉnh"}
+                        </button>
+                      )}
+                    </div>
+                  </form>
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -3437,11 +3684,11 @@ export default function AdminEvents({
               <div className="flex justify-between items-center bg-slate-900/50 p-3 rounded-xl border border-slate-800/50">
                 <span className="text-xs text-slate-400 font-mono">Loại hành động:</span>
                 <span className={`px-2.5 py-1 rounded-lg text-xs font-bold font-mono tracking-wide ${selectedLog.action.includes('event') ? 'bg-blue-500/10 border border-blue-500/30 text-blue-400' :
-                    selectedLog.action.includes('role') ? 'bg-purple-500/10 border border-purple-500/30 text-purple-400' :
-                      selectedLog.action.includes('track') || selectedLog.action.includes('team') ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' :
-                        selectedLog.action.includes('rubric') || selectedLog.action.includes('criterion') ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400' :
-                          selectedLog.action.includes('results') ? 'bg-rose-500/10 border border-rose-500/30 text-rose-400' :
-                            'bg-slate-500/10 border border-slate-500/30 text-slate-400'
+                  selectedLog.action.includes('role') ? 'bg-purple-500/10 border border-purple-500/30 text-purple-400' :
+                    selectedLog.action.includes('track') || selectedLog.action.includes('team') ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' :
+                      selectedLog.action.includes('rubric') || selectedLog.action.includes('criterion') ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400' :
+                        selectedLog.action.includes('results') ? 'bg-rose-500/10 border border-rose-500/30 text-rose-400' :
+                          'bg-slate-500/10 border border-slate-500/30 text-slate-400'
                   }`}>
                   {selectedLog.action}
                 </span>

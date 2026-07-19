@@ -128,10 +128,9 @@ export default function MentorTeamDetailChat({ team, token }: Props) {
 
     setNewMessage('');
   };
-
   if (loading) {
     return (
-      <div className="py-12 text-center text-slate-400 font-mono text-xs animate-pulse">
+      <div className="py-12 text-center text-slate-500 text-sm animate-pulse">
         Đang kết nối phòng chat...
       </div>
     );
@@ -139,7 +138,7 @@ export default function MentorTeamDetailChat({ team, token }: Props) {
 
   if (!room) {
     return (
-      <div className="py-12 text-center text-rose-400 font-mono text-xs flex flex-col items-center gap-2">
+      <div className="py-12 text-center text-rose-650 text-sm flex flex-col items-center gap-2">
         <AlertCircle size={24} />
         Không thể khởi tạo phòng chat với đội thi này.
       </div>
@@ -147,16 +146,16 @@ export default function MentorTeamDetailChat({ team, token }: Props) {
   }
 
   return (
-    <div className="flex flex-col h-[500px] bg-[#070b13] border border-slate-800/80 rounded-2xl overflow-hidden shadow-xl animate-fadeIn">
+    <div className="flex flex-col h-[500px] bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden shadow-sm animate-fadeIn">
       {/* Sub-Header */}
-      <div className="px-4 py-2.5 bg-[#0d1629] border-b border-slate-800 flex items-center justify-between">
+      <div className="px-4 py-2.5 bg-white border-b border-slate-200 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></span>
-          <span className="text-[10px] font-bold font-mono text-slate-400 uppercase tracking-wider">
+          <span className="text-xs font-bold text-slate-500">
             {isConnected ? 'Kênh trực tuyến (Real-time)' : 'Mất kết nối'}
           </span>
         </div>
-        <span className="text-[10px] text-cyan-400/85 font-black font-mono uppercase bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded">
+        <span className="text-xs font-bold text-[#F27024] bg-[#F27024]/10 border border-[#F27024]/20 px-2 py-0.5 rounded">
           {team.name}
         </span>
       </div>
@@ -167,9 +166,9 @@ export default function MentorTeamDetailChat({ team, token }: Props) {
         className="flex-1 overflow-y-auto p-4 space-y-3.5"
       >
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-slate-650 space-y-2">
-            <MessageCircle className="w-8 h-8 opacity-20" />
-            <p className="text-xs font-mono">Bắt đầu trao đổi với đội thi tại đây!</p>
+          <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-2">
+            <MessageCircle className="w-8 h-8 text-slate-300" />
+            <p className="text-xs">Bắt đầu trao đổi với đội thi tại đây!</p>
           </div>
         ) : (
           messages.map((msg, index) => {
@@ -183,7 +182,7 @@ export default function MentorTeamDetailChat({ team, token }: Props) {
                   <div className={`flex items-end gap-1.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                     {/* Initial Avatar */}
                     <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
-                      isMe ? 'bg-cyan-605 text-white' : 'bg-slate-800 text-slate-350 border border-slate-700'
+                      isMe ? 'bg-[#F27024] text-white shadow-sm' : 'bg-slate-200 text-slate-655 border border-slate-300'
                     }`}>
                       {(msg.senderName || 'U').charAt(0).toUpperCase()}
                     </div>
@@ -191,18 +190,18 @@ export default function MentorTeamDetailChat({ team, token }: Props) {
                     {/* Bubble */}
                     <div className={`px-3 py-2 rounded-xl text-xs leading-relaxed ${
                       msg.isRecalled
-                        ? 'border border-slate-800 bg-slate-900/30 text-slate-600 italic rounded-bl-sm'
+                        ? 'border border-slate-200 bg-slate-100 text-slate-400 italic rounded-bl-sm'
                         : isMe
-                          ? 'bg-gradient-to-tr from-cyan-600 to-blue-600 text-white rounded-br-sm shadow-md'
-                          : 'bg-slate-800 text-slate-200 rounded-bl-sm border border-slate-700/60'
+                          ? 'bg-[#F27024] text-white rounded-br-sm shadow-sm'
+                          : 'bg-white text-slate-800 rounded-bl-sm border border-slate-200 shadow-sm'
                     }`}>
                       {!isMe && !msg.isRecalled && (
-                        <div className="text-[9px] font-bold text-cyan-400 mb-0.5 font-mono">{msg.senderName}</div>
+                        <div className="text-[10px] font-bold text-[#F27024] mb-0.5">{msg.senderName}</div>
                       )}
                       <div className="break-words whitespace-pre-wrap">{msg.content}</div>
                     </div>
                   </div>
-                  <span className="text-[8px] text-slate-600 mt-1 font-mono">
+                  <span className="text-[10px] text-slate-400 mt-1">
                     {new Date(msg.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
@@ -214,22 +213,22 @@ export default function MentorTeamDetailChat({ team, token }: Props) {
       </div>
 
       {/* Input Form */}
-      <form onSubmit={sendMessage} className="p-3 bg-[#0d1629] border-t border-slate-800 flex gap-2">
+      <form onSubmit={sendMessage} className="p-3 bg-white border-t border-slate-200 flex gap-2">
         <input
           type="text"
           value={newMessage}
           onChange={e => setNewMessage(e.target.value)}
           placeholder="Nhập tin nhắn trao đổi với đội thi..."
           disabled={!isConnected}
-          className="flex-1 bg-[#060b13] border border-slate-800 rounded-xl px-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500/80 focus:ring-1 focus:ring-cyan-500/20 transition-all placeholder:text-slate-550"
+          className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs text-slate-805 focus:outline-none focus:border-[#F27024] focus:ring-1 focus:ring-[#F27024]/30 transition-all placeholder:text-slate-400"
         />
         <button
           type="submit"
           disabled={!newMessage.trim() || !isConnected}
-          className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white px-4 py-2 rounded-xl transition-all flex items-center justify-center cursor-pointer shadow-md shadow-cyan-600/10 hover:shadow-cyan-600/20 animate-fadeIn"
+          className="bg-[#F27024] hover:bg-[#d95f1f] disabled:opacity-40 text-white px-4 py-2 rounded-xl transition-all flex items-center justify-center cursor-pointer shadow-sm shadow-[#F27024]/10 hover:shadow-[#F27024]/20 animate-fadeIn"
         >
           <Send size={13} className="mr-1" />
-          <span className="text-xs font-bold uppercase tracking-wider">Gửi</span>
+          <span className="text-xs font-bold uppercase">Gửi</span>
         </button>
       </form>
     </div>

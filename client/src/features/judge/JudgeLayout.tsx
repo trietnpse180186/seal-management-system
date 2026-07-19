@@ -114,17 +114,17 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
   };
 
   return (
-    <div className="min-h-screen bg-[#070d1f] text-slate-300 flex font-sans selection:bg-cyan-500/30">
+    <div className="min-h-screen bg-slate-50 text-slate-700 flex font-sans selection:bg-[#F27024]/30">
       {/* SideNavBar */}
-      <aside className="fixed left-0 top-0 h-full w-[280px] bg-slate-900/40 backdrop-blur-2xl border-r border-white/5 flex flex-col z-20 shadow-2xl">
+      <aside className="fixed left-0 top-0 h-full w-[280px] bg-white border-r border-slate-200 flex flex-col z-20 shadow-sm">
         {/* User Quick Info */}
-        <div className="px-6 py-3 border-b border-white/5 flex items-center gap-3 bg-slate-900/20">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-teal-600 text-white flex items-center justify-center font-bold text-sm shadow-[0_0_10px_rgba(6,182,212,0.4)]">
+        <div className="px-6 py-4 border-b border-slate-200 flex items-center gap-3 bg-slate-50">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#F27024] to-[#f9823a] text-white flex items-center justify-center font-bold text-base shadow-sm">
             {user?.fullName?.charAt(0) || 'J'}
           </div>
           <div className="overflow-hidden">
-            <h4 className="text-xs font-bold text-white truncate">{user?.fullName || 'Judge Name'}</h4>
-            <p className="text-[9px] text-cyan-400 font-mono uppercase tracking-wider">
+            <h4 className="text-sm font-bold text-slate-800 truncate">{user?.fullName || 'Judge Name'}</h4>
+            <p className="text-xs text-[#F27024] font-semibold mt-0.5 tracking-normal">
               Vai trò: {isMentor ? 'Giám khảo & Mentor' : 'Giám khảo'}
             </p>
           </div>
@@ -139,15 +139,15 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 relative overflow-hidden ${active
-                  ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 shadow-[inset_0_0_20px_rgba(6,182,212,0.1)]'
-                  : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/30 border border-transparent hover:border-white/5'
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-300 relative overflow-hidden ${active
+                  ? 'bg-[#F27024]/10 text-[#F27024] border border-[#F27024]/20'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-transparent hover:border-slate-200'
                   }`}
               >
                 {active && (
-                  <div className="absolute left-0 top-0 h-full w-[3px] bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)]"></div>
+                  <div className="absolute left-0 top-0 h-full w-[3.5px] bg-[#F27024] shadow-[0_0_8px_rgba(242,112,36,0.4)]"></div>
                 )}
-                <Icon size={16} className={active ? 'text-cyan-400' : 'text-slate-500'} />
+                <Icon size={18} className={active ? 'text-[#F27024]' : 'text-slate-500'} />
                 <span>{item.label}</span>
               </Link>
             );
@@ -155,12 +155,12 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-white/5 bg-slate-900/10">
+        <div className="p-4 border-t border-slate-200 bg-slate-50">
           <button
             onClick={handleLogoutClick}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-lg text-rose-400 hover:text-rose-300 text-xs font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(244,63,94,0.1)] hover:shadow-[0_0_15px_rgba(244,63,94,0.2)]"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-50 hover:bg-rose-100/70 border border-rose-200 rounded-xl text-rose-600 text-sm font-bold transition-all shadow-sm"
           >
-            <LogOut size={14} />
+            <LogOut size={16} />
             <span>Đăng xuất</span>
           </button>
         </div>
@@ -169,12 +169,12 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
       {/* Main Content Wrapper */}
       <div className="flex-1 ml-[280px] flex flex-col min-h-screen relative">
         {/* Background Grid Pattern */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.015)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none"></div>
 
         {/* TopAppBar */}
-        <header className="h-16 w-full px-8 bg-slate-950/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center z-10 sticky top-0 shadow-lg">
+        <header className="h-16 w-full px-8 bg-white border-b border-slate-200 flex justify-between items-center z-10 sticky top-0 shadow-sm">
           <div className="flex items-center gap-3">
-            <span className="font-extrabold text-cyan-300 text-sm tracking-widest uppercase drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]">
+            <span className="font-extrabold text-slate-800 text-sm tracking-wider uppercase">
               Hệ thống SEAL Hackathon
             </span>
           </div>
@@ -183,28 +183,28 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
             <div className="relative">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="text-slate-400 hover:text-cyan-300 transition-colors relative p-1.5 rounded-full hover:bg-cyan-500/10"
+                className="text-slate-500 hover:text-[#F27024] transition-colors relative p-2 rounded-full hover:bg-[#F27024]/10"
               >
                 <Bell size={18} />
                 {unreadCount > 0 && (
                   <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
                   </span>
                 )}
               </button>
 
               {/* Notifications Dropdown */}
               {showNotifications && (
-                <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-slate-900 border border-slate-700 rounded-xl shadow-[0_0_20px_rgba(0,0,0,0.5)] z-50">
-                  <div className="flex justify-between items-center p-3 border-b border-slate-800 sticky top-0 bg-slate-900/95 backdrop-blur z-10">
-                    <h4 className="text-sm font-semibold text-white">
+                <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-xl z-50">
+                  <div className="flex justify-between items-center p-3 border-b border-slate-100 sticky top-0 bg-white/95 backdrop-blur z-10">
+                    <h4 className="text-sm font-semibold text-slate-800">
                       Thông báo
                     </h4>
                     {unreadCount > 0 && (
                       <button
                         onClick={markAllAsRead}
-                        className="text-xs text-cyan-400 hover:text-cyan-300"
+                        className="text-xs text-[#F27024] hover:text-[#d95f1f] font-semibold"
                       >
                         Đánh dấu đã đọc
                       </button>
@@ -223,17 +223,25 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
                             if (notif.status === "pending")
                               markAsRead(notif._id);
                           }}
-                          className={`p-3 border-b border-slate-800/50 cursor-pointer transition-colors ${notif.status === "pending" ? "bg-cyan-950/20 hover:bg-cyan-950/30" : "hover:bg-slate-800/50"}`}
+                          className={`p-3 border-b border-slate-50 cursor-pointer transition-colors ${
+                            notif.status === "pending"
+                              ? "bg-[#F27024]/5 hover:bg-[#F27024]/10"
+                              : "hover:bg-slate-50"
+                          }`}
                         >
                           <p
-                            className={`text-xs font-semibold ${notif.status === "pending" ? "text-cyan-300" : "text-slate-300"}`}
+                            className={`text-xs font-semibold ${
+                              notif.status === "pending"
+                                ? "text-[#F27024]"
+                                : "text-slate-700"
+                            }`}
                           >
                             {notif.title}
                           </p>
-                          <p className="text-xs text-slate-400 mt-1">
+                          <p className="text-xs text-slate-500 mt-1">
                             {notif.body}
                           </p>
-                          <p className="text-[10px] text-slate-500 mt-2">
+                          <p className="text-[10px] text-slate-400 mt-2">
                             {new Date(notif.createdAt).toLocaleString()}
                           </p>
                         </div>

@@ -512,15 +512,15 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
         <button
           id="floating-chat-trigger"
           onClick={() => setIsOpen(true)}
-          className={`relative w-14 h-14 rounded-full bg-gradient-to-tr from-cyan-600 to-indigo-600 text-white flex items-center justify-center shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer border border-white/10 ${
+          className={`relative w-14 h-14 rounded-full bg-[#F27024] text-white flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 hover:bg-[#d95f1f] transition-all duration-200 cursor-pointer border border-[#F27024]/10 ${
             totalUnread > 0
-              ? 'animate-pulse ring-4 ring-cyan-500/30 shadow-[0_0_25px_rgba(6,182,212,0.4)]'
-              : 'hover:shadow-cyan-500/25'
+              ? 'animate-pulse ring-4 ring-[#F27024]/30 shadow-[0_0_20px_rgba(242,112,36,0.4)]'
+              : 'hover:shadow-lg'
           }`}
         >
           <MessageSquare className="w-6 h-6" />
           {totalUnread > 0 && (
-            <span className="absolute -top-1 -right-1 bg-cyan-400 text-slate-950 text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border border-slate-950 shadow-lg shadow-cyan-400/30 animate-bounce">
+            <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border border-white shadow-md animate-bounce">
               {totalUnread}
             </span>
           )}
@@ -529,22 +529,22 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
 
       {/* Floating Chat Window */}
       {isOpen && (
-        <div className="w-screen h-screen sm:w-[380px] sm:h-[550px] fixed inset-0 sm:relative sm:inset-auto bg-[#0c1322] border-0 sm:border border-slate-800 rounded-none sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
+        <div className="w-screen h-screen sm:w-[380px] sm:h-[550px] fixed inset-0 sm:relative sm:inset-auto bg-white border-0 sm:border border-slate-250 rounded-none sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
 
           {/* Header */}
           {(() => {
             const isTeamRoom = selectedRoom && selectedRoom.type === 'team_mentor';
             return (
               <div className={`px-4 py-3.5 border-b flex items-center justify-between transition-all duration-300 ${isTeamRoom
-                ? 'bg-gradient-to-r from-[#0d1629] to-[#0a2538]/50 border-cyan-500/40 shadow-[0_1px_15px_rgba(6,182,212,0.15)]'
-                : 'bg-[#0d1629] border-slate-800'
+                ? 'bg-[#F27024]/5 border-slate-200'
+                : 'bg-slate-50 border-slate-200'
                 }`}>
                 {selectedRoom ? (
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     {rooms.length > 1 && (
                       <button
                         onClick={() => setSelectedRoom(null)}
-                        className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
+                        className="p-1 hover:bg-slate-200 rounded-lg text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
                       >
                         <ArrowLeft size={16} />
                       </button>
@@ -568,30 +568,30 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                             }
                           }
                           return (
-                            <h4 className="text-xs font-black uppercase text-cyan-300 font-mono tracking-wider truncate" style={{ textShadow: '0 0 8px rgba(6,182,212,0.4)' }}>
+                            <h4 className="text-sm font-bold text-slate-800 truncate">
                               {headerTitle}
                             </h4>
                           );
                         })()}
                         {selectedRoom.type === 'event_general' && (
-                          <span className="shrink-0 bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[7px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider font-mono">
+                          <span className="shrink-0 bg-amber-50 text-amber-700 border border-amber-200 text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide">
                             Chung
                           </span>
                         )}
                         {selectedRoom.type === 'track_mentors' && (
-                          <span className="shrink-0 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[7px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider font-mono">
+                          <span className="shrink-0 bg-indigo-50 text-indigo-700 border border-indigo-200 text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide">
                             Mentor
                           </span>
                         )}
                         {selectedRoom.type === 'team_mentor' && (
-                          <span className="shrink-0 bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[7px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider font-mono">
+                          <span className="shrink-0 bg-[#F27024]/10 text-[#F27024] border border-[#F27024]/20 text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide">
                             Đội thi
                           </span>
                         )}
                       </div>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></span>
-                        <span className="text-[9px] text-slate-400 font-mono">
+                        <span className="text-xs text-slate-500">
                           {selectedRoom.type === 'track_mentors'
                             ? `${selectedRoom.members.length} mentor`
                             : isConnected ? 'Trực tuyến' : 'Ngoại tuyến'}
@@ -601,14 +601,14 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                   </div>
                 ) : (
                   <div>
-                    <h4 className="text-xs font-black uppercase tracking-widest text-cyan-300 font-mono" style={{ textShadow: '0 0 8px rgba(6,182,212,0.4)' }}>Hộp thoại hỗ trợ</h4>
-                    <p className="text-[9px] text-slate-400 mt-0.5 font-mono">Trao đổi trực tiếp với Mentor & Đội thi</p>
+                    <h4 className="text-sm font-bold text-slate-800">Hộp thoại hỗ trợ</h4>
+                    <p className="text-xs text-slate-500 mt-0.5">Trao đổi trực tiếp với Mentor & Đội thi</p>
                   </div>
                 )}
 
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer ml-2"
+                  className="p-1 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-slate-700 transition-colors cursor-pointer ml-2"
                 >
                   <X size={18} />
                 </button>
@@ -617,7 +617,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
           })()}
 
           {/* Body */}
-          <div className="flex-1 flex flex-col min-h-0 bg-[#070b13]">
+          <div className="flex-1 flex flex-col min-h-0 bg-slate-50">
             {selectedRoom ? (
               /* Room Chat view */
               <>
@@ -628,15 +628,15 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                   className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0"
                 >
                   {loadingMessages && page > 1 && (
-                    <div className="text-center text-[10px] text-cyan-400/60 py-1 font-mono">Đang tải tin nhắn cũ...</div>
+                    <div className="text-center text-xs text-[#F27024] py-1">Đang tải tin nhắn cũ...</div>
                   )}
 
                   {messages.length === 0 && !loadingMessages ? (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-2">
-                      <div className="w-12 h-12 rounded-full bg-slate-800/30 flex items-center justify-center border border-slate-800/50">
-                        <User className="w-5 h-5 text-slate-500" />
+                    <div className="h-full flex flex-col items-center justify-center text-slate-450 space-y-2">
+                      <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
+                        <User className="w-5 h-5 text-slate-400" />
                       </div>
-                      <p className="text-xs">Bắt đầu câu chuyện tại đây!</p>
+                      <p className="text-xs text-slate-500 font-medium">Bắt đầu câu chuyện tại đây!</p>
                     </div>
                   ) : (
                     messages.map((msg, index) => {
@@ -648,7 +648,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                             <div className={`flex items-end gap-1.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
 
                               {/* Small Initials Avatar */}
-                              <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${isMe ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${isMe ? 'bg-[#F27024] text-white shadow-sm' : 'bg-slate-200 text-slate-600 border border-slate-300'}`}>
                                 {(msg?.senderName || "U").charAt(0).toUpperCase()}
                               </div>
 
@@ -656,23 +656,23 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                               <div className="relative group/bubble flex items-center">
                                 <div className={`px-3 py-1.5 rounded-xl text-xs ${isRecalled
                                   ? isMe
-                                    ? 'border border-cyan-500/10 bg-cyan-950/10 text-slate-600 italic rounded-br-sm'
-                                    : 'border border-slate-800 bg-slate-900/20 text-slate-605 italic rounded-bl-sm'
+                                    ? 'border border-[#F27024]/10 bg-[#F27024]/5 text-slate-400 italic rounded-br-sm'
+                                    : 'border border-slate-200 bg-slate-100 text-slate-400 italic rounded-bl-sm'
                                   : isMe
-                                    ? 'bg-gradient-to-tr from-cyan-600 to-blue-600 text-white rounded-br-sm shadow-[0_2px_8px_rgba(6,182,212,0.15)]'
-                                    : 'bg-slate-800 text-slate-200 rounded-bl-sm border border-slate-700/60'
+                                    ? 'bg-[#F27024] text-white rounded-br-sm shadow-sm'
+                                    : 'bg-white text-slate-800 rounded-bl-sm border border-slate-200 shadow-sm'
                                   }`}>
 
                                   {/* Reply reference */}
                                   {msg.replyTo && !isRecalled && (
-                                    <div className="mb-1.5 px-2 py-1 rounded bg-black/40 border-l-2 border-cyan-400 text-[10px] text-slate-300 max-w-full text-left">
-                                      <div className="font-extrabold text-[9px] text-cyan-400">@{msg.replyTo.senderName}</div>
-                                      <div className="truncate text-slate-400 max-h-5 font-mono">{msg.replyTo.content}</div>
+                                    <div className="mb-1.5 px-2 py-1 rounded bg-black/5 border-l-2 border-[#F27024] text-[10px] text-slate-600 max-w-full text-left">
+                                      <div className="font-bold text-[9px] text-[#F27024]">@{msg.replyTo.senderName}</div>
+                                      <div className="truncate text-slate-500 max-h-5">{msg.replyTo.content}</div>
                                     </div>
                                   )}
 
                                   {!isMe && (selectedRoom.type === 'track_mentors' || selectedRoom.members.length > 2) && (
-                                    <div className="text-[9px] font-extrabold text-cyan-400 mb-0.5 font-mono">{msg.senderName}</div>
+                                    <div className="text-[9px] font-bold text-[#F27024] mb-0.5">{msg.senderName}</div>
                                   )}
 
                                   <div className="break-words whitespace-pre-wrap leading-relaxed">{msg.content}</div>
@@ -683,7 +683,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                                   <div className={`opacity-0 pointer-events-none group-hover/bubble:opacity-100 group-hover/bubble:pointer-events-auto transition-opacity duration-150 absolute ${isMe ? 'right-full pr-1.5' : 'left-full pl-1.5'
                                     } top-1/2 -translate-y-1/2 flex items-center z-10`}
                                   >
-                                    <div className="flex items-center gap-1 bg-[#101827] border border-slate-800 px-1 py-1 rounded-full shadow-lg">
+                                    <div className="flex items-center gap-1 bg-white border border-slate-200 px-1 py-1 rounded-full shadow-md">
 
                                       {/* Quote Reply */}
                                       <button
@@ -691,7 +691,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                                           e.stopPropagation();
                                           setReplyingTo(msg);
                                         }}
-                                        className="w-5 h-5 rounded-full flex items-center justify-center hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                                        className="w-5 h-5 rounded-full flex items-center justify-center hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
                                         title="Trả lời"
                                       >
                                         <Quote size={10} className="fill-current" />
@@ -703,7 +703,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                                           e.stopPropagation();
                                           handleCopy(msg.content);
                                         }}
-                                        className="w-5 h-5 rounded-full flex items-center justify-center hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                                        className="w-5 h-5 rounded-full flex items-center justify-center hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
                                         title="Sao chép"
                                       >
                                         <Forward size={11} />
@@ -716,7 +716,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                                             e.stopPropagation();
                                             setActiveMenuId(activeMenuId === msg._id ? null : msg._id);
                                           }}
-                                          className="w-5 h-5 rounded-full flex items-center justify-center hover:bg-slate-800 text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+                                          className="w-5 h-5 rounded-full flex items-center justify-center hover:bg-slate-100 text-[#F27024] hover:text-[#d95f1f] transition-colors cursor-pointer"
                                         >
                                           <MoreHorizontal size={11} />
                                         </button>
@@ -725,14 +725,14 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                                           <div
                                             onClick={(e) => e.stopPropagation()}
                                             className={`absolute ${isMe ? 'right-0' : 'left-0'
-                                              } top-full mt-1.5 bg-[#0d1629] border border-slate-800 rounded-lg shadow-xl py-1 z-20 w-32 overflow-hidden`}
+                                              } top-full mt-1.5 bg-white border border-slate-250 rounded-xl shadow-xl py-1 z-20 w-32 overflow-hidden`}
                                           >
                                             <button
                                               onClick={() => {
                                                 handleCopy(msg.content);
                                                 setActiveMenuId(null);
                                               }}
-                                              className="w-full text-left px-2.5 py-1.5 hover:bg-slate-800 text-[10px] text-slate-300 hover:text-white transition-colors cursor-pointer"
+                                              className="w-full text-left px-2.5 py-1.5 hover:bg-slate-50 text-[11px] text-slate-700 hover:text-slate-900 transition-colors cursor-pointer"
                                             >
                                               Sao chép
                                             </button>
@@ -742,7 +742,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                                                   recallMessage(msg._id);
                                                   setActiveMenuId(null);
                                                 }}
-                                                className="w-full text-left px-2.5 py-1.5 hover:bg-rose-500/20 text-[10px] text-rose-400 hover:text-rose-300 transition-colors cursor-pointer font-bold"
+                                                className="w-full text-left px-2.5 py-1.5 hover:bg-rose-50 text-[11px] text-rose-600 hover:text-rose-700 transition-colors cursor-pointer font-bold"
                                               >
                                                 Thu hồi
                                               </button>
@@ -752,7 +752,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                                                 handleDeleteLocally(msg._id);
                                                 setActiveMenuId(null);
                                               }}
-                                              className="w-full text-left px-2.5 py-1.5 hover:bg-slate-800 text-[10px] text-slate-400 hover:text-white transition-colors cursor-pointer"
+                                              className="w-full text-left px-2.5 py-1.5 hover:bg-slate-50 text-[11px] text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
                                             >
                                               Xóa phía tôi
                                             </button>
@@ -766,7 +766,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                             </div>
 
                             {/* Timestamp */}
-                            <span className={`text-[8px] text-slate-550 mt-0.5 font-mono ${isMe ? 'pr-7' : 'pl-7'}`}>
+                            <span className={`text-[9px] text-slate-400 mt-0.5 ${isMe ? 'pr-7' : 'pl-7'}`}>
                               {new Date(msg.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
@@ -778,23 +778,23 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                 </div>
 
                 {/* Input block */}
-                <div className="p-3 bg-[#0d1629] border-t border-slate-800">
+                <div className="p-3 bg-white border-t border-slate-200">
                   {isRoomReadOnly(selectedRoom) ? (
-                    <div className="text-center text-[10px] text-slate-500 py-2 font-mono uppercase tracking-wider">
-                      Cuộc thi đã kết thúc — Chế độ xem lịch sử (chỉ Coordinator)
+                    <div className="text-center text-[10px] text-slate-400 py-2 uppercase tracking-wide">
+                      Cuộc thi đã kết thúc — Chế độ xem lịch sử
                     </div>
                   ) : (
                     <>
                       {replyingTo && (
-                        <div className="px-2.5 py-1.5 bg-slate-900 border-l-2 border-cyan-500 flex items-center justify-between text-[10px] text-slate-350 gap-2 mb-2 rounded">
+                        <div className="px-2.5 py-1.5 bg-slate-50 border-l-2 border-[#F27024] flex items-center justify-between text-xs text-slate-600 gap-2 mb-2 rounded-lg">
                           <div className="truncate flex-1">
-                            <span className="text-cyan-400 font-extrabold font-mono">ĐANG TRẢ LỜI @{replyingTo.senderName}:</span>{" "}
-                            <span className="italic text-slate-400 truncate">{replyingTo.content}</span>
+                            <span className="text-[#F27024] font-bold">ĐANG TRẢ LỜI @{replyingTo.senderName}:</span>{" "}
+                            <span className="italic text-slate-500 truncate">{replyingTo.content}</span>
                           </div>
                           <button
                             type="button"
                             onClick={() => setReplyingTo(null)}
-                            className="text-slate-500 hover:text-slate-350 cursor-pointer"
+                            className="text-slate-400 hover:text-slate-600 cursor-pointer"
                           >
                             <X size={12} />
                           </button>
@@ -807,12 +807,12 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                           value={newMessage}
                           onChange={(e) => setNewMessage(e.target.value)}
                           placeholder="Nhập tin nhắn..."
-                          className="flex-1 bg-[#060b13] border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition-all placeholder:text-slate-500"
+                          className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#F27024] focus:ring-1 focus:ring-[#F27024]/30 transition-all placeholder:text-slate-400"
                         />
                         <button
                           type="submit"
                           disabled={!newMessage.trim() || !isConnected}
-                          className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:hover:bg-cyan-600 text-white p-2 rounded-lg transition-colors flex items-center justify-center cursor-pointer shadow-md shadow-cyan-600/10"
+                          className="bg-[#F27024] hover:bg-[#d95f1f] disabled:opacity-40 disabled:hover:bg-[#F27024] text-white p-2 rounded-xl transition-colors flex items-center justify-center cursor-pointer shadow-sm shadow-[#F27024]/10"
                         >
                           <Send size={14} />
                         </button>
@@ -823,17 +823,17 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
               </>
             ) : (
               /* Rooms List view */
-              <div className="flex-1 flex flex-col min-h-0 bg-[#070b13]">
+              <div className="flex-1 flex flex-col min-h-0 bg-white">
                 {/* Search Bar */}
                 {rooms.length > 5 && (
-                  <div className="p-3 border-b border-slate-800/60 flex items-center gap-2 bg-[#0a101d]">
-                    <Search size={14} className="text-slate-500" />
+                  <div className="p-3 border-b border-slate-200 flex items-center gap-2 bg-slate-50">
+                    <Search size={14} className="text-slate-450" />
                     <input
                       type="text"
                       placeholder="Tìm phòng chat..."
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
-                      className="flex-1 bg-transparent text-xs text-slate-300 focus:outline-none placeholder:text-slate-650 font-mono"
+                      className="flex-1 bg-transparent text-xs text-slate-700 focus:outline-none placeholder:text-slate-400"
                     />
                   </div>
                 )}
@@ -841,7 +841,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                 {/* Room Cards list */}
                 <div className="flex-1 overflow-y-auto p-3 space-y-4">
                   {filteredRooms.length === 0 && mentorTeams.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-500 text-xs">
+                    <div className="h-full flex flex-col items-center justify-center text-slate-450 text-xs">
                       Không tìm thấy phòng nào.
                     </div>
                   ) : (
@@ -861,18 +861,18 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                           let title = getRoomName(room);
                           let subtitle = '';
                           let icon = <Users size={15} />;
-                          let iconBg = 'bg-cyan-500/10 text-cyan-400';
+                          let iconBg = 'bg-[#F27024]/10 text-[#F27024]';
                           
                           if (room.type === 'event_general') {
                             title = room.eventId?.name || 'Cuộc thi';
                             subtitle = 'Thảo luận chung toàn cuộc thi';
                             icon = <Megaphone size={15} />;
-                            iconBg = 'bg-amber-500/10 text-amber-400';
+                            iconBg = 'bg-amber-100 text-amber-700';
                           } else if (room.type === 'track_mentors') {
                             title = `Bảng ${room.trackId?.name || 'Chung'}`;
                             subtitle = 'Trao đổi nội bộ giữa các Mentor';
                             icon = <MessagesSquare size={15} />;
-                            iconBg = 'bg-indigo-500/10 text-indigo-400';
+                            iconBg = 'bg-indigo-100 text-indigo-700';
                           } else if (isTeamRoom) {
                             const isTeamMember = room.members && room.members.some(m =>
                               m.id === currentUser?.id ||
@@ -886,13 +886,13 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                               title = mentorName ? `Mentor: ${mentorName}` : 'Hỗ trợ từ Mentor';
                               subtitle = `Đội thi: ${room.teamId?.name || 'Đội thi'}`;
                               icon = <User size={15} />;
-                              iconBg = 'bg-emerald-500/10 text-emerald-400';
+                              iconBg = 'bg-emerald-100 text-emerald-700';
                             } else {
                               title = room.teamId?.name || 'Đội thi';
                               const mentorName = room.mentorId?.fullName || room.teamId?.mentorId?.fullName;
                               subtitle = mentorName ? `Cố vấn: ${mentorName}` : 'Chưa phân cố vấn';
                               icon = <MessageCircle size={15} />;
-                              iconBg = 'bg-cyan-500/10 text-cyan-400';
+                              iconBg = 'bg-[#F27024]/10 text-[#F27024]';
                             }
                           }
                           
@@ -902,14 +902,14 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                               onClick={() => setSelectedRoom(room)}
                               className={`flex items-center justify-between p-3 rounded-xl transition-all cursor-pointer group mb-2 border relative ${
                                 isHighlighted
-                                  ? 'bg-[#0f2430] border-cyan-500/40 shadow-[0_0_12px_rgba(6,182,212,0.2)] hover:bg-[#122c3b]'
-                                  : 'bg-slate-900/10 border-slate-800/45 hover:bg-slate-800/50 hover:border-slate-800/90'
+                                  ? 'bg-[#F27024]/5 border-[#F27024]/30 shadow-sm hover:bg-[#F27024]/10'
+                                  : 'bg-slate-50 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
                               }`}
                             >
                               {isHighlighted && (
                                 <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-450 opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-455"></span>
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
                                 </span>
                               )}
                               
@@ -919,11 +919,11 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                                 </div>
                                 <div className="truncate flex-1 min-w-0">
                                   <p className={`text-xs font-bold truncate transition-colors ${
-                                    isHighlighted ? 'text-cyan-300 font-black' : 'text-slate-200 group-hover:text-cyan-300'
+                                    isHighlighted ? 'text-[#F27024]' : 'text-slate-800 group-hover:text-[#F27024]'
                                   }`}>
                                     {title}{archivedSuffix}
                                   </p>
-                                  <p className="text-[10px] text-slate-500 truncate mt-0.5 font-mono">
+                                  <p className="text-[10px] text-slate-500 truncate mt-0.5">
                                     {subtitle}
                                   </p>
                                 </div>
@@ -931,11 +931,11 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                               
                               <div className="flex items-center gap-1.5 pl-2 shrink-0">
                                 {roomUnread > 0 ? (
-                                  <span className="bg-cyan-400 text-slate-950 text-[9px] font-black px-1.5 py-0.5 rounded-full animate-bounce shadow-[0_0_8px_rgba(6,182,212,0.4)]">
+                                  <span className="bg-rose-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-bounce shadow-sm">
                                     {roomUnread}
                                   </span>
                                 ) : (
-                                  <span className="w-1.5 h-1.5 rounded-full bg-transparent group-hover:bg-cyan-500/50 transition-colors"></span>
+                                  <span className="w-1.5 h-1.5 rounded-full bg-transparent group-hover:bg-[#F27024]/40 transition-colors"></span>
                                 )}
                               </div>
                             </div>
@@ -947,8 +947,8 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                             {/* Group 1: General channels */}
                             {generalRooms.length > 0 && (
                               <div>
-                                <div className="flex items-center gap-1 text-[9px] font-extrabold text-slate-550 uppercase tracking-widest font-mono px-2 mb-1.5">
-                                  <Megaphone size={10} className="text-slate-500" /> Kênh Chung cuộc thi
+                                <div className="flex items-center gap-1 text-xs font-bold text-slate-400 uppercase tracking-normal px-2 mb-1.5">
+                                  <Megaphone size={10} className="text-slate-400" /> Kênh Chung cuộc thi
                                 </div>
                                 {generalRooms.map(renderRoomCard)}
                               </div>
@@ -957,8 +957,8 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                             {/* Group 2: Mentor channels */}
                             {trackRooms.length > 0 && (
                               <div>
-                                <div className="flex items-center gap-1 text-[9px] font-extrabold text-slate-550 uppercase tracking-widest font-mono px-2 mb-1.5 mt-2">
-                                  <MessagesSquare size={10} className="text-slate-500" /> Kênh Thảo Luận Mentor
+                                <div className="flex items-center gap-1 text-xs font-bold text-slate-400 uppercase tracking-normal px-2 mb-1.5 mt-2">
+                                  <MessagesSquare size={10} className="text-slate-400" /> Kênh Thảo Luận Mentor
                                 </div>
                                 {trackRooms.map(renderRoomCard)}
                               </div>
@@ -967,8 +967,8 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                             {/* Group 3: Team-mentor channels */}
                             {teamRooms.length > 0 && (
                               <div>
-                                <div className="flex items-center gap-1 text-[9px] font-extrabold text-slate-550 uppercase tracking-widest font-mono px-2 mb-1.5 mt-2">
-                                  <MessageCircle size={10} className="text-slate-500" />{' '}
+                                <div className="flex items-center gap-1 text-xs font-bold text-slate-400 uppercase tracking-normal px-2 mb-1.5 mt-2">
+                                  <MessageCircle size={10} className="text-slate-400" />{' '}
                                   {isSystemAdmin || roles.some(r => r.role === 'mentor')
                                     ? 'Đội thi đang hỗ trợ'
                                     : 'Trò chuyện với Mentor'}
@@ -981,8 +981,8 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                       })()}
 
                       {mentorTeams.length > 0 && (
-                        <div className="mt-4 pt-3 border-t border-slate-800/60">
-                          <p className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest font-mono px-2 mb-2 flex items-center gap-1">
+                        <div className="mt-4 pt-3 border-t border-slate-200">
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-normal px-2 mb-2 flex items-center gap-1">
                             <User size={10} /> Đội thi thuộc bảng đấu của bạn
                           </p>
                           <div className="space-y-1.5">
@@ -991,18 +991,18 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                                 <div
                                   key={t._id}
                                   onClick={() => handleStartChatWithTeam(t._id)}
-                                  className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-850 border border-transparent hover:border-slate-800 transition-all cursor-pointer bg-slate-900/10 mb-1"
+                                  className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-100 border border-slate-200 transition-all cursor-pointer bg-slate-50 mb-1 shadow-sm"
                                 >
                                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                    <div className="w-7 h-7 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-xs font-bold font-mono shrink-0">
+                                    <div className="w-7 h-7 rounded-lg bg-[#F27024]/10 text-[#F27024] flex items-center justify-center text-xs font-bold shrink-0">
                                       {t.name.charAt(0)}
                                     </div>
                                     <div className="truncate flex-1 min-w-0">
-                                      <p className="text-xs font-bold text-slate-300 truncate">{t.name}</p>
-                                      <p className="text-[9px] text-slate-550 font-mono truncate">{t.trackName}</p>
+                                      <p className="text-xs font-bold text-slate-800 truncate">{t.name}</p>
+                                      <p className="text-[10px] text-slate-500 truncate">{t.trackName}</p>
                                     </div>
                                   </div>
-                                  <span className="text-[9px] font-extrabold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded uppercase tracking-wider shrink-0">Chat</span>
+                                  <span className="text-[9px] font-bold text-[#F27024] bg-[#F27024]/10 border border-[#F27024]/20 px-2 py-0.5 rounded-md uppercase shrink-0">Chat</span>
                                 </div>
                               );
                             })}

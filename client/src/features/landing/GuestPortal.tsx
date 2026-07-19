@@ -1109,9 +1109,33 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                             {(r.description || "")
                               .split(/(?<=\.)\s+/)
                               .filter((sentence: string) => sentence.trim().length > 0)
-                              .map((sentence: string, sIdx: number) => (
-                                <p key={sIdx}>{sentence}</p>
-                              ))
+                              .map((sentence: string, sIdx: number) => {
+                                if (sentence.includes("Milestone 1") && sentence.includes("Milestone 2")) {
+                                  const parts = sentence.split(/(?:gồm:\s*|,\s*|\s+và\s+)(?=Milestone \d|Technical Review|Vòng chung kết)/i);
+                                  return (
+                                    <div key={sIdx} className="space-y-1.5">
+                                      <p className="flex items-start gap-2">
+                                        <span className="text-[#F27024] font-extrabold select-none shrink-0">•</span>
+                                        <span>{parts[0]} gồm:</span>
+                                      </p>
+                                      <div className="pl-4 space-y-1.5">
+                                        {parts.slice(1).map((part, pIdx) => (
+                                          <p key={pIdx} className="flex items-start gap-2">
+                                            <span className="text-[#F27024] font-extrabold select-none shrink-0">•</span>
+                                            <span>{part}</span>
+                                          </p>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <p key={sIdx} className="flex items-start gap-2">
+                                    <span className="text-[#F27024] font-extrabold select-none shrink-0">•</span>
+                                    <span>{sentence}</span>
+                                  </p>
+                                );
+                              })
                             }
                           </div>
                         </div>

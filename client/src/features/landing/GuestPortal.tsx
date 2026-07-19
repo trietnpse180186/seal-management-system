@@ -914,13 +914,13 @@ export default function GuestPortal({ user }: GuestPortalProps) {
               {/* Highlights Dashboard Grid */}
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 text-left">
                 {/* Left Highlight (Điều 8: Tiêu chí chấm điểm) - Spans 7 cols on XL */}
-                <div className="xl:col-span-7 bg-slate-50/50 p-6 rounded-2xl border border-slate-200/60 space-y-5 flex flex-col justify-between">
-                  <div className="space-y-4">
+                <div className="xl:col-span-7 bg-slate-50/50 p-6 rounded-2xl border border-slate-200/60 flex flex-col">
+                  <div className="space-y-4 flex-1 flex flex-col">
                     <h3 className="text-xs text-[#F27024] font-extrabold uppercase font-mono tracking-widest flex items-center gap-2.5 pb-2 border-b border-slate-200">
                       <Award size={18} className="text-[#F27024]" />
                       <span>Tiêu chí chấm điểm</span>
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm font-sans">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm font-sans flex-1">
                       <div className="space-y-3.5 bg-white/60 p-4 rounded-xl border border-slate-200">
                         <span className="text-xs text-slate-500 font-extrabold block uppercase border-b border-slate-200 pb-2 font-mono tracking-wider">
                           1. Vòng bảng
@@ -984,13 +984,13 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                 </div>
 
                 {/* Right Highlight (Quy chế thi đấu cốt lõi) - Spans 5 cols on XL */}
-                <div className="xl:col-span-5 bg-slate-50/50 p-6 rounded-2xl border border-slate-200/60 space-y-5 flex flex-col justify-between">
-                  <div className="space-y-4 w-full">
+                <div className="xl:col-span-5 bg-slate-50/50 p-6 rounded-2xl border border-slate-200/60 flex flex-col">
+                  <div className="space-y-4 w-full flex-1 flex flex-col">
                     <h3 className="text-xs text-[#F27024] font-extrabold uppercase font-mono tracking-widest flex items-center gap-2.5 pb-2 border-b border-slate-200">
                       <Terminal size={18} className="text-[#F27024]" />
                       <span>Quy chế thi đấu cốt lõi</span>
                     </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm font-sans">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 sm:grid-rows-2 gap-4 text-sm font-sans flex-1">
                       {[
                         {
                           icon: <Clock className="text-[#F27024]" size={16} />,
@@ -1028,24 +1028,24 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                       ].map((item, i) => (
                         <div
                           key={i}
-                          className="bg-white/60 p-4 rounded-xl border border-slate-200 flex flex-col space-y-1.5 hover:border-[#F27024]/20 transition-colors"
+                          className="bg-white/60 p-4 rounded-xl border border-slate-200 flex flex-col justify-between hover:border-[#F27024]/20 transition-colors"
                         >
-                          <div className="flex items-center gap-2">
-                            <div className="p-1 rounded bg-[#F27024]/5 border border-[#F27024]/20">
-                              {item.icon}
+                          <div className="space-y-1.5 text-left">
+                            <div className="flex items-center gap-2">
+                              <div className="p-1 rounded bg-[#F27024]/5 border border-[#F27024]/20">
+                                {item.icon}
+                              </div>
+                              <span className="text-[10px] text-slate-500 font-bold uppercase font-mono tracking-wider">
+                                {item.title}
+                              </span>
                             </div>
-                            <span className="text-[10px] text-slate-500 font-bold uppercase font-mono tracking-wider">
-                              {item.title}
-                            </span>
-                          </div>
-                          <div>
                             <p className="text-[#F27024] font-bold text-xs font-mono">
                               {item.desc}
                             </p>
-                            <p className="text-slate-500 text-[11px] mt-1 leading-normal font-sans">
-                              {item.detail}
-                            </p>
                           </div>
+                          <p className="text-slate-500 text-[11px] mt-1.5 leading-normal font-sans text-left">
+                            {item.detail}
+                          </p>
                         </div>
                       ))}
                     </div>

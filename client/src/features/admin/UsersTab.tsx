@@ -256,7 +256,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token, readOnly = false }) =
                               </button>
                               <button
                                 onClick={() => handleDeleteUser(u._id)}
-                                className="p-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 hover:text-rose-200 border border-rose-800/40 rounded-lg transition-colors cursor-pointer"
+                                className="p-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 hover:text-rose-200 border border-rose-800/40 rounded-lg transition-colors cursor-pointer btn-delete-user"
                                 title="Xóa tài khoản"
                               >
                                 <Trash2 size={14} />

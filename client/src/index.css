@@ -1531,7 +1531,118 @@ body {
   color: #334155 !important;
 }
 
-.coordinator-light-theme .bg-slate-950\/60 span.text-slate-500,
+.coordinator-light-theme .bg-slate-955\/60 span.text-slate-500,
 .coordinator-light-theme .bg-slate-955\/60 span.text-slate-500 {
   color: #64748b !important;
+}
+
+/* Force white text on buttons that should have white text in light theme, including all children */
+.coordinator-light-theme button.text-white,
+.coordinator-light-theme button.text-white *,
+.coordinator-light-theme button.bg-cyan-500,
+.coordinator-light-theme button.bg-cyan-500 *,
+.coordinator-light-theme button.bg-cyan-600,
+.coordinator-light-theme button.bg-cyan-600 *,
+.coordinator-light-theme button.bg-amber-600,
+.coordinator-light-theme button.bg-amber-600 *,
+.coordinator-light-theme button.bg-rose-600,
+.coordinator-light-theme button.bg-rose-600 *,
+.coordinator-light-theme button.bg-emerald-600,
+.coordinator-light-theme button.bg-emerald-600 *,
+.coordinator-light-theme button.bg-\[\#F27024\],
+.coordinator-light-theme button.bg-\[\#F27024\] *,
+.coordinator-light-theme button.bg-\[rgba\(242\2c 112\2c 36\2c 1\)\],
+.coordinator-light-theme button.bg-\[rgba\(242\2c 112\2c 36\2c 1\)\] *,
+.coordinator-light-theme button.btn-primary,
+.coordinator-light-theme button.btn-primary * {
+  color: #ffffff !important;
+}
+
+/* Delete button in account management - white background, rose border/text */
+.coordinator-light-theme .btn-delete-user {
+  background-color: #ffffff !important;
+  color: #ef4444 !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.05) !important;
+}
+
+.coordinator-light-theme .btn-delete-user:hover {
+  background-color: rgba(239, 68, 68, 0.06) !important;
+  color: #dc2626 !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+}
+
+.coordinator-light-theme .btn-delete-user svg {
+  color: #ef4444 !important;
+}
+
+.coordinator-light-theme .btn-delete-user:hover svg {
+  color: #dc2626 !important;
+}
+
+/* Style all slate-950 and slate-900 inputs to have white background and slate borders */
+.coordinator-light-theme input.bg-slate-950,
+.coordinator-light-theme textarea.bg-slate-950,
+.coordinator-light-theme input.bg-slate-900,
+.coordinator-light-theme textarea.bg-slate-900,
+.coordinator-light-theme input.bg-slate-955,
+.coordinator-light-theme textarea.bg-slate-955,
+.coordinator-light-theme input.bg-slate-850,
+.coordinator-light-theme textarea.bg-slate-850 {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
+.coordinator-light-theme input.bg-slate-950:focus,
+.coordinator-light-theme textarea.bg-slate-950:focus,
+.coordinator-light-theme input.bg-slate-900:focus,
+.coordinator-light-theme textarea.bg-slate-900:focus {
+  border-color: #f27024 !important;
+  box-shadow: 0 0 10px rgba(242, 112, 36, 0.15) !important;
+}
+
+/* Modals with bg-slate-900 and border-slate-800 - white background, slate borders */
+.coordinator-light-theme .bg-slate-900.border-slate-800,
+.coordinator-light-theme .bg-slate-900.border {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+.coordinator-light-theme .bg-slate-900.border-slate-800 h3,
+.coordinator-light-theme .bg-slate-900.border-slate-800 span,
+.coordinator-light-theme .bg-slate-900.border-slate-800 label {
+  color: #334155 !important;
+}
+
+.coordinator-light-theme .bg-slate-900.border-slate-800 .border-slate-800 {
+  border-color: #e2e8f0 !important;
+}
+
+/* Tables and list rows overrides */
+.coordinator-light-theme thead.bg-slate-950\/80,
+.coordinator-light-theme thead.bg-slate-900 {
+  background-color: #f8fafc !important;
+  border-bottom-color: #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+.coordinator-light-theme tbody tr:hover,
+.coordinator-light-theme tr.hover\:bg-slate-900\/40:hover {
+  background-color: #f1f5f9 !important;
+}
+
+.coordinator-light-theme .divide-slate-800\/60 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #e2e8f0 !important;
+}
+
+.coordinator-light-theme td.p-4 div.font-bold.text-white,
+.coordinator-light-theme td.p-4 span.text-white {
+  color: #1e293b !important;
+}
+
+/* Input placeholder light color */
+.coordinator-light-theme input::placeholder {
+  color: #94a3b8 !important;
 }

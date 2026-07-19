@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
+import { useLocation } from "react-router-dom";
 
 export interface SelectOption {
   value: string | number;
@@ -26,6 +27,8 @@ export default function CustomSelect({
 }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+  const usesLightShell = location.pathname === '/' || location.pathname === '/team-area' || location.pathname === '/register-team' || location.pathname === '/login' || location.pathname === '/achievements' || location.pathname === '/guest-portal' || location.pathname.startsWith('/admin');
 
   const selectedOption = options.find((opt) => String(opt.value) === String(value));
   const displayLabel = selectedOption ? selectedOption.label : placeholder;
@@ -58,20 +61,30 @@ export default function CustomSelect({
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between gap-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 text-xs px-3 py-2 focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 focus:outline-none font-bold transition-all text-left cursor-pointer hover:border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed ${isOpen ? "ring-2 ring-cyan-500/20 border-cyan-500" : ""
-          }`}
+        className={`w-full flex items-center justify-between gap-2 border rounded-lg text-xs px-3 py-2 focus:ring-2 focus:outline-none font-bold transition-all text-left cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+          usesLightShell
+            ? "bg-white border-slate-350 text-slate-800 hover:border-[#F27024] focus:ring-[#F27024]/20 focus:border-[#F27024]"
+            : "bg-slate-950 border-slate-800 text-slate-200 hover:border-slate-700 focus:ring-cyan-500/20 focus:border-cyan-500"
+        } ${isOpen ? (usesLightShell ? "ring-2 ring-[#F27024]/20 border-[#F27024]" : "ring-2 ring-cyan-500/20 border-cyan-500") : ""}`}
       >
         <span className="truncate">{displayLabel}</span>
         <ChevronDown
           size={14}
-          className={`text-slate-400 transition-transform duration-200 shrink-0 ${isOpen ? "transform rotate-180 text-cyan-400" : ""
-            }`}
+          className={`transition-transform duration-200 shrink-0 ${
+            usesLightShell
+              ? `text-slate-400 ${isOpen ? "transform rotate-180 text-[#F27024]" : ""}`
+              : `text-slate-400 ${isOpen ? "transform rotate-180 text-cyan-400" : ""}`
+          }`}
         />
       </button>
 
       {/* Dropdown Options List */}
       {isOpen && (
-        <div className="absolute left-0 mt-1.5 w-full min-w-[200px] max-h-60 overflow-y-auto bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-lg shadow-[0_4px_25px_rgba(0,0,0,0.5)] z-[999] p-1 space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-150 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+        <div className={`absolute left-0 mt-1.5 w-full min-w-[200px] max-h-60 overflow-y-auto border rounded-lg shadow-lg z-[999] p-1 space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-150 scrollbar-thin ${
+          usesLightShell
+            ? "bg-white border-slate-200 shadow-[0_10px_25px_rgba(0,0,0,0.06)] text-slate-800 scrollbar-thumb-slate-200 scrollbar-track-transparent"
+            : "bg-slate-900/95 backdrop-blur-md border-slate-800 shadow-[0_4px_25px_rgba(0,0,0,0.5)] text-slate-200 scrollbar-thumb-slate-800 scrollbar-track-transparent"
+        }`}>
           {options.length === 0 ? (
             <div className="p-2 text-center text-xs text-slate-500 italic font-mono">
               Không có tùy chọn
@@ -86,12 +99,19 @@ export default function CustomSelect({
                   type="button"
                   disabled={isDisabled}
                   onClick={() => !isDisabled && handleSelect(opt.value)}
-                  className={`w-full text-left px-3 py-2 rounded-md text-xs font-semibold font-mono transition-all cursor-pointer ${isDisabled
-                    ? "text-slate-650 cursor-not-allowed opacity-40 bg-transparent"
-                    : isSelected
-                      ? "bg-cyan-500/10 text-cyan-400 font-bold border border-cyan-500/20 shadow-[0_0_10px_rgba(6,182,212,0.15)]"
+                  className={`w-full text-left px-3 py-2 rounded-md text-xs font-semibold font-mono transition-all cursor-pointer ${
+                    isDisabled
+                      ? usesLightShell
+                        ? "text-slate-350 cursor-not-allowed opacity-40 bg-transparent"
+                        : "text-slate-650 cursor-not-allowed opacity-40 bg-transparent"
+                      : isSelected
+                      ? usesLightShell
+                        ? "bg-[#F27024]/10 text-[#F27024] font-bold border border-[#F27024]/20 shadow-[0_0_10px_rgba(242,112,36,0.1)]"
+                        : "bg-cyan-500/10 text-cyan-400 font-bold border border-cyan-500/20 shadow-[0_0_10px_rgba(6,182,212,0.15)]"
+                      : usesLightShell
+                      ? "text-slate-700 hover:bg-slate-100 hover:text-[#F27024] border border-transparent"
                       : "text-slate-450 hover:bg-slate-800/60 hover:text-slate-200 border border-transparent"
-                    }`}
+                  }`}
                 >
                   <span className="truncate block">{opt.label}</span>
                 </button>

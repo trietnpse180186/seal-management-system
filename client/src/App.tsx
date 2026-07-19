@@ -386,7 +386,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
                           : "bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/30 hover:shadow-[0_0_15px_rgba(6,182,212,0.2)]"
                       }`}
                     >
-                      Cập nhật
+                      Chỉnh sửa
                     </button>
                   </>
                 ) : (
@@ -422,7 +422,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
                           : "bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/30 hover:shadow-[0_0_15px_rgba(6,182,212,0.2)]"
                       }`}
                     >
-                      {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
+                      {isSaving ? "Đang lưu..." : "Cập nhật"}
                     </button>
                   </>
                 )}

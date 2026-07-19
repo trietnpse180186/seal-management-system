@@ -1,7 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Users, UserPlus, Lock, Search, Trash2, Edit2, CheckCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import {
+  Users,
+  UserPlus,
+  Lock,
+  Search,
+  Trash2,
+  Edit2,
+  CheckCircle,
+} from "lucide-react";
+import { toast } from "sonner";
 import { useConfirm } from "../shared/ConfirmDialog";
 
 interface UsersTabProps {
@@ -9,34 +17,42 @@ interface UsersTabProps {
   readOnly?: boolean;
 }
 
-export const UsersTab: React.FC<UsersTabProps> = ({ token, readOnly = false }) => {
+export const UsersTab: React.FC<UsersTabProps> = ({
+  token,
+  readOnly = false,
+}) => {
   const confirm = useConfirm();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
 
   // Form state for creation / editing
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any | null>(null);
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    fullName: '',
-    studentId: '',
-    university: 'FPT University',
+    email: "",
+    password: "",
+    fullName: "",
+    studentId: "",
+    university: "FPT University",
     isActive: true,
   });
 
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`http://localhost:5000/api/auth/users?search=${encodeURIComponent(search)}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await axios.get(
+        `http://localhost:5000/api/auth/users?search=${encodeURIComponent(search)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
       // Filter out any admin users just in case
       setUsers(res.data.filter((u: any) => !u.isSystemAdmin));
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Lỗi khi tải danh sách người dùng.');
+      toast.error(
+        err.response?.data?.message || "Lỗi khi tải danh sách người dùng.",
+      );
     } finally {
       setLoading(false);
     }
@@ -51,11 +67,11 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token, readOnly = false }) =
   const handleOpenCreateModal = () => {
     setEditingUser(null);
     setFormData({
-      email: '',
-      password: '',
-      fullName: '',
-      studentId: '',
-      university: 'FPT University',
+      email: "",
+      password: "",
+      fullName: "",
+      studentId: "",
+      university: "FPT University",
       isActive: true,
     });
     setIsModalOpen(true);
@@ -65,10 +81,10 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token, readOnly = false }) =
     setEditingUser(user);
     setFormData({
       email: user.email,
-      password: '',
-      fullName: user.fullName || '',
-      studentId: user.studentId || '',
-      university: user.university || 'FPT University',
+      password: "",
+      fullName: user.fullName || "",
+      studentId: user.studentId || "",
+      university: user.university || "FPT University",
       isActive: user.isActive !== undefined ? !!user.isActive : true,
     });
     setIsModalOpen(true);
@@ -79,67 +95,87 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token, readOnly = false }) =
     try {
       if (editingUser) {
         // Update basic User info
-        await axios.put(`http://localhost:5000/api/auth/users/${editingUser._id}`, {
-          fullName: formData.fullName,
-          studentId: formData.studentId,
-          university: formData.university,
-          password: formData.password || undefined,
-          isActive: formData.isActive,
-        }, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await axios.put(
+          `http://localhost:5000/api/auth/users/${editingUser._id}`,
+          {
+            fullName: formData.fullName,
+            studentId: formData.studentId,
+            university: formData.university,
+            password: formData.password || undefined,
+            isActive: formData.isActive,
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
 
-        toast.success('Cập nhật thông tin tài khoản thành công!');
+        toast.success("Cập nhật thông tin tài khoản thành công!");
       } else {
         // Create User
-        await axios.post(`http://localhost:5000/api/auth/users`, {
-          email: formData.email,
-          password: formData.password,
-          fullName: formData.fullName,
-          studentId: formData.studentId,
-          university: formData.university,
-          isActive: formData.isActive,
-        }, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await axios.post(
+          `http://localhost:5000/api/auth/users`,
+          {
+            email: formData.email,
+            password: formData.password,
+            fullName: formData.fullName,
+            studentId: formData.studentId,
+            university: formData.university,
+            isActive: formData.isActive,
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
 
-        toast.success('Tạo tài khoản thành công!');
+        toast.success("Tạo tài khoản thành công!");
       }
       setIsModalOpen(false);
       fetchUsers();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Lỗi khi lưu thông tin người dùng.');
+      toast.error(
+        err.response?.data?.message || "Lỗi khi lưu thông tin người dùng.",
+      );
     }
   };
 
   const handleToggleActive = async (user: any) => {
     try {
-      await axios.put(`http://localhost:5000/api/auth/users/${user._id}`, {
-        isActive: !user.isActive
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success(user.isActive ? 'Đã khóa tài khoản.' : 'Đã mở khóa tài khoản!');
+      await axios.put(
+        `http://localhost:5000/api/auth/users/${user._id}`,
+        {
+          isActive: !user.isActive,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      toast.success(
+        user.isActive ? "Đã khóa tài khoản." : "Đã mở khóa tài khoản!",
+      );
       fetchUsers();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Lỗi cập nhật trạng thái.');
+      toast.error(err.response?.data?.message || "Lỗi cập nhật trạng thái.");
     }
   };
 
   const handleDeleteUser = async (userId: string) => {
     const confirmed = await confirm({
-      title: 'Xác nhận xóa tài khoản',
-      message: 'Bạn có chắc chắn muốn xóa tài khoản người dùng này? Thao tác không thể hoàn tác!'
+      title: "Xác nhận xóa tài khoản",
+      message:
+        "Bạn có chắc chắn muốn xóa tài khoản người dùng này? Thao tác không thể hoàn tác!",
     });
     if (!confirmed) return;
     try {
-      const res = await axios.delete(`http://localhost:5000/api/auth/users/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success(res.data.message || 'Đã xóa người dùng.');
+      const res = await axios.delete(
+        `http://localhost:5000/api/auth/users/${userId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      toast.success(res.data.message || "Đã xóa người dùng.");
       fetchUsers();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Lỗi khi xóa người dùng.');
+      toast.error(err.response?.data?.message || "Lỗi khi xóa người dùng.");
     }
   };
 
@@ -159,7 +195,10 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token, readOnly = false }) =
 
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+              size={16}
+            />
             <input
               type="text"
               placeholder="Tìm theo tên, email, MSSV..."
@@ -196,51 +235,74 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token, readOnly = false }) =
             <tbody className="divide-y divide-slate-800/60 text-slate-300">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-slate-500 font-mono">
+                  <td
+                    colSpan={4}
+                    className="p-8 text-center text-slate-500 font-mono"
+                  >
                     Đang tải danh sách người dùng...
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-slate-500 font-mono">
+                  <td
+                    colSpan={4}
+                    className="p-8 text-center text-slate-500 font-mono"
+                  >
                     Không có người dùng nào.
                   </td>
                 </tr>
               ) : (
                 users.map((u) => {
                   return (
-                    <tr key={u._id} className="hover:bg-slate-900/40 transition-colors">
+                    <tr
+                      key={u._id}
+                      className="hover:bg-slate-900/40 transition-colors"
+                    >
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-white text-sm shadow-md shrink-0">
-                            {u.fullName ? u.fullName.charAt(0).toUpperCase() : 'U'}
+                            {u.fullName
+                              ? u.fullName.charAt(0).toUpperCase()
+                              : "U"}
                           </div>
                           <div>
                             <div className="font-bold text-white flex items-center gap-1.5">
                               {u.fullName}
                             </div>
-                            <div className="text-[11px] text-slate-400 font-mono">{u.email}</div>
+                            <div className="text-[11px] text-slate-400 font-mono">
+                              {u.email}
+                            </div>
                           </div>
                         </div>
                       </td>
                       <td className="p-4 font-mono">
-                        <div className="text-slate-200">{u.studentId || 'N/A'}</div>
-                        <div className="text-[10px] text-slate-400">{u.university || 'FPT University'}</div>
+                        <div className="text-slate-200">
+                          {u.studentId || "N/A"}
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          {u.university || "FPT University"}
+                        </div>
                       </td>
                       <td className="p-4">
                         <button
                           onClick={() => handleToggleActive(u)}
                           disabled={readOnly}
                           className={`text-[10px] font-mono font-bold px-3 py-1 rounded-lg border flex items-center gap-1.5 transition-all ${
-                            readOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                            readOnly
+                              ? "cursor-not-allowed opacity-60"
+                              : "cursor-pointer"
                           } ${
                             u.isActive
-                              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
-                              : 'bg-rose-500/10 border-rose-500/30 text-rose-400 hover:bg-rose-500/20'
+                              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
+                              : "bg-rose-500/10 border-rose-500/30 text-rose-400 hover:bg-rose-500/20"
                           }`}
                         >
-                          {u.isActive ? <CheckCircle size={12} /> : <Lock size={12} />}
-                          {u.isActive ? 'Hoạt Động' : 'Đã Khóa'}
+                          {u.isActive ? (
+                            <CheckCircle size={12} />
+                          ) : (
+                            <Lock size={12} />
+                          )}
+                          {u.isActive ? "Hoạt Động" : "Đã Khóa"}
                         </button>
                       </td>
                       <td className="p-4 text-right">
@@ -263,7 +325,9 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token, readOnly = false }) =
                               </button>
                             </>
                           ) : (
-                            <span className="text-[10px] text-slate-500 italic">Nguồn xem</span>
+                            <span className="text-[10px] text-slate-500 italic">
+                              Nguồn xem
+                            </span>
                           )}
                         </div>
                       </td>
@@ -282,8 +346,14 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token, readOnly = false }) =
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200 font-sans">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-base font-bold text-white font-mono flex items-center gap-2">
-                {editingUser ? <Edit2 className="text-cyan-400" size={18} /> : <UserPlus className="text-cyan-400" size={18} />}
-                <span>{editingUser ? 'Chỉnh Sửa Tài Khoản' : 'Thêm Tài Khoản Mới'}</span>
+                {editingUser ? (
+                  <Edit2 className="text-cyan-400" size={18} />
+                ) : (
+                  <UserPlus className="text-cyan-400" size={18} />
+                )}
+                <span>
+                  {editingUser ? "Chỉnh Sửa Tài Khoản" : "Thêm Tài Khoản Mới"}
+                </span>
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -295,13 +365,17 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token, readOnly = false }) =
 
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
               <div>
-                <label className="block font-bold text-slate-300 mb-1">Email <span className="text-rose-500">*</span></label>
+                <label className="block font-bold text-slate-300 mb-1">
+                  Email <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="email"
                   required
                   disabled={!!editingUser}
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white disabled:opacity-50 focus:outline-none focus:border-cyan-500 font-mono"
                   placeholder="user@example.com"
                 />
@@ -309,25 +383,37 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token, readOnly = false }) =
 
               <div>
                 <label className="block font-bold text-slate-300 mb-1">
-                  Mật khẩu {editingUser && <span className="text-slate-500 font-normal">(Để trống nếu không đổi)</span>} {!editingUser && <span className="text-rose-500">*</span>}
+                  Mật khẩu{" "}
+                  {editingUser && (
+                    <span className="text-slate-500 font-normal">
+                      (Để trống nếu không đổi)
+                    </span>
+                  )}{" "}
+                  {!editingUser && <span className="text-rose-500">*</span>}
                 </label>
                 <input
                   type="password"
                   required={!editingUser}
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500 font-mono"
                   placeholder="••••••••"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-300 mb-1">Họ và Tên <span className="text-rose-500">*</span></label>
+                <label className="block font-bold text-slate-300 mb-1">
+                  Họ và Tên <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
                   value={formData.fullName}
-                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, fullName: e.target.value })
+                  }
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500 font-sans"
                   placeholder="Nguyễn Văn A"
                 />
@@ -335,21 +421,29 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token, readOnly = false }) =
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-300 mb-1">Mã Số Sinh Viên (MSSV)</label>
+                  <label className="block font-bold text-slate-300 mb-1">
+                    Mã Số Sinh Viên (MSSV)
+                  </label>
                   <input
                     type="text"
                     value={formData.studentId}
-                    onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, studentId: e.target.value })
+                    }
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500 font-mono"
                     placeholder="SE180000"
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-300 mb-1">Trường Học</label>
+                  <label className="block font-bold text-slate-300 mb-1">
+                    Trường Học
+                  </label>
                   <input
                     type="text"
                     value={formData.university}
-                    onChange={(e) => setFormData({ ...formData, university: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, university: e.target.value })
+                    }
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500 font-sans"
                     placeholder="FPT University"
                   />
@@ -361,10 +455,17 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token, readOnly = false }) =
                   <input
                     type="checkbox"
                     checked={formData.isActive}
-                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, isActive: e.target.checked })
+                    }
                     className="rounded bg-slate-950 border-slate-800 text-cyan-500 focus:ring-0"
                   />
-                  <span>Tài khoản <strong className="text-slate-400 font-bold">Hoạt động (Active)</strong></span>
+                  <span>
+                    Tài khoản{" "}
+                    <strong className="text-slate-400 font-bold">
+                      Hoạt động (Active)
+                    </strong>
+                  </span>
                 </label>
               </div>
 
@@ -380,7 +481,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({ token, readOnly = false }) =
                   type="submit"
                   className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-white font-bold rounded-xl font-mono text-xs shadow-lg shadow-cyan-500/20 cursor-pointer"
                 >
-                  {editingUser ? 'Cập Nhật' : 'Tạo Mới'}
+                  {editingUser ? "Cập Nhật" : "Tạo Mới"}
                 </button>
               </div>
             </form>

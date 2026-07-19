@@ -894,10 +894,14 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                     let apiBase = import.meta.env.VITE_API_URL;
                     if (!apiBase) {
                       const hostname = window.location.hostname;
-                      if (hostname && hostname !== 'localhost' && hostname !== '127.0.0.1') {
+                      if (
+                        hostname &&
+                        hostname !== "localhost" &&
+                        hostname !== "127.0.0.1"
+                      ) {
                         apiBase = window.location.origin;
                       } else {
-                        apiBase = 'http://localhost:5000';
+                        apiBase = "http://localhost:5000";
                       }
                     }
                     return apiBase;
@@ -907,7 +911,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                   className="flex items-center gap-2 px-5 py-2.5 border border-[#F27024]/30 hover:border-[#F27024]/80 bg-[#F27024]/5 hover:bg-[#F27024]/10 rounded-xl text-xs font-mono font-bold text-[#F27024] hover:text-[#F27024] transition-all cursor-pointer shadow-lg shadow-[#F27024]/5 hover:scale-[1.02]"
                 >
                   <Download size={14} />
-                  <span>[TẢI_THỂ_LỆ_PDF]</span>
+                  <span>TẢI THỂ LỆ PDF</span>
                 </a>
               </div>
 
@@ -1108,23 +1112,40 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                           <div className="text-xs sm:text-sm text-slate-600 leading-relaxed font-sans font-normal space-y-1.5">
                             {(r.description || "")
                               .split(/(?<=\.)\s+/)
-                              .filter((sentence: string) => sentence.trim().length > 0)
+                              .filter(
+                                (sentence: string) =>
+                                  sentence.trim().length > 0,
+                              )
                               .map((sentence: string, sIdx: number) => {
-                                if (sentence.includes("Milestone 1") && sentence.includes("Milestone 2")) {
-                                  const parts = sentence.split(/(?:gồm:?\s*|,\s*|\s+và\s+)(?=Milestone \d|Technical Review|Vòng chung kết)/i);
-                                  const introText = parts[0].trim().endsWith("gồm") || parts[0].trim().endsWith("gồm:")
-                                    ? parts[0]
-                                    : `${parts[0]} gồm:`;
+                                if (
+                                  sentence.includes("Milestone 1") &&
+                                  sentence.includes("Milestone 2")
+                                ) {
+                                  const parts = sentence.split(
+                                    /(?:gồm:?\s*|,\s*|\s+và\s+)(?=Milestone \d|Technical Review|Vòng chung kết)/i,
+                                  );
+                                  const introText =
+                                    parts[0].trim().endsWith("gồm") ||
+                                    parts[0].trim().endsWith("gồm:")
+                                      ? parts[0]
+                                      : `${parts[0]} gồm:`;
                                   return (
                                     <div key={sIdx} className="space-y-1.5">
                                       <p className="flex items-start gap-2">
-                                        <span className="text-[#F27024] font-extrabold select-none shrink-0">•</span>
+                                        <span className="text-[#F27024] font-extrabold select-none shrink-0">
+                                          •
+                                        </span>
                                         <span>{introText}</span>
                                       </p>
                                       <div className="pl-4 space-y-1.5">
                                         {parts.slice(1).map((part, pIdx) => (
-                                          <p key={pIdx} className="flex items-start gap-2">
-                                            <span className="text-[#F27024] font-extrabold select-none shrink-0">•</span>
+                                          <p
+                                            key={pIdx}
+                                            className="flex items-start gap-2"
+                                          >
+                                            <span className="text-[#F27024] font-extrabold select-none shrink-0">
+                                              •
+                                            </span>
                                             <span>{part}</span>
                                           </p>
                                         ))}
@@ -1133,13 +1154,17 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                                   );
                                 }
                                 return (
-                                  <p key={sIdx} className="flex items-start gap-2">
-                                    <span className="text-[#F27024] font-extrabold select-none shrink-0">•</span>
+                                  <p
+                                    key={sIdx}
+                                    className="flex items-start gap-2"
+                                  >
+                                    <span className="text-[#F27024] font-extrabold select-none shrink-0">
+                                      •
+                                    </span>
                                     <span>{sentence}</span>
                                   </p>
                                 );
-                              })
-                            }
+                              })}
                           </div>
                         </div>
                       </div>

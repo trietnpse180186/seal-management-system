@@ -1251,7 +1251,7 @@ export default function TeamArea() {
                   <h2 className="text-sm font-bold text-white mb-4 flex items-center justify-between font-mono-tech border-b border-slate-800 pb-3">
                     <div className="flex items-center gap-2">
                       <Users size={18} className="text-cyan-400" />
-                      <span className="text-cyan-400">[THÀNH_VIÊN_NHÓM]</span>
+                      <span className="text-cyan-400">THÀNH VIÊN NHÓM</span>
                     </div>
                     {isLeader && !hasContestStarted && (
                       <button

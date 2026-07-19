@@ -63,9 +63,12 @@ export default function AdminEvents({
 
   useEffect(() => {
     if (token) {
-      axios.get("http://localhost:5000/api/auth/me", {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(res => setCurrentUser(res.data.user)).catch(() => { });
+      axios
+        .get("http://localhost:5000/api/auth/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        .then((res) => setCurrentUser(res.data.user))
+        .catch(() => {});
     }
   }, [token]);
 
@@ -112,7 +115,6 @@ export default function AdminEvents({
   const [critWeight, setCritWeight] = useState("20");
   const [critDesc, setCritDesc] = useState("");
 
-
   const [eventRoles, setEventRoles] = useState<any[]>([]);
   const [teamsList, setTeamsList] = useState<any[]>([]);
 
@@ -132,10 +134,33 @@ export default function AdminEvents({
 
   // Tab management state
   const [activeTab, setActiveTabState] = useState<
-    "admin" | "events" | "teams" | "rounds" | "tracks" | "github" | "logs" | "schedule" | "portal" | "seminar" | "operations"
+    | "admin"
+    | "events"
+    | "teams"
+    | "rounds"
+    | "tracks"
+    | "github"
+    | "logs"
+    | "schedule"
+    | "portal"
+    | "seminar"
+    | "operations"
   >(() => (sessionStorage.getItem("activeTab") as any) || defaultTab);
 
-  const setActiveTab = (tab: "admin" | "events" | "teams" | "rounds" | "tracks" | "github" | "logs" | "schedule" | "portal" | "seminar" | "operations") => {
+  const setActiveTab = (
+    tab:
+      | "admin"
+      | "events"
+      | "teams"
+      | "rounds"
+      | "tracks"
+      | "github"
+      | "logs"
+      | "schedule"
+      | "portal"
+      | "seminar"
+      | "operations",
+  ) => {
     setActiveTabState(tab);
     sessionStorage.setItem("activeTab", tab);
   };
@@ -146,7 +171,10 @@ export default function AdminEvents({
   React.useEffect(() => {
     if (!isEditingEventTitle) return;
     const handleClickOutside = (e: MouseEvent) => {
-      if (eventTitleRef.current && !eventTitleRef.current.contains(e.target as Node)) {
+      if (
+        eventTitleRef.current &&
+        !eventTitleRef.current.contains(e.target as Node)
+      ) {
         setIsEditingEventTitle(false);
       }
     };
@@ -171,7 +199,8 @@ export default function AdminEvents({
   const [editCommitSyncInterval, setEditCommitSyncInterval] = useState("30");
 
   // Round Schedule States
-  const [selectedRoundForSchedule, setSelectedRoundForSchedule] = useState<any>(null);
+  const [selectedRoundForSchedule, setSelectedRoundForSchedule] =
+    useState<any>(null);
 
   // Portal Content States
   const [editMainGoal, setEditMainGoal] = useState("");
@@ -184,19 +213,26 @@ export default function AdminEvents({
   const [editPhase3Description, setEditPhase3Description] = useState("");
   const [editRules, setEditRules] = useState<any[]>([]);
   const [editCustomTimeline, setEditCustomTimeline] = useState<any[]>([]);
-  const [portalSubTab, setPortalSubTab] = useState<"candidate" | "timeline" | null>(null);
+  const [portalSubTab, setPortalSubTab] = useState<
+    "candidate" | "timeline" | null
+  >(null);
   const [newMilestoneTime, setNewMilestoneTime] = useState("");
   const [newMilestoneTitle, setNewMilestoneTitle] = useState("");
 
   // Track Schedule States
-  const [_selectedTrackForSchedule, _setSelectedTrackForSchedule] = useState<any>(null);
+  const [_selectedTrackForSchedule, _setSelectedTrackForSchedule] =
+    useState<any>(null);
   const [trackStartTime, setTrackStartTime] = useState("");
   const [trackEndTime, setTrackEndTime] = useState("");
   const [trackGradingEndTime, setTrackGradingEndTime] = useState("");
 
   // Creation Wizard States
-  const [isWizardMode, setIsWizardModeState] = useState(() => sessionStorage.getItem("isWizardMode") === "true");
-  const [_wizardStep, setWizardStepState] = useState(() => parseInt(sessionStorage.getItem("wizardStep") || "1"));
+  const [isWizardMode, setIsWizardModeState] = useState(
+    () => sessionStorage.getItem("isWizardMode") === "true",
+  );
+  const [_wizardStep, setWizardStepState] = useState(() =>
+    parseInt(sessionStorage.getItem("wizardStep") || "1"),
+  );
 
   const setIsWizardMode = (val: boolean) => {
     setIsWizardModeState(val);
@@ -241,7 +277,6 @@ export default function AdminEvents({
   const [githubOrgName, setGithubOrgName] = useState("sealhackathon-2026");
   const [repos, setRepos] = useState<any[]>([]);
 
-
   const formatForDateTimeLocal = (dateString: string | null | undefined) => {
     if (!dateString) return "";
     const d = new Date(dateString);
@@ -281,19 +316,27 @@ export default function AdminEvents({
 
     const regOpen = editEventRegOpen ? new Date(editEventRegOpen) : null;
     const regClose = editEventRegClose ? new Date(editEventRegClose) : null;
-    const contestStart = editEventContestStart ? new Date(editEventContestStart) : null;
-    const contestEnd = editEventContestEnd ? new Date(editEventContestEnd) : null;
+    const contestStart = editEventContestStart
+      ? new Date(editEventContestStart)
+      : null;
+    const contestEnd = editEventContestEnd
+      ? new Date(editEventContestEnd)
+      : null;
 
     if (regOpen && regClose && regOpen > regClose) {
       toast.error("Thời gian mở đăng ký không thể sau thời gian đóng đăng ký!");
       return;
     }
     if (regClose && contestStart && regClose > contestStart) {
-      toast.error("Thời gian đóng đăng ký phải diễn ra trước khi thời gian thi đấu bắt đầu!");
+      toast.error(
+        "Thời gian đóng đăng ký phải diễn ra trước khi thời gian thi đấu bắt đầu!",
+      );
       return;
     }
     if (contestStart && contestEnd && contestStart > contestEnd) {
-      toast.error("Thời gian bắt đầu thi đấu không thể sau thời gian kết thúc cuộc thi!");
+      toast.error(
+        "Thời gian bắt đầu thi đấu không thể sau thời gian kết thúc cuộc thi!",
+      );
       return;
     }
 
@@ -304,22 +347,39 @@ export default function AdminEvents({
       const res = await axios.put(
         `http://localhost:5000/api/events/${selectedEvent._id}`,
         {
-          registrationOpen: editEventRegOpen ? new Date(editEventRegOpen).toISOString() : null,
-          registrationClose: editEventRegClose ? new Date(editEventRegClose).toISOString() : null,
-          contestStart: editEventContestStart ? new Date(editEventContestStart).toISOString() : null,
-          contestEnd: editEventContestEnd ? new Date(editEventContestEnd).toISOString() : null,
+          registrationOpen: editEventRegOpen
+            ? new Date(editEventRegOpen).toISOString()
+            : null,
+          registrationClose: editEventRegClose
+            ? new Date(editEventRegClose).toISOString()
+            : null,
+          contestStart: editEventContestStart
+            ? new Date(editEventContestStart).toISOString()
+            : null,
+          contestEnd: editEventContestEnd
+            ? new Date(editEventContestEnd).toISOString()
+            : null,
           commitSyncInterval: parseInt(editCommitSyncInterval) || 30,
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       setSelectedEvent(res.data.event);
       toast.success("Đã cập nhật lịch trình sự kiện thành công!");
-      setMessage({ type: "success", text: "Đã cập nhật lịch trình sự kiện thành công!" });
+      setMessage({
+        type: "success",
+        text: "Đã cập nhật lịch trình sự kiện thành công!",
+      });
     } catch (err: any) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Lỗi khi cập nhật lịch trình sự kiện.");
-      setMessage({ type: "error", text: err.response?.data?.message || "Lỗi khi cập nhật lịch trình sự kiện." });
+      toast.error(
+        err.response?.data?.message || "Lỗi khi cập nhật lịch trình sự kiện.",
+      );
+      setMessage({
+        type: "error",
+        text:
+          err.response?.data?.message || "Lỗi khi cập nhật lịch trình sự kiện.",
+      });
     } finally {
       setLoading(false);
     }
@@ -329,7 +389,9 @@ export default function AdminEvents({
     e.preventDefault();
     if (!selectedEvent || !selectedRoundForSchedule) return;
 
-    const eventStart = editEventContestStart ? new Date(editEventContestStart) : null;
+    const eventStart = editEventContestStart
+      ? new Date(editEventContestStart)
+      : null;
     const eventEnd = editEventContestEnd ? new Date(editEventContestEnd) : null;
 
     if (!eventStart || !eventEnd) {
@@ -346,25 +408,37 @@ export default function AdminEvents({
       return;
     }
     if (rStart && rStart < eventStart) {
-      toast.error("Thời gian bắt đầu làm bài của vòng thi không thể trước thời gian bắt đầu thi đấu của cuộc thi!");
+      toast.error(
+        "Thời gian bắt đầu làm bài của vòng thi không thể trước thời gian bắt đầu thi đấu của cuộc thi!",
+      );
       return;
     }
     if (rEnd && rEnd > eventEnd) {
-      toast.error("Hạn nộp bài của vòng thi không thể sau thời gian kết thúc cuộc thi!");
+      toast.error(
+        "Hạn nộp bài của vòng thi không thể sau thời gian kết thúc cuộc thi!",
+      );
       return;
     }
     if (rEnd && rGrading && rEnd >= rGrading) {
-      toast.error("Hạn nộp bài của vòng thi phải diễn ra trước thời gian kết thúc chấm bài!");
+      toast.error(
+        "Hạn nộp bài của vòng thi phải diễn ra trước thời gian kết thúc chấm bài!",
+      );
       return;
     }
     if (rGrading && eventEnd && rGrading > eventEnd) {
-      toast.error("Thời gian chấm bài kết thúc không thể sau thời gian kết thúc cuộc thi!");
+      toast.error(
+        "Thời gian chấm bài kết thúc không thể sau thời gian kết thúc cuộc thi!",
+      );
       return;
     }
 
-    const roundTracks = tracks.filter((t: any) => t.roundId === selectedRoundForSchedule._id);
+    const roundTracks = tracks.filter(
+      (t: any) => t.roundId === selectedRoundForSchedule._id,
+    );
     if (roundTracks.length === 0) {
-      toast.error("Vòng thi này chưa có bảng đấu nào. Vui lòng tạo bảng đấu trước khi lưu lịch trình!");
+      toast.error(
+        "Vòng thi này chưa có bảng đấu nào. Vui lòng tạo bảng đấu trước khi lưu lịch trình!",
+      );
       return;
     }
 
@@ -375,30 +449,44 @@ export default function AdminEvents({
       const res = await axios.put(
         `http://localhost:5000/api/events/${selectedEvent._id}/rounds/${selectedRoundForSchedule._id}`,
         {
-          startTime: trackStartTime ? new Date(trackStartTime).toISOString() : null,
+          startTime: trackStartTime
+            ? new Date(trackStartTime).toISOString()
+            : null,
           endTime: trackEndTime ? new Date(trackEndTime).toISOString() : null,
-          gradingEndTime: trackGradingEndTime ? new Date(trackGradingEndTime).toISOString() : null,
+          gradingEndTime: trackGradingEndTime
+            ? new Date(trackGradingEndTime).toISOString()
+            : null,
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       setRounds((prev) =>
-        prev.map((r: any) => (r._id === res.data._id ? res.data : r))
+        prev.map((r: any) => (r._id === res.data._id ? res.data : r)),
       );
       setSelectedRoundForSchedule(res.data);
 
       // Refresh tracks (mirrored schedule on backend)
       const detailsRes = await axios.get(
-        `http://localhost:5000/api/events/${selectedEvent._id}`
+        `http://localhost:5000/api/events/${selectedEvent._id}`,
       );
       setTracks(detailsRes.data.tracks || []);
 
       toast.success("Đã cập nhật lịch trình vòng thi thành công!");
-      setMessage({ type: "success", text: "Đã cập nhật lịch trình vòng thi thành công!" });
+      setMessage({
+        type: "success",
+        text: "Đã cập nhật lịch trình vòng thi thành công!",
+      });
     } catch (err: any) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Lỗi khi cập nhật lịch trình vòng thi.");
-      setMessage({ type: "error", text: err.response?.data?.message || "Lỗi khi cập nhật lịch trình vòng thi." });
+      toast.error(
+        err.response?.data?.message || "Lỗi khi cập nhật lịch trình vòng thi.",
+      );
+      setMessage({
+        type: "error",
+        text:
+          err.response?.data?.message ||
+          "Lỗi khi cập nhật lịch trình vòng thi.",
+      });
     } finally {
       setLoading(false);
     }
@@ -425,11 +513,11 @@ export default function AdminEvents({
           endTime: null,
           gradingEndTime: null,
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       setRounds((prev) =>
-        prev.map((r: any) => (r._id === res.data._id ? res.data : r))
+        prev.map((r: any) => (r._id === res.data._id ? res.data : r)),
       );
       setSelectedRoundForSchedule(res.data);
       setTrackStartTime("");
@@ -438,14 +526,17 @@ export default function AdminEvents({
 
       // Refresh tracks (mirrored schedule on backend)
       const detailsRes = await axios.get(
-        `http://localhost:5000/api/events/${selectedEvent._id}`
+        `http://localhost:5000/api/events/${selectedEvent._id}`,
       );
       setTracks(detailsRes.data.tracks || []);
 
       toast.success("Đã xóa cài đặt thời gian vòng thi thành công!");
     } catch (err: any) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Lỗi khi xóa cài đặt thời gian vòng thi.");
+      toast.error(
+        err.response?.data?.message ||
+          "Lỗi khi xóa cài đặt thời gian vòng thi.",
+      );
     } finally {
       setLoading(false);
     }
@@ -472,7 +563,12 @@ export default function AdminEvents({
     if (activeTab === "logs" && selectedEvent) {
       fetchEventLogs();
       if (token) {
-        const socketUrl = import.meta.env.VITE_API_URL || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.origin : 'http://localhost:5000');
+        const socketUrl =
+          import.meta.env.VITE_API_URL ||
+          (window.location.hostname !== "localhost" &&
+          window.location.hostname !== "127.0.0.1"
+            ? window.location.origin
+            : "http://localhost:5000");
         const sock = io(socketUrl, { auth: { token } });
         socketRef.current = sock;
         sock.on("new_event_log", (newLog: any) => {
@@ -532,7 +628,7 @@ export default function AdminEvents({
         `http://localhost:5000/api/github-repositories/sync-progress?eventId=${selectedEvent._id}&repositoryIds=${reposToSync.join(",")}`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       setSyncProgress(res.data);
       return res.data.active;
@@ -631,7 +727,9 @@ export default function AdminEvents({
 
       if (res.data.tracks && res.data.tracks.length > 0) {
         if (selectedTrack) {
-          const updatedTrack = res.data.tracks.find((t: any) => t._id === selectedTrack._id);
+          const updatedTrack = res.data.tracks.find(
+            (t: any) => t._id === selectedTrack._id,
+          );
           if (updatedTrack) {
             setSelectedTrack(updatedTrack);
           }
@@ -647,7 +745,9 @@ export default function AdminEvents({
 
       if (res.data.rounds && res.data.rounds.length > 0) {
         if (selectedRoundForSchedule) {
-          const updatedRound = res.data.rounds.find((r: any) => r._id === selectedRoundForSchedule._id);
+          const updatedRound = res.data.rounds.find(
+            (r: any) => r._id === selectedRoundForSchedule._id,
+          );
           if (updatedRound) {
             setSelectedRoundForSchedule(updatedRound);
           }
@@ -672,7 +772,7 @@ export default function AdminEvents({
         `http://localhost:5000/api/events/${selectedEvent._id}/logs`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       setEventLogs(res.data || []);
     } catch (err) {
@@ -719,7 +819,7 @@ export default function AdminEvents({
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       toast.success(res.data.message || "Đồng bộ và phân tích AI thành công!");
     } catch (err: any) {
@@ -764,12 +864,17 @@ export default function AdminEvents({
         { repositoryIds: reposToSync },
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
-      toast.success(res.data.message || "Đã kích hoạt đồng bộ toàn bộ repository thành công!");
+      toast.success(
+        res.data.message ||
+          "Đã kích hoạt đồng bộ toàn bộ repository thành công!",
+      );
     } catch (err: any) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Lỗi khi đồng bộ toàn bộ repository.");
+      toast.error(
+        err.response?.data?.message || "Lỗi khi đồng bộ toàn bộ repository.",
+      );
       setSyncProgress(null);
       setSyncingAll(false);
     }
@@ -876,7 +981,8 @@ export default function AdminEvents({
   const handleKickAllCollaborators = async (repoId: string) => {
     const conformed = await conform({
       title: "Xác nhận thu hồi quyền",
-      message: "Bạn có chắc chắn muốn thu hồi quyền truy cập (gỡ cộng tác viên) của toàn bộ thành viên nhóm và mentor khỏi repository này không?"
+      message:
+        "Bạn có chắc chắn muốn thu hồi quyền truy cập (gỡ cộng tác viên) của toàn bộ thành viên nhóm và mentor khỏi repository này không?",
     });
     if (!conformed) return;
     setLoading(true);
@@ -887,7 +993,7 @@ export default function AdminEvents({
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       setMessage({
         type: "success",
@@ -928,19 +1034,45 @@ export default function AdminEvents({
     setEditEventGithubOrgName(eventObj.githubOrgName || "");
     populateEventSchedule(eventObj);
 
-    setEditMainGoal(eventObj.mainGoal || "Phát triển các giải pháp sáng tạo để giải quyết bài toán thực tế và xây dựng hệ thống phần mềm chất lượng. Các đội thi cần tối ưu mã nguồn, liên kết repository và tối ưu hóa hệ thống dưới sự hỗ trợ của AI.");
+    setEditMainGoal(
+      eventObj.mainGoal ||
+        "Phát triển các giải pháp sáng tạo để giải quyết bài toán thực tế và xây dựng hệ thống phần mềm chất lượng. Các đội thi cần tối ưu mã nguồn, liên kết repository và tối ưu hóa hệ thống dưới sự hỗ trợ của AI.",
+    );
     setEditDurationText(eventObj.durationText || "48 GIỜ");
     setEditMemberLimitText(eventObj.memberLimitText || "2-4 OPERATORS");
     setEditPrizePoolText(eventObj.prizePoolText || "$50,000 USD");
     setEditZaloUrl(eventObj.zaloUrl || "");
-    setEditPhase1Description(eventObj.phase1Description || "Các đội thi thực hiện đăng ký tài khoản, liên kết thành viên nhóm và liên kết repository Github chính thức để chuẩn bị nhận nhiệm vụ.");
-    setEditPhase2Description(eventObj.phase2Description || "Giai đoạn lập trình cường độ cao. Các đội thực hiện giải quyết yêu cầu dự án, liên tục push commit để AI tự động phân tích và đánh giá chất lượng mã nguồn.");
-    setEditPhase3Description(eventObj.phase3Description || "Dừng cổng nộp bài, đóng repository. Các đội thi chuẩn bị báo cáo dự án trước hội đồng giám khảo và nhận kết quả xếp hạng chung cuộc từ hệ thống.");
-    setEditRules(eventObj.rules || [
-      { title: "Mã nguồn tự viết", description: "Tất cả các dòng code chính và sản phẩm phải được viết trong thời gian diễn ra cuộc thi. Các thư viện và framework có sẵn được phép sử dụng nếu là mã nguồn mở." },
-      { title: "Giới hạn đội thi", description: "Mỗi đội phải có từ 2 đến 4 thành viên. Không cho phép tham gia cá nhân hoặc đội thi có số lượng vượt mức quy định." },
-      { title: "Ranh giới Đạo đức", description: "Bất kỳ hành vi gian lận hoặc tấn công phá hoại hạ tầng bên ngoài phạm vi quy định sẽ dẫn đến việc truất quyền thi đấu ngay lập tức." }
-    ]);
+    setEditPhase1Description(
+      eventObj.phase1Description ||
+        "Các đội thi thực hiện đăng ký tài khoản, liên kết thành viên nhóm và liên kết repository Github chính thức để chuẩn bị nhận nhiệm vụ.",
+    );
+    setEditPhase2Description(
+      eventObj.phase2Description ||
+        "Giai đoạn lập trình cường độ cao. Các đội thực hiện giải quyết yêu cầu dự án, liên tục push commit để AI tự động phân tích và đánh giá chất lượng mã nguồn.",
+    );
+    setEditPhase3Description(
+      eventObj.phase3Description ||
+        "Dừng cổng nộp bài, đóng repository. Các đội thi chuẩn bị báo cáo dự án trước hội đồng giám khảo và nhận kết quả xếp hạng chung cuộc từ hệ thống.",
+    );
+    setEditRules(
+      eventObj.rules || [
+        {
+          title: "Mã nguồn tự viết",
+          description:
+            "Tất cả các dòng code chính và sản phẩm phải được viết trong thời gian diễn ra cuộc thi. Các thư viện và framework có sẵn được phép sử dụng nếu là mã nguồn mở.",
+        },
+        {
+          title: "Giới hạn đội thi",
+          description:
+            "Mỗi đội phải có từ 2 đến 4 thành viên. Không cho phép tham gia cá nhân hoặc đội thi có số lượng vượt mức quy định.",
+        },
+        {
+          title: "Ranh giới Đạo đức",
+          description:
+            "Bất kỳ hành vi gian lận hoặc tấn công phá hoại hạ tầng bên ngoài phạm vi quy định sẽ dẫn đến việc truất quyền thi đấu ngay lập tức.",
+        },
+      ],
+    );
     setEditCustomTimeline(eventObj.customTimeline || []);
 
     // If we are currently on the 'events' tab/route, sync URL
@@ -956,8 +1088,6 @@ export default function AdminEvents({
       .then((res) => setEventRoles(res.data || []))
       .catch(console.error);
   };
-
-
 
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1051,11 +1181,20 @@ export default function AdminEvents({
     }
   };
 
-  const handleUpdateEventStatus = async (newStatus: string, isForce: boolean = false) => {
+  const handleUpdateEventStatus = async (
+    newStatus: string,
+    isForce: boolean = false,
+  ) => {
     if (!selectedEvent) return;
     const forceFlag = isForce || !!currentUser?.isSystemAdmin;
-    if (!forceFlag && newStatus !== "cancelled" && newStatus !== selectedEvent.status) {
-      toast.error("Trạng thái cuộc thi được tự động chuyển đổi theo thời gian. Bạn chỉ có thể chuyển thủ công sang Hủy (Cancelled)!");
+    if (
+      !forceFlag &&
+      newStatus !== "cancelled" &&
+      newStatus !== selectedEvent.status
+    ) {
+      toast.error(
+        "Trạng thái cuộc thi được tự động chuyển đổi theo thời gian. Bạn chỉ có thể chuyển thủ công sang Hủy (Cancelled)!",
+      );
       return;
     }
     setMessage({ type: "", text: "" });
@@ -1069,7 +1208,9 @@ export default function AdminEvents({
       );
       setMessage({
         type: "success",
-        text: forceFlag ? "Ép chuyển trạng thái cuộc thi thành công!" : "Cập nhật trạng thái cuộc thi thành công!",
+        text: forceFlag
+          ? "Ép chuyển trạng thái cuộc thi thành công!"
+          : "Cập nhật trạng thái cuộc thi thành công!",
       });
       setSelectedEvent(res.data.event);
       fetchEvents();
@@ -1089,13 +1230,16 @@ export default function AdminEvents({
     if (!selectedEvent) return;
     const conformed = await conform({
       title: "Xác nhận xóa cuộc thi",
-      message: `Bạn có chắc chắn muốn xóa cuộc thi "${selectedEvent.name}"? Tất cả dữ liệu vòng thi, tiêu chí và đội thi sẽ bị xóa vĩnh viễn!`
+      message: `Bạn có chắc chắn muốn xóa cuộc thi "${selectedEvent.name}"? Tất cả dữ liệu vòng thi, tiêu chí và đội thi sẽ bị xóa vĩnh viễn!`,
     });
     if (!conformed) return;
     try {
-      await axios.delete(`http://localhost:5000/api/events/${selectedEvent._id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axios.delete(
+        `http://localhost:5000/api/events/${selectedEvent._id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
       toast.success("Đã xóa cuộc thi thành công!");
       setSelectedEvent(null);
       fetchEvents();
@@ -1108,13 +1252,17 @@ export default function AdminEvents({
     if (!selectedEvent || !roundId) return;
     const conformed = await conform({
       title: "Xác nhận xóa vòng thi",
-      message: "Bạn có chắc chắn muốn xóa vòng thi này? Các tiêu chí và rubric thuộc vòng thi sẽ bị xóa!"
+      message:
+        "Bạn có chắc chắn muốn xóa vòng thi này? Các tiêu chí và rubric thuộc vòng thi sẽ bị xóa!",
     });
     if (!conformed) return;
     try {
-      await axios.delete(`http://localhost:5000/api/events/${selectedEvent._id}/rounds/${roundId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axios.delete(
+        `http://localhost:5000/api/events/${selectedEvent._id}/rounds/${roundId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
       toast.success("Đã xóa vòng thi thành công!");
       fetchEventDetails();
     } catch (err: any) {
@@ -1125,9 +1273,13 @@ export default function AdminEvents({
   const handleUpdateRound = async (roundId: string, updatedData: any) => {
     if (!selectedEvent || !roundId) return;
     try {
-      await axios.put(`http://localhost:5000/api/events/${selectedEvent._id}/rounds/${roundId}`, updatedData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axios.put(
+        `http://localhost:5000/api/events/${selectedEvent._id}/rounds/${roundId}`,
+        updatedData,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
       toast.success("Cập nhật thông tin vòng thi thành công!");
       fetchEventDetails();
     } catch (err: any) {
@@ -1145,7 +1297,7 @@ export default function AdminEvents({
       return;
     }
     const invalidRule = editRules.find(
-      (r) => !r.title?.trim() || !r.description?.trim()
+      (r) => !r.title?.trim() || !r.description?.trim(),
     );
     if (invalidRule) {
       toast.error("Mỗi quy định phải có đầy đủ Tiêu đề và Chi tiết.");
@@ -1169,16 +1321,27 @@ export default function AdminEvents({
           phase3Description: editPhase3Description,
           rules: editRules,
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       setSelectedEvent(res.data.event);
       toast.success("Đã cập nhật nội dung Guest Portal thành công!");
-      setMessage({ type: "success", text: "Đã cập nhật nội dung Guest Portal thành công!" });
+      setMessage({
+        type: "success",
+        text: "Đã cập nhật nội dung Guest Portal thành công!",
+      });
     } catch (err: any) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Lỗi khi cập nhật nội dung Guest Portal.");
-      setMessage({ type: "error", text: err.response?.data?.message || "Lỗi khi cập nhật nội dung Guest Portal." });
+      toast.error(
+        err.response?.data?.message ||
+          "Lỗi khi cập nhật nội dung Guest Portal.",
+      );
+      setMessage({
+        type: "error",
+        text:
+          err.response?.data?.message ||
+          "Lỗi khi cập nhật nội dung Guest Portal.",
+      });
     } finally {
       setLoading(false);
     }
@@ -1195,7 +1358,7 @@ export default function AdminEvents({
         {
           customTimeline: editCustomTimeline,
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       setSelectedEvent(res.data.event);
@@ -1203,7 +1366,9 @@ export default function AdminEvents({
       toast.success("Cập nhật lịch trình cuộc thi thành công!");
     } catch (err: any) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Lỗi khi cập nhật lịch trình cuộc thi.");
+      toast.error(
+        err.response?.data?.message || "Lỗi khi cập nhật lịch trình cuộc thi.",
+      );
     } finally {
       setLoading(false);
     }
@@ -1214,7 +1379,10 @@ export default function AdminEvents({
       toast.error("Vui lòng nhập đầy đủ Thời gian và Hoạt động!");
       return;
     }
-    const updated = [...editCustomTimeline, { time: newMilestoneTime, title: newMilestoneTitle, description: "" }];
+    const updated = [
+      ...editCustomTimeline,
+      { time: newMilestoneTime, title: newMilestoneTitle, description: "" },
+    ];
     setEditCustomTimeline(updated);
     setNewMilestoneTime("");
     setNewMilestoneTitle("");
@@ -1238,8 +1406,11 @@ export default function AdminEvents({
     }
 
     const selectedRound = rounds.find((r) => r._id === trackRoundId);
-    if (selectedRound && selectedRound.status === 'completed') {
-      setMessage({ type: "error", text: "Không thể tạo bảng đấu mới cho vòng thi đã kết thúc." });
+    if (selectedRound && selectedRound.status === "completed") {
+      setMessage({
+        type: "error",
+        text: "Không thể tạo bảng đấu mới cho vòng thi đã kết thúc.",
+      });
       return;
     }
 
@@ -1323,8 +1494,11 @@ export default function AdminEvents({
     }
 
     const selectedRound = rounds.find((r) => r._id === trackRoundId);
-    if (selectedRound && selectedRound.status === 'completed') {
-      setMessage({ type: "error", text: "Không thể chỉnh sửa bảng đấu của vòng thi đã kết thúc." });
+    if (selectedRound && selectedRound.status === "completed") {
+      setMessage({
+        type: "error",
+        text: "Không thể chỉnh sửa bảng đấu của vòng thi đã kết thúc.",
+      });
       return;
     }
 
@@ -1339,7 +1513,9 @@ export default function AdminEvents({
       const totalAllocatedTeams = tracks
         .filter((t) => {
           const tRoundId = t.roundId?._id || t.roundId;
-          return t._id !== editingTrack._id && tRoundId && tRoundId !== finalRoundId;
+          return (
+            t._id !== editingTrack._id && tRoundId && tRoundId !== finalRoundId
+          );
         })
         .reduce((sum, t) => sum + (t.maxTeams || 0), 0);
       const maxEventTeams = selectedEvent.maxTeams || 0;
@@ -1379,7 +1555,9 @@ export default function AdminEvents({
       setEditingTrack(null);
 
       // Update local tracks state
-      setTracks(tracks.map((t) => (t._id === updatedTrack._id ? updatedTrack : t)));
+      setTracks(
+        tracks.map((t) => (t._id === updatedTrack._id ? updatedTrack : t)),
+      );
       setSelectedTrack(updatedTrack);
 
       // Fetch updated event details to reload tracks with round mapping
@@ -1400,11 +1578,14 @@ export default function AdminEvents({
     if (!selectedEvent) return;
 
     // Check if the round status of this track is completed
-    const trackToDelete = tracks.find(t => t._id === trackId);
+    const trackToDelete = tracks.find((t) => t._id === trackId);
     if (trackToDelete) {
-      const roundOfTrack = rounds.find(r => r._id === trackToDelete.roundId);
-      if (roundOfTrack && roundOfTrack.status === 'completed') {
-        setMessage({ type: "error", text: "Không thể xóa bảng đấu của vòng thi đã kết thúc." });
+      const roundOfTrack = rounds.find((r) => r._id === trackToDelete.roundId);
+      if (roundOfTrack && roundOfTrack.status === "completed") {
+        setMessage({
+          type: "error",
+          text: "Không thể xóa bảng đấu của vòng thi đã kết thúc.",
+        });
         return;
       }
     }
@@ -1455,7 +1636,8 @@ export default function AdminEvents({
 
     try {
       // Calculate the order dynamically (equal to the current highest order, which belongs to Vòng Chung Kết)
-      const autoNewRoundOrder = rounds.length > 0 ? rounds[rounds.length - 1].order : 1;
+      const autoNewRoundOrder =
+        rounds.length > 0 ? rounds[rounds.length - 1].order : 1;
 
       // 1. Create the Round
       const roundRes = await axios.post(
@@ -1463,7 +1645,9 @@ export default function AdminEvents({
         {
           name: roundName,
           order: autoNewRoundOrder,
-          submissionDeadline: roundDeadline ? new Date(roundDeadline).toISOString() : undefined,
+          submissionDeadline: roundDeadline
+            ? new Date(roundDeadline).toISOString()
+            : undefined,
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -1499,7 +1683,9 @@ export default function AdminEvents({
         }
       } catch (rubricErr: any) {
         console.error("Rubric creation error:", rubricErr);
-        toast.error(`Cảnh báo: Tạo Rubric thất bại - ${rubricErr.response?.data?.message || rubricErr.message}`);
+        toast.error(
+          `Cảnh báo: Tạo Rubric thất bại - ${rubricErr.response?.data?.message || rubricErr.message}`,
+        );
       }
 
       setMessage({
@@ -1876,7 +2062,8 @@ export default function AdminEvents({
 
     const conformed = await conform({
       title: "Chốt và thăng hạng vòng đấu",
-      message: "Bạn có chắc chắn muốn CHỐT vòng đấu này và THĂNG HẠNG (Advance) các đội xuất sắc nhất vào vòng tiếp theo?",
+      message:
+        "Bạn có chắc chắn muốn CHỐT vòng đấu này và THĂNG HẠNG (Advance) các đội xuất sắc nhất vào vòng tiếp theo?",
       variant: "warning",
     });
     if (!conformed) {
@@ -1891,9 +2078,9 @@ export default function AdminEvents({
         "http://localhost:5000/api/grades/advance-round",
         {
           eventId: selectedEvent._id,
-          currentRoundId: roundId
+          currentRoundId: roundId,
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       setMessage({ type: "success", text: res.data.message });
@@ -1905,7 +2092,8 @@ export default function AdminEvents({
       console.error(err);
       setMessage({
         type: "error",
-        text: err.response?.data?.message || "Lỗi khi chốt và thăng hạng vòng đấu."
+        text:
+          err.response?.data?.message || "Lỗi khi chốt và thăng hạng vòng đấu.",
       });
     } finally {
       setLoading(false);
@@ -1923,9 +2111,9 @@ export default function AdminEvents({
         "http://localhost:5000/api/grades/rollback-round",
         {
           eventId: selectedEvent._id,
-          currentRoundId: roundId
+          currentRoundId: roundId,
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       setMessage({ type: "success", text: res.data.message });
@@ -1950,7 +2138,8 @@ export default function AdminEvents({
 
     const conformed = await conform({
       title: "Khóa điểm vòng đấu",
-      message: "Bạn có chắc chắn muốn KHÓA điểm và CÔNG BỐ kết quả xếp hạng cho vòng đấu này? Sau khi khóa, giám khảo sẽ không thể sửa điểm được nữa.",
+      message:
+        "Bạn có chắc chắn muốn KHÓA điểm và CÔNG BỐ kết quả xếp hạng cho vòng đấu này? Sau khi khóa, giám khảo sẽ không thể sửa điểm được nữa.",
       variant: "warning",
     });
     if (!conformed) {
@@ -1965,9 +2154,9 @@ export default function AdminEvents({
         "http://localhost:5000/api/grades/lock-round",
         {
           eventId: selectedEvent._id,
-          roundId: roundId
+          roundId: roundId,
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       setMessage({ type: "success", text: res.data.message });
@@ -1979,7 +2168,9 @@ export default function AdminEvents({
       console.error(err);
       setMessage({
         type: "error",
-        text: err.response?.data?.message || "Lỗi khi khóa điểm và công bố kết quả."
+        text:
+          err.response?.data?.message ||
+          "Lỗi khi khóa điểm và công bố kết quả.",
       });
     } finally {
       setLoading(false);
@@ -1997,9 +2188,9 @@ export default function AdminEvents({
         "http://localhost:5000/api/grades/unlock-round",
         {
           eventId: selectedEvent._id,
-          roundId: roundId
+          roundId: roundId,
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       setMessage({ type: "success", text: res.data.message });
@@ -2011,7 +2202,7 @@ export default function AdminEvents({
       console.error(err);
       setMessage({
         type: "error",
-        text: err.response?.data?.message || "Lỗi khi mở khóa điểm vòng đấu."
+        text: err.response?.data?.message || "Lỗi khi mở khóa điểm vòng đấu.",
       });
       throw err;
     } finally {
@@ -2019,14 +2210,16 @@ export default function AdminEvents({
     }
   };
 
-
-
   // handleUploadExam removed — Drive upload moved to TracksTab component
-
 
   // handleSyncDriveAccess removed — Drive links are now direct public links (no OAuth API needed)
 
-  const handleAssignRoleForTrack = async (email: string, trackId: string, role: "judge" | "mentor" = "judge", teamId?: string) => {
+  const handleAssignRoleForTrack = async (
+    email: string,
+    trackId: string,
+    role: "judge" | "mentor" = "judge",
+    teamId?: string,
+  ) => {
     if (!selectedEvent) return;
     setMessage({ type: "", text: "" });
     setLoading(true);
@@ -2045,7 +2238,7 @@ export default function AdminEvents({
       );
       setMessage({
         type: "success",
-        text: `Phân quyền ${role === 'judge' ? 'Giám khảo' : 'Mentor'} thành công!`,
+        text: `Phân quyền ${role === "judge" ? "Giám khảo" : "Mentor"} thành công!`,
       });
       fetchEventRoles();
       fetchTeamsList();
@@ -2055,7 +2248,9 @@ export default function AdminEvents({
     } catch (err: any) {
       setMessage({
         type: "error",
-        text: err.response?.data?.message || `Lỗi phân quyền ${role === 'judge' ? 'Giám khảo' : 'Mentor'}.`,
+        text:
+          err.response?.data?.message ||
+          `Lỗi phân quyền ${role === "judge" ? "Giám khảo" : "Mentor"}.`,
       });
     } finally {
       setLoading(false);
@@ -2084,7 +2279,12 @@ export default function AdminEvents({
         text: "Thu hồi quyền thành viên thành công!",
       });
       fetchEventRoles();
-      if (roleObj && roleObj.userId && (roleObj.userId._id === currentUser?.id || roleObj.userId === currentUser?.id)) {
+      if (
+        roleObj &&
+        roleObj.userId &&
+        (roleObj.userId._id === currentUser?.id ||
+          roleObj.userId === currentUser?.id)
+      ) {
         window.location.reload();
       }
     } catch (err: any) {
@@ -2096,7 +2296,6 @@ export default function AdminEvents({
       setLoading(false);
     }
   };
-
 
   return (
     <div className="max-w-7xl mx-auto px-4 pt-4 pb-8 space-y-6">
@@ -2111,7 +2310,9 @@ export default function AdminEvents({
               </span>
               <h1
                 className="text-2xl font-black text-white mt-2 font-mono uppercase tracking-tight flex items-center gap-2 group cursor-pointer select-none"
-                onClick={() => events.length > 1 && setIsEditingEventTitle((v) => !v)}
+                onClick={() =>
+                  events.length > 1 && setIsEditingEventTitle((v) => !v)
+                }
               >
                 <span>{selectedEvent.name}</span>
                 {events.length > 1 && (
@@ -2123,9 +2324,7 @@ export default function AdminEvents({
               </h1>
               {/* Floating event picker */}
               {isEditingEventTitle && events.length > 1 && (
-                <div
-                  className="absolute left-0 top-full mt-2 z-50 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl shadow-black/50 overflow-y-auto max-h-60 min-w-[280px] scrollbar-thin scrollbar-thumb-slate-800"
-                >
+                <div className="absolute left-0 top-full mt-2 z-50 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl shadow-black/50 overflow-y-auto max-h-60 min-w-[280px] scrollbar-thin scrollbar-thumb-slate-800">
                   {events.map((e: any) => (
                     <button
                       key={e._id}
@@ -2134,13 +2333,18 @@ export default function AdminEvents({
                         setIsEditingEventTitle(false);
                       }}
                       className={`w-full text-left px-4 py-2.5 text-sm font-mono transition-colors cursor-pointer
-                        ${e._id === selectedEvent._id
-                          ? "bg-cyan-500/15 text-cyan-300 font-bold"
-                          : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                        ${
+                          e._id === selectedEvent._id
+                            ? "bg-cyan-500/15 text-cyan-300 font-bold"
+                            : "text-slate-300 hover:bg-slate-800 hover:text-white"
                         }`}
                     >
-                      <span className="uppercase font-bold block truncate">{e.name}</span>
-                      <span className="text-[11px] text-slate-500 font-sans normal-case">{e.semester} {e.year}</span>
+                      <span className="uppercase font-bold block truncate">
+                        {e.name}
+                      </span>
+                      <span className="text-[11px] text-slate-500 font-sans normal-case">
+                        {e.semester} {e.year}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -2154,18 +2358,48 @@ export default function AdminEvents({
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border ${currentUser?.isSystemAdmin ? 'bg-amber-950/20 border-amber-500/40' : 'bg-slate-950 border-slate-800'}`}>
-                <label className={`text-[10px] font-bold uppercase font-mono ${currentUser?.isSystemAdmin ? 'text-amber-400' : 'text-slate-400'}`}>
+              <div
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border ${currentUser?.isSystemAdmin ? "bg-amber-950/20 border-amber-500/40" : "bg-slate-950 border-slate-800"}`}
+              >
+                <label
+                  className={`text-[10px] font-bold uppercase font-mono ${currentUser?.isSystemAdmin ? "text-amber-400" : "text-slate-400"}`}
+                >
                   Trạng thái:
                 </label>
                 <CustomSelect
                   value={selectedEvent.status}
-                  onChange={(val) => handleUpdateEventStatus(val, currentUser?.isSystemAdmin)}
+                  onChange={(val) =>
+                    handleUpdateEventStatus(val, currentUser?.isSystemAdmin)
+                  }
                   options={[
-                    { value: "draft", label: "Draft", disabled: !currentUser?.isSystemAdmin && selectedEvent.status !== "draft" },
-                    { value: "registration", label: "Registration", disabled: !currentUser?.isSystemAdmin && selectedEvent.status !== "registration" },
-                    { value: "ongoing", label: "Ongoing", disabled: !currentUser?.isSystemAdmin && selectedEvent.status !== "ongoing" },
-                    { value: "completed", label: "Completed", disabled: !currentUser?.isSystemAdmin && selectedEvent.status !== "completed" },
+                    {
+                      value: "draft",
+                      label: "Draft",
+                      disabled:
+                        !currentUser?.isSystemAdmin &&
+                        selectedEvent.status !== "draft",
+                    },
+                    {
+                      value: "registration",
+                      label: "Registration",
+                      disabled:
+                        !currentUser?.isSystemAdmin &&
+                        selectedEvent.status !== "registration",
+                    },
+                    {
+                      value: "ongoing",
+                      label: "Ongoing",
+                      disabled:
+                        !currentUser?.isSystemAdmin &&
+                        selectedEvent.status !== "ongoing",
+                    },
+                    {
+                      value: "completed",
+                      label: "Completed",
+                      disabled:
+                        !currentUser?.isSystemAdmin &&
+                        selectedEvent.status !== "completed",
+                    },
                     { value: "cancelled", label: "Cancelled" },
                   ]}
                   className="w-48 font-semibold"
@@ -2204,86 +2438,105 @@ export default function AdminEvents({
       {/* TAB NAVIGATION BAR */}
       {defaultTab === "events" && (
         <div className="flex flex-wrap gap-3 border-b border-slate-800/80 pb-3">
-          {(isWizardMode || selectedEvent === null) ? (
+          {isWizardMode || selectedEvent === null ? (
             <>
               <button
                 onClick={() => setActiveTab("events")}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "events"
-                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                  }`}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
+                  activeTab === "events"
+                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                }`}
               >
                 1. Thông tin sự kiện
               </button>
               <button
                 onClick={() => {
                   if (!selectedEvent) {
-                    toast.error("Vui lòng khởi tạo thông tin sự kiện ở Bước 1 trước!");
+                    toast.error(
+                      "Vui lòng khởi tạo thông tin sự kiện ở Bước 1 trước!",
+                    );
                     return;
                   }
                   setActiveTab("rounds");
                 }}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${!selectedEvent ? "opacity-40 cursor-not-allowed" : ""} ${activeTab === "rounds"
-                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                  }`}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${!selectedEvent ? "opacity-40 cursor-not-allowed" : ""} ${
+                  activeTab === "rounds"
+                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                }`}
               >
                 2. Vòng thi & Tiêu chí
               </button>
               <button
                 onClick={() => {
                   if (!selectedEvent) {
-                    toast.error("Vui lòng khởi tạo thông tin sự kiện ở Bước 1 trước!");
+                    toast.error(
+                      "Vui lòng khởi tạo thông tin sự kiện ở Bước 1 trước!",
+                    );
                     return;
                   }
                   if (rounds.length === 0) {
-                    toast.error("Vui lòng tạo ít nhất 1 vòng thi ở Bước 2 trước khi sang bước Bảng đấu!");
+                    toast.error(
+                      "Vui lòng tạo ít nhất 1 vòng thi ở Bước 2 trước khi sang bước Bảng đấu!",
+                    );
                     return;
                   }
                   setActiveTab("tracks");
                 }}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${(!selectedEvent || rounds.length === 0) ? "opacity-40 cursor-not-allowed" : ""} ${activeTab === "tracks"
-                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                  }`}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${!selectedEvent || rounds.length === 0 ? "opacity-40 cursor-not-allowed" : ""} ${
+                  activeTab === "tracks"
+                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                }`}
               >
                 3. Bảng đấu
               </button>
               <button
                 onClick={() => {
                   if (!selectedEvent) {
-                    toast.error("Vui lòng khởi tạo thông tin sự kiện ở Bước 1 trước!");
+                    toast.error(
+                      "Vui lòng khởi tạo thông tin sự kiện ở Bước 1 trước!",
+                    );
                     return;
                   }
                   if (rounds.length === 0) {
-                    toast.error("Vui lòng tạo ít nhất 1 vòng thi ở Bước 2 trước!");
+                    toast.error(
+                      "Vui lòng tạo ít nhất 1 vòng thi ở Bước 2 trước!",
+                    );
                     return;
                   }
                   if (tracks.length === 0) {
-                    toast.error("Vui lòng tạo ít nhất 1 bảng đấu ở Bước 3 trước khi sang Thiết lập thời gian!");
+                    toast.error(
+                      "Vui lòng tạo ít nhất 1 bảng đấu ở Bước 3 trước khi sang Thiết lập thời gian!",
+                    );
                     return;
                   }
                   setActiveTab("schedule");
                 }}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${(!selectedEvent || tracks.length === 0) ? "opacity-40 cursor-not-allowed" : ""} ${activeTab === "schedule"
-                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                  }`}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${!selectedEvent || tracks.length === 0 ? "opacity-40 cursor-not-allowed" : ""} ${
+                  activeTab === "schedule"
+                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                }`}
               >
                 4. Thiết lập thời gian
               </button>
               <button
                 onClick={() => {
                   if (!selectedEvent) {
-                    toast.error("Vui lòng khởi tạo thông tin sự kiện ở Bước 1 trước!");
+                    toast.error(
+                      "Vui lòng khởi tạo thông tin sự kiện ở Bước 1 trước!",
+                    );
                     return;
                   }
                   setActiveTab("seminar");
                 }}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${!selectedEvent ? "opacity-40 cursor-not-allowed" : ""} ${activeTab === "seminar"
-                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                  }`}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${!selectedEvent ? "opacity-40 cursor-not-allowed" : ""} ${
+                  activeTab === "seminar"
+                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                }`}
               >
                 5. Seminar & Thông báo
               </button>
@@ -2292,83 +2545,95 @@ export default function AdminEvents({
             <>
               <button
                 onClick={() => setActiveTab("events")}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "events"
-                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                  }`}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
+                  activeTab === "events"
+                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                }`}
               >
                 Thông tin sự kiện
               </button>
               <button
                 onClick={() => setActiveTab("schedule")}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "schedule"
-                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                  }`}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
+                  activeTab === "schedule"
+                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                }`}
               >
                 Thiết lập thời gian
               </button>
               <button
                 onClick={() => setActiveTab("teams")}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "teams"
-                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                  }`}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
+                  activeTab === "teams"
+                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                }`}
               >
                 Đội thi tham gia
               </button>
               <button
                 onClick={() => setActiveTab("rounds")}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "rounds"
-                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                  }`}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
+                  activeTab === "rounds"
+                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                }`}
               >
                 Vòng thi & Tiêu chí
               </button>
               <button
                 onClick={() => setActiveTab("tracks")}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "tracks"
-                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                  }`}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
+                  activeTab === "tracks"
+                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                }`}
               >
                 Bảng đấu
               </button>
               <button
                 onClick={() => setActiveTab("seminar")}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "seminar"
-                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                  }`}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
+                  activeTab === "seminar"
+                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                }`}
               >
                 Seminar & Thông báo
               </button>
               <button
                 onClick={() => setActiveTab("github")}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${activeTab === "github"
-                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                  }`}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
+                  activeTab === "github"
+                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                }`}
               >
                 <Github size={14} />
                 GitHub & AI Đánh giá
               </button>
               <button
-                onClick={() => { setActiveTab("portal"); setPortalSubTab(null); }}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${activeTab === "portal"
-                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                  }`}
+                onClick={() => {
+                  setActiveTab("portal");
+                  setPortalSubTab(null);
+                }}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
+                  activeTab === "portal"
+                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                }`}
               >
                 Nội dung hiển thị
               </button>
               <button
                 onClick={() => setActiveTab("logs")}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "logs"
-                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                  }`}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
+                  activeTab === "logs"
+                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                }`}
               >
                 Nhật ký hoạt động
               </button>
@@ -2380,10 +2645,11 @@ export default function AdminEvents({
                   }
                   setActiveTab("operations");
                 }}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${!selectedEvent ? "opacity-40 cursor-not-allowed" : ""} ${activeTab === "operations"
-                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                  }`}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${!selectedEvent ? "opacity-40 cursor-not-allowed" : ""} ${
+                  activeTab === "operations"
+                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                }`}
               >
                 Điều hành cuộc thi
               </button>
@@ -2395,7 +2661,6 @@ export default function AdminEvents({
       {/* TAB CONTENT AREAS */}
 
       {/* 1. ADMIN TAB */}
-
 
       {/* 2. EVENTS SETTINGS TAB */}
       {activeTab === "events" && (
@@ -2545,7 +2810,8 @@ export default function AdminEvents({
                       </>
                     ) : (
                       <div className="text-amber-500/85 text-xs font-mono py-2 bg-amber-500/5 px-4 border border-amber-500/10 rounded-xl w-full text-center">
-                        * Bạn đang xem ở chế độ chỉ đọc. Không có quyền thay đổi thông tin cuộc thi.
+                        * Bạn đang xem ở chế độ chỉ đọc. Không có quyền thay đổi
+                        thông tin cuộc thi.
                       </div>
                     )}
                   </div>
@@ -2663,7 +2929,11 @@ export default function AdminEvents({
                       className="bg-cyan-500 hover:bg-cyan-500 font-bold px-6 py-2.5 rounded-xl text-sm transition-all flex items-center gap-2 cursor-pointer font-mono"
                     >
                       <span>
-                        {loading ? "Đang khởi tạo..." : (isWizardMode || selectedEvent === null ? "Khởi tạo & Đến Bước 2: Vòng thi →" : "Khởi tạo Cuộc thi")}
+                        {loading
+                          ? "Đang khởi tạo..."
+                          : isWizardMode || selectedEvent === null
+                            ? "Khởi tạo & Đến Bước 2: Vòng thi →"
+                            : "Khởi tạo Cuộc thi"}
                       </span>
                       <CalendarPlus size={16} />
                     </button>
@@ -2749,7 +3019,9 @@ export default function AdminEvents({
                   type="button"
                   onClick={() => {
                     if (tracks.length === 0) {
-                      toast.error("Vui lòng tạo ít nhất 1 bảng đấu trước khi chuyển sang bước tiếp theo!");
+                      toast.error(
+                        "Vui lòng tạo ít nhất 1 bảng đấu trước khi chuyển sang bước tiếp theo!",
+                      );
                       return;
                     }
                     setWizardStep((prev) => Math.max(prev, 4));
@@ -2865,7 +3137,9 @@ export default function AdminEvents({
                   type="button"
                   onClick={() => {
                     if (rounds.length === 0) {
-                      toast.error("Vui lòng tạo ít nhất 1 vòng thi trước khi chuyển sang bước tiếp theo!");
+                      toast.error(
+                        "Vui lòng tạo ít nhất 1 vòng thi trước khi chuyển sang bước tiếp theo!",
+                      );
                       return;
                     }
                     setWizardStep((prev) => Math.max(prev, 3));
@@ -2915,7 +3189,8 @@ export default function AdminEvents({
                   <span>NHẬT KÝ HOẠT ĐỘNG SỰ KIỆN</span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-1">
-                  Nhật ký lưu lại các thay đổi quan trọng đối với cấu trúc và thiết lập thời gian của sự kiện.
+                  Nhật ký lưu lại các thay đổi quan trọng đối với cấu trúc và
+                  thiết lập thời gian của sự kiện.
                 </p>
               </div>
               <button
@@ -2965,7 +3240,9 @@ export default function AdminEvents({
                             </div>
                             <div className="text-right text-xs whitespace-nowrap text-slate-500 font-mono flex flex-col items-end justify-between">
                               <time dateTime={log.createdAt}>
-                                {new Date(log.createdAt).toLocaleString("vi-VN")}
+                                {new Date(log.createdAt).toLocaleString(
+                                  "vi-VN",
+                                )}
                               </time>
                               <span className="text-cyan-400 opacity-0 group-hover:opacity-100 transition-all text-xs font-mono flex items-center gap-1 mt-1">
                                 <span>Chi tiết</span>
@@ -3004,9 +3281,6 @@ export default function AdminEvents({
                   <Calendar size={16} className="text-cyan-400" />
                   <span>Lịch trình cuộc thi: {selectedEvent.name}</span>
                 </h3>
-                <p className="text-slate-400 text-xs mb-6">
-                  Cấu hình các mốc thời gian để hệ thống tự động cập nhật trạng thái cuộc thi (Registration, Ongoing, Completed).
-                </p>
 
                 <form onSubmit={handleSaveEventSchedule} className="space-y-4">
                   <div>
@@ -3050,7 +3324,9 @@ export default function AdminEvents({
                       min="1"
                       required
                       value={editCommitSyncInterval}
-                      onChange={(e) => setEditCommitSyncInterval(e.target.value)}
+                      onChange={(e) =>
+                        setEditCommitSyncInterval(e.target.value)
+                      }
                       className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
                       placeholder="Nhập số phút..."
                       disabled={readOnly}
@@ -3070,7 +3346,6 @@ export default function AdminEvents({
                   )}
                 </form>
               </div>
-
             </div>
 
             {/* Round Schedule Card */}
@@ -3094,16 +3369,16 @@ export default function AdminEvents({
                     </button>
                   )}
                 </h3>
-                <p className="text-slate-400 text-xs mb-6">
-                  Thiết lập thời gian làm bài (nộp bài) và thời gian chấm bài cho từng vòng thi. Lịch trình sẽ tự động áp dụng cho tất cả bảng đấu thuộc vòng đó.
-                </p>
 
                 {rounds.length === 0 ? (
                   <div className="text-center py-12 text-slate-500 text-xs font-mono">
                     Chưa có vòng thi nào trong cuộc thi này.
                   </div>
                 ) : (
-                  <form onSubmit={handleSaveRoundSchedule} className="space-y-4">
+                  <form
+                    onSubmit={handleSaveRoundSchedule}
+                    className="space-y-4"
+                  >
                     <div>
                       <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 tracking-wider">
                         Chọn vòng thi (Round)
@@ -3111,7 +3386,9 @@ export default function AdminEvents({
                       <CustomSelect
                         value={selectedRoundForSchedule?._id || ""}
                         onChange={(val) => {
-                          const r = rounds.find((round: any) => round._id === val);
+                          const r = rounds.find(
+                            (round: any) => round._id === val,
+                          );
                           handleSelectRoundForSchedule(r);
                         }}
                         options={rounds.map((r: any) => ({
@@ -3163,11 +3440,12 @@ export default function AdminEvents({
                               disabled={loading}
                               className="w-full bg-cyan-500 hover:bg-cyan-600 disabled:bg-slate-800 text-white font-bold text-xs py-3 rounded-xl transition-all uppercase tracking-wider cursor-pointer shadow-lg shadow-cyan-500/20"
                             >
-                              {loading ? "Đang lưu..." : "Lưu lịch trình vòng thi"}
+                              {loading
+                                ? "Đang lưu..."
+                                : "Lưu lịch trình vòng thi"}
                             </button>
                           </div>
                         )}
-
                       </>
                     )}
                   </form>
@@ -3198,7 +3476,8 @@ export default function AdminEvents({
           </div>
         ) : (
           <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">
-            Vui lòng chọn cuộc thi từ thanh tiêu đề hoặc trang Quản trị viên để thiết lập thời gian.
+            Vui lòng chọn cuộc thi từ thanh tiêu đề hoặc trang Quản trị viên để
+            thiết lập thời gian.
           </div>
         ))}
 
@@ -3227,7 +3506,8 @@ export default function AdminEvents({
                         Nội dung hiển thị trong trang thí sinh
                       </h4>
                       <p className="text-slate-400 text-xs leading-relaxed max-w-xs">
-                        Chỉnh sửa thông tin chung, mục tiêu, quy định và mô tả các giai đoạn cho Guest Portal.
+                        Chỉnh sửa thông tin chung, mục tiêu, quy định và mô tả
+                        các giai đoạn cho Guest Portal.
                       </p>
                     </div>
 
@@ -3243,7 +3523,8 @@ export default function AdminEvents({
                         Lịch trình cuộc thi
                       </h4>
                       <p className="text-slate-400 text-xs leading-relaxed max-w-xs">
-                        Thiết lập các mốc thời gian chi tiết của sự kiện hiển thị trên Landing Page.
+                        Thiết lập các mốc thời gian chi tiết của sự kiện hiển
+                        thị trên Landing Page.
                       </p>
                     </div>
                   </div>
@@ -3260,12 +3541,17 @@ export default function AdminEvents({
                         <span>Nội dung hiển thị trang thí sinh:</span>
                       </h3>
                       <p className="text-slate-400 text-xs mt-1">
-                        Chỉnh sửa các nội dung hiển thị cho thí sinh trên trang chủ Guest Portal (Thông tin, Lộ trình, Quy định cuộc thi).
+                        Chỉnh sửa các nội dung hiển thị cho thí sinh trên trang
+                        chủ Guest Portal (Thông tin, Lộ trình, Quy định cuộc
+                        thi).
                       </p>
                     </div>
                   </div>
 
-                  <form onSubmit={handleSavePortalContent} className="space-y-6">
+                  <form
+                    onSubmit={handleSavePortalContent}
+                    className="space-y-6"
+                  >
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Left Column: General info */}
                       <div className="space-y-4">
@@ -3293,7 +3579,9 @@ export default function AdminEvents({
                               type="text"
                               required
                               value={editDurationText}
-                              onChange={(e) => setEditDurationText(e.target.value)}
+                              onChange={(e) =>
+                                setEditDurationText(e.target.value)
+                              }
                               className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
                               placeholder="48 GIỜ"
                               disabled={readOnly}
@@ -3307,7 +3595,9 @@ export default function AdminEvents({
                               type="text"
                               required
                               value={editMemberLimitText}
-                              onChange={(e) => setEditMemberLimitText(e.target.value)}
+                              onChange={(e) =>
+                                setEditMemberLimitText(e.target.value)
+                              }
                               className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
                               placeholder="2-4 OPERATORS"
                               disabled={readOnly}
@@ -3321,7 +3611,9 @@ export default function AdminEvents({
                               type="text"
                               required
                               value={editPrizePoolText}
-                              onChange={(e) => setEditPrizePoolText(e.target.value)}
+                              onChange={(e) =>
+                                setEditPrizePoolText(e.target.value)
+                              }
                               className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
                               placeholder="$50,000 USD"
                               disabled={readOnly}
@@ -3337,7 +3629,9 @@ export default function AdminEvents({
                             rows={3}
                             required
                             value={editPhase1Description}
-                            onChange={(e) => setEditPhase1Description(e.target.value)}
+                            onChange={(e) =>
+                              setEditPhase1Description(e.target.value)
+                            }
                             className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
                             placeholder="Mô tả giai đoạn đăng ký..."
                             disabled={readOnly}
@@ -3352,7 +3646,9 @@ export default function AdminEvents({
                             rows={3}
                             required
                             value={editPhase2Description}
-                            onChange={(e) => setEditPhase2Description(e.target.value)}
+                            onChange={(e) =>
+                              setEditPhase2Description(e.target.value)
+                            }
                             className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
                             placeholder="Mô tả giai đoạn thi đấu..."
                             disabled={readOnly}
@@ -3367,7 +3663,9 @@ export default function AdminEvents({
                             rows={3}
                             required
                             value={editPhase3Description}
-                            onChange={(e) => setEditPhase3Description(e.target.value)}
+                            onChange={(e) =>
+                              setEditPhase3Description(e.target.value)
+                            }
                             className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
                             placeholder="Mô tả giai đoạn tổng kết..."
                             disabled={readOnly}
@@ -3383,9 +3681,14 @@ export default function AdminEvents({
 
                         <div className="space-y-4 max-h-[480px] overflow-y-auto pr-2 custom-scrollbar">
                           {editRules.map((rule, idx) => (
-                            <div key={idx} className="border border-slate-800 p-4 rounded-xl space-y-3 bg-slate-900/30 animate-fadeIn">
+                            <div
+                              key={idx}
+                              className="border border-slate-800 p-4 rounded-xl space-y-3 bg-slate-900/30 animate-fadeIn"
+                            >
                               <div className="flex justify-between items-center">
-                                <span className="text-[10px] font-bold text-cyan-400 font-mono">Quy định #{idx + 1}</span>
+                                <span className="text-[10px] font-bold text-cyan-400 font-mono">
+                                  Quy định #{idx + 1}
+                                </span>
                                 {!readOnly && (
                                   <button
                                     type="button"
@@ -3408,7 +3711,10 @@ export default function AdminEvents({
                                   placeholder="Tiêu đề quy định"
                                   onChange={(e) => {
                                     const updated = [...editRules];
-                                    updated[idx] = { ...updated[idx], title: e.target.value };
+                                    updated[idx] = {
+                                      ...updated[idx],
+                                      title: e.target.value,
+                                    };
                                     setEditRules(updated);
                                   }}
                                   className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
@@ -3421,7 +3727,10 @@ export default function AdminEvents({
                                   rows={2}
                                   onChange={(e) => {
                                     const updated = [...editRules];
-                                    updated[idx] = { ...updated[idx], description: e.target.value };
+                                    updated[idx] = {
+                                      ...updated[idx],
+                                      description: e.target.value,
+                                    };
                                     setEditRules(updated);
                                   }}
                                   className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
@@ -3433,7 +3742,12 @@ export default function AdminEvents({
                           {!readOnly && (
                             <button
                               type="button"
-                              onClick={() => setEditRules([...editRules, { title: "", description: "" }])}
+                              onClick={() =>
+                                setEditRules([
+                                  ...editRules,
+                                  { title: "", description: "" },
+                                ])
+                              }
                               className="w-full py-2 border border-dashed border-slate-700 rounded-xl text-slate-400 text-xs hover:text-cyan-400 hover:border-cyan-500/50 transition-colors font-mono cursor-pointer"
                             >
                               + Thêm quy định mới
@@ -3475,35 +3789,50 @@ export default function AdminEvents({
                         <span>Lịch trình cuộc thi: {selectedEvent.name}</span>
                       </h3>
                       <p className="text-slate-400 text-xs mt-1">
-                        Cài đặt lịch trình chi tiết hiển thị trên Landing Page thay vì các mốc thời gian kỹ thuật của hệ thống.
+                        Cài đặt lịch trình chi tiết hiển thị trên Landing Page
+                        thay vì các mốc thời gian kỹ thuật của hệ thống.
                       </p>
                     </div>
                   </div>
 
-                  <form onSubmit={handleSaveCustomTimeline} className="space-y-6">
+                  <form
+                    onSubmit={handleSaveCustomTimeline}
+                    className="space-y-6"
+                  >
                     {/* List of current custom milestones */}
                     <div>
                       <label className="block text-[10px] font-bold uppercase text-slate-400 mb-2 tracking-wider font-mono">
-                        Các mốc lịch trình hiện tại ({editCustomTimeline.length})
+                        Các mốc lịch trình hiện tại ({editCustomTimeline.length}
+                        )
                       </label>
                       <div className="space-y-3 mb-6 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                         {editCustomTimeline.length === 0 ? (
                           <div className="border border-dashed border-slate-800 p-8 rounded-xl text-center text-slate-500 text-xs font-mono bg-slate-900/10">
-                            Chưa có mốc lịch trình tùy chỉnh nào. Hãy thêm mốc mới bên dưới hoặc sử dụng lịch trình hệ thống mặc định.
+                            Chưa có mốc lịch trình tùy chỉnh nào. Hãy thêm mốc
+                            mới bên dưới hoặc sử dụng lịch trình hệ thống mặc
+                            định.
                           </div>
                         ) : (
                           editCustomTimeline.map((item, idx) => (
-                            <div key={idx} className="flex gap-4 items-center justify-between border border-slate-800 p-4 rounded-xl bg-slate-900/30 animate-fadeIn">
+                            <div
+                              key={idx}
+                              className="flex gap-4 items-center justify-between border border-slate-800 p-4 rounded-xl bg-slate-900/30 animate-fadeIn"
+                            >
                               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                  <span className="text-[10px] text-slate-500 font-mono block mb-1">MỐC THỜI GIAN</span>
+                                  <span className="text-[10px] text-slate-500 font-mono block mb-1">
+                                    MỐC THỜI GIAN
+                                  </span>
                                   <input
                                     type="text"
                                     required
                                     value={item.time}
                                     onChange={(e) => {
                                       const updated = [...editCustomTimeline];
-                                      updated[idx] = { ...updated[idx], time: e.target.value };
+                                      updated[idx] = {
+                                        ...updated[idx],
+                                        time: e.target.value,
+                                      };
                                       setEditCustomTimeline(updated);
                                     }}
                                     className="w-full bg-slate-900/80 border border-slate-700 hover:border-[#F27024]/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#F27024]/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
@@ -3511,14 +3840,19 @@ export default function AdminEvents({
                                   />
                                 </div>
                                 <div>
-                                  <span className="text-[10px] text-slate-500 font-mono block mb-1">HOẠT ĐỘNG CHÍNH</span>
+                                  <span className="text-[10px] text-slate-500 font-mono block mb-1">
+                                    HOẠT ĐỘNG CHÍNH
+                                  </span>
                                   <input
                                     type="text"
                                     required
                                     value={item.title}
                                     onChange={(e) => {
                                       const updated = [...editCustomTimeline];
-                                      updated[idx] = { ...updated[idx], title: e.target.value };
+                                      updated[idx] = {
+                                        ...updated[idx],
+                                        title: e.target.value,
+                                      };
                                       setEditCustomTimeline(updated);
                                     }}
                                     className="w-full bg-slate-900/80 border border-slate-700 hover:border-[#F27024]/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#F27024]/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
@@ -3556,7 +3890,9 @@ export default function AdminEvents({
                             <input
                               type="text"
                               value={newMilestoneTime}
-                              onChange={(e) => setNewMilestoneTime(e.target.value)}
+                              onChange={(e) =>
+                                setNewMilestoneTime(e.target.value)
+                              }
                               placeholder="Ví dụ: 20h00 - 21h30 ngày 13/8/2026 (online)"
                               className="w-full bg-slate-900 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono"
                             />
@@ -3568,7 +3904,9 @@ export default function AdminEvents({
                             <input
                               type="text"
                               value={newMilestoneTitle}
-                              onChange={(e) => setNewMilestoneTitle(e.target.value)}
+                              onChange={(e) =>
+                                setNewMilestoneTitle(e.target.value)
+                              }
                               placeholder="Ví dụ: Workshop training..."
                               className="w-full bg-slate-900 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono"
                             />
@@ -3610,7 +3948,8 @@ export default function AdminEvents({
           </div>
         ) : (
           <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">
-            Vui lòng chọn cuộc thi từ thanh tiêu đề hoặc trang Quản trị viên để thiết lập nội dung Portal.
+            Vui lòng chọn cuộc thi từ thanh tiêu đề hoặc trang Quản trị viên để
+            thiết lập nội dung Portal.
           </div>
         ))}
 
@@ -3625,15 +3964,17 @@ export default function AdminEvents({
           onCompleteWizard={() => {
             sessionStorage.removeItem("creatingEventId");
             setIsWizardMode(false);
-            toast.success("Chúc mừng! Bạn đã hoàn tất toàn bộ các bước khởi tạo cuộc thi mới!");
+            toast.success(
+              "Chúc mừng! Bạn đã hoàn tất toàn bộ các bước khởi tạo cuộc thi mới!",
+            );
             setActiveTab("events");
           }}
         />
       )}
 
       {/* 11. OPERATIONS TAB */}
-      {activeTab === "operations" && (
-        selectedEvent ? (
+      {activeTab === "operations" &&
+        (selectedEvent ? (
           <OperationsTab
             selectedEvent={selectedEvent}
             rounds={rounds}
@@ -3650,10 +3991,10 @@ export default function AdminEvents({
           />
         ) : (
           <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">
-            Vui lòng chọn cuộc thi từ thanh tiêu đề hoặc trang Quản trị viên để điều hành.
+            Vui lòng chọn cuộc thi từ thanh tiêu đề hoặc trang Quản trị viên để
+            điều hành.
           </div>
-        )
-      )}
+        ))}
 
       {/* DETAIL EVENT LOG MODAL */}
       {selectedLog && (
@@ -3665,7 +4006,10 @@ export default function AdminEvents({
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
               <div className="flex items-center gap-2">
-                <Activity className="text-cyan-400 shrink-0 animate-pulse" size={20} />
+                <Activity
+                  className="text-cyan-400 shrink-0 animate-pulse"
+                  size={20}
+                />
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
                   Chi tiết Nhật ký Hoạt động
                 </h3>
@@ -3682,21 +4026,35 @@ export default function AdminEvents({
             <div className="space-y-4">
               {/* Action Badge */}
               <div className="flex justify-between items-center bg-slate-900/50 p-3 rounded-xl border border-slate-800/50">
-                <span className="text-xs text-slate-400 font-mono">Loại hành động:</span>
-                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold font-mono tracking-wide ${selectedLog.action.includes('event') ? 'bg-blue-500/10 border border-blue-500/30 text-blue-400' :
-                  selectedLog.action.includes('role') ? 'bg-purple-500/10 border border-purple-500/30 text-purple-400' :
-                    selectedLog.action.includes('track') || selectedLog.action.includes('team') ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' :
-                      selectedLog.action.includes('rubric') || selectedLog.action.includes('criterion') ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400' :
-                        selectedLog.action.includes('results') ? 'bg-rose-500/10 border border-rose-500/30 text-rose-400' :
-                          'bg-slate-500/10 border border-slate-500/30 text-slate-400'
-                  }`}>
+                <span className="text-xs text-slate-400 font-mono">
+                  Loại hành động:
+                </span>
+                <span
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold font-mono tracking-wide ${
+                    selectedLog.action.includes("event")
+                      ? "bg-blue-500/10 border border-blue-500/30 text-blue-400"
+                      : selectedLog.action.includes("role")
+                        ? "bg-purple-500/10 border border-purple-500/30 text-purple-400"
+                        : selectedLog.action.includes("track") ||
+                            selectedLog.action.includes("team")
+                          ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400"
+                          : selectedLog.action.includes("rubric") ||
+                              selectedLog.action.includes("criterion")
+                            ? "bg-amber-500/10 border border-amber-500/30 text-amber-400"
+                            : selectedLog.action.includes("results")
+                              ? "bg-rose-500/10 border border-rose-500/30 text-rose-400"
+                              : "bg-slate-500/10 border border-slate-500/30 text-slate-400"
+                  }`}
+                >
                   {selectedLog.action}
                 </span>
               </div>
 
               {/* Action Description */}
               <div className="space-y-1">
-                <span className="text-xs text-slate-400 font-mono">Mô tả hoạt động:</span>
+                <span className="text-xs text-slate-400 font-mono">
+                  Mô tả hoạt động:
+                </span>
                 <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800/80 text-sm text-white font-medium leading-relaxed">
                   {selectedLog.details}
                 </div>
@@ -3704,7 +4062,9 @@ export default function AdminEvents({
 
               {/* Actor Info */}
               <div className="space-y-1">
-                <span className="text-xs text-slate-400 font-mono">Thực hiện bởi:</span>
+                <span className="text-xs text-slate-400 font-mono">
+                  Thực hiện bởi:
+                </span>
                 <div className="flex items-center gap-3 bg-slate-900/50 p-3 rounded-xl border border-slate-800/50">
                   <div className="h-10 w-10 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center text-cyan-400 font-bold font-mono">
                     <User size={18} />
@@ -3722,7 +4082,9 @@ export default function AdminEvents({
 
               {/* Time */}
               <div className="flex justify-between items-center bg-slate-900/50 p-3 rounded-xl border border-slate-800/50">
-                <span className="text-xs text-slate-400 font-mono">Thời gian thực hiện:</span>
+                <span className="text-xs text-slate-400 font-mono">
+                  Thời gian thực hiện:
+                </span>
                 <span className="text-xs text-slate-300 font-mono">
                   {new Date(selectedLog.createdAt).toLocaleString("vi-VN")}
                 </span>

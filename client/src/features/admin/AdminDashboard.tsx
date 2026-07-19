@@ -247,7 +247,7 @@ export default function AdminDashboard() {
                         <div className="flex-1 min-w-0 pt-1.5 flex justify-between space-x-4">
                           <div>
                             <p className="text-sm text-slate-200">
-                              <span className="text-cyan-405 font-bold font-mono mr-2 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20 text-[10px]">
+                              <span className="text-cyan-400 font-bold font-mono mr-2 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20 text-[10px]">
                                 {log.eventId?.name || "HỆ THỐNG"}
                               </span>
                               {log.details}{" "}

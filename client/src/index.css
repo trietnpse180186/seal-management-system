@@ -1144,3 +1144,91 @@ body {
 .coordinator-light-theme .absolute.right-0.mt-2.w-80 .text-cyan-300 {
   color: #f27024 !important;
 }
+
+/* Glass logs panel overrides */
+.coordinator-light-theme .glass {
+  background: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02) !important;
+}
+
+/* Log items & timeline override */
+.coordinator-light-theme .text-slate-200 {
+  color: #334155 !important; /* slate-700 for logs */
+}
+
+.coordinator-light-theme span.bg-slate-800 {
+  background-color: #cbd5e1 !important; /* timeline line color */
+}
+
+.coordinator-light-theme .h-8.w-8.rounded-full.bg-slate-950 {
+  background-color: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 0 0 8px rgba(0, 0, 0, 0.02) !important;
+}
+
+.coordinator-light-theme .ring-slate-900\/50 {
+  --tw-ring-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+.coordinator-light-theme .hover\:bg-slate-800\/30:hover {
+  background-color: rgba(242, 112, 36, 0.04) !important; /* light orange hover tint */
+}
+
+/* Inactive filter buttons wrapper in logs */
+.coordinator-light-theme .flex.bg-slate-900\/60 {
+  background-color: #f1f5f9 !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+.coordinator-light-theme .flex.bg-slate-900\/60 button {
+  color: #64748b !important; /* slate-500 */
+}
+
+.coordinator-light-theme .flex.bg-slate-900\/60 button:hover {
+  color: #1e293b !important; /* slate-800 */
+}
+
+/* Sidebar log out button override */
+.coordinator-light-theme aside button.bg-rose-500\/10 {
+  background-color: rgba(239, 68, 68, 0.08) !important;
+  color: #ef4444 !important;
+  border-color: rgba(239, 68, 68, 0.15) !important;
+  box-shadow: none !important;
+}
+
+.coordinator-light-theme aside button.bg-rose-500\/10:hover {
+  background-color: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+/* Log Category Badges */
+.coordinator-light-theme .bg-rose-500\/10 {
+  background-color: rgba(239, 68, 68, 0.08) !important;
+  color: #dc2626 !important;
+  border-color: rgba(239, 68, 68, 0.2) !important;
+  box-shadow: none !important;
+}
+
+.coordinator-light-theme .bg-purple-500\/10 {
+  background-color: rgba(168, 85, 247, 0.08) !important;
+  color: #7c3aed !important;
+  border-color: rgba(168, 85, 247, 0.2) !important;
+  box-shadow: none !important;
+}
+
+.coordinator-light-theme .bg-amber-500\/10 {
+  background-color: rgba(245, 158, 11, 0.08) !important;
+  color: #b45309 !important;
+  border-color: rgba(245, 158, 11, 0.2) !important;
+  box-shadow: none !important;
+}
+
+.coordinator-light-theme .bg-emerald-500\/10 {
+  background-color: rgba(16, 185, 129, 0.08) !important;
+  color: #059669 !important;
+  border-color: rgba(16, 185, 129, 0.2) !important;
+  box-shadow: none !important;
+}

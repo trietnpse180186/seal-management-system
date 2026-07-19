@@ -1278,3 +1278,91 @@ body {
   background-color: rgba(242, 112, 36, 0.08) !important;
   color: #e05e1b !important;
 }
+
+/* Dark alerts / note blocks override */
+.coordinator-light-theme .bg-slate-955\/80,
+.coordinator-light-theme .bg-slate-950\/80,
+.coordinator-light-theme .bg-slate-955 {
+  background-color: #f8fafc !important; /* light slate background */
+  border-color: #cbd5e1 !important;
+  color: #475569 !important; /* slate-600 */
+}
+
+.coordinator-light-theme .bg-slate-955\/80 .text-slate-300,
+.coordinator-light-theme .bg-slate-950\/80 .text-slate-300,
+.coordinator-light-theme .bg-slate-955 .text-slate-350,
+.coordinator-light-theme .bg-slate-955\/80 .text-slate-400,
+.coordinator-light-theme .bg-slate-955\/80 div,
+.coordinator-light-theme .bg-slate-950\/80 .text-slate-400 {
+  color: #334155 !important;
+}
+
+/* Inactive track items in TracksTab */
+.coordinator-light-theme .border-slate-800\/80.bg-slate-900\/10 {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+.coordinator-light-theme .border-slate-800\/80.bg-slate-900\/10:hover {
+  border-color: rgba(242, 112, 36, 0.3) !important;
+  background-color: #f8fafc !important;
+}
+
+.coordinator-light-theme .border-slate-800\/80.bg-slate-900\/10 button span {
+  color: #334155 !important;
+}
+
+.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50 {
+  background-color: rgba(242, 112, 36, 0.08) !important;
+  border-color: rgba(242, 112, 36, 0.4) !important;
+  color: #f27024 !important;
+}
+
+.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50 span {
+  color: #f27024 !important;
+}
+
+/* Warning / info boxes (Drive warnings) */
+.coordinator-light-theme .bg-amber-955\/20,
+.coordinator-light-theme .bg-amber-950\/20 {
+  background-color: rgba(245, 158, 11, 0.08) !important; /* soft amber background */
+  border-color: rgba(245, 158, 11, 0.25) !important;
+}
+
+.coordinator-light-theme .bg-amber-955\/20 p.text-amber-400,
+.coordinator-light-theme .bg-amber-950\/20 p.text-amber-400 {
+  color: #b45309 !important; /* dark amber text */
+}
+
+/* Pending team card in TeamsTab */
+.coordinator-light-theme .bg-slate-900\/10.border-slate-800\/40 {
+  background-color: #f1f5f9 !important; /* light slate background for pending */
+  border-color: #cbd5e1 !important;
+}
+
+.coordinator-light-theme .bg-slate-900\/10.border-slate-800\/40 h5.text-slate-400 {
+  color: #334155 !important; /* dark text for team name */
+}
+
+.coordinator-light-theme .bg-slate-900\/10.border-slate-800\/40 span.bg-slate-800 {
+  background-color: #e2e8f0 !important;
+  color: #64748b !important;
+}
+
+.coordinator-light-theme .bg-slate-900\/10.border-slate-800\/40 span.text-slate-400 {
+  color: #475569 !important;
+}
+
+/* Confirmed team cards border */
+.coordinator-light-theme .border-slate-800 {
+  border-color: #cbd5e1 !important;
+}
+
+.coordinator-light-theme .border-slate-800\/80 {
+  border-color: #cbd5e1 !important;
+}
+
+.coordinator-light-theme .hover\:border-slate-700:hover {
+  border-color: rgba(242, 112, 36, 0.4) !important;
+}

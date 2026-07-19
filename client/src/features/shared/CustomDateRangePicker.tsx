@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
 import ReactDOM from "react-dom";
 import { Calendar, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
+import { useLocation } from "react-router-dom";
 
 interface CustomDateRangePickerProps {
   startValue: string; // YYYY-MM-DDTHH:MM
@@ -77,6 +78,8 @@ function TimeSelect({
   disabledOptions?: number[];
 }) {
   const listRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+  const usesLightShell = location.pathname === '/' || location.pathname === '/team-area' || location.pathname === '/register-team' || location.pathname === '/login' || location.pathname === '/achievements' || location.pathname === '/guest-portal' || location.pathname.startsWith('/admin');
 
   // Scroll selected item into center on mount/value change
   useEffect(() => {
@@ -91,7 +94,11 @@ function TimeSelect({
   return (
     <div
       ref={listRef}
-      className="w-16 h-[128px] overflow-y-auto scrollbar-none bg-slate-900 border border-slate-700 rounded-lg"
+      className={`w-16 h-[128px] overflow-y-auto scrollbar-none border rounded-lg ${
+        usesLightShell
+          ? "bg-white border-slate-200 text-slate-800"
+          : "bg-slate-900 border border-slate-700 text-slate-400"
+      }`}
       style={{ scrollbarWidth: "none" }}
     >
       {options.map((o) => {
@@ -105,9 +112,15 @@ function TimeSelect({
             onClick={() => onChange(o)}
             className={`w-full h-8 flex items-center justify-center text-xs font-mono font-semibold transition-all ${
               isDisabled
-                ? "text-slate-800 opacity-20 cursor-not-allowed"
+                ? usesLightShell
+                  ? "text-slate-300 opacity-40 cursor-not-allowed"
+                  : "text-slate-800 opacity-20 cursor-not-allowed"
                 : active
-                ? "bg-cyan-500 text-slate-950 font-bold cursor-pointer"
+                ? usesLightShell
+                  ? "bg-[#F27024] text-white font-bold cursor-pointer"
+                  : "bg-cyan-500 text-slate-955 font-bold cursor-pointer"
+                : usesLightShell
+                ? "text-slate-600 hover:bg-slate-100 hover:text-[#F27024] cursor-pointer"
                 : "text-slate-400 hover:bg-slate-800 hover:text-white cursor-pointer"
             }`}
           >
@@ -118,7 +131,6 @@ function TimeSelect({
     </div>
   );
 }
-
 
 export default function CustomDateRangePicker({
   startValue,
@@ -135,6 +147,8 @@ export default function CustomDateRangePicker({
   const triggerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
+  const location = useLocation();
+  const usesLightShell = location.pathname === '/' || location.pathname === '/team-area' || location.pathname === '/register-team' || location.pathname === '/login' || location.pathname === '/achievements' || location.pathname === '/guest-portal' || location.pathname.startsWith('/admin');
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
@@ -390,8 +404,6 @@ export default function CustomDateRangePicker({
     setIsOpen(false);
   };
 
-
-
   const handleToday = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
     const now = new Date();
@@ -546,7 +558,11 @@ export default function CustomDateRangePicker({
     <div
       ref={popoverRef}
       style={popoverStyle}
-      className="bg-[#0d1117] border border-slate-800 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.9)] flex overflow-hidden animate-fadeIn"
+      className={`border rounded-2xl flex overflow-hidden animate-fadeIn ${
+        usesLightShell
+          ? "bg-white border-slate-200 shadow-[0_10px_40px_rgba(0,0,0,0.08)] text-slate-800"
+          : "bg-[#0d1117] border border-slate-800 shadow-[0_20px_60px_rgba(0,0,0,0.9)] text-slate-350"
+      }`}
     >
       {/* LEFT: Calendar */}
       <div className="p-5 flex flex-col" style={{ width: 280 }}>
@@ -555,17 +571,27 @@ export default function CustomDateRangePicker({
           <button
             type="button"
             onClick={(e) => { e.preventDefault(); setCurrentMonth(new Date(year, month - 1, 1)); }}
-            className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-cyan-400 hover:bg-slate-800 transition-all cursor-pointer"
+            className={`w-7 h-7 flex items-center justify-center rounded-md transition-all cursor-pointer ${
+              usesLightShell 
+                ? "text-slate-600 hover:text-[#F27024] hover:bg-slate-100" 
+                : "text-slate-400 hover:text-cyan-400 hover:bg-slate-800"
+            }`}
           >
             <ChevronLeft size={16} />
           </button>
-          <span className="text-sm font-bold text-white font-mono tracking-widest uppercase">
+          <span className={`text-sm font-bold font-mono tracking-widest uppercase ${
+            usesLightShell ? "text-slate-800" : "text-white"
+          }`}>
             {MONTHS[month]} {year}
           </span>
           <button
             type="button"
             onClick={(e) => { e.preventDefault(); setCurrentMonth(new Date(year, month + 1, 1)); }}
-            className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-cyan-400 hover:bg-slate-800 transition-all cursor-pointer"
+            className={`w-7 h-7 flex items-center justify-center rounded-md transition-all cursor-pointer ${
+              usesLightShell 
+                ? "text-slate-600 hover:text-[#F27024] hover:bg-slate-100" 
+                : "text-slate-400 hover:text-cyan-400 hover:bg-slate-800"
+            }`}
           >
             <ChevronRight size={16} />
           </button>
@@ -593,17 +619,25 @@ export default function CustomDateRangePicker({
             let cellClass = "relative flex items-center justify-center text-[12px] font-mono h-9 transition-all ";
 
             if (past) {
-              cellClass += "text-slate-700 cursor-not-allowed ";
+              cellClass += usesLightShell ? "text-slate-350 cursor-not-allowed " : "text-slate-700 cursor-not-allowed ";
             } else if (isStart || isEnd) {
               cellClass += "cursor-pointer z-10 ";
             } else if (inRange) {
-              cellClass += "bg-cyan-500/10 cursor-pointer text-cyan-200 ";
+              cellClass += usesLightShell
+                ? "bg-[#F27024]/10 cursor-pointer text-[#F27024] "
+                : "bg-cyan-500/10 cursor-pointer text-cyan-200 ";
             } else if (!cell.isCurrentMonth) {
-              cellClass += "text-slate-600 cursor-pointer hover:text-slate-400 ";
+              cellClass += usesLightShell
+                ? "text-slate-350 cursor-pointer hover:text-slate-500 "
+                : "text-slate-600 cursor-pointer hover:text-slate-400 ";
             } else if (isToday) {
-              cellClass += "text-cyan-400 cursor-pointer hover:bg-slate-800 rounded-lg ";
+              cellClass += usesLightShell
+                ? "text-[#F27024] cursor-pointer hover:bg-slate-100 rounded-lg "
+                : "text-cyan-400 cursor-pointer hover:bg-slate-800 rounded-lg ";
             } else {
-              cellClass += "text-slate-300 cursor-pointer hover:bg-slate-800 hover:text-white rounded-lg ";
+              cellClass += usesLightShell
+                ? "text-slate-700 cursor-pointer hover:bg-slate-100 hover:text-[#F27024] rounded-lg "
+                : "text-slate-300 cursor-pointer hover:bg-slate-800 hover:text-white rounded-lg ";
             }
 
             return (
@@ -616,15 +650,19 @@ export default function CustomDateRangePicker({
               >
                 {/* Range highlight background strip */}
                 {inRange && (
-                  <span className="absolute inset-y-0 inset-x-0 bg-cyan-500/10" />
+                  <span className={`absolute inset-y-0 inset-x-0 ${usesLightShell ? 'bg-[#F27024]/10' : 'bg-cyan-500/10'}`} />
                 )}
                 {/* Dot for today */}
                 {isToday && !isStart && !isEnd && (
-                  <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-cyan-400" />
+                  <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ${usesLightShell ? 'bg-[#F27024]' : 'bg-cyan-400'}`} />
                 )}
                 {/* Selected circle */}
                 {(isStart || isEnd) ? (
-                  <span className={`w-8 h-8 rounded-full bg-cyan-500 flex items-center justify-center text-slate-950 font-bold shadow-[0_0_12px_rgba(0,240,255,0.4)] z-10 relative ${!bothSame && isStart ? 'rounded-r-full' : ''} ${!bothSame && isEnd ? 'rounded-l-full' : ''}`}>
+                  <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold z-10 relative ${
+                    usesLightShell
+                      ? 'bg-[#F27024] text-white shadow-[0_0_12px_rgba(242,112,36,0.35)]'
+                      : 'bg-cyan-500 text-slate-950 font-bold shadow-[0_0_12px_rgba(0,240,255,0.4)]'
+                  } ${!bothSame && isStart ? 'rounded-r-full' : ''} ${!bothSame && isEnd ? 'rounded-l-full' : ''}`}>
                     {cell.day}
                   </span>
                 ) : (
@@ -642,7 +680,7 @@ export default function CustomDateRangePicker({
       </div>
 
       {/* Divider */}
-      <div className="w-px bg-slate-800 my-4" />
+      <div className={`w-px my-4 ${usesLightShell ? 'bg-slate-200' : 'bg-slate-800'}`} />
 
       {/* RIGHT: Time pickers */}
       <div className="flex-1 p-5 flex flex-col justify-between">
@@ -650,7 +688,7 @@ export default function CustomDateRangePicker({
         <div className="flex items-start gap-0">
           {/* Start time */}
           <div className="flex-1">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 font-mono">
               Giờ bắt đầu
             </div>
             <div className="flex items-center gap-1.5">
@@ -669,14 +707,14 @@ export default function CustomDateRangePicker({
 
           {/* Arrow divider */}
           <div className="flex flex-col items-center justify-center self-stretch px-3">
-            <div className="w-px flex-1 bg-slate-800" />
-            <ArrowRight size={13} className="text-slate-600 my-2 shrink-0" />
-            <div className="w-px flex-1 bg-slate-800" />
+            <div className={`w-px flex-1 ${usesLightShell ? 'bg-slate-200' : 'bg-slate-800'}`} />
+            <ArrowRight size={13} className="text-slate-500 my-2 shrink-0" />
+            <div className={`w-px flex-1 ${usesLightShell ? 'bg-slate-200' : 'bg-slate-800'}`} />
           </div>
 
           {/* End time */}
           <div className="flex-1">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 font-mono">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 font-mono">
               Giờ kết thúc
             </div>
             <div className="flex items-center gap-1.5">
@@ -705,7 +743,11 @@ export default function CustomDateRangePicker({
             <button
               type="button"
               onClick={handleToday}
-              className="flex-1 py-2 rounded-xl border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/10 text-xs font-bold uppercase tracking-wider font-mono transition-all cursor-pointer"
+              className={`flex-1 py-2 rounded-xl border text-xs font-bold uppercase tracking-wider font-mono transition-all cursor-pointer ${
+                usesLightShell
+                  ? "border-[#F27024]/40 text-[#F27024] hover:bg-[#F27024]/10"
+                  : "border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/10"
+              }`}
             >
               Hôm nay
             </button>
@@ -713,7 +755,11 @@ export default function CustomDateRangePicker({
               type="button"
               onClick={handleConfirm}
               disabled={!startDate || !endDate || !!validationError}
-              className="flex-1 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold uppercase tracking-wider font-mono transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_16px_rgba(0,240,255,0.25)]"
+              className={`flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-wider font-mono transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${
+                usesLightShell
+                  ? "bg-[#F27024] hover:bg-[#e05e1b] text-white shadow-[0_0_16px_rgba(242,112,36,0.25)]"
+                  : "bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-[0_0_16px_rgba(0,240,255,0.25)]"
+              }`}
             >
               Xác nhận
             </button>
@@ -729,24 +775,32 @@ export default function CustomDateRangePicker({
       <div
         ref={triggerRef}
         onClick={() => !disabled && setIsOpen((v) => !v)}
-        className={`w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white flex items-center justify-between cursor-pointer select-none transition-all ${
-          disabled ? "opacity-50 cursor-not-allowed" : ""
-        } ${isOpen ? "border-cyan-500/80 shadow-[0_0_10px_rgba(0,240,255,0.1)]" : ""}`}
+        className={`w-full border rounded-xl px-4 py-2.5 text-xs flex items-center justify-between cursor-pointer select-none transition-all ${
+          usesLightShell
+            ? "bg-white border-slate-300 hover:border-[#F27024] text-slate-800"
+            : "bg-slate-900/80 border-slate-700 hover:border-cyan-500/50 text-white"
+        } ${disabled ? "opacity-50 cursor-not-allowed" : ""} ${
+          isOpen
+            ? usesLightShell
+              ? "border-[#F27024] shadow-[0_0_10px_rgba(242,112,36,0.15)]"
+              : "border-cyan-500/80 shadow-[0_0_10px_rgba(0,240,255,0.1)]"
+            : ""
+        }`}
       >
         <span className="flex items-center gap-2 font-mono">
           {startValue ? (
-            <span className="text-white">{displayFormat(startValue)}</span>
+            <span className={usesLightShell ? "text-slate-800" : "text-white"}>{displayFormat(startValue)}</span>
           ) : (
-            <span className="text-slate-500">{startLabel}...</span>
+            <span className={usesLightShell ? "text-slate-400" : "text-slate-500"}>{startLabel}...</span>
           )}
-          <ArrowRight size={12} className="text-slate-500 shrink-0" />
+          <ArrowRight size={12} className={usesLightShell ? "text-slate-400" : "text-slate-500"} />
           {endValue ? (
-            <span className="text-white">{displayFormat(endValue)}</span>
+            <span className={usesLightShell ? "text-slate-800" : "text-white"}>{displayFormat(endValue)}</span>
           ) : (
-            <span className="text-slate-500">{endLabel}...</span>
+            <span className={usesLightShell ? "text-slate-400" : "text-slate-500"}>{endLabel}...</span>
           )}
         </span>
-        <Calendar size={16} className="text-cyan-300 shrink-0 ml-2" />
+        <Calendar size={16} className={usesLightShell ? "text-[#F27024] shrink-0 ml-2" : "text-cyan-300 shrink-0 ml-2"} />
       </div>
 
       {typeof document !== "undefined" && ReactDOM.createPortal(popover, document.body)}

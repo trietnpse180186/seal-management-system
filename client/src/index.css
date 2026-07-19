@@ -1646,3 +1646,38 @@ body {
 .coordinator-light-theme input::placeholder {
   color: #94a3b8 !important;
 }
+
+/* Custom styling for bg-slate-950 under coordinator light theme to be light orange */
+.coordinator-light-theme .bg-slate-950 {
+  background-color: rgba(242, 112, 36, 0.04) !important;
+  border-color: rgba(242, 112, 36, 0.15) !important;
+}
+
+/* Selected active team items inside live view lists */
+.coordinator-light-theme .bg-slate-900\/60 {
+  background-color: rgba(242, 112, 36, 0.08) !important;
+  border-color: rgba(242, 112, 36, 0.4) !important;
+}
+
+.coordinator-light-theme .bg-slate-955\/40,
+.coordinator-light-theme .bg-slate-950\/40 {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Styling for live view bảng đấu tags */
+.coordinator-light-theme .bg-cyan-950\/40,
+.coordinator-light-theme .bg-cyan-950\/20,
+.coordinator-light-theme .bg-cyan-955,
+.coordinator-light-theme .bg-cyan-950 {
+  background-color: rgba(242, 112, 36, 0.1) !important;
+  color: #f27024 !important;
+  border-color: rgba(242, 112, 36, 0.2) !important;
+}
+
+.coordinator-light-theme .bg-cyan-950\/40 span,
+.coordinator-light-theme .bg-cyan-950\/20 span,
+.coordinator-light-theme .bg-cyan-955 span,
+.coordinator-light-theme .bg-cyan-950 span {
+  color: #f27024 !important;
+}

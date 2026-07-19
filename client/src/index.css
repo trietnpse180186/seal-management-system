@@ -1651,6 +1651,7 @@ body {
 .coordinator-light-theme .bg-slate-950 {
   background-color: rgba(242, 112, 36, 0.04) !important;
   border-color: rgba(242, 112, 36, 0.15) !important;
+  box-shadow: none !important; /* Bỏ đổ bóng */
 }
 
 /* Selected active team items inside live view lists */
@@ -1680,4 +1681,11 @@ body {
 .coordinator-light-theme .bg-cyan-955 span,
 .coordinator-light-theme .bg-cyan-950 span {
   color: #f27024 !important;
+}
+
+/* Remove general shadows under light theme for a flatter, cleaner design */
+.coordinator-light-theme .shadow-2xl,
+.coordinator-light-theme .shadow-xl,
+.coordinator-light-theme .shadow-lg {
+  box-shadow: none !important;
 }

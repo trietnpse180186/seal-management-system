@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,13 +17,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api/api';
 import socketService from '../api/socketService';
 import { ShieldAlert } from 'lucide-react-native';
+import * as WebBrowser from 'expo-web-browser';
+import * as AuthSession from 'expo-auth-session';
+import * as GoogleAuthSession from 'expo-auth-session/providers/google';
 
 const googleServices = require('../../google-services.json');
 const androidClient = googleServices.client?.[0];
 const firebaseWebClientId = androidClient?.oauth_client?.find((client) => client.client_type === 3)?.client_id;
+const EXPO_GOOGLE_REDIRECT_URI = 'https://auth.expo.io/@ntngoc204/mobile';
 
 let isGoogleSigninConfigured = false;
 const GOOGLE_SIGNIN_NATIVE_MODULE = 'RNGoogleSignin';
+
+WebBrowser.maybeCompleteAuthSession();
+
 
 const hasGoogleSigninNativeModule = () => {
   try {
@@ -93,6 +100,8 @@ export default function LoginScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState('');
+  const googleLoginInProgressRef = useRef(false);
+  const googleLoginCompletedRef = useRef(false);
 
   useEffect(() => {
     const checkExistingSession = async () => {
@@ -134,9 +143,59 @@ export default function LoginScreen({ navigation }) {
     }
 
     const res = await api.post('/auth/google', { idToken });
+    googleLoginCompletedRef.current = true;
     await saveSession(res.data);
   };
+
+  const handleExpoGoogleLogin = async () => {
+    const authSessionId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const expoGoogleRequest = new AuthSession.AuthRequest({
+      clientId: firebaseWebClientId,
+      redirectUri: EXPO_GOOGLE_REDIRECT_URI,
+      responseType: AuthSession.ResponseType.IdToken,
+      scopes: ['openid', 'profile', 'email'],
+      usePKCE: false,
+      extraParams: {
+        prompt: 'select_account',
+        nonce: authSessionId,
+      },
+    });
+
+    const authUrl = await expoGoogleRequest.makeAuthUrlAsync(GoogleAuthSession.discovery);
+    const returnUrl = AuthSession.getDefaultReturnUrl(`expo-auth-session/${authSessionId}`);
+    const startUrl = `${EXPO_GOOGLE_REDIRECT_URI}/start?authUrl=${encodeURIComponent(authUrl)}&returnUrl=${encodeURIComponent(returnUrl)}`;
+    const browserResult = await WebBrowser.openAuthSessionAsync(startUrl, returnUrl);
+
+    if (browserResult?.type === 'cancel' || browserResult?.type === 'dismiss') {
+      return;
+    }
+
+    if (browserResult?.type !== 'success') {
+      const authError = new Error(browserResult?.type || 'EXPO_GOOGLE_AUTH_FAILED');
+      authError.code = browserResult?.type;
+      throw authError;
+    }
+
+    const result = expoGoogleRequest.parseReturnUrl(browserResult.url);
+
+    if (result?.type !== 'success') {
+      const errorCode = result?.params?.error || result?.error?.code;
+      const authError = new Error(errorCode || 'EXPO_GOOGLE_AUTH_FAILED');
+      authError.code = errorCode;
+      throw authError;
+    }
+
+    const idToken = result.params?.id_token || result.authentication?.idToken;
+    await completeGoogleLoginWithIdToken(idToken);
+  };
+
   const handleGoogleLogin = async () => {
+    if (googleLoginInProgressRef.current) {
+      return;
+    }
+
+    googleLoginInProgressRef.current = true;
+    googleLoginCompletedRef.current = false;
     setError('');
     setLoading(true);
 
@@ -150,13 +209,23 @@ export default function LoginScreen({ navigation }) {
 
     if (!firebaseWebClientId) {
       setError('Khong tim thay Firebase Web Client ID trong google-services.json.');
+      googleLoginInProgressRef.current = false;
       setLoading(false);
       return;
     }
 
     if (!googleSigninModule) {
-      setError('Google login chi hoat dong tren APK/EAS build. Hay build APK moi de test.');
-      setLoading(false);
+      try {
+        await handleExpoGoogleLogin();
+      } catch (err) {
+        console.log('Expo Google login error:', err);
+        if (!googleLoginCompletedRef.current) {
+          setError(getGoogleLoginErrorMessage(err, null));
+        }
+      } finally {
+        googleLoginInProgressRef.current = false;
+        setLoading(false);
+      }
       return;
     }
     const {
@@ -189,6 +258,7 @@ export default function LoginScreen({ navigation }) {
         setError(googleErrorMessage);
       }
     } finally {
+      googleLoginInProgressRef.current = false;
       setLoading(false);
     }
   };

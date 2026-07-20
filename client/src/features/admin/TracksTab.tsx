@@ -425,7 +425,7 @@ export default function TracksTab({
             <BookOpen size={16} className="text-cyan-400" />
             <span>Đề bài & Tài liệu</span>
             {selectedTrack && (
-              <span className="ml-auto text-xs font-bold text-cyan-400 border border-cyan-500/30 bg-cyan-950/30 px-3 py-1 rounded font-mono uppercase tracking-wider">
+              <span className="ml-auto text-xs font-bold text-cyan-400 border border-emerald-800/4 px-3 py-1 rounded font-mono uppercase tracking-wider">
                 {formatTrackName(selectedTrack.name)}
               </span>
             )}
@@ -443,7 +443,7 @@ export default function TracksTab({
               <div className="space-y-3">
                 {/* Hiển thị link đã gắn */}
                 {currentUrl ? (
-                  <div className="p-3 bg-emerald-950/30 rounded-xl border border-emerald-800/40 space-y-1">
+                  <div className="p-3 rounded-xl border border-emerald-800/40 space-y-1">
                     <div className="flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                       <p className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">Drive riêng — Chỉ bảng này</p>

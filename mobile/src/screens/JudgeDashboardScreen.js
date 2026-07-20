@@ -13,8 +13,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../api/api';
 import BottomTabs from '../components/BottomTabs';
+import HeaderAvatar from '../components/HeaderAvatar';
 import socketService from '../api/socketService';
-import { ClipboardList, RefreshCw, ArrowRight, MessageSquare } from 'lucide-react-native';
+import { ClipboardList, ArrowRight, MessageSquare } from 'lucide-react-native';
 
 export default function JudgeDashboardScreen({ navigation }) {
   const [events, setEvents] = useState([]);
@@ -23,8 +24,8 @@ export default function JudgeDashboardScreen({ navigation }) {
   const [selectedRoundId, setSelectedRoundId] = useState('');
 
   const [teams, setTeams] = useState([]);
-  const [teamGrades, setTeamGrades] = useState({}); // { [teamId]: isGraded }
-  
+  const [teamGrades, setTeamGrades] = useState({});
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -61,27 +62,23 @@ export default function JudgeDashboardScreen({ navigation }) {
     if (!eventId || !roundId) return;
     setLoading(true);
     try {
-      // Tải danh sách đội thi của sự kiện
-      const teamsRes = await api.get(`/teams/all/${eventId}?roundId=${roundId}`);
-      const confirmedTeams = teamsRes.data.filter((t) => t.status === 'confirmed');
-      setTeams(confirmedTeams);
+      const resTeams = await api.get(`/teams?eventId=${eventId}`);
+      const teamsList = resTeams.data || [];
 
-      // Tải trạng thái đã chấm điểm cho từng đội song song
-      const gradesStatus = {};
-      await Promise.all(
-        confirmedTeams.map(async (team) => {
-          try {
-            const gradeRes = await api.get(`/grades/team/${team._id}/round/${roundId}`);
-            gradesStatus[team._id] = !!(gradeRes.data && gradeRes.data.score);
-          } catch (e) {
-            gradesStatus[team._id] = false;
-          }
-        })
-      );
-      setTeamGrades(gradesStatus);
+      const gradesMap = {};
+      for (const t of teamsList) {
+        try {
+          const resGrade = await api.get(`/grades/team/${t._id}/round/${roundId}`);
+          gradesMap[t._id] = !!resGrade.data.grade;
+        } catch (err) {
+          gradesMap[t._id] = false;
+        }
+      }
+
+      setTeams(teamsList);
+      setTeamGrades(gradesMap);
     } catch (err) {
-      console.error('Lỗi tải danh sách đội thi & bảng điểm', err);
-      Alert.alert('Thất bại', 'Không thể tải danh sách đội thi chấm điểm.');
+      console.error('Lỗi khi tải danh sách đội thi', err);
     } finally {
       setLoading(false);
     }
@@ -90,11 +87,10 @@ export default function JudgeDashboardScreen({ navigation }) {
   useEffect(() => {
     fetchEvents();
 
-    // Socket setup
     const initSocket = async () => {
       await socketService.connect();
       socketService.on('new_message', () => {
-        setUnreadCount(prev => prev + 1);
+        setUnreadCount((prev) => prev + 1);
       });
     };
     initSocket();
@@ -120,40 +116,100 @@ export default function JudgeDashboardScreen({ navigation }) {
     setRefreshing(true);
     if (selectedEventId && selectedRoundId) {
       await fetchTeamsAndGrades(selectedEventId, selectedRoundId);
-    } else {
-      await fetchEvents();
     }
     setRefreshing(false);
   }, [selectedEventId, selectedRoundId]);
 
+  const renderTeamItem = ({ item }) => {
+    const isGraded = teamGrades[item._id];
+
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardLeft}>
+          <Text style={styles.teamName}>{item.name}</Text>
+          <Text style={styles.trackName}>
+            Bảng: {item.trackId?.name || 'Chưa xếp bảng'}
+          </Text>
+          {item.topicTitle ? (
+            <Text style={styles.topicTitle} numberOfLines={1}>
+              Đề tài: {item.topicTitle}
+            </Text>
+          ) : null}
+        </View>
+
+        <View style={styles.cardRight}>
+          <View
+            style={[
+              styles.statusBadge,
+              isGraded ? styles.statusBadgeGraded : styles.statusBadgePending,
+            ]}
+          >
+            <Text
+              style={[
+                styles.statusBadgeText,
+                isGraded
+                  ? styles.statusBadgeTextGraded
+                  : styles.statusBadgeTextPending,
+              ]}
+            >
+              {isGraded ? 'ĐÃ CHẤM' : 'CHƯA CHẤM'}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.gradeBtn}
+            onPress={() =>
+              navigation.navigate('JudgeScoring', {
+                teamId: item._id,
+                roundId: selectedRoundId,
+                teamName: item.name,
+              })
+            }
+            activeOpacity={0.85}
+          >
+            <Text style={styles.gradeBtnText}>
+              {isGraded ? 'SỬA ĐIỂM' : 'CHẤM ĐIỂM'}
+            </Text>
+            <ArrowRight size={14} color="#ffffff" />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <ClipboardList size={22} color="#00f0ff" />
-          <Text style={styles.headerTitle}>BÀN GIÁM KHẢO</Text>
-          <TouchableOpacity
-            style={styles.chatHeaderBtn}
-            onPress={() => {
-              setUnreadCount(0);
-              navigation.navigate('Chat');
-            }}
-          >
-            <MessageSquare size={22} color="#00f0ff" />
-            {unreadCount > 0 && (
-              <View style={styles.headerBadge}>
-                <Text style={styles.headerBadgeText}>{unreadCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity onPress={onRefresh} style={styles.refreshBtn}>
-            <RefreshCw size={18} color="#00f0ff" />
-          </TouchableOpacity>
+        {/* Header Bar */}
+        <View style={styles.headerBar}>
+          <View style={styles.headerTitleRow}>
+            <ClipboardList size={20} color="#ea580c" />
+            <Text style={styles.headerTitle}>BÀN GIÁM KHẢO</Text>
+          </View>
+
+          <View style={styles.headerRightActions}>
+            <TouchableOpacity
+              style={styles.chatHeaderBtn}
+              onPress={() => {
+                setUnreadCount(0);
+                navigation.navigate('Chat');
+              }}
+              activeOpacity={0.7}
+            >
+              <MessageSquare size={22} color="#ea580c" />
+              {unreadCount > 0 && (
+                <View style={styles.headerBadge}>
+                  <Text style={styles.headerBadgeText}>{unreadCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <HeaderAvatar navigation={navigation} />
+          </View>
         </View>
 
-        {/* Lọc Sự kiện */}
+        {/* Lọc Sự Kiện */}
         <View style={styles.filterSection}>
-          <Text style={styles.filterLabel}>SỰ KIỆN</Text>
+          <Text style={styles.filterLabel}>CHỌN CUỘC THI:</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollFilters}>
             {events.map((evt) => (
               <TouchableOpacity
@@ -170,17 +226,17 @@ export default function JudgeDashboardScreen({ navigation }) {
                     selectedEventId === evt._id && styles.filterTabTextActive,
                   ]}
                 >
-                  {evt.name}
+                  {evt.name} ({evt.semester})
                 </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
 
-        {/* Lọc Vòng thi */}
-        {rounds.length > 0 ? (
+        {/* Lọc Vòng Thi */}
+        {rounds.length > 0 && (
           <View style={styles.filterSection}>
-            <Text style={styles.filterLabel}>VÒNG THI CHẤM ĐIỂM</Text>
+            <Text style={styles.filterLabel}>CHỌN VÒNG THI:</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollFilters}>
               {rounds.map((rnd) => (
                 <TouchableOpacity
@@ -197,66 +253,34 @@ export default function JudgeDashboardScreen({ navigation }) {
                       selectedRoundId === rnd._id && styles.filterTabTextActive,
                     ]}
                   >
-                    {rnd.name}
+                    Vòng {rnd.name}
                   </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
           </View>
-        ) : null}
+        )}
 
-        {/* Danh sách đội cần chấm điểm */}
+        {/* Danh sách Đội Thi */}
         <View style={styles.listContainer}>
           {loading ? (
             <View style={styles.centerContainer}>
-              <ActivityIndicator size="large" color="#00f0ff" />
+              <ActivityIndicator size="large" color="#ea580c" />
             </View>
           ) : teams.length === 0 ? (
             <View style={styles.centerContainer}>
-              <Text style={styles.noDataText}>Không có đội thi nào được tìm thấy trong sự kiện này.</Text>
+              <Text style={styles.noDataText}>Chưa có đội thi nào thuộc vòng đấu này.</Text>
             </View>
           ) : (
             <FlatList
               data={teams}
               keyExtractor={(item) => item._id}
-              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00f0ff" />}
-              renderItem={({ item }) => {
-                const isGraded = teamGrades[item._id];
-                return (
-                  <View style={styles.card}>
-                    <View style={styles.cardLeft}>
-                      <Text style={styles.teamName}>{item.name}</Text>
-                      <Text style={styles.trackName}>Bảng thi: {item.trackId?.name || 'Chưa phân'}</Text>
-                      <Text style={styles.topicTitle} numberOfLines={1}>
-                        Đề tài: {item.topicSubmission?.title || 'Chưa nộp đề tài'}
-                      </Text>
-                    </View>
-
-                    <View style={styles.cardRight}>
-                      {/* Trạng thái chấm điểm */}
-                      <View style={[styles.statusBadge, isGraded ? styles.statusBadgeGraded : styles.statusBadgePending]}>
-                        <Text style={[styles.statusBadgeText, isGraded ? styles.statusBadgeTextGraded : styles.statusBadgeTextPending]}>
-                          {isGraded ? 'ĐÃ CHẤM' : 'CHƯA CHẤM'}
-                        </Text>
-                      </View>
-
-                      {/* Nút vào chấm điểm */}
-                      <TouchableOpacity
-                        style={styles.gradeBtn}
-                        onPress={() =>
-                          navigation.navigate('JudgeScoring', {
-                            teamId: item._id,
-                            roundId: selectedRoundId,
-                          })
-                        }
-                      >
-                        <Text style={styles.gradeBtnText}>Chấm</Text>
-                        <ArrowRight size={14} color="#000" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                );
-              }}
+              renderItem={renderTeamItem}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#ea580c']} />
+              }
+              contentContainerStyle={{ paddingBottom: 20 }}
+              showsVerticalScrollIndicator={false}
             />
           )}
         </View>
@@ -270,93 +294,100 @@ export default function JudgeDashboardScreen({ navigation }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0a141d',
+    backgroundColor: '#f8fafc',
   },
   container: {
     flex: 1,
+    backgroundColor: '#f8fafc',
   },
-  header: {
+  headerBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: '#e2e8f0',
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   headerTitle: {
-    color: '#fff',
+    color: '#0f172a',
     fontSize: 16,
     fontWeight: '800',
-    marginLeft: 10,
-    flex: 1,
-    letterSpacing: 1.5,
+    marginLeft: 8,
+    letterSpacing: 0.5,
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   chatHeaderBtn: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 6,
     position: 'relative',
-    marginRight: 10,
+    backgroundColor: '#fff7ed',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#fed7aa',
   },
   headerBadge: {
     position: 'absolute',
-    top: 2,
-    right: 2,
-    backgroundColor: '#ff3b30',
+    top: -4,
+    right: -4,
+    backgroundColor: '#ef4444',
     minWidth: 16,
     height: 16,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 4,
-    borderWidth: 1,
-    borderColor: '#0a141d',
+    paddingHorizontal: 3,
   },
   headerBadgeText: {
-    color: '#fff',
+    color: '#ffffff',
     fontSize: 9,
-    fontWeight: '900',
-  },
-  refreshBtn: {
-    padding: 5,
+    fontWeight: '800',
   },
   filterSection: {
     paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
+    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.04)',
+    borderBottomColor: '#e2e8f0',
   },
   filterLabel: {
-    color: '#849495',
+    color: '#64748b',
     fontSize: 10,
     fontWeight: '800',
     marginBottom: 6,
-    letterSpacing: 1,
   },
   scrollFilters: {
     flexDirection: 'row',
   },
   filterTab: {
-    backgroundColor: '#131d25',
-    borderColor: '#3b494b',
+    backgroundColor: '#f8fafc',
+    borderColor: '#e2e8f0',
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    marginRight: 10,
-    borderRadius: 4,
+    marginRight: 8,
+    borderRadius: 8,
   },
   filterTabActive: {
-    borderColor: '#00f0ff',
-    backgroundColor: 'rgba(0, 240, 255, 0.05)',
+    borderColor: '#ea580c',
+    backgroundColor: '#fff7ed',
   },
   filterTabText: {
-    color: '#b9cacb',
+    color: '#64748b',
     fontSize: 12,
     fontWeight: '600',
   },
   filterTabTextActive: {
-    color: '#00f0ff',
+    color: '#ea580c',
+    fontWeight: '800',
   },
   listContainer: {
     flex: 1,
@@ -369,81 +400,87 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   noDataText: {
-    color: '#849495',
-    fontSize: 14,
+    color: '#64748b',
+    fontSize: 13,
     textAlign: 'center',
   },
   card: {
-    backgroundColor: '#131d25',
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    marginBottom: 12,
-    borderRadius: 4,
+    padding: 14,
+    marginBottom: 10,
+    borderRadius: 12,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 2,
   },
   cardLeft: {
     flex: 1,
     marginRight: 10,
   },
   teamName: {
-    color: '#fff',
+    color: '#0f172a',
     fontSize: 15,
-    fontWeight: '850',
+    fontWeight: '800',
     marginBottom: 4,
   },
   trackName: {
-    color: '#b9cacb',
-    fontSize: 12,
-    marginBottom: 4,
+    color: '#ea580c',
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 2,
   },
   topicTitle: {
-    color: '#849495',
+    color: '#64748b',
     fontSize: 11,
   },
   cardRight: {
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    height: 70,
+    height: 65,
   },
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 4,
+    borderRadius: 6,
   },
   statusBadgeGraded: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    borderColor: 'rgba(16, 185, 129, 0.2)',
+    backgroundColor: '#dcfce7',
+    borderColor: '#bbf7d0',
     borderWidth: 1,
   },
   statusBadgePending: {
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    borderColor: 'rgba(245, 158, 11, 0.2)',
+    backgroundColor: '#fff7ed',
+    borderColor: '#fed7aa',
     borderWidth: 1,
   },
   statusBadgeText: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '800',
   },
   statusBadgeTextGraded: {
-    color: '#10b981',
+    color: '#166534',
   },
   statusBadgeTextPending: {
-    color: '#f59e0b',
+    color: '#c2410c',
   },
   gradeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#00f0ff',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 4,
+    backgroundColor: '#ea580c',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
   },
   gradeBtnText: {
-    color: '#000',
-    fontSize: 12,
+    color: '#ffffff',
+    fontSize: 11,
     fontWeight: '800',
     marginRight: 4,
   },

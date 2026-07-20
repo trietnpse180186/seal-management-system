@@ -56,10 +56,23 @@ api.interceptors.request.use(
   }
 );
 
-// Bộ đánh chặn Response để xử lý lỗi tập trung
+// Bộ đánh chặn Response để xử lý lỗi tập trung & tự động thử lại khi Server ngủ dậy (Cold-start)
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    const config = error.config;
+
+    // Tự động thử lại tối đa 2 lần nếu gặp lỗi mạng hoặc 502/503/504 (Server Render đang khởi động lại)
+    if (config && (!error.response || [502, 503, 504].includes(error.response.status))) {
+      config._retryCount = config._retryCount || 0;
+      if (config._retryCount < 2) {
+        config._retryCount += 1;
+        // Đợi 2.5 giây cho Server khởi động xong rồi thử lại request
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        return api(config);
+      }
+    }
+
     // 1. Tự động dọn dẹp phiên đăng nhập nếu nhận mã 401
     if (error.response && error.response.status === 401) {
       await AsyncStorage.removeItem('token');
@@ -87,7 +100,7 @@ api.interceptors.response.use(
 
     // 3. Ghi đè thông báo lỗi thân thiện vào đối tượng lỗi gốc để tương thích ngược với các màn hình đang đọc error.response.data.message
     error.message = friendlyMessage;
-    if (error.response && error.response.data) {
+    if (error.response && error.response.data && typeof error.response.data === 'object') {
       error.response.data.message = friendlyMessage;
     }
 

@@ -8,12 +8,12 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api/api';
 import BottomTabs from '../components/BottomTabs';
+import HeaderAvatar from '../components/HeaderAvatar';
 import { Trophy, RefreshCw, Lock } from 'lucide-react-native';
 
 export default function LeaderboardScreen({ navigation }) {
@@ -22,7 +22,7 @@ export default function LeaderboardScreen({ navigation }) {
   const [rounds, setRounds] = useState([]);
   const [selectedRoundId, setSelectedRoundId] = useState('');
   const [selectedRound, setSelectedRound] = useState(null);
-  
+
   const [standings, setStandings] = useState([]);
   const [isLocked, setIsLocked] = useState(false);
   const [lockedMessage, setLockedMessage] = useState('');
@@ -68,7 +68,7 @@ export default function LeaderboardScreen({ navigation }) {
       const userStr = await AsyncStorage.getItem('user');
       const user = userStr ? JSON.parse(userStr) : null;
       const isSystemAdmin = user?.isSystemAdmin;
-      
+
       const isCoordinator =
         isSystemAdmin ||
         roles.some((r) => r.eventId === selectedEventId && r.role === 'coordinator');
@@ -116,35 +116,68 @@ export default function LeaderboardScreen({ navigation }) {
     setRefreshing(true);
     if (selectedRoundId) {
       await fetchRankings(selectedRoundId);
-    } else if (selectedEventId) {
-      await fetchRounds(selectedEventId);
-    } else {
-      await fetchEvents();
     }
     setRefreshing(false);
-  }, [selectedEventId, selectedRoundId]);
+  }, [selectedRoundId]);
 
-  const getRankStyle = (index) => {
-    if (index === 0) return { color: '#ffd700', textShadowColor: 'rgba(255, 215, 0, 0.4)' }; // Vàng
-    if (index === 1) return { color: '#c0c0c0', textShadowColor: 'rgba(192, 192, 192, 0.4)' }; // Bạc
-    if (index === 2) return { color: '#cd7f32', textShadowColor: 'rgba(205, 127, 50, 0.4)' }; // Đồng
-    return { color: '#b9cacb' };
+  const getRankColor = (rank) => {
+    switch (rank) {
+      case 1:
+        return '#d97706'; // Gold Amber
+      case 2:
+        return '#475569'; // Silver Slate
+      case 3:
+        return '#ea580c'; // Bronze Orange
+      default:
+        return '#64748b';
+    }
+  };
+
+  const renderItem = ({ item }) => {
+    const isTopThree = item.rank <= 3;
+
+    return (
+      <View
+        style={[
+          styles.card,
+          item.rank === 1 && styles.cardFirst,
+        ]}
+      >
+        <View style={styles.cardLeft}>
+          <Text style={[styles.rankText, { color: getRankColor(item.rank) }]}>
+            #{item.rank}
+          </Text>
+          <View style={styles.teamInfo}>
+            <Text style={styles.teamName}>{item.teamName}</Text>
+            <Text style={styles.trackText}>Bảng: {item.trackName}</Text>
+          </View>
+        </View>
+
+        <View style={styles.cardRight}>
+          <Text style={styles.scoreText}>
+            {item.totalScore != null ? item.totalScore.toFixed(2) : '—'}
+          </Text>
+          <Text style={styles.scoreUnit}>ĐIỂM ĐTB</Text>
+        </View>
+      </View>
+    );
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Trophy size={22} color="#00f0ff" />
-          <Text style={styles.headerTitle}>BẢNG XẾP HẠNG</Text>
-          <TouchableOpacity onPress={onRefresh} style={styles.refreshBtn}>
-            <RefreshCw size={18} color="#00f0ff" />
-          </TouchableOpacity>
+        {/* Header Bar */}
+        <View style={styles.headerBar}>
+          <View style={styles.headerTitleRow}>
+            <Trophy size={20} color="#ea580c" />
+            <Text style={styles.headerTitle}>BẢNG XẾP HẠNG</Text>
+          </View>
+          <HeaderAvatar navigation={navigation} />
         </View>
 
-        {/* Lọc Sự kiện */}
+        {/* Lọc Sự Kiện */}
         <View style={styles.filterSection}>
-          <Text style={styles.filterLabel}>SỰ KIỆN</Text>
+          <Text style={styles.filterLabel}>CHỌN CUỘC THI:</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollFilters}>
             {events.map((evt) => (
               <TouchableOpacity
@@ -161,17 +194,17 @@ export default function LeaderboardScreen({ navigation }) {
                     selectedEventId === evt._id && styles.filterTabTextActive,
                   ]}
                 >
-                  {evt.name}
+                  {evt.name} ({evt.semester})
                 </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
 
-        {/* Lọc Vòng thi */}
-        {rounds.length > 0 ? (
+        {/* Lọc Vòng Thi */}
+        {rounds.length > 0 && (
           <View style={styles.filterSection}>
-            <Text style={styles.filterLabel}>VÒNG THI</Text>
+            <Text style={styles.filterLabel}>CHỌN VÒNG THI:</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollFilters}>
               {rounds.map((rnd) => (
                 <TouchableOpacity
@@ -191,60 +224,40 @@ export default function LeaderboardScreen({ navigation }) {
                       selectedRoundId === rnd._id && styles.filterTabTextActive,
                     ]}
                   >
-                    {rnd.name}
+                    Vòng {rnd.name}
                   </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
           </View>
-        ) : null}
+        )}
 
-        {/* Danh sách xếp hạng */}
+        {/* Nội dung Bảng Xếp Hạng */}
         <View style={styles.listContainer}>
           {loading ? (
             <View style={styles.centerContainer}>
-              <ActivityIndicator size="large" color="#00f0ff" />
+              <ActivityIndicator size="large" color="#ea580c" />
             </View>
           ) : isLocked ? (
             <View style={styles.centerContainer}>
-              <Lock size={48} color="#ef4444" style={styles.lockIcon} />
-              <Text style={styles.lockedTitle}>BẢNG ĐIỂM ĐÃ BỊ KHÓA</Text>
+              <Lock size={48} color="#ea580c" style={styles.lockIcon} />
+              <Text style={styles.lockedTitle}>BẢNG ĐIỂM ĐÃ ĐÓNG BĂNG</Text>
               <Text style={styles.lockedText}>{lockedMessage}</Text>
             </View>
           ) : standings.length === 0 ? (
             <View style={styles.centerContainer}>
-              <Text style={styles.noDataText}>
-                {selectedRoundId ? 'Chưa có dữ liệu chấm điểm cho vòng này.' : 'Vui lòng chọn sự kiện và vòng thi.'}
-              </Text>
+              <Text style={styles.noDataText}>Chưa có dữ liệu xếp hạng cho vòng thi này.</Text>
             </View>
           ) : (
             <FlatList
               data={standings}
-              keyExtractor={(item) => item.teamId}
-              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00f0ff" />}
-              renderItem={({ item, index }) => (
-                <View style={[styles.card, index === 0 && styles.cardFirst]}>
-                  <View style={styles.cardLeft}>
-                    <Text
-                      style={[
-                        styles.rankText,
-                        getRankStyle(index),
-                        Platform.OS === 'ios' ? { fontFamily: 'Courier' } : { fontFamily: 'monospace' },
-                      ]}
-                    >
-                      #{index + 1}
-                    </Text>
-                    <View style={styles.teamInfo}>
-                      <Text style={styles.teamName}>{item.teamName}</Text>
-                      <Text style={styles.trackText}>Chủ đề: {item.trackName || 'Chưa phân'}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.cardRight}>
-                    <Text style={styles.scoreText}>{item.totalScore?.toFixed(2)}</Text>
-                    <Text style={styles.scoreUnit}>điểm</Text>
-                  </View>
-                </View>
-              )}
+              keyExtractor={(item, index) => item.teamId || index.toString()}
+              renderItem={renderItem}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#ea580c']} />
+              }
+              contentContainerStyle={{ paddingBottom: 20 }}
+              showsVerticalScrollIndicator={false}
             />
           )}
         </View>
@@ -258,66 +271,71 @@ export default function LeaderboardScreen({ navigation }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0a141d',
+    backgroundColor: '#f8fafc',
   },
   container: {
     flex: 1,
+    backgroundColor: '#f8fafc',
   },
-  header: {
+  headerBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: '#e2e8f0',
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   headerTitle: {
-    color: '#fff',
+    color: '#0f172a',
     fontSize: 16,
     fontWeight: '800',
-    marginLeft: 10,
-    flex: 1,
-    letterSpacing: 1.5,
-  },
-  refreshBtn: {
-    padding: 5,
+    marginLeft: 8,
+    letterSpacing: 0.5,
   },
   filterSection: {
     paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
+    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.04)',
+    borderBottomColor: '#e2e8f0',
   },
   filterLabel: {
-    color: '#849495',
+    color: '#64748b',
     fontSize: 10,
     fontWeight: '800',
     marginBottom: 6,
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   scrollFilters: {
     flexDirection: 'row',
   },
   filterTab: {
-    backgroundColor: '#131d25',
-    borderColor: '#3b494b',
+    backgroundColor: '#f8fafc',
+    borderColor: '#e2e8f0',
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    marginRight: 10,
-    borderRadius: 4,
+    marginRight: 8,
+    borderRadius: 8,
   },
   filterTabActive: {
-    borderColor: '#00f0ff',
-    backgroundColor: 'rgba(0, 240, 255, 0.05)',
+    borderColor: '#ea580c',
+    backgroundColor: '#fff7ed',
   },
   filterTabText: {
-    color: '#b9cacb',
+    color: '#64748b',
     fontSize: 12,
     fontWeight: '600',
   },
   filterTabTextActive: {
-    color: '#00f0ff',
+    color: '#ea580c',
+    fontWeight: '800',
   },
   listContainer: {
     flex: 1,
@@ -330,39 +348,44 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   lockIcon: {
-    marginBottom: 15,
+    marginBottom: 12,
   },
   lockedTitle: {
-    color: '#fff',
+    color: '#0f172a',
     fontSize: 16,
     fontWeight: '800',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   lockedText: {
-    color: '#849495',
+    color: '#64748b',
     fontSize: 13,
     textAlign: 'center',
     lineHeight: 18,
   },
   noDataText: {
-    color: '#849495',
-    fontSize: 14,
+    color: '#64748b',
+    fontSize: 13,
     textAlign: 'center',
   },
   card: {
-    backgroundColor: '#131d25',
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    marginBottom: 12,
-    borderRadius: 4,
+    padding: 14,
+    marginBottom: 10,
+    borderRadius: 12,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 2,
   },
   cardFirst: {
-    borderColor: 'rgba(0, 240, 255, 0.3)',
-    backgroundColor: 'rgba(0, 240, 255, 0.03)',
+    borderColor: '#fed7aa',
+    backgroundColor: '#fff7ed',
   },
   cardLeft: {
     flexDirection: 'row',
@@ -372,20 +395,20 @@ const styles = StyleSheet.create({
   rankText: {
     fontSize: 18,
     fontWeight: '900',
-    width: 45,
+    width: 40,
   },
   teamInfo: {
-    marginLeft: 5,
+    marginLeft: 4,
     flex: 1,
   },
   teamName: {
-    color: '#fff',
+    color: '#0f172a',
     fontSize: 14,
     fontWeight: '700',
-    marginBottom: 3,
+    marginBottom: 2,
   },
   trackText: {
-    color: '#849495',
+    color: '#64748b',
     fontSize: 11,
   },
   cardRight: {
@@ -393,13 +416,14 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   scoreText: {
-    color: '#00f0ff',
+    color: '#ea580c',
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '900',
   },
   scoreUnit: {
-    color: '#849495',
-    fontSize: 10,
-    marginTop: 2,
+    color: '#64748b',
+    fontSize: 9,
+    fontWeight: '700',
+    marginTop: 1,
   },
 });

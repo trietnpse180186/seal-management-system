@@ -21,8 +21,6 @@ export default function GithubUserAutocomplete({
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
-
-
   useEffect(() => {
     if (!value || value.trim().length < 2) {
       setSuggestions([]);
@@ -50,15 +48,13 @@ export default function GithubUserAutocomplete({
     setIsOpen(false);
   };
 
-
-
   return (
     <View style={[styles.container, isOpen && suggestions.length > 0 && { height: 200, marginBottom: -140, zIndex: 100 }]}>
       <View style={styles.inputContainer}>
         <TextInput
           style={[styles.input, disabled && styles.disabledInput]}
           placeholder={placeholder}
-          placeholderTextColor="#849495"
+          placeholderTextColor="#94a3b8"
           value={value}
           onChangeText={(text) => {
             onChange(text);
@@ -78,7 +74,7 @@ export default function GithubUserAutocomplete({
         />
         {loading && (
           <View style={styles.loader}>
-            <ActivityIndicator size="small" color="#00f0ff" />
+            <ActivityIndicator size="small" color="#ea580c" />
           </View>
         )}
       </View>
@@ -120,33 +116,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   input: {
-    backgroundColor: '#131d25',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#3b494b',
-    color: '#dae3f0',
+    borderColor: '#e2e8f0',
+    color: '#0f172a',
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 14,
-    borderRadius: 4,
-  },
-  inputTrigger: {
-    backgroundColor: '#131d25',
-    borderWidth: 1,
-    borderColor: '#3b494b',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 4,
-    justifyContent: 'center',
-  },
-  triggerText: {
-    color: '#dae3f0',
-    fontSize: 14,
-  },
-  placeholderText: {
-    color: '#849495',
+    borderRadius: 10,
   },
   disabledInput: {
-    opacity: 0.5,
+    opacity: 0.6,
+    backgroundColor: '#f1f5f9',
   },
   loader: {
     position: 'absolute',
@@ -157,17 +138,17 @@ const styles = StyleSheet.create({
     top: 46,
     left: 0,
     right: 0,
-    backgroundColor: '#131d25',
-    borderColor: '#3b494b',
+    backgroundColor: '#ffffff',
+    borderColor: '#fed7aa',
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 10,
     maxHeight: 160,
     zIndex: 9999,
-    shadowColor: '#000',
+    shadowColor: '#ea580c',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
   },
   list: {
     padding: 4,
@@ -179,7 +160,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    borderBottomColor: '#f1f5f9',
   },
   avatar: {
     width: 24,
@@ -187,15 +168,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginRight: 10,
     borderWidth: 1,
-    borderColor: '#3b494b',
+    borderColor: '#e2e8f0',
   },
   username: {
-    color: '#dae3f0',
+    color: '#0f172a',
     fontSize: 13,
     fontWeight: '600',
   },
   emptyText: {
-    color: '#849495',
+    color: '#64748b',
     fontSize: 12,
     fontStyle: 'italic',
     textAlign: 'center',

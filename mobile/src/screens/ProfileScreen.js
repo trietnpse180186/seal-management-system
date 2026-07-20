@@ -13,9 +13,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { User, Mail, School, ShieldAlert, LogOut, CheckCircle } from 'lucide-react-native';
+import { User, ShieldAlert, CheckCircle, ArrowLeft } from 'lucide-react-native';
 import api from '../api/api';
 import BottomTabs from '../components/BottomTabs';
+import HeaderAvatar from '../components/HeaderAvatar';
 
 export default function ProfileScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -23,7 +24,7 @@ export default function ProfileScreen({ navigation }) {
   const [studentId, setStudentId] = useState('');
   const [university, setUniversity] = useState('');
   const [githubUsername, setGithubUsername] = useState('');
-  
+
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState('');
@@ -32,7 +33,6 @@ export default function ProfileScreen({ navigation }) {
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        // Gọi API lấy thông tin mới nhất
         const res = await api.get('/auth/me');
         const user = res.data.user;
         if (user) {
@@ -41,13 +41,11 @@ export default function ProfileScreen({ navigation }) {
           setStudentId(user.studentId || '');
           setUniversity(user.university || '');
           setGithubUsername(user.githubUsername || '');
-          
-          // Cập nhật lại AsyncStorage
+
           await AsyncStorage.setItem('user', JSON.stringify(user));
         }
       } catch (err) {
         console.error('Lỗi khi tải profile từ API:', err);
-        // Fallback đọc từ AsyncStorage
         const userStr = await AsyncStorage.getItem('user');
         if (userStr) {
           const user = JSON.parse(userStr);
@@ -69,7 +67,7 @@ export default function ProfileScreen({ navigation }) {
       setError('Họ và tên không được để trống.');
       return;
     }
-    
+
     setError('');
     setSuccessMsg('');
     setUpdating(true);
@@ -81,10 +79,9 @@ export default function ProfileScreen({ navigation }) {
         university: university.trim(),
         githubUsername: githubUsername.trim(),
       };
-      
+
       const res = await api.put('/auth/profile', payload);
-      
-      // Lưu lại thông tin mới
+
       const { user, roles } = res.data;
       await AsyncStorage.setItem('user', JSON.stringify(user));
       if (roles) {
@@ -106,7 +103,7 @@ export default function ProfileScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#00f0ff" />
+        <ActivityIndicator size="large" color="#ea580c" />
       </View>
     );
   }
@@ -118,14 +115,26 @@ export default function ProfileScreen({ navigation }) {
         style={{ flex: 1 }}
       >
         <View style={styles.container}>
+          {/* Top Bar */}
+          <View style={styles.headerBar}>
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
+            >
+              <ArrowLeft size={20} color="#0f172a" />
+              <Text style={styles.backBtnText}>Quay lại</Text>
+            </TouchableOpacity>
+            <HeaderAvatar navigation={navigation} />
+          </View>
+
           <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
             <View style={styles.header}>
-              <User size={22} color="#00f0ff" />
-              <Text style={styles.headerTitle}>TRANG CÁ NHÂN</Text>
+              <User size={22} color="#ea580c" />
+              <Text style={styles.headerTitle}>CHỈNH SỬA THÔNG TIN CÁ NHÂN</Text>
             </View>
 
             <View style={styles.profileBox}>
-              {/* Ảnh đại diện giả định */}
               <View style={styles.avatarContainer}>
                 <View style={styles.avatarPlaceholder}>
                   <Text style={styles.avatarText}>
@@ -149,12 +158,11 @@ export default function ProfileScreen({ navigation }) {
                 </View>
               ) : null}
 
-              {/* Form Input */}
               <Text style={styles.label}>HỌ VÀ TÊN</Text>
               <TextInput
                 style={styles.input}
                 placeholder="Họ và tên..."
-                placeholderTextColor="#849495"
+                placeholderTextColor="#94a3b8"
                 value={fullName}
                 onChangeText={setFullName}
               />
@@ -163,7 +171,7 @@ export default function ProfileScreen({ navigation }) {
               <TextInput
                 style={styles.input}
                 placeholder="MSSV..."
-                placeholderTextColor="#849495"
+                placeholderTextColor="#94a3b8"
                 value={studentId}
                 onChangeText={setStudentId}
               />
@@ -172,7 +180,7 @@ export default function ProfileScreen({ navigation }) {
               <TextInput
                 style={styles.input}
                 placeholder="Ví dụ: Đại học FPT..."
-                placeholderTextColor="#849495"
+                placeholderTextColor="#94a3b8"
                 value={university}
                 onChangeText={setUniversity}
               />
@@ -181,28 +189,26 @@ export default function ProfileScreen({ navigation }) {
               <TextInput
                 style={styles.input}
                 placeholder="github-username..."
-                placeholderTextColor="#849495"
+                placeholderTextColor="#94a3b8"
                 value={githubUsername}
                 onChangeText={setGithubUsername}
                 autoCapitalize="none"
               />
 
-              {/* Action Buttons */}
               <TouchableOpacity
                 style={styles.saveBtn}
                 onPress={handleSave}
                 disabled={updating}
+                activeOpacity={0.85}
               >
                 {updating ? (
-                  <ActivityIndicator color="#000" />
+                  <ActivityIndicator color="#ffffff" />
                 ) : (
                   <Text style={styles.saveBtnText}>LƯU THAY ĐỔI</Text>
                 )}
               </TouchableOpacity>
             </View>
           </ScrollView>
-
-          <BottomTabs activeTab="profile" navigation={navigation} />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -212,18 +218,39 @@ export default function ProfileScreen({ navigation }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0a141d',
+    backgroundColor: '#f8fafc',
   },
   container: {
     flex: 1,
+    backgroundColor: '#f8fafc',
+  },
+  headerBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0f172a',
+    marginLeft: 4,
   },
   scrollContainer: {
-    paddingGrow: 1,
     padding: 16,
+    paddingBottom: 24,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#0a141d',
+    backgroundColor: '#f8fafc',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -231,116 +258,103 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
-    marginBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 4,
+    marginBottom: 16,
   },
   headerTitle: {
-    color: '#fff',
+    color: '#0f172a',
     fontSize: 16,
     fontWeight: '800',
-    marginLeft: 10,
-    letterSpacing: 1.5,
+    marginLeft: 8,
+    letterSpacing: 0.5,
   },
   profileBox: {
-    backgroundColor: '#131d25',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
+    borderColor: '#e2e8f0',
     padding: 20,
-    borderRadius: 4,
+    borderRadius: 16,
     marginBottom: 20,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   avatarContainer: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   avatarPlaceholder: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: 'rgba(0, 240, 255, 0.1)',
-    borderColor: '#00f0ff',
-    borderWidth: 1.5,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#ea580c',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
-    shadowColor: '#00f0ff',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    marginBottom: 8,
+    shadowColor: '#ea580c',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   avatarText: {
-    color: '#00f0ff',
-    fontSize: 28,
+    color: '#ffffff',
+    fontSize: 26,
     fontWeight: '800',
   },
   profileEmail: {
-    color: '#849495',
+    color: '#64748b',
     fontSize: 13,
     fontWeight: '600',
   },
   label: {
-    color: '#849495',
-    fontSize: 10,
-    fontWeight: '800',
-    marginBottom: 8,
-    letterSpacing: 1,
+    color: '#475569',
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 6,
   },
   input: {
-    backgroundColor: 'rgba(6, 15, 23, 0.8)',
+    backgroundColor: '#f8fafc',
     borderWidth: 1,
-    borderColor: '#3b494b',
-    color: '#dae3f0',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderColor: '#cbd5e1',
+    color: '#0f172a',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     fontSize: 14,
-    marginBottom: 16,
-    borderRadius: 4,
+    marginBottom: 14,
+    borderRadius: 10,
   },
   saveBtn: {
-    backgroundColor: '#00f0ff',
+    backgroundColor: '#ea580c',
     paddingVertical: 14,
     alignItems: 'center',
-    borderRadius: 4,
-    marginTop: 10,
-    marginBottom: 12,
+    borderRadius: 12,
+    marginTop: 8,
+    shadowColor: '#ea580c',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   saveBtnText: {
-    color: '#000',
+    color: '#ffffff',
     fontWeight: '800',
-    letterSpacing: 1,
-    fontSize: 13,
-  },
-  logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderColor: '#ff3b30',
-    borderWidth: 1,
-    paddingVertical: 12,
-    borderRadius: 4,
-    marginTop: 8,
-    backgroundColor: 'rgba(255, 59, 48, 0.03)',
-  },
-  logoutBtnText: {
-    color: '#ff3b30',
-    fontWeight: '800',
-    fontSize: 12,
-    marginLeft: 8,
     letterSpacing: 0.5,
+    fontSize: 14,
   },
   errorAlert: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: '#fef2f2',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)',
+    borderColor: '#fecaca',
     padding: 10,
-    marginBottom: 16,
+    borderRadius: 10,
+    marginBottom: 14,
   },
   errorText: {
-    color: '#fca5a5',
+    color: '#dc2626',
     fontSize: 12,
     marginLeft: 8,
     flex: 1,
@@ -348,14 +362,15 @@ const styles = StyleSheet.create({
   successAlert: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    backgroundColor: '#ecfdf5',
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.2)',
+    borderColor: '#a7f3d0',
     padding: 10,
-    marginBottom: 16,
+    borderRadius: 10,
+    marginBottom: 14,
   },
   successText: {
-    color: '#a7f3d0',
+    color: '#047857',
     fontSize: 12,
     marginLeft: 8,
     flex: 1,

@@ -26,7 +26,7 @@ export default function Leaderboard({
   // Detect user role
   const isSystemAdmin = user?.isSystemAdmin;
   const isSystemCoordinator = isSystemAdmin || roles.some((r: any) => r.role === "coordinator");
-  const isAssistant = roles?.some((r: any) => r.role === "student_assistant");
+  const isAssistant = !isSystemAdmin && (user?.isStudentAssistant || roles?.some((r: any) => r.role === "student_assistant"));
   const assistantEventId = roles?.find((r: any) => r.role === 'student_assistant')?.eventId;
   const assistantEventIdStr = assistantEventId?._id || assistantEventId;
 

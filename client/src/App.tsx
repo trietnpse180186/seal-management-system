@@ -13,6 +13,7 @@ import AdminEvents from './features/admin/AdminEvents';
 import AdminLiveInteraction from './features/admin/AdminLiveInteraction';
 import TeamArea from './features/teams/TeamArea';
 import MyAchievements from './features/teams/MyAchievements';
+import ConfirmSurvey from './features/teams/ConfirmSurvey';
 import Leaderboard from './features/leaderboard/Leaderboard';
 import ProtectedRoute from './features/auth/ProtectedRoute';
 import GuestPortal from './features/landing/GuestPortal';
@@ -115,15 +116,17 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
     }
   };
 
-  const usesLightShell = location.pathname === '/' || location.pathname === '/team-area' || location.pathname === '/register-team' || location.pathname === '/login' || location.pathname === '/achievements' || location.pathname === '/guest-portal';
+  const usesLightShell = location.pathname === '/' || location.pathname === '/team-area' || location.pathname === '/register-team' || location.pathname === '/login' || location.pathname === '/achievements' || location.pathname === '/guest-portal' || location.pathname.startsWith('/album') || location.pathname === '/confirm-survey';
 
   const showChatWidget = user && (
     (!isJudgeRoute && (!isAdminRoute || isCoordinator)) ||
     (isExpertMentorRoute && isMentor)
   );
 
+  const isLightModePage = usesLightShell || isAdminRoute;
+
   return (
-    <div className={`min-h-screen ${location.pathname === '/login' ? 'bg-[#f5efe8]' : 'bg-gradient-dark'} flex flex-col`}>
+    <div className={`min-h-screen ${location.pathname === '/login' ? 'bg-[#f5efe8]' : (isLightModePage ? 'bg-[#faf9f6]' : 'bg-gradient-dark')} flex flex-col`}>
       {!isJudgeRoute && !isAdminRoute && (
         <Navbar 
           user={user} 
@@ -214,6 +217,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
           
           <Route path="/leaderboard" element={<Leaderboard user={user} roles={roles} />} />
           <Route path="/album" element={<Gallery user={user} roles={roles} />} />
+          <Route path="/confirm-survey" element={<ConfirmSurvey />} />
         </Routes>
       </main>
 

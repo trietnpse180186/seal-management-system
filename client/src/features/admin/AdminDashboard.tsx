@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext, Navigate } from "react-router-dom";
 import axios from "axios";
 import { io, Socket } from "socket.io-client";
 import { FolderKanban, CalendarPlus, Info, X, Eye, User, Activity } from "lucide-react";
@@ -7,7 +7,12 @@ import { toast } from "sonner";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const { readOnly, roles } = useOutletContext<{ readOnly?: boolean; roles?: any[] }>();
+  const { readOnly, roles, user } = useOutletContext<{ readOnly?: boolean; roles?: any[]; user?: any }>();
+  const isAssistant = !user?.isSystemAdmin && (user?.isStudentAssistant || roles?.some((r: any) => r.role === 'student_assistant'));
+
+  if (isAssistant) {
+    return <Navigate to="/admin/events" replace />;
+  }
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [logs, setLogs] = useState<any[]>([]);

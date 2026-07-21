@@ -945,7 +945,7 @@ router.post('/firebase-google', async (req, res) => {
  */
 router.get('/verify-email', async (req, res) => {
   const { token } = req.query;
-  const clientUrl = process.env.CLIENT_URL || 'https://www.seal-hackathon.io.vn';
+  const clientUrl = process.env.CLIENT_URL || 'https://seal-management-staging.vercel.app';
 
   if (!token) {
     return res.status(400).send(`
@@ -1198,22 +1198,32 @@ router.get('/users', authenticateToken, requireAdminOrAssistant, async (req, res
         { studentId: { $regex: search, $options: 'i' } }
       ];
     }
-    const users = await User.find(query).select('-passwordHash -emailVerificationToken').sort({ createdAt: -1 }).lean();
-    
-    // Populate event roles for each user
-    const userIds = users.map(u => u._id);
-    const roles = await EventRole.find({ userId: { $in: userIds }, status: 'active' }).populate('eventId', 'name semester year status').lean();
+
+    const isAssistant = !req.user.isSystemAdmin && (req.user.isStudentAssistant || false);
     
     // Fetch team memberships for these users in active events (registration, ongoing)
     const Event = mongoose.model('Event');
     const TeamMember = mongoose.model('TeamMember');
+    const EventRole = mongoose.model('EventRole');
+
     const activeEvents = await Event.find({ status: { $in: ['registration', 'ongoing'] } }).select('_id');
-    const activeEventIds = activeEvents.map(e => e._id);
-    
+    let targetEventIds = activeEvents.map(e => e._id);
+
+    // If CTV, find the specific event(s) assigned to this CTV
+    if (isAssistant) {
+      const assistantRoles = await EventRole.find({
+        userId: req.user._id,
+        role: 'student_assistant',
+        status: 'active'
+      }).select('eventId');
+      if (assistantRoles.length > 0) {
+        targetEventIds = assistantRoles.map(r => r.eventId);
+      }
+    }
+
+    // Find ALL memberships in target events (including both confirmed and pending team members)
     const memberships = await TeamMember.find({
-      userId: { $in: userIds },
-      eventId: { $in: activeEventIds },
-      confirmStatus: 'confirmed'
+      eventId: { $in: targetEventIds }
     })
     .populate({
       path: 'teamId',
@@ -1224,6 +1234,18 @@ router.get('/users', authenticateToken, requireAdminOrAssistant, async (req, res
       }
     })
     .lean();
+
+    const teamUserIds = memberships.map(m => m.userId.toString());
+
+    // If CTV, filter query to ONLY include users who are team members in their assigned event
+    if (isAssistant) {
+      query._id = { $in: teamUserIds };
+    }
+
+    const users = await User.find(query).select('-passwordHash -emailVerificationToken').sort({ createdAt: -1 }).lean();
+    const userIds = users.map(u => u._id);
+
+    const roles = await EventRole.find({ userId: { $in: userIds }, status: 'active' }).populate('eventId', 'name semester year status').lean();
 
     const usersWithRoles = users.map(u => {
       const userRoles = roles.filter(r => r.userId.toString() === u._id.toString());

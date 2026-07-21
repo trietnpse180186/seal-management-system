@@ -773,8 +773,8 @@ export default function RegisterTeam() {
               </div>
 
               {pastTeams.length > 0 && (
-                <div className="bg-cyan-500/5 p-4 rounded-xl border border-cyan-500/20 space-y-2">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-cyan-400">
+                <div className="bg-orange-500/5 p-4 rounded-xl border border-orange-500/20 space-y-2">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-orange-500">
                     Tái sử dụng thông tin đội cũ
                   </label>
                   <div className="flex flex-col sm:flex-row gap-3">
@@ -792,13 +792,13 @@ export default function RegisterTeam() {
                       type="button"
                       onClick={handleApplyPastTeam}
                       disabled={!selectedPastTeamId}
-                      className="bg-cyan-500 hover:bg-cyan-600 disabled:bg-slate-800 disabled:text-slate-500 disabled:border-transparent text-slate-950 font-bold px-4 py-2 rounded-lg text-xs transition-all uppercase tracking-wider cursor-pointer border border-cyan-400/30"
+                      className="bg-[#F27024] hover:bg-[#e05e1b] disabled:bg-slate-200 disabled:text-slate-400 disabled:border-transparent text-white font-bold px-5 py-2.5 rounded-xl text-xs transition-all uppercase tracking-wider cursor-pointer border border-orange-500/30 shadow-md active:scale-95 shrink-0"
                     >
                       Áp dụng
                     </button>
                   </div>
                   {infoMessage && (
-                    <p className="text-[10px] text-cyan-400 font-mono italic mt-1">{infoMessage}</p>
+                    <p className="text-[10px] text-orange-500 font-mono italic mt-1">{infoMessage}</p>
                   )}
                 </div>
               )}

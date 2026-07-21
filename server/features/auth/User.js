@@ -20,7 +20,13 @@ const UserSchema = new Schema({
   activeSessionId: { type: String, default: null },
   lastActiveAt: { type: Date, default: null },
   resetPasswordToken: { type: String },
-  resetPasswordExpires: { type: Date }
+  resetPasswordExpires: { type: Date },
+  verifiedPastTeams: [{
+    teamId: { type: Schema.Types.ObjectId, ref: 'Team' },
+    eventId: { type: Schema.Types.ObjectId, ref: 'Event' },
+    pastEmail: { type: String },
+    verifiedAt: { type: Date, default: Date.now }
+  }]
 }, {
   timestamps: true
 });

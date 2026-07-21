@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { toast } from "sonner";
-import { FolderKanban, ChevronRight, BookOpen, Users, Edit, Trash2, ExternalLink } from "lucide-react";
+import {
+  FolderKanban,
+  ChevronRight,
+  BookOpen,
+  Users,
+  Edit,
+  Trash2,
+  ExternalLink,
+} from "lucide-react";
 import { useConform } from "../shared/ModalConform";
 import CustomSelect from "../shared/CustomSelect";
 
@@ -36,7 +44,12 @@ interface TracksTabProps {
 
   // Event roles and judge assignment props
   eventRoles?: any[];
-  handleAssignRoleForTrack?: (email: string, trackId: string, role?: "judge" | "mentor", teamId?: string) => Promise<void>;
+  handleAssignRoleForTrack?: (
+    email: string,
+    trackId: string,
+    role?: "judge" | "mentor",
+    teamId?: string,
+  ) => Promise<void>;
   handleRemoveRole?: (roleId: string) => Promise<void>;
 
   // Team mentor assignment props
@@ -58,7 +71,12 @@ const formatTrackName = (name: string) => {
 
 const isFinalRound = (round: any) => {
   const name = String(round?.name || "").toLowerCase();
-  return round?.advanceTopN === 0 || name.includes("chung kết") || name.includes("chung ket") || name === "final";
+  return (
+    round?.advanceTopN === 0 ||
+    name.includes("chung kết") ||
+    name.includes("chung ket") ||
+    name === "final"
+  );
 };
 export default function TracksTab({
   selectedEvent,
@@ -114,10 +132,16 @@ export default function TracksTab({
     try {
       await axios.post(
         `http://localhost:5000/api/events/${selectedEvent._id}/upload-exam`,
-        { fileName: driveFileName, fileUrl: driveFileUrl, trackId: selectedTrack._id },
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          fileName: driveFileName,
+          fileUrl: driveFileUrl,
+          trackId: selectedTrack._id,
+        },
+        { headers: { Authorization: `Bearer ${token}` } },
       );
-      toast.success(`Đã lưu link Drive riêng cho bảng "${selectedTrack.name}"!`);
+      toast.success(
+        `Đã lưu link Drive riêng cho bảng "${selectedTrack.name}"!`,
+      );
       setDriveFileName("");
       setDriveFileUrl("");
       if (fetchEventDetails) await fetchEventDetails();
@@ -128,17 +152,23 @@ export default function TracksTab({
     }
   };
 
-
   const maxEventTeams = selectedEvent?.maxTeams || 0;
   const finalRound = rounds.find(isFinalRound);
   const finalRoundId = finalRound?._id || finalRound?.id;
-  const availableTrackRounds = useMemo(() => rounds.filter((r: any) => !isFinalRound(r)), [rounds]);
+  const availableTrackRounds = useMemo(
+    () => rounds.filter((r: any) => !isFinalRound(r)),
+    [rounds],
+  );
   const isDefaultFinalRoundTrack = (track: any) => {
     const trackRoundId = track.roundId?._id || track.roundId;
-    return Boolean(trackRoundId && finalRoundId && trackRoundId.toString() === finalRoundId.toString());
+    return Boolean(
+      trackRoundId &&
+      finalRoundId &&
+      trackRoundId.toString() === finalRoundId.toString(),
+    );
   };
   const totalAllocatedTeams = tracks
-    .filter(t => {
+    .filter((t) => {
       const tRoundId = t.roundId?._id || t.roundId;
       return tRoundId && tRoundId.toString() !== finalRoundId?.toString();
     })
@@ -148,12 +178,14 @@ export default function TracksTab({
   const trackMembers = eventRoles.filter(
     (role: any) =>
       (role.role === "judge" || role.role === "mentor") &&
-      ((role.trackId?._id || role.trackId) === selectedTrack?._id)
+      (role.trackId?._id || role.trackId) === selectedTrack?._id,
   );
 
   useEffect(() => {
     if (editingTrack || !trackRoundId) return;
-    const hasAllowedRound = availableTrackRounds.some((r: any) => r._id === trackRoundId);
+    const hasAllowedRound = availableTrackRounds.some(
+      (r: any) => r._id === trackRoundId,
+    );
     if (!hasAllowedRound) setTrackRoundId("");
   }, [availableTrackRounds, editingTrack, setTrackRoundId, trackRoundId]);
   useEffect(() => {
@@ -170,10 +202,12 @@ export default function TracksTab({
       try {
         const res = await axios.get(
           `http://localhost:5000/api/auth/users?search=${encodeURIComponent(query)}`,
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: { Authorization: `Bearer ${token}` } },
         );
         if (!cancelled) {
-          setAccountSuggestions((res.data || []).filter((user: any) => !user.isSystemAdmin));
+          setAccountSuggestions(
+            (res.data || []).filter((user: any) => !user.isSystemAdmin),
+          );
         }
       } catch (err) {
         if (!cancelled) setAccountSuggestions([]);
@@ -215,10 +249,11 @@ export default function TracksTab({
             {tracks.map((t: any) => (
               <div
                 key={t._id}
-                className={`w-full p-3 rounded-xl border text-xs flex justify-between items-center transition-all ${selectedTrack?._id === t._id
-                  ? "bg-cyan-500/10 border-cyan-500/50 text-white"
-                  : "border-slate-800/80 bg-slate-900/10 hover:border-slate-700 text-slate-400"
-                  }`}
+                className={`w-full p-3 rounded-xl border text-xs flex justify-between items-center transition-all ${
+                  selectedTrack?._id === t._id
+                    ? "bg-orange-500/10 border-orange-500/50 text-slate-900 dark:text-orange-300 font-bold shadow-xs"
+                    : "bg-white dark:bg-slate-900/40 border-slate-200 dark:border-slate-800/80 hover:border-orange-500/40 text-slate-900 dark:text-slate-300 shadow-xs"
+                }`}
               >
                 <button
                   type="button"
@@ -236,21 +271,28 @@ export default function TracksTab({
                       setCriteria([]);
                     }
                   }}
-                  className="text-left flex-1"
+                  className="text-left flex-1 cursor-pointer"
                 >
-                  <span className="font-semibold block">
-                    <span className="text-cyan-400 drop-shadow-[0_0_4px_rgba(34,211,238,0.35)]">
+                  <div className="block">
+                    <strong className="text-slate-950 dark:text-white font-black text-sm text-track-title">
                       {formatTrackName(t.name)}
-                    </span>
+                    </strong>
                     {!t.name.toLowerCase().includes("chung kết") && (
-                      <span className="text-slate-400 font-normal"> (Tối đa {t.maxTeams} đội)</span>
+                      <span className="text-slate-600 dark:text-slate-400 font-normal text-xs ml-1">
+                        (Tối đa {t.maxTeams} đội)
+                      </span>
                     )}
-                  </span>
+                  </div>
                   <span className="text-[10px] text-slate-500 font-mono block">
-                    Vòng: {rounds.find((r) => r._id === t.roundId)?.name || "Chưa gán"}
+                    Vòng:{" "}
+                    {rounds.find((r) => r._id === t.roundId)?.name ||
+                      "Chưa gán"}
                   </span>
                   {t.environmentId && (
-                    <span className="text-[9px] text-cyan-500 font-mono block truncate max-w-[220px]" title={t.environmentId}>
+                    <span
+                      className="text-[9px] text-cyan-500 font-mono block truncate max-w-[220px]"
+                      title={t.environmentId}
+                    >
                       Env: {t.environmentId}
                     </span>
                   )}
@@ -266,7 +308,9 @@ export default function TracksTab({
                           setTrackRoundId(t.roundId);
                           setTrackName(t.name);
                           setTrackMax(t.maxTeams.toString());
-                          setTrackAdvanceTopN(t.advanceTopN ? t.advanceTopN.toString() : "");
+                          setTrackAdvanceTopN(
+                            t.advanceTopN ? t.advanceTopN.toString() : "",
+                          );
                           setTrackDesc(t.description || "");
                           setTrackEnvironmentId(t.environmentId || "");
                         }}
@@ -295,7 +339,14 @@ export default function TracksTab({
                       </button>
                     </>
                   )}
-                  <ChevronRight size={14} className={selectedTrack?._id === t._id ? "text-cyan-400" : "text-slate-600"} />
+                  <ChevronRight
+                    size={14}
+                    className={
+                      selectedTrack?._id === t._id
+                        ? "text-cyan-400"
+                        : "text-slate-600"
+                    }
+                  />
                 </div>
               </div>
             ))}
@@ -325,8 +376,8 @@ export default function TracksTab({
                 onChange={(val) => setTrackRoundId(val)}
                 options={availableTrackRounds.map((r: any) => ({
                   value: r._id,
-                  label: `${r.name} (Vòng ${r.order})${r.status === 'completed' ? ' - Đã kết thúc' : ''}`,
-                  disabled: r.status === 'completed'
+                  label: `${r.name} (Vòng ${r.order})${r.status === "completed" ? " - Đã kết thúc" : ""}`,
+                  disabled: r.status === "completed",
                 }))}
                 placeholder="-- Chọn Vòng thi --"
                 className="w-full"
@@ -349,7 +400,12 @@ export default function TracksTab({
 
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
-                Số lượng đội tối đa {maxEventTeams > 0 ? (editingTrack ? `(Còn lại: ${remainingTeams + (editingTrack.maxTeams || 0)} / ${maxEventTeams} đội)` : `(Còn lại: ${remainingTeams} / ${maxEventTeams} đội)`) : ""}
+                Số lượng đội tối đa{" "}
+                {maxEventTeams > 0
+                  ? editingTrack
+                    ? `(Còn lại: ${remainingTeams + (editingTrack.maxTeams || 0)} / ${maxEventTeams} đội)`
+                    : `(Còn lại: ${remainingTeams} / ${maxEventTeams} đội)`
+                  : ""}
               </label>
               <input
                 type="number"
@@ -421,11 +477,11 @@ export default function TracksTab({
       <div className="space-y-6">
         {/* Drive Upload Card — gắn link Drive cho bảng đấu đang chọn */}
         <div className="glass p-6 rounded-2xl space-y-4">
-          <h3 className="text-md font-bold text-white flex items-center gap-1.5 font-mono border-b border-slate-800/80 pb-3">
-            <BookOpen size={16} className="text-cyan-400" />
+          <h3 className="text-md font-bold text-slate-900 dark:text-white flex items-center gap-1.5 font-mono border-b border-slate-200 dark:border-slate-800/80 pb-3">
+            <BookOpen size={16} className="text-orange-500" />
             <span>Đề bài & Tài liệu</span>
             {selectedTrack && (
-              <span className="ml-auto text-xs font-bold text-cyan-400 border border-emerald-800/4 px-3 py-1 rounded font-mono uppercase tracking-wider">
+              <span className="ml-auto text-xs font-bold text-orange-500 border border-orange-500/30 bg-orange-500/10 px-3 py-1 rounded font-mono uppercase tracking-wider">
                 {formatTrackName(selectedTrack.name)}
               </span>
             )}
@@ -435,74 +491,90 @@ export default function TracksTab({
             <p className="text-xs text-slate-500 italic text-center py-4 font-sans">
               Chọn một bảng đấu ở cột bên trái để gắn link Drive riêng.
             </p>
-          ) : (() => {
-            // Đọc trực tiếp từ track — mỗi bảng có link riêng
-            const currentUrl = selectedTrack.examDriveFileUrl;
-            const currentName = selectedTrack.examDriveFileName;
-            return (
-              <div className="space-y-3">
-                {/* Hiển thị link đã gắn */}
-                {currentUrl ? (
-                  <div className="p-3 rounded-xl border border-emerald-800/40 space-y-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                      <p className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">Drive riêng — Chỉ bảng này</p>
+          ) : (
+            (() => {
+              // Đọc trực tiếp từ track — mỗi bảng có link riêng
+              const currentUrl = selectedTrack.examDriveFileUrl;
+              const currentName = selectedTrack.examDriveFileName;
+              return (
+                <div className="space-y-3">
+                  {/* Hiển thị link đã gắn */}
+                  {currentUrl ? (
+                    <div className="p-3.5 bg-emerald-500/10 dark:bg-emerald-950/30 rounded-xl border border-emerald-500/30 space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                          Drive riêng — Chỉ bảng này
+                        </p>
+                      </div>
+                      <p className="text-xs font-black text-[#0f172a] dark:text-white">
+                        {currentName}
+                      </p>
+                      <a
+                        href={currentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[10px] text-orange-500 hover:text-orange-600 font-mono truncate max-w-full"
+                      >
+                        <ExternalLink size={10} />
+                        {currentUrl.length > 50
+                          ? currentUrl.slice(0, 50) + "…"
+                          : currentUrl}
+                      </a>
                     </div>
-                    <p className="text-xs font-semibold text-white">{currentName}</p>
-                    <a
-                      href={currentUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-[9px] text-cyan-400 hover:text-cyan-300 font-mono truncate max-w-full"
-                    >
-                      <ExternalLink size={10} />
-                      {currentUrl.length > 50 ? currentUrl.slice(0, 50) + "…" : currentUrl}
-                    </a>
-                  </div>
-                ) : (
-                  <div className="p-3 bg-amber-950/20 rounded-xl border border-amber-800/30">
-                    <p className="text-[10px] text-amber-400 italic font-sans">
-                      Bảng <strong>{selectedTrack.name}</strong> chưa có link Drive riêng nào.
-                    </p>
-                  </div>
-                )}
+                  ) : (
+                    <div className="p-3 bg-amber-950/20 rounded-xl border border-amber-800/30">
+                      <p className="text-[10px] text-amber-400 italic font-sans">
+                        Bảng <strong>{selectedTrack.name}</strong> chưa có link
+                        Drive riêng nào.
+                      </p>
+                    </div>
+                  )}
 
-                {/* Form upload mới */}
-                {!readOnly && (
-                  <div className="space-y-2.5 pt-2 border-t border-slate-800/60">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">
-                      {currentUrl ? "Cập nhật link Drive riêng:" : "Gắn link Drive riêng cho bảng này:"}
-                    </p>
-                    <input
-                      type="text"
-                      placeholder="VD: Đề Bảng AI & IoT - Vòng Sơ loại"
-                      value={driveFileName}
-                      onChange={(e) => setDriveFileName(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl text-xs bg-slate-950 border border-slate-800 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500"
-                    />
-                    <input
-                      type="text"
-                      placeholder="https://drive.google.com/drive/folders/..."
-                      value={driveFileUrl}
-                      onChange={(e) => setDriveFileUrl(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl text-xs bg-slate-950 border border-slate-800 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500"
-                    />
-                    <p className="text-[9px] text-amber-400 font-sans">
-                      Đặt Drive là <strong>"Anyone with the link"</strong> rồi mới paste link vào đây.
-                    </p>
-                    <button
-                      type="button"
-                      disabled={uploadingDrive || !driveFileName || !driveFileUrl}
-                      onClick={handleUploadDriveForTrack}
-                      className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold text-xs py-2.5 rounded-xl uppercase tracking-wider transition-colors cursor-pointer"
-                    >
-                      {uploadingDrive ? "Đang lưu..." : "Lưu Link Drive Riêng"}
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
+                  {/* Form upload mới */}
+                  {!readOnly && (
+                    <div className="space-y-2.5 pt-2 border-t border-slate-800/60">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                        {currentUrl
+                          ? "Cập nhật link Drive riêng:"
+                          : "Gắn link Drive riêng cho bảng này:"}
+                      </p>
+                      <input
+                        type="text"
+                        placeholder="VD: Đề Bảng AI & IoT - Vòng Sơ loại"
+                        value={driveFileName}
+                        onChange={(e) => setDriveFileName(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl text-xs bg-slate-950 border border-slate-800 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500"
+                      />
+                      <input
+                        type="text"
+                        placeholder="https://drive.google.com/drive/folders/..."
+                        value={driveFileUrl}
+                        onChange={(e) => setDriveFileUrl(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl text-xs bg-slate-950 border border-slate-800 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500"
+                      />
+                      <p className="text-[9px] text-amber-400 font-sans">
+                        Đặt Drive là <strong>"Anyone with the link"</strong> rồi
+                        mới paste link vào đây.
+                      </p>
+                      <button
+                        type="button"
+                        disabled={
+                          uploadingDrive || !driveFileName || !driveFileUrl
+                        }
+                        onClick={handleUploadDriveForTrack}
+                        className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold text-xs py-2.5 rounded-xl uppercase tracking-wider transition-colors cursor-pointer"
+                      >
+                        {uploadingDrive
+                          ? "Đang lưu..."
+                          : "Lưu Link Drive Riêng"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()
+          )}
         </div>
 
         {/* Judge Assignment Card */}
@@ -510,7 +582,13 @@ export default function TracksTab({
           <div className="glass p-6 rounded-2xl space-y-4">
             <h3 className="text-md font-bold text-white flex items-center gap-1.5 font-mono border-b border-slate-800/80 pb-3">
               <Users size={16} className="text-cyan-400" />
-              <span>Ban chuyên môn (<span className="text-cyan-400 drop-shadow-[0_0_4px_rgba(34,211,238,0.35)]">{formatTrackName(selectedTrack.name)}</span>)</span>
+              <span>
+                Ban chuyên môn (
+                <span className="text-cyan-400 drop-shadow-[0_0_4px_rgba(34,211,238,0.35)]">
+                  {formatTrackName(selectedTrack.name)}
+                </span>
+                )
+              </span>
             </h3>
 
             {/* List of judges and mentors */}
@@ -519,7 +597,7 @@ export default function TracksTab({
                 const mentoredTeam = teamsList.find(
                   (t) =>
                     String(t.mentorId?._id || t.mentorId) ===
-                    String(role.userId?._id || role.userId)
+                    String(role.userId?._id || role.userId),
                 );
                 return (
                   <div
@@ -536,10 +614,12 @@ export default function TracksTab({
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-1.5 items-center">
-                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${role.role === 'judge' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/30' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'}`}>
-                          {role.role === 'judge' ? 'Giám khảo' : 'Mentor'}
+                        <span
+                          className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${role.role === "judge" ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/30" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"}`}
+                        >
+                          {role.role === "judge" ? "Giám khảo" : "Mentor"}
                         </span>
-                        {role.role === 'mentor' && mentoredTeam && (
+                        {role.role === "mentor" && mentoredTeam && (
                           <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
                             Đội: {mentoredTeam.name}
                           </span>
@@ -574,7 +654,7 @@ export default function TracksTab({
                     judgeEmail,
                     selectedTrack._id,
                     memberRole,
-                    selectedTeamId || undefined
+                    selectedTeamId || undefined,
                   );
                   setJudgeEmail("");
                   setSelectedTeamId("");
@@ -586,15 +666,28 @@ export default function TracksTab({
                     Phân quyền:
                   </label>
                   <label className="flex items-center gap-1.5 cursor-pointer text-xs text-slate-300">
-                    <input type="radio" name="memberRole" value="judge" checked={memberRole === "judge"} onChange={() => setMemberRole("judge")} className="accent-cyan-500" />
+                    <input
+                      type="radio"
+                      name="memberRole"
+                      value="judge"
+                      checked={memberRole === "judge"}
+                      onChange={() => setMemberRole("judge")}
+                      className="accent-cyan-500"
+                    />
                     Giám khảo
                   </label>
                   <label className="flex items-center gap-1.5 cursor-pointer text-xs text-slate-300">
-                    <input type="radio" name="memberRole" value="mentor" checked={memberRole === "mentor"} onChange={() => setMemberRole("mentor")} className="accent-cyan-500" />
+                    <input
+                      type="radio"
+                      name="memberRole"
+                      value="mentor"
+                      checked={memberRole === "mentor"}
+                      onChange={() => setMemberRole("mentor")}
+                      className="accent-cyan-500"
+                    />
                     Mentor
                   </label>
                 </div>
-
 
                 <div className="flex gap-2 relative">
                   <div className="flex-1 relative">
@@ -608,32 +701,38 @@ export default function TracksTab({
                         setShowSuggestions(true);
                       }}
                       onFocus={() => setShowSuggestions(true)}
-                      onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                      onBlur={() =>
+                        setTimeout(() => setShowSuggestions(false), 200)
+                      }
                       className="w-full px-3 py-2.5 rounded-xl text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200 focus:outline-none focus:border-cyan-500"
                     />
-                    {showSuggestions && (loadingSuggestions || filteredUsers.length > 0) && (
-                      <div className="absolute left-0 right-0 bottom-full mb-1 z-50 max-h-45 overflow-y-auto bg-slate-900 border border-slate-800 rounded-xl shadow-xl divide-y divide-slate-800/60">
-                        {loadingSuggestions && filteredUsers.length === 0 && (
-                          <div className="px-3 py-2 text-[10px] font-mono uppercase tracking-wider text-slate-500">
-                            Đang tìm tài khoản...
-                          </div>
-                        )}
-                        {filteredUsers.map((user: any) => (
-                          <button
-                            key={user._id}
-                            type="button"
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              setJudgeEmail(user.email);
-                              setShowSuggestions(false);
-                            }}
-                            className="w-full text-left px-3 py-2 text-xs font-mono hover:bg-slate-800 text-slate-300 hover:text-white transition-colors block cursor-pointer"
-                          >
-                            <span className="font-semibold">{user.fullName}</span> ({user.email})
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    {showSuggestions &&
+                      (loadingSuggestions || filteredUsers.length > 0) && (
+                        <div className="absolute left-0 right-0 bottom-full mb-1 z-50 max-h-45 overflow-y-auto bg-slate-900 border border-slate-800 rounded-xl shadow-xl divide-y divide-slate-800/60">
+                          {loadingSuggestions && filteredUsers.length === 0 && (
+                            <div className="px-3 py-2 text-[10px] font-mono uppercase tracking-wider text-slate-500">
+                              Đang tìm tài khoản...
+                            </div>
+                          )}
+                          {filteredUsers.map((user: any) => (
+                            <button
+                              key={user._id}
+                              type="button"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                setJudgeEmail(user.email);
+                                setShowSuggestions(false);
+                              }}
+                              className="w-full text-left px-3 py-2 text-xs font-mono hover:bg-slate-800 text-slate-300 hover:text-white transition-colors block cursor-pointer"
+                            >
+                              <span className="font-semibold">
+                                {user.fullName}
+                              </span>{" "}
+                              ({user.email})
+                            </button>
+                          ))}
+                        </div>
+                      )}
                   </div>
                   <button
                     type="submit"
@@ -648,7 +747,9 @@ export default function TracksTab({
         ) : (
           <div className="glass p-6 rounded-2xl text-center py-10 text-slate-500 font-mono border-dashed border-slate-800">
             <Users size={32} className="mx-auto mb-2 text-slate-600" />
-            <p className="text-xs">Chọn một bảng đấu ở cột bên trái để quản lý Ban chuyên môn.</p>
+            <p className="text-xs">
+              Chọn một bảng đấu ở cột bên trái để quản lý Ban chuyên môn.
+            </p>
           </div>
         )}
       </div>

@@ -731,7 +731,7 @@ router.get("/confirm-invite", async (req, res) => {
   const { token } = req.query;
 
   const clientUrl =
-    process.env.CLIENT_URL || "https://www.seal-hackathon.io.vn";
+    process.env.CLIENT_URL || "https://seal-management-staging.vercel.app";
 
   if (!token) {
     return res.status(400).send(`
@@ -814,44 +814,10 @@ router.get("/confirm-invite", async (req, res) => {
       `);
     }
 
-    // If already confirmed, render success page immediately
+    // If already confirmed, redirect directly to survey page
     if (member.confirmStatus === "confirmed") {
       const team = await Team.findById(member.teamId);
-      return res.send(`
-        <!DOCTYPE html>
-        <html class="dark" lang="vi">
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>SEAL HACKATHON // XÁC NHẬN THÀNH CÔNG</title>
-          <script src="https://cdn.tailwindcss.com"></script>
-          <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-          <style>
-            body {
-              background-color: #0a141d;
-              background-image: 
-                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-              background-size: 40px 40px;
-            }
-          </style>
-        </head>
-        <body class="min-h-screen text-slate-300 font-sans flex items-center justify-center p-4">
-          <div class="w-full max-w-md bg-[#0a141d]/90 border border-[#00f0ff]/30 backdrop-blur-md p-8 rounded-xl text-center shadow-2xl relative overflow-hidden">
-            <div class="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#00f0ff] to-transparent opacity-80 animate-pulse"></div>
-            <div class="inline-flex border border-[#00f0ff] px-3 py-1 text-xs font-mono text-[#00f0ff] mb-6 bg-[#00f0ff]/5 uppercase tracking-widest rounded">[INVITATION_CONFIRMED]</div>
-            <div class="w-20 h-20 mx-auto mb-6 rounded-full border border-[#00f0ff] flex items-center justify-center bg-[#00f0ff]/10 shadow-[0_0_20px_rgba(0,240,255,0.2)]">
-              <svg class="w-10 h-10 text-[#00f0ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
-              </svg>
-            </div>
-            <h1 class="text-2xl font-extrabold text-white mb-3 uppercase tracking-tight font-mono">ĐÃ XÁC NHẬN THAM GIA</h1>
-            <p class="text-sm text-slate-400 mb-8 font-sans leading-relaxed">Bạn đã xác nhận tham gia đội thi <strong>${team ? team.name : ""}</strong> từ trước. Bạn có thể đóng tab này hoặc nhấn nút bên dưới để quay lại hệ thống.</p>
-            <a href="${clientUrl}/team-area" class="inline-block w-full py-3 border border-[#00f0ff] text-[#00f0ff] hover:bg-[#00f0ff] hover:text-[#0a141d] font-mono text-sm font-bold uppercase tracking-wider transition-all duration-300 shadow-[inset_0_0_10px_rgba(0,240,255,0.1)] hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] rounded">QUAY LẠI TRANG ĐỘI THI</a>
-          </div>
-        </body>
-        </html>
-      `);
+      return res.redirect(`${clientUrl}/confirm-survey?teamName=${encodeURIComponent(team ? team.name : "")}`);
     }
 
     // Check token expiry for pending confirmation
@@ -1057,46 +1023,12 @@ router.get("/confirm-invite", async (req, res) => {
       }
     }
 
-    // Send successful response page (HTML mockup or redirect)
-    res.send(`
-      <!DOCTYPE html>
-      <html class="dark" lang="vi">
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>SEAL HACKATHON // XÁC NHẬN THÀNH CÔNG</title>
-        <script src="https://cdn.tailwindcss.com"></script>
-        <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-        <style>
-          body {
-            background-color: #0a141d;
-            background-image: 
-              linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-            background-size: 40px 40px;
-          }
-        </style>
-      </head>
-      <body class="min-h-screen text-slate-300 font-sans flex items-center justify-center p-4">
-        <div class="w-full max-w-md bg-[#0a141d]/90 border border-[#00f0ff]/30 backdrop-blur-md p-8 rounded-xl text-center shadow-2xl relative overflow-hidden">
-          <div class="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#00f0ff] to-transparent opacity-80 animate-pulse"></div>
-          <div class="inline-flex border border-[#00f0ff] px-3 py-1 text-xs font-mono text-[#00f0ff] mb-6 bg-[#00f0ff]/5 uppercase tracking-widest rounded">[INVITATION_CONFIRMED]</div>
-          <div class="w-20 h-20 mx-auto mb-6 rounded-full border border-[#00f0ff] flex items-center justify-center bg-[#00f0ff]/10 shadow-[0_0_20px_rgba(0,240,255,0.2)]">
-            <svg class="w-10 h-10 text-[#00f0ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
-            </svg>
-          </div>
-          <h1 class="text-2xl font-extrabold text-white mb-3 uppercase tracking-tight font-mono">ĐÃ XÁC NHẬN THAM GIA</h1>
-          <p class="text-sm text-slate-400 mb-8 font-sans leading-relaxed">Tuyệt vời! Bạn đã xác nhận tham gia đội thi <strong>${team.name}</strong> thành công. Bạn có thể đóng tab này hoặc nhấn nút bên dưới để quay lại hệ thống.</p>
-          <a href="${clientUrl}/team-area" class="inline-block w-full py-3 border border-[#00f0ff] text-[#00f0ff] hover:bg-[#00f0ff] hover:text-[#0a141d] font-mono text-sm font-bold uppercase tracking-wider transition-all duration-300 shadow-[inset_0_0_10px_rgba(0,240,255,0.1)] hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] rounded">QUAY LẠI TRANG ĐỘI THI</a>
-        </div>
-      </body>
-      </html>
-    `);
+    // Redirect directly to frontend survey page
+    return res.redirect(`${clientUrl}/confirm-survey?teamName=${encodeURIComponent(team.name)}`);
   } catch (error) {
     console.error("Invite Confirmation Error:", error.message);
     const clientUrl =
-      process.env.CLIENT_URL || "https://www.seal-hackathon.io.vn";
+      process.env.CLIENT_URL || "https://seal-management-staging.vercel.app";
     res.status(500).send(`
       <!DOCTYPE html>
       <html class="dark" lang="vi">
@@ -1136,15 +1068,130 @@ router.get("/confirm-invite", async (req, res) => {
 });
 
 /**
+ * @route   POST /api/teams/verify-past-participation
+ * @desc    Verify if logged in user (or provided email) participated in a past completed event
+ * @access  Private
+ */
+router.post("/verify-past-participation", async (req, res) => {
+  try {
+    const { eventId, email } = req.body;
+
+    if (!eventId || !email) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng chọn sự kiện và nhập email đã từng tham gia.",
+      });
+    }
+
+    // Try optional JWT authentication
+    let loggedInUser = null;
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (token) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        loggedInUser = decoded;
+      } catch (err) {}
+    }
+
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: "Sự kiện được chọn không tồn tại.",
+      });
+    }
+
+    const trimmedEmail = email.trim().toLowerCase();
+
+    // Find target user by email
+    const User = mongoose.model("User");
+    const targetUser = await User.findOne({ email: trimmedEmail });
+
+    let teamMemberRecords = [];
+    if (targetUser) {
+      teamMemberRecords = await TeamMember.find({
+        eventId: event._id,
+        userId: targetUser._id,
+        confirmStatus: "confirmed",
+      }).populate("teamId");
+    }
+
+    if (teamMemberRecords.length === 0) {
+      const allEventMembers = await TeamMember.find({
+        eventId: event._id,
+        confirmStatus: "confirmed",
+      }).populate("userId").populate("teamId");
+
+      teamMemberRecords = allEventMembers.filter(
+        (m) => m.userId && m.userId.email && m.userId.email.toLowerCase() === trimmedEmail
+      );
+    }
+
+    if (teamMemberRecords.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `Không tìm thấy thông tin tham gia với email "${trimmedEmail}" tại sự kiện "${event.name}". Vui lòng kiểm tra lại email hoặc sự kiện!`,
+      });
+    }
+
+    const matchedRecord = teamMemberRecords[0];
+    const team = matchedRecord.teamId;
+
+    if (!team) {
+      return res.status(404).json({
+        success: false,
+        message: `Không tìm thấy thông tin đội thi tương ứng với email "${trimmedEmail}".`,
+      });
+    }
+
+    // Link past team to user profile if user is logged in or target user exists
+    const linkUserId = loggedInUser ? (loggedInUser._id || loggedInUser.id) : (targetUser ? targetUser._id : null);
+    if (linkUserId) {
+      await User.findByIdAndUpdate(linkUserId, {
+        $addToSet: {
+          verifiedPastTeams: {
+            teamId: team._id,
+            eventId: event._id,
+            pastEmail: trimmedEmail,
+            verifiedAt: new Date(),
+          },
+        },
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: `Xác thực thành công! Đã tìm thấy thành tích tại sự kiện "${event.name}" thuộc đội "${team.name}".`,
+      teamName: team.name,
+      eventName: event.name,
+    });
+  } catch (error) {
+    console.error("Lỗi xác thực tham gia trước đó:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Có lỗi xảy ra khi xác thực thông tin tham gia.",
+    });
+  }
+});
+
+/**
  * @route   GET /api/teams/history
  * @desc    Get previous teams the logged in user has participated in
  * @access  Private
  */
 router.get("/history", authenticateToken, async (req, res) => {
   try {
+    const User = mongoose.model("User");
+    const userDoc = await User.findById(req.user._id).lean();
+    const verifiedTeamIds = (userDoc?.verifiedPastTeams || []).map((t) => t.teamId);
+
     const memberRecords = await TeamMember.find({
-      userId: req.user._id,
-      confirmStatus: "confirmed",
+      $or: [
+        { userId: req.user._id, confirmStatus: "confirmed" },
+        { teamId: { $in: verifiedTeamIds } },
+      ],
     });
 
     if (!memberRecords || memberRecords.length === 0) {

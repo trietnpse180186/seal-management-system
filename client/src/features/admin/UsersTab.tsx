@@ -8,7 +8,6 @@ import {
   Trash2,
   Edit2,
   CheckCircle,
-  Shield,
   Eye,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -19,15 +18,17 @@ interface UsersTabProps {
   token: string | null;
   readOnly?: boolean;
   roles?: any[];
+  user?: any;
 }
 
 export const UsersTab: React.FC<UsersTabProps> = ({
   token,
   readOnly = false,
   roles = [],
+  user,
 }) => {
   const confirm = useConfirm();
-  const isAssistant = roles?.some((r: any) => r.role === 'student_assistant');
+  const isAssistant = !user?.isSystemAdmin && (user?.isStudentAssistant || roles?.some((r: any) => r.role === 'student_assistant'));
   const [users, setUsers] = useState<any[]>([]);
   const displayedUsers = isAssistant ? users.filter((u: any) => u.isTeamMember) : users;
   const [loading, setLoading] = useState(false);
@@ -43,6 +44,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
     studentId: "",
     university: "",
     isActive: true,
+    isStudentAssistant: false,
   });
 
   const fetchUsers = async (silent = false) => {
@@ -94,6 +96,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
       studentId: user.studentId || "",
       university: user.university || "FPT University",
       isActive: user.isActive !== undefined ? !!user.isActive : true,
+      isStudentAssistant: !!user.isStudentAssistant,
     });
     setIsModalOpen(true);
   };

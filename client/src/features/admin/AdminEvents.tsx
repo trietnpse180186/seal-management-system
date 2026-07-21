@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useOutletContext } from "react-router-dom";
 import axios from "axios";
 import { io, Socket } from "socket.io-client";
@@ -57,10 +57,11 @@ interface AdminEventsProps {
 export default function AdminEvents({
   defaultTab = "events",
 }: AdminEventsProps) {
-  const { readOnly = false, roles = [] } = useOutletContext<{ readOnly?: boolean; roles?: any[] }>();
-  const isAssistant = roles?.some((r: any) => r.role === "student_assistant");
+  const { readOnly = false, roles = [], user } = useOutletContext<{ readOnly?: boolean; roles?: any[]; user?: any }>();
   const token = localStorage.getItem("token");
   const [currentUser, setCurrentUser] = useState<any>(null);
+
+  const isAssistant = !(user?.isSystemAdmin || currentUser?.isSystemAdmin) && (user?.isStudentAssistant || currentUser?.isStudentAssistant || roles?.some((r: any) => r.role === "student_assistant"));
 
   useEffect(() => {
     if (token) {
@@ -86,15 +87,17 @@ export default function AdminEvents({
 
   const [events, setEvents] = useState<any[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
-  const displayedEvents = isAssistant
-    ? events.filter((e: any) =>
-        roles?.some(
-          (r: any) =>
-            r.role === "student_assistant" &&
-            (r.eventId?._id === e._id || r.eventId === e._id),
-        ),
-      )
-    : events;
+  const displayedEvents = useMemo(() => {
+    return isAssistant
+      ? events.filter((e: any) =>
+          roles?.some(
+            (r: any) =>
+              r.role === "student_assistant" &&
+              (r.eventId?._id === e._id || r.eventId === e._id),
+          ),
+        )
+      : events;
+  }, [isAssistant, events, roles]);
 
   const [tracks, setTracks] = useState<any[]>([]);
   const [trackName, setTrackName] = useState("");
@@ -608,28 +611,16 @@ export default function AdminEvents({
         setIsWizardMode(false);
       }
       const foundEvent = displayedEvents.find((e) => e._id === eventIdParam);
-      if (foundEvent) {
-        setSelectedEvent(foundEvent);
-        setEditEventName(foundEvent.name || "");
-        setEditEventSemester(foundEvent.semester || "Spring");
-        setEditEventYear(String(foundEvent.year || 2026));
-        setEditEventDesc(foundEvent.description || "");
-        setEditEventMaxTeams(String(foundEvent.maxTeams || 10));
-        setEditEventGithubOrgName(foundEvent.githubOrgName || "");
-        populateEventSchedule(foundEvent);
+      if (foundEvent && selectedEvent?._id !== foundEvent._id) {
+        handleSelectEvent(foundEvent);
       }
     } else if (!isWizardMode && displayedEvents.length > 0 && !selectedEvent) {
-      const defaultEvent = displayedEvents[0];
-      setSelectedEvent(defaultEvent);
-      setEditEventName(defaultEvent.name || "");
-      setEditEventSemester(defaultEvent.semester || "Spring");
-      setEditEventYear(String(defaultEvent.year || 2026));
-      setEditEventDesc(defaultEvent.description || "");
-      setEditEventMaxTeams(String(defaultEvent.maxTeams || 10));
-      setEditEventGithubOrgName(defaultEvent.githubOrgName || "");
-      populateEventSchedule(defaultEvent);
+      const savedEventId = sessionStorage.getItem("lastSelectedEventId") || localStorage.getItem("lastSelectedEventId");
+      const foundSaved = savedEventId ? displayedEvents.find((e) => e._id === savedEventId) : null;
+      const defaultEvent = foundSaved || displayedEvents[0];
+      handleSelectEvent(defaultEvent);
     }
-  }, [eventIdParam, displayedEvents]);
+  }, [eventIdParam, displayedEvents, isWizardMode]);
 
   const fetchSyncProgress = async () => {
     if (!selectedEvent) return false;
@@ -1033,43 +1024,72 @@ export default function AdminEvents({
   };
 
   const handleSelectEvent = (eventObj: any) => {
+    if (!eventObj) return;
     sessionStorage.removeItem("creatingEventId");
     setIsWizardMode(false);
     setSelectedEvent(eventObj);
+    if (eventObj._id) {
+      sessionStorage.setItem("lastSelectedEventId", eventObj._id);
+      localStorage.setItem("lastSelectedEventId", eventObj._id);
+      if (searchParams.get("eventId") !== eventObj._id) {
+        setSearchParams(
+          (prev) => {
+            const updated = new URLSearchParams(prev);
+            updated.set("eventId", eventObj._id);
+            return updated;
+          },
+          { replace: true }
+        );
+      }
+    }
     setSelectedTrack(null);
 
     setRubric(null);
     setCriteria([]);
     setMessage({ type: "", text: "" });
 
-    // Populate edit fields for the event
-    setEditEventName(eventObj.name || "");
-    setEditEventSemester(eventObj.semester || "Spring");
-    setEditEventYear(String(eventObj.year || 2026));
-    setEditEventDesc(eventObj.description || "");
-    setEditEventMaxTeams(String(eventObj.maxTeams || 10));
-    setEditEventGithubOrgName(eventObj.githubOrgName || "");
-    populateEventSchedule(eventObj);
+    // Restore temporary draft edits for this event if present
+    const savedDraftStr = eventObj._id ? sessionStorage.getItem(`event_draft_${eventObj._id}`) : null;
+    let draft: any = null;
+    if (savedDraftStr) {
+      try {
+        draft = JSON.parse(savedDraftStr);
+      } catch (e) {
+        console.error("Error parsing event draft", e);
+      }
+    }
+
+    setEditEventName(draft?.editEventName !== undefined ? draft.editEventName : (eventObj.name || ""));
+    setEditEventSemester(draft?.editEventSemester !== undefined ? draft.editEventSemester : (eventObj.semester || "Spring"));
+    setEditEventYear(draft?.editEventYear !== undefined ? draft.editEventYear : String(eventObj.year || 2026));
+    setEditEventDesc(draft?.editEventDesc !== undefined ? draft.editEventDesc : (eventObj.description || ""));
+    setEditEventMaxTeams(draft?.editEventMaxTeams !== undefined ? draft.editEventMaxTeams : String(eventObj.maxTeams || 10));
+    setEditEventGithubOrgName(draft?.editEventGithubOrgName !== undefined ? draft.editEventGithubOrgName : (eventObj.githubOrgName || ""));
+
+    if (draft?.editEventRegOpen !== undefined || draft?.editEventRegClose !== undefined || draft?.editEventContestStart !== undefined || draft?.editEventContestEnd !== undefined) {
+      setEditEventRegOpen(draft.editEventRegOpen || "");
+      setEditEventRegClose(draft.editEventRegClose || "");
+      setEditEventContestStart(draft.editEventContestStart || "");
+      setEditEventContestEnd(draft.editEventContestEnd || "");
+    } else {
+      populateEventSchedule(eventObj);
+    }
 
     setEditMainGoal(
-      eventObj.mainGoal ||
-        "Phát triển các giải pháp sáng tạo để giải quyết bài toán thực tế và xây dựng hệ thống phần mềm chất lượng. Các đội thi cần tối ưu mã nguồn, liên kết repository và tối ưu hóa hệ thống dưới sự hỗ trợ của AI.",
+      draft?.editMainGoal !== undefined ? draft.editMainGoal : (eventObj.mainGoal || "Phát triển các giải pháp sáng tạo để giải quyết bài toán thực tế và xây dựng hệ thống phần mềm chất lượng. Các đội thi cần tối ưu mã nguồn, liên kết repository và tối ưu hóa hệ thống dưới sự hỗ trợ của AI.")
     );
-    setEditDurationText(eventObj.durationText || "48 GIỜ");
-    setEditMemberLimitText(eventObj.memberLimitText || "2-4 OPERATORS");
-    setEditPrizePoolText(eventObj.prizePoolText || "$50,000 USD");
-    setEditZaloUrl(eventObj.zaloUrl || "");
+    setEditDurationText(draft?.editDurationText !== undefined ? draft.editDurationText : (eventObj.durationText || "48 GIỜ"));
+    setEditMemberLimitText(draft?.editMemberLimitText !== undefined ? draft.editMemberLimitText : (eventObj.memberLimitText || "2-4 OPERATORS"));
+    setEditPrizePoolText(draft?.editPrizePoolText !== undefined ? draft.editPrizePoolText : (eventObj.prizePoolText || "$50,000 USD"));
+    setEditZaloUrl(draft?.editZaloUrl !== undefined ? draft.editZaloUrl : (eventObj.zaloUrl || ""));
     setEditPhase1Description(
-      eventObj.phase1Description ||
-        "Các đội thi thực hiện đăng ký tài khoản, liên kết thành viên nhóm và liên kết repository Github chính thức để chuẩn bị nhận nhiệm vụ.",
+      draft?.editPhase1Description !== undefined ? draft.editPhase1Description : (eventObj.phase1Description || "Các đội thi thực hiện đăng ký tài khoản, liên kết thành viên nhóm và liên kết repository Github chính thức để chuẩn bị nhận nhiệm vụ.")
     );
     setEditPhase2Description(
-      eventObj.phase2Description ||
-        "Giai đoạn lập trình cường độ cao. Các đội thực hiện giải quyết yêu cầu dự án, liên tục push commit để AI tự động phân tích và đánh giá chất lượng mã nguồn.",
+      draft?.editPhase2Description !== undefined ? draft.editPhase2Description : (eventObj.phase2Description || "Giai đoạn lập trình cường độ cao. Các đội thực hiện giải quyết yêu cầu dự án, liên tục push commit để AI tự động phân tích và đánh giá chất lượng mã nguồn.")
     );
     setEditPhase3Description(
-      eventObj.phase3Description ||
-        "Dừng cổng nộp bài, đóng repository. Các đội thi chuẩn bị báo cáo dự án trước hội đồng giám khảo và nhận kết quả xếp hạng chung cuộc từ hệ thống.",
+      draft?.editPhase3Description !== undefined ? draft.editPhase3Description : (eventObj.phase3Description || "Dừng cổng nộp bài, đóng repository. Các đội thi chuẩn bị báo cáo dự án trước hội đồng giám khảo và nhận kết quả xếp hạng chung cuộc từ hệ thống.")
     );
     setEditRules(
       eventObj.rules || [
@@ -1767,6 +1787,60 @@ export default function AdminEvents({
     fetchRoundsAndRubric();
   }, [selectedRubricRoundId]);
 
+  // Auto-save temporary draft for selected event when user makes unsaved edits
+  useEffect(() => {
+    if (selectedEvent?._id && !isWizardMode) {
+      const draftData = {
+        editEventName,
+        editEventSemester,
+        editEventYear,
+        editEventDesc,
+        editEventMaxTeams,
+        editEventGithubOrgName,
+        editEventRegOpen,
+        editEventRegClose,
+        editEventContestStart,
+        editEventContestEnd,
+        editZaloUrl,
+        editMainGoal,
+        editDurationText,
+        editMemberLimitText,
+        editPrizePoolText,
+        editPhase1Description,
+        editPhase2Description,
+        editPhase3Description,
+      };
+      sessionStorage.setItem(`event_draft_${selectedEvent._id}`, JSON.stringify(draftData));
+    }
+  }, [
+    selectedEvent?._id,
+    isWizardMode,
+    editEventName,
+    editEventSemester,
+    editEventYear,
+    editEventDesc,
+    editEventMaxTeams,
+    editEventGithubOrgName,
+    editEventRegOpen,
+    editEventRegClose,
+    editEventContestStart,
+    editEventContestEnd,
+    editZaloUrl,
+    editMainGoal,
+    editDurationText,
+    editMemberLimitText,
+    editPrizePoolText,
+    editPhase1Description,
+    editPhase2Description,
+    editPhase3Description,
+  ]);
+
+  useEffect(() => {
+    if (selectedEvent?._id && selectedRubricRoundId) {
+      sessionStorage.setItem(`lastRound_${selectedEvent._id}`, selectedRubricRoundId);
+    }
+  }, [selectedEvent?._id, selectedRubricRoundId]);
+
   useEffect(() => {
     // When selected track or rounds change, auto-select a round for rubric selection if not set
     if (!selectedRubricRoundId && selectedTrack && rounds.length > 0) {
@@ -1777,11 +1851,15 @@ export default function AdminEvents({
         setSelectedRubricRoundId(associatedRound._id);
       }
     } else if (rounds.length > 0 && !selectedRubricRoundId) {
-      setSelectedRubricRoundId(rounds[rounds.length - 1]._id);
+      const savedRoundId = selectedEvent?._id ? sessionStorage.getItem(`lastRound_${selectedEvent._id}`) : null;
+      const foundRound = savedRoundId ? rounds.find((r: any) => r._id === savedRoundId) : null;
+      setSelectedRubricRoundId(foundRound ? foundRound._id : rounds[rounds.length - 1]._id);
     } else if (rounds.length > 0) {
       const exists = rounds.some((r: any) => r._id === selectedRubricRoundId);
       if (!exists) {
-        setSelectedRubricRoundId(rounds[rounds.length - 1]._id);
+        const savedRoundId = selectedEvent?._id ? sessionStorage.getItem(`lastRound_${selectedEvent._id}`) : null;
+        const foundRound = savedRoundId ? rounds.find((r: any) => r._id === savedRoundId) : null;
+        setSelectedRubricRoundId(foundRound ? foundRound._id : rounds[rounds.length - 1]._id);
       }
     }
   }, [selectedTrack, rounds]);
@@ -2315,14 +2393,14 @@ export default function AdminEvents({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 pt-4 pb-8 space-y-6">
+    <div className={`max-w-7xl mx-auto px-4 pb-8 ${isAssistant ? "pt-2 space-y-4" : "pt-4 space-y-6"}`}>
       {/* EVENT HEADER PANEL (if selected) */}
       {selectedEvent && (
         <div className="glass p-6 rounded-2xl relative bg-gradient-to-r from-cyan-950/20 to-slate-900/20 z-30">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none"></div>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full blur-2xl pointer-events-none"></div>
           <div className="flex justify-between items-start flex-col md:flex-row gap-4">
             <div className="relative" ref={eventTitleRef}>
-              <span className="text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded font-mono font-bold uppercase tracking-wider">
+              <span className="text-[10px] bg-orange-500/10 text-orange-500 border border-orange-500/20 px-2 py-0.5 rounded font-mono font-bold uppercase tracking-wider">
                 [DETAIL_BOARD]
               </span>
               <h1
@@ -2337,7 +2415,7 @@ export default function AdminEvents({
                 {displayedEvents.length > 1 && !isAssistant && (
                   <ChevronDown
                     size={18}
-                    className={`text-cyan-400/50 group-hover:text-cyan-400 transition-all mt-0.5 shrink-0 ${isEditingEventTitle ? "rotate-180 text-cyan-400" : ""}`}
+                    className={`text-orange-500/80 group-hover:text-orange-500 transition-all mt-0.5 shrink-0 ${isEditingEventTitle ? "rotate-180 text-orange-500" : ""}`}
                   />
                 )}
               </h1>
@@ -2354,7 +2432,7 @@ export default function AdminEvents({
                       className={`w-full text-left px-4 py-2.5 text-sm font-mono transition-colors cursor-pointer
                         ${
                           e._id === selectedEvent._id
-                            ? "bg-cyan-500/15 text-cyan-300 font-bold"
+                            ? "bg-orange-500/15 text-orange-400 font-bold"
                             : "text-slate-300 hover:bg-slate-800 hover:text-white"
                         }`}
                     >
@@ -2371,7 +2449,7 @@ export default function AdminEvents({
               <p className="text-xs text-slate-400 mt-1">
                 Học kỳ: {selectedEvent.semester} {selectedEvent.year} | Trạng
                 thái:{" "}
-                <span className="text-cyan-400 font-bold uppercase">
+                <span className="text-orange-500 font-bold uppercase">
                   {selectedEvent.status}
                 </span>
               </p>

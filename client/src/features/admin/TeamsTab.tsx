@@ -173,7 +173,7 @@ export default function TeamsTab({
                   </div>
 
                   {/* Leader & Repo Info */}
-                  <div className="text-[11px] text-slate-400 space-y-1">
+                  <div className="text-xs text-slate-400 space-y-1.5">
                     <p>
                       Trưởng nhóm:{" "}
                       <strong className="text-slate-300">
@@ -239,14 +239,14 @@ export default function TeamsTab({
 
                   {/* Members */}
                   <div className="border-t border-slate-800/80 pt-2">
-                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
                       Thành viên ({team.members?.length || 0}):
                     </p>
                     <div className="space-y-1">
                       {team.members?.map((m: any) => (
                         <div
                           key={m.userId?._id}
-                          className="flex justify-between text-[10px] text-slate-400"
+                          className="flex justify-between text-xs text-slate-400"
                         >
                           <span>
                             • {m.userId?.fullName}{" "}
@@ -254,12 +254,12 @@ export default function TeamsTab({
                             {m.userId?.university &&
                               `- ${m.userId.university} `}
                             {m.role === "leader" && (
-                              <span className="text-[9px] text-cyan-400 font-mono font-bold">
+                              <span className="text-[10px] text-cyan-400 font-mono font-bold">
                                 (Trưởng nhóm)
                               </span>
                             )}
                           </span>
-                          <span className="text-slate-500 font-mono">
+                          <span className="text-slate-500 font-mono text-[11px]">
                             {m.userId?.githubUsername || "Chưa liên kết Git"}
                           </span>
                         </div>
@@ -363,7 +363,7 @@ export default function TeamsTab({
                   </div>
 
                   {/* Leader & Repo Info */}
-                  <div className="text-[11px] text-slate-400 space-y-1">
+                  <div className="text-xs text-slate-400 space-y-1.5">
                     <p>
                       Trưởng nhóm:{" "}
                       <strong className="text-slate-350 font-bold">
@@ -392,14 +392,14 @@ export default function TeamsTab({
 
                   {/* Members with status */}
                   <div className="border-t border-slate-800/80 pt-2">
-                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
                       Thành viên ({team.members?.length || 0}):
                     </p>
                     <div className="space-y-1">
                       {team.members?.map((m: any) => (
                         <div
                           key={m.userId?._id}
-                          className="flex justify-between items-center text-[10px]"
+                          className="flex justify-between items-center text-xs"
                         >
                           <span className="text-slate-400">
                             • {m.userId?.fullName}{" "}
@@ -410,7 +410,7 @@ export default function TeamsTab({
                             )}
                           </span>
                           <span
-                            className={`text-[9px] font-mono px-1 rounded border ${
+                            className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
                               m.confirmStatus === "confirmed"
                                 ? "text-emerald-400 bg-emerald-500/5 border-emerald-500/10"
                                 : "text-amber-500 bg-amber-500/10 border-amber-500/20"

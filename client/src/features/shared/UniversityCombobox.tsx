@@ -144,7 +144,7 @@ export default function UniversityCombobox({
           onChange={handleInput}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
-          className={`w-full pr-16 bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono disabled:opacity-50 disabled:cursor-not-allowed ${inputClassName}`}
+          className={`w-full pr-16 bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white px-3 py-2 rounded-xl text-xs focus:outline-none focus:border-[#F27024] transition-all font-mono disabled:opacity-50 disabled:cursor-not-allowed ${inputClassName}`}
         />
         <div className="absolute right-2 flex items-center gap-1">
           {loading && (
@@ -154,7 +154,7 @@ export default function UniversityCombobox({
             <button
               type="button"
               onClick={handleClear}
-              className="text-slate-500 hover:text-slate-300 transition-colors cursor-pointer p-0.5"
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer p-0.5"
               tabIndex={-1}
             >
               <X size={11} />
@@ -164,12 +164,12 @@ export default function UniversityCombobox({
             type="button"
             disabled={disabled}
             onClick={() => { setIsOpen(o => !o); inputRef.current?.focus(); }}
-            className="text-slate-500 hover:text-slate-300 transition-colors cursor-pointer p-0.5 disabled:opacity-50"
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer p-0.5 disabled:opacity-50"
             tabIndex={-1}
           >
             <ChevronDown
               size={13}
-              className={`transition-transform duration-200 ${isOpen ? 'rotate-180 text-cyan-400' : ''}`}
+              className={`transition-transform duration-200 ${isOpen ? 'rotate-180 text-[#F27024]' : 'text-slate-400'}`}
             />
           </button>
         </div>
@@ -177,8 +177,8 @@ export default function UniversityCombobox({
 
       {/* Dropdown List */}
       {isOpen && (
-        <div className="absolute z-[9999] left-0 mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg shadow-[0_12px_40px_rgba(0,0,0,0.85)] overflow-hidden animate-in fade-in slide-in-from-top-1 duration-100">
-          <div className="max-h-60 overflow-y-auto p-1.5 space-y-1 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+        <div className="absolute z-[9999] left-0 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl shadow-slate-900/5 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-100 uni-combobox-dropdown">
+          <div className="max-h-60 overflow-y-auto p-1.5 space-y-1 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100">
             {filtered.length > 0 ? (
               filtered.map(u => {
                 const isSelected = u.short === value || u.name === value;
@@ -187,20 +187,20 @@ export default function UniversityCombobox({
                     key={u.name}
                     type="button"
                     onMouseDown={e => { e.preventDefault(); handleSelect(u); }}
-                    className={`w-full text-left px-3 py-2 rounded-md text-xs font-mono transition-all cursor-pointer flex flex-col justify-center gap-0.5 ${
+                    className={`w-full text-left px-3.5 py-2 rounded-lg text-xs font-mono transition-all cursor-pointer flex flex-col justify-center gap-0.5 ${
                       isSelected
-                        ? 'bg-cyan-500 text-slate-950 font-bold'
-                        : 'text-white hover:bg-slate-800 hover:text-white'
+                        ? 'bg-orange-500/10 text-[#F27024] font-semibold border border-orange-500/25'
+                        : 'text-slate-700 hover:bg-orange-500/10 hover:text-[#F27024]'
                     }`}
                   >
                     {/* Primary acronym / short name */}
-                    <span className="font-extrabold text-xs block leading-tight">
+                    <span className={`font-bold text-xs block leading-tight ${isSelected ? 'text-[#F27024]' : 'text-slate-800'}`}>
                       {u.short}
                     </span>
-                    {/* Secondary full name in high-contrast text */}
+                    {/* Secondary full name */}
                     {u.short !== u.name && (
                       <span className={`text-[9.5px] font-mono leading-normal block whitespace-normal break-words ${
-                        isSelected ? 'text-slate-900/90' : 'text-slate-400'
+                        isSelected ? 'text-orange-500/80' : 'text-slate-400'
                       }`}>
                         {u.name}
                       </span>
@@ -215,10 +215,10 @@ export default function UniversityCombobox({
             )}
           </div>
           {inputValue.trim() && !universities.some(u => u.name.toLowerCase() === inputValue.trim().toLowerCase() || u.short.toLowerCase() === inputValue.trim().toLowerCase()) && (
-            <div className="border-t border-slate-700 px-3 py-2.5 bg-slate-950">
-              <p className="text-[10px] font-mono text-amber-300 flex items-center gap-1.5 leading-relaxed">
+            <div className="border-t border-slate-200 px-3 py-2.5 bg-slate-50">
+              <p className="text-[10px] font-mono text-[#F27024] flex items-center gap-1.5 leading-relaxed">
                 <span>✎ Sẽ lưu tên tự nhập:</span>
-                <span className="text-white font-bold bg-slate-900 px-1.5 py-0.5 rounded border border-slate-850">
+                <span className="text-slate-900 font-bold bg-white px-1.5 py-0.5 rounded border border-slate-200">
                   {inputValue.trim()}
                 </span>
               </p>

@@ -21,7 +21,7 @@ interface AdminGradesViewProps {
 
 export default function AdminGradesView({ user, roles = [] }: AdminGradesViewProps) {
   const token = localStorage.getItem('token');
-  const isAssistant = roles?.some((r: any) => r.role === 'student_assistant');
+  const isAssistant = !user?.isSystemAdmin && (user?.isStudentAssistant || roles?.some((r: any) => r.role === 'student_assistant'));
 
   const [events, setEvents] = useState<any[]>([]);
   const [selectedEventId, setSelectedEventId] = useState('');
@@ -444,7 +444,7 @@ export default function AdminGradesView({ user, roles = [] }: AdminGradesViewPro
                     key={t._id}
                     onClick={() => setSelectedTeamId(t._id)}
                     className={`w-full text-left p-3.5 rounded-xl border transition-all text-xs flex items-center gap-3 ${selectedTeamId === t._id
-                      ? 'bg-cyan-500/20 border-cyan-500/60 shadow-md text-white'
+                      ? 'bg-cyan-500/10 border-cyan-500/60 shadow-md'
                       : 'bg-slate-900/30 border-slate-800/80 text-slate-400 hover:bg-slate-900/50 hover:text-slate-200'
                       }`}
                   >
@@ -453,7 +453,7 @@ export default function AdminGradesView({ user, roles = [] }: AdminGradesViewPro
                       {t.name.charAt(0)}
                     </div>
                     <div className="truncate flex-1">
-                      <span className="font-bold block truncate">{t.name}</span>
+                      <span className="font-bold block truncate text-slate-900 dark:text-white">{t.name}</span>
                       <span className="text-[10px] text-slate-500 block truncate">
                         {t.topicSubmission?.title || 'Chưa đăng ký đề tài'}
                       </span>

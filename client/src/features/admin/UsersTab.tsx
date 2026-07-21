@@ -21,6 +21,8 @@ interface UsersTabProps {
   user?: any;
 }
 
+const API_BASE = import.meta.env.VITE_API_URL || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.origin : 'http://localhost:5000');
+
 export const UsersTab: React.FC<UsersTabProps> = ({
   token,
   readOnly = false,
@@ -47,11 +49,13 @@ export const UsersTab: React.FC<UsersTabProps> = ({
     isStudentAssistant: false,
   });
 
+  const [hasRegistrationEvent, setHasRegistrationEvent] = useState(false);
+
   const fetchUsers = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/auth/users?search=${encodeURIComponent(search)}`,
+        `${API_BASE}/api/auth/users?search=${encodeURIComponent(search)}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -70,6 +74,11 @@ export const UsersTab: React.FC<UsersTabProps> = ({
   useEffect(() => {
     if (token) {
       fetchUsers();
+      axios.get(`${API_BASE}/api/events`)
+        .then((res) => {
+          setHasRegistrationEvent(res.data.some((e: any) => e.status === "registration"));
+        })
+        .catch((err) => console.error("Failed to fetch events for registration check", err));
     }
   }, [token, search]);
 
@@ -114,7 +123,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
       if (editingUser) {
         // Update basic User info
         await axios.put(
-          `http://localhost:5000/api/auth/users/${editingUser._id}`,
+          `${API_BASE}/api/auth/users/${editingUser._id}`,
           {
             fullName: formData.fullName,
             studentId: formData.studentId,
@@ -131,7 +140,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
       } else {
         // Create User
         await axios.post(
-          `http://localhost:5000/api/auth/users`,
+          `${API_BASE}/api/auth/users`,
           {
             email: formData.email,
             password: formData.password,
@@ -160,7 +169,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
   const handleToggleActive = async (user: any) => {
     try {
       await axios.put(
-        `http://localhost:5000/api/auth/users/${user._id}`,
+        `${API_BASE}/api/auth/users/${user._id}`,
         {
           isActive: !user.isActive,
         },
@@ -179,7 +188,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
   const handleToggleStudentAssistant = async (user: any) => {
     try {
       const res = await axios.post(
-        `http://localhost:5000/api/auth/users/${user._id}/toggle-student-assistant`,
+        `${API_BASE}/api/auth/users/${user._id}/toggle-student-assistant`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -206,7 +215,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
     if (!confirmed) return;
     try {
       const res = await axios.delete(
-        `http://localhost:5000/api/auth/users/${userId}`,
+        `${API_BASE}/api/auth/users/${userId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -332,39 +341,75 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                           
                           const renderedBadges = openEventRoles.map((roleRecord: any) => {
                             const role = roleRecord.role;
+                            const eventName = roleRecord.eventId?.name || roleRecord.eventId?.semester;
                             if (role === 'student_assistant') {
                               return (
-                                <span key={roleRecord._id} className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 select-none whitespace-nowrap">
-                                  Cộng tác viên
-                                </span>
+                                <div key={roleRecord._id} className="flex flex-col gap-0.5 items-start">
+                                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 select-none whitespace-nowrap">
+                                    Cộng tác viên
+                                  </span>
+                                  {eventName && (
+                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium font-sans truncate max-w-[160px]" title={eventName}>
+                                      {eventName}
+                                    </span>
+                                  )}
+                                </div>
                               );
                             }
                             if (role === 'judge') {
                               return (
-                                <span key={roleRecord._id} className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 select-none whitespace-nowrap">
-                                  Giám khảo
-                                </span>
+                                <div key={roleRecord._id} className="flex flex-col gap-0.5 items-start">
+                                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 select-none whitespace-nowrap">
+                                    Giám khảo
+                                  </span>
+                                  {eventName && (
+                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium font-sans truncate max-w-[160px]" title={eventName}>
+                                      {eventName}
+                                    </span>
+                                  )}
+                                </div>
                               );
                             }
                             if (role === 'mentor') {
                               return (
-                                <span key={roleRecord._id} className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20 select-none whitespace-nowrap">
-                                  Mentor
-                                </span>
+                                <div key={roleRecord._id} className="flex flex-col gap-0.5 items-start">
+                                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20 select-none whitespace-nowrap">
+                                    Mentor
+                                  </span>
+                                  {eventName && (
+                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium font-sans truncate max-w-[160px]" title={eventName}>
+                                      {eventName}
+                                    </span>
+                                  )}
+                                </div>
                               );
                             }
                             if (role === 'coordinator') {
                               return (
-                                <span key={roleRecord._id} className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 select-none whitespace-nowrap">
-                                  Coordinator
-                                </span>
+                                <div key={roleRecord._id} className="flex flex-col gap-0.5 items-start">
+                                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 select-none whitespace-nowrap">
+                                    Coordinator
+                                  </span>
+                                  {eventName && (
+                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium font-sans truncate max-w-[160px]" title={eventName}>
+                                      {eventName}
+                                    </span>
+                                  )}
+                                </div>
                               );
                             }
                             if (role === 'participant' && u.isTeamMember) {
                               return (
-                                <span key={roleRecord._id} className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-blue-500/10 text-blue-500 border border-blue-500/30 select-none whitespace-nowrap">
-                                  Thí sinh
-                                </span>
+                                <div key={roleRecord._id} className="flex flex-col gap-0.5 items-start">
+                                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-blue-500/10 text-blue-500 border border-blue-500/30 select-none whitespace-nowrap">
+                                    Thí sinh
+                                  </span>
+                                  {eventName && (
+                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium font-sans truncate max-w-[160px]" title={eventName}>
+                                      {eventName}
+                                    </span>
+                                  )}
+                                </div>
                               );
                             }
                             return null;
@@ -712,7 +757,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                     </span>
                   </label>
 
-                  {!editingUser && (
+                  {!editingUser && hasRegistrationEvent && (
                     <label className="flex items-center gap-2 cursor-pointer text-slate-300 pt-1">
                       <input
                         type="checkbox"

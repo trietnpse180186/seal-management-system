@@ -1621,15 +1621,17 @@ router.post('/users/:id/toggle-student-assistant', authenticateToken, requireSys
       return res.json({ message: 'Đã thu hồi quyền Cộng tác viên Sinh viên!', isStudentAssistant: false });
     } else {
       const Event = mongoose.model('Event');
-      const activeEvents = await Event.find({ status: { $in: ['registration', 'active'] } });
-      if (activeEvents.length > 0) {
-        for (const ev of activeEvents) {
+      const registrationEvents = await Event.find({ status: 'registration' });
+      if (registrationEvents.length > 0) {
+        for (const ev of registrationEvents) {
           await EventRole.updateOne(
             { userId, eventId: ev._id, role: 'student_assistant' },
             { $set: { status: 'active', assignedBy: req.user._id } },
             { upsert: true }
           );
         }
+        const eventNames = registrationEvents.map(e => e.name || e.semester).filter(Boolean).join(', ');
+        return res.json({ message: `Đã cấp quyền Cộng tác viên cho sự kiện: ${eventNames}!`, isStudentAssistant: true });
       }
       return res.json({ message: 'Đã cấp quyền Cộng tác viên Sinh viên thành công!', isStudentAssistant: true });
     }

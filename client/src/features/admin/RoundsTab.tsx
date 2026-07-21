@@ -636,13 +636,13 @@ export default function RoundsTab({
                   setSelectedRubricRoundId(r._id);
                 }}
                 className={`w-full text-left p-3 rounded-xl border text-xs flex justify-between items-center transition-all ${selectedRubricRoundId === r._id
-                  ? "bg-cyan-500/10 border-cyan-500/50 text-white font-bold"
-                  : "border-slate-800/80 bg-slate-900/10 hover:border-slate-700 text-slate-400"
+                  ? "bg-orange-500/10 border-orange-500/50 text-slate-900 dark:text-orange-300 font-bold shadow-xs"
+                  : "bg-white dark:bg-slate-900/40 border-slate-200 dark:border-slate-800/80 hover:border-orange-500/40 text-slate-900 dark:text-slate-300 shadow-xs"
                   }`}
               >
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <p>{r.name}</p>
+                    <strong className="font-black text-slate-950 dark:text-white text-sm text-track-title">{r.name}</strong>
                     {r.hasCriteria === false && (
                       <span
                         className="inline-flex items-center gap-0.5 bg-amber-950/70 text-amber-400 border border-amber-900/50 px-1 py-0.2 rounded text-[7px] font-bold tracking-wider uppercase shrink-0 font-sans"
@@ -653,7 +653,7 @@ export default function RoundsTab({
                       </span>
                     )}
                   </div>
-                  <p className="text-[9px] text-slate-500 mt-0.5">
+                  <p className={`text-[9px] mt-0.5 ${selectedRubricRoundId === r._id ? "text-slate-400 font-semibold" : "text-slate-500"}`}>
                     Thứ tự: {r.order}{r.advanceTopN === 0 ? " (Chung kết)" : ""}
                   </p>
                   <div className="flex flex-wrap gap-1 mt-1.5">
@@ -675,7 +675,7 @@ export default function RoundsTab({
                       <button
                         type="button"
                         onClick={(e) => handleOpenEditRound(e, r)}
-                        className="p-1.5 text-slate-400 hover:text-cyan-300 hover:bg-slate-800/80 rounded-lg transition-colors cursor-pointer"
+                        className="p-1.5 text-slate-400 hover:text-orange-500 hover:bg-orange-500/10 rounded-lg transition-colors cursor-pointer"
                         title="Sửa thông tin vòng thi"
                       >
                         <Edit2 size={13} />
@@ -687,7 +687,7 @@ export default function RoundsTab({
                             e.stopPropagation();
                             handleDeleteRound(r._id);
                           }}
-                          className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-950/60 rounded-lg transition-colors cursor-pointer"
+                          className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
                           title="Xóa vòng thi này"
                         >
                           <Trash2 size={13} />
@@ -695,7 +695,7 @@ export default function RoundsTab({
                       )}
                     </>
                   )}
-                  <ChevronRight size={14} />
+                  <ChevronRight size={14} className={selectedRubricRoundId === r._id ? "text-orange-500" : "text-slate-500"} />
                 </div>
               </button>
             ))}
@@ -1104,36 +1104,38 @@ export default function RoundsTab({
                       >
                         <div className="flex justify-between items-start">
                           <div>
-                            <span className="font-bold text-slate-200">
+                            <span className="font-bold text-slate-900 dark:text-slate-100 text-xs">
                               [{c.code}] {c.name}
                             </span>
-                            <p className="text-[10px] text-slate-400 mt-0.5">
+                            <p className="text-[11px] text-slate-500 mt-0.5 font-normal leading-normal">
                               {c.description || "Không mô tả."}
                             </p>
                           </div>
-                          <div className="text-right">
-                            <span className="text-cyan-400 font-bold">
+                          <div className="text-right shrink-0 ml-2">
+                            <span className="text-cyan-400 font-bold text-xs">
                               {c.weight}%
                             </span>
-                            <p className="text-[9px] text-slate-500 mt-0.5">
+                            <p className="text-[10px] text-slate-500 mt-0.5">
                               Max: {c.maxScore}đ | Hạng: {c.order || 0}
                             </p>
                           </div>
                         </div>
 
                         {c.gradingLevels && c.gradingLevels.length > 0 && (
-                          <div className="pt-1.5 border-t border-slate-850">
+                          <div className="pt-1.5 border-t border-slate-800/80">
                             <div className="flex flex-wrap gap-1">
                               {c.gradingLevels.map((lvl: any, idx: number) => (
                                 <span
                                   key={idx}
-                                  className="bg-slate-950 px-2 py-0.5 rounded text-[8px] border border-slate-850 text-slate-400"
+                                  className="bg-slate-950 px-2 py-0.5 rounded-md text-[10px] font-medium border border-slate-800 text-slate-300"
                                   title={lvl.description}
                                 >
-                                  <strong className="text-cyan-300">
+                                  <strong className="text-cyan-300 font-bold">
                                     {lvl.label}
                                   </strong>{" "}
-                                  ({lvl.minScore}-{lvl.maxScore}đ)
+                                  <span className="text-slate-400">
+                                    ({lvl.minScore}-{lvl.maxScore}đ)
+                                  </span>
                                 </span>
                               ))}
                             </div>

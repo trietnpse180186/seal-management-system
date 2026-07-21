@@ -202,7 +202,7 @@ export default function Gallery({ user, roles }: GalleryProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
+    <div className="min-h-screen bg-[#faf9f6] text-slate-900 coordinator-light-theme">
       <div className="w-full max-w-[1680px] mx-auto px-4 sm:px-6 lg:px-10 2xl:px-12 py-10 space-y-8">
       {/* Title Header Section */}
       <div>

@@ -926,7 +926,7 @@ router.post('/firebase-google', async (req, res) => {
  */
 router.get('/verify-email', async (req, res) => {
   const { token } = req.query;
-  const clientUrl = process.env.CLIENT_URL || 'https://www.seal-hackathon.io.vn';
+  const clientUrl = process.env.CLIENT_URL || 'https://seal-management-staging.vercel.app';
 
   if (!token) {
     return res.status(400).send(`

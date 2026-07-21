@@ -340,7 +340,7 @@ async function sendEmailVerification(email, fullName, verifyLink) {
  * @returns {Promise<boolean>}
  */
 async function sendEventCreationNotification(email, fullName, eventName, semester, year) {
-  const clientUrl = process.env.CLIENT_URL || 'https://www.seal-hackathon.io.vn';
+  const clientUrl = process.env.CLIENT_URL || 'https://seal-management-staging.vercel.app';
   const mailOptions = {
     from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
     to: email,
@@ -414,7 +414,7 @@ async function sendTrackTopicDistribution(email, fullName, trackName, attachment
         </div>
         
         <div style="text-align: center; margin: 35px 0;">
-          <a href="${process.env.CLIENT_URL || 'https://www.seal-hackathon.io.vn'}" style="background-color: #00f0ff; color: #0b1329; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 0 20px rgba(0, 240, 255, 0.5); text-transform: uppercase; font-size: 13px; letter-spacing: 1px;">Vào Dashboard Làm Bài</a>
+          <a href="${process.env.CLIENT_URL || 'https://seal-management-staging.vercel.app'}" style="background-color: #00f0ff; color: #0b1329; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 0 20px rgba(0, 240, 255, 0.5); text-transform: uppercase; font-size: 13px; letter-spacing: 1px;">Vào Dashboard Làm Bài</a>
         </div>
         <hr style="border: 0; border-top: 1px solid #1e293b; margin-top: 30px; margin-bottom: 20px;">
         <p style="font-size: 12px; color: #64748b; text-align: center;">Hệ thống Quản lý SEAL Hackathon &copy; 2026</p>
@@ -441,7 +441,7 @@ async function sendTrackTopicDistribution(email, fullName, trackName, attachment
 }
 
 async function sendRoundExamOpened(email, fullName, roundName) {
-  const clientUrl = process.env.CLIENT_URL || 'https://www.seal-hackathon.io.vn';
+  const clientUrl = process.env.CLIENT_URL || 'https://seal-management-staging.vercel.app';
   const mailOptions = {
     from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
     to: email,
@@ -481,7 +481,7 @@ async function sendSeminarInvitation(email, recipientName, eventName, seminarDat
   const startTimeStr = seminarData.scheduledAt ? new Date(seminarData.scheduledAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : 'Chưa xác định';
   const endTimeStr = seminarData.scheduledEnd ? new Date(seminarData.scheduledEnd).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '';
   const formattedTime = endTimeStr ? `${startTimeStr} - ${endTimeStr}` : startTimeStr;
-  const clientUrl = process.env.CLIENT_URL || 'https://www.seal-hackathon.io.vn';
+  const clientUrl = process.env.CLIENT_URL || 'https://seal-management-staging.vercel.app';
   const teamAreaUrl = eventId ? `${clientUrl}/team-area?eventId=${eventId}` : `${clientUrl}/team-area`;
   const senderEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@seal-hackathon.com';
   const mailOptions = {

@@ -57,7 +57,8 @@ interface AdminEventsProps {
 export default function AdminEvents({
   defaultTab = "events",
 }: AdminEventsProps) {
-  const { readOnly = false } = useOutletContext<{ readOnly?: boolean }>();
+  const { readOnly = false, roles = [] } = useOutletContext<{ readOnly?: boolean; roles?: any[] }>();
+  const isAssistant = roles?.some((r: any) => r.role === "student_assistant");
   const token = localStorage.getItem("token");
   const [currentUser, setCurrentUser] = useState<any>(null);
 
@@ -85,6 +86,15 @@ export default function AdminEvents({
 
   const [events, setEvents] = useState<any[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const displayedEvents = isAssistant
+    ? events.filter((e: any) =>
+        roles?.some(
+          (r: any) =>
+            r.role === "student_assistant" &&
+            (r.eventId?._id === e._id || r.eventId === e._id),
+        ),
+      )
+    : events;
 
   const [tracks, setTracks] = useState<any[]>([]);
   const [trackName, setTrackName] = useState("");
@@ -164,6 +174,13 @@ export default function AdminEvents({
     setActiveTabState(tab);
     sessionStorage.setItem("activeTab", tab);
   };
+
+  useEffect(() => {
+    if (isAssistant && activeTab !== "teams") {
+      setActiveTab("teams");
+    }
+  }, [isAssistant, activeTab]);
+
   const [eventLogs, setEventLogs] = useState<any[]>([]);
   const [selectedLog, setSelectedLog] = useState<any | null>(null);
   const [isEditingEventTitle, setIsEditingEventTitle] = useState(false);
@@ -590,7 +607,7 @@ export default function AdminEvents({
       if (!creatingId || eventIdParam !== creatingId) {
         setIsWizardMode(false);
       }
-      const foundEvent = events.find((e) => e._id === eventIdParam);
+      const foundEvent = displayedEvents.find((e) => e._id === eventIdParam);
       if (foundEvent) {
         setSelectedEvent(foundEvent);
         setEditEventName(foundEvent.name || "");
@@ -601,8 +618,8 @@ export default function AdminEvents({
         setEditEventGithubOrgName(foundEvent.githubOrgName || "");
         populateEventSchedule(foundEvent);
       }
-    } else if (!isWizardMode && events.length > 0 && !selectedEvent) {
-      const defaultEvent = events[0];
+    } else if (!isWizardMode && displayedEvents.length > 0 && !selectedEvent) {
+      const defaultEvent = displayedEvents[0];
       setSelectedEvent(defaultEvent);
       setEditEventName(defaultEvent.name || "");
       setEditEventSemester(defaultEvent.semester || "Spring");
@@ -612,7 +629,7 @@ export default function AdminEvents({
       setEditEventGithubOrgName(defaultEvent.githubOrgName || "");
       populateEventSchedule(defaultEvent);
     }
-  }, [eventIdParam, events]);
+  }, [eventIdParam, displayedEvents]);
 
   const fetchSyncProgress = async () => {
     if (!selectedEvent) return false;
@@ -2309,13 +2326,15 @@ export default function AdminEvents({
                 [DETAIL_BOARD]
               </span>
               <h1
-                className="text-2xl font-black text-white mt-2 font-mono uppercase tracking-tight flex items-center gap-2 group cursor-pointer select-none"
+                className={`text-2xl font-black text-white mt-2 font-mono uppercase tracking-tight flex items-center gap-2 select-none ${
+                  displayedEvents.length > 1 && !isAssistant ? "group cursor-pointer" : ""
+                }`}
                 onClick={() =>
-                  events.length > 1 && setIsEditingEventTitle((v) => !v)
+                  displayedEvents.length > 1 && !isAssistant && setIsEditingEventTitle((v) => !v)
                 }
               >
                 <span>{selectedEvent.name}</span>
-                {events.length > 1 && (
+                {displayedEvents.length > 1 && !isAssistant && (
                   <ChevronDown
                     size={18}
                     className={`text-cyan-400/50 group-hover:text-cyan-400 transition-all mt-0.5 shrink-0 ${isEditingEventTitle ? "rotate-180 text-cyan-400" : ""}`}
@@ -2323,9 +2342,9 @@ export default function AdminEvents({
                 )}
               </h1>
               {/* Floating event picker */}
-              {isEditingEventTitle && events.length > 1 && (
+              {isEditingEventTitle && displayedEvents.length > 1 && !isAssistant && (
                 <div className="absolute left-0 top-full mt-2 z-50 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl shadow-black/50 overflow-y-auto max-h-60 min-w-[280px] scrollbar-thin scrollbar-thumb-slate-800">
-                  {events.map((e: any) => (
+                  {displayedEvents.map((e: any) => (
                     <button
                       key={e._id}
                       onClick={() => {
@@ -2358,55 +2377,57 @@ export default function AdminEvents({
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <div
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border ${currentUser?.isSystemAdmin ? "bg-amber-950/20 border-amber-500/40" : "bg-slate-950 border-slate-800"}`}
-              >
-                <label
-                  className={`text-[10px] font-bold uppercase font-mono ${currentUser?.isSystemAdmin ? "text-amber-400" : "text-slate-400"}`}
+              {!isAssistant && (
+                <div
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border ${currentUser?.isSystemAdmin ? "bg-amber-950/20 border-amber-500/40" : "bg-slate-950 border-slate-800"}`}
                 >
-                  Trạng thái:
-                </label>
-                <CustomSelect
-                  value={selectedEvent.status}
-                  onChange={(val) =>
-                    handleUpdateEventStatus(val, currentUser?.isSystemAdmin)
-                  }
-                  options={[
-                    {
-                      value: "draft",
-                      label: "Draft",
-                      disabled:
-                        !currentUser?.isSystemAdmin &&
-                        selectedEvent.status !== "draft",
-                    },
-                    {
-                      value: "registration",
-                      label: "Registration",
-                      disabled:
-                        !currentUser?.isSystemAdmin &&
-                        selectedEvent.status !== "registration",
-                    },
-                    {
-                      value: "ongoing",
-                      label: "Ongoing",
-                      disabled:
-                        !currentUser?.isSystemAdmin &&
-                        selectedEvent.status !== "ongoing",
-                    },
-                    {
-                      value: "completed",
-                      label: "Completed",
-                      disabled:
-                        !currentUser?.isSystemAdmin &&
-                        selectedEvent.status !== "completed",
-                    },
-                    { value: "cancelled", label: "Cancelled" },
-                  ]}
-                  className="w-48 font-semibold"
-                  disabled={readOnly}
-                />
-              </div>
-              {!readOnly && (
+                  <label
+                    className={`text-[10px] font-bold uppercase font-mono ${currentUser?.isSystemAdmin ? "text-amber-400" : "text-slate-400"}`}
+                  >
+                    Trạng thái:
+                  </label>
+                  <CustomSelect
+                    value={selectedEvent.status}
+                    onChange={(val) =>
+                      handleUpdateEventStatus(val, currentUser?.isSystemAdmin)
+                    }
+                    options={[
+                      {
+                        value: "draft",
+                        label: "Draft",
+                        disabled:
+                          !currentUser?.isSystemAdmin &&
+                          selectedEvent.status !== "draft",
+                      },
+                      {
+                        value: "registration",
+                        label: "Registration",
+                        disabled:
+                          !currentUser?.isSystemAdmin &&
+                          selectedEvent.status !== "registration",
+                      },
+                      {
+                        value: "ongoing",
+                        label: "Ongoing",
+                        disabled:
+                          !currentUser?.isSystemAdmin &&
+                          selectedEvent.status !== "ongoing",
+                      },
+                      {
+                        value: "completed",
+                        label: "Completed",
+                        disabled:
+                          !currentUser?.isSystemAdmin &&
+                          selectedEvent.status !== "completed",
+                      },
+                      { value: "cancelled", label: "Cancelled" },
+                    ]}
+                    className="w-48 font-semibold"
+                    disabled={readOnly}
+                  />
+                </div>
+              )}
+              {!readOnly && !isAssistant && (
                 <button
                   onClick={() => {
                     sessionStorage.removeItem("creatingEventId");
@@ -2436,9 +2457,16 @@ export default function AdminEvents({
         </div>
       )}
       {/* TAB NAVIGATION BAR */}
-      {defaultTab === "events" && (
+      {defaultTab === "events" && !isAssistant && (
         <div className="flex flex-wrap gap-3 border-b border-slate-800/80 pb-3">
-          {isWizardMode || selectedEvent === null ? (
+          {isAssistant ? (
+            <button
+              onClick={() => setActiveTab("teams")}
+              className="font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+            >
+              Đội thi tham gia
+            </button>
+          ) : isWizardMode || selectedEvent === null ? (
             <>
               <button
                 onClick={() => setActiveTab("events")}
@@ -2958,7 +2986,7 @@ export default function AdminEvents({
             handleAssignTrack={handleAssignTrack}
             handleSyncRepo={handleSyncRepo}
             syncingRepoId={syncingRepoId}
-            readOnly={readOnly}
+            readOnly={readOnly || isAssistant}
           />
         ) : (
           <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">

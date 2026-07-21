@@ -40,11 +40,17 @@ const { addEmailJob, isQueueAvailable } = require('../notifications/notification
 async function downgradeEventRolesToParticipant(eventId) {
   const targetRoles = await EventRole.find({
     eventId,
-    role: { $in: ['judge', 'mentor'] },
+    role: { $in: ['judge', 'mentor', 'student_assistant'] },
     status: 'active'
   });
 
+  const User = mongoose.model('User');
   for (const roleRecord of targetRoles) {
+    // If it was a student assistant, also revoke their global CTV flag
+    if (roleRecord.role === 'student_assistant') {
+      await User.updateOne({ _id: roleRecord.userId }, { $set: { isStudentAssistant: false } });
+    }
+
     const participantExists = await EventRole.findOne({
       userId: roleRecord.userId,
       eventId: roleRecord.eventId,
@@ -58,6 +64,60 @@ async function downgradeEventRolesToParticipant(eventId) {
       roleRecord.role = 'participant';
       await roleRecord.save();
     }
+  }
+}
+
+/**
+ * Assigns all active student assistants to a newly opened event.
+ */
+async function assignStudentAssistantsToEvent(eventId, actorId) {
+  try {
+    const User = mongoose.model('User');
+    const assistants = await User.find({ isStudentAssistant: true, isActive: true });
+    for (const assistant of assistants) {
+      // Check if they already have an active staff role in this event
+      const hasOtherStaffRole = await EventRole.findOne({
+        userId: assistant._id,
+        eventId,
+        role: { $in: ['judge', 'mentor', 'coordinator'] },
+        status: 'active'
+      });
+
+      let hasTeammateRole = false;
+      const isParticipant = await EventRole.findOne({
+        userId: assistant._id,
+        eventId,
+        role: 'participant',
+        status: 'active'
+      });
+      if (isParticipant) {
+        const TeamMember = mongoose.model('TeamMember');
+        const isTeamMember = await TeamMember.findOne({
+          userId: assistant._id,
+          eventId,
+          confirmStatus: 'confirmed'
+        });
+        if (isTeamMember) {
+          hasTeammateRole = true;
+        }
+      }
+
+      if (hasOtherStaffRole || hasTeammateRole) {
+        // If they already have a conflicting role, delete student_assistant role if it exists to ensure mutual exclusion
+        await EventRole.deleteMany({ userId: assistant._id, eventId, role: 'student_assistant' });
+        console.log(`[EVENT] Cleaned up and skipped student assistant auto-assignment for user ${assistant.email} because they already have a conflicting role.`);
+        continue;
+      }
+
+      await EventRole.updateOne(
+        { userId: assistant._id, eventId, role: 'student_assistant' },
+        { $set: { status: 'active', assignedBy: actorId } },
+        { upsert: true }
+      );
+    }
+    console.log(`[EVENT] Automatically assigned student assistants to event: ${eventId}`);
+  } catch (err) {
+    console.error(`[EVENT ERROR] Failed to assign student assistants to event ${eventId}:`, err.message);
   }
 }
 
@@ -151,7 +211,7 @@ router.get('/', async (req, res) => {
         } else {
           const coordinatorRole = await EventRole.findOne({
             userId: user._id,
-            role: { $in: ['coordinator', 'admin_view'] },
+            role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
             status: 'active'
           });
           if (coordinatorRole) {
@@ -265,6 +325,10 @@ router.post('/', authenticateToken, requireSystemAdmin, async (req, res) => {
       assignedBy: req.user._id
     });
     await creatorRole.save();
+
+    if (newEvent.status === 'registration' || newEvent.status === 'ongoing') {
+      await assignStudentAssistantsToEvent(newEvent._id, req.user._id);
+    }
 
     // Create EventLog
     const newLog = new EventLog({
@@ -413,7 +477,7 @@ router.get('/:id', async (req, res) => {
               const coordinatorRole = await EventRole.findOne({
                 userId: user._id,
                 eventId: event._id,
-                role: { $in: ['coordinator', 'admin_view'] },
+                role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
                 status: 'active'
               });
               authorized = !!coordinatorRole;
@@ -986,7 +1050,7 @@ router.post('/:eventId/rounds/:roundId/sync-drive-access', authenticateToken, as
 
   try {
     if (!req.user.isSystemAdmin) {
-      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator', status: 'active' });
+      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: { $in: ['coordinator', 'admin_view', 'student_assistant'] }, status: 'active' });
       if (!isCoord) return res.status(403).json({ message: 'Không có quyền truy cập.' });
     }
 
@@ -1033,7 +1097,7 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
     if (!event) return res.status(404).json({ message: 'Không tìm thấy sự kiện.' });
 
     if (!req.user.isSystemAdmin) {
-      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator' });
+      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: { $in: ['coordinator', 'student_assistant'] } });
       if (!isCoord) return res.status(403).json({ message: 'Không có quyền truy cập.' });
     }
 
@@ -1137,7 +1201,7 @@ router.get('/:eventId/roles', authenticateToken, async (req, res) => {
       const coordinatorRole = await EventRole.findOne({
         userId: req.user._id,
         eventId,
-        role: 'coordinator',
+        role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
         status: 'active'
       });
       if (!coordinatorRole) return res.status(403).json({ message: 'Không có quyền truy cập. Yêu cầu quyền Coordinator.' });
@@ -1168,7 +1232,7 @@ router.delete('/:eventId/roles/:roleId', authenticateToken, async (req, res) => 
       const coordinatorRole = await EventRole.findOne({
         userId: req.user._id,
         eventId,
-        role: 'coordinator',
+        role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
         status: 'active'
       });
       if (!coordinatorRole) return res.status(403).json({ message: 'Không có quyền truy cập.' });
@@ -1231,7 +1295,7 @@ router.post('/:eventId/distribute-teams', authenticateToken, async (req, res) =>
       const coordinatorRole = await EventRole.findOne({
         userId: req.user._id,
         eventId,
-        role: 'coordinator',
+        role: { $in: ['coordinator', 'student_assistant'] },
         status: 'active'
       });
       if (!coordinatorRole) return res.status(403).json({ message: 'Không có quyền truy cập. Yêu cầu quyền Coordinator hoặc Admin.' });
@@ -1559,6 +1623,13 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     if (status && status !== oldStatus) {
       event.status = status;
+      if (status === 'registration' || status === 'ongoing') {
+        try {
+          await assignStudentAssistantsToEvent(event._id, req.user._id);
+        } catch (err) {
+          console.error(`[EVENT ERROR] Failed to auto-assign student assistants on event status update:`, err.message);
+        }
+      }
       if (status === 'ongoing') {
         action = 'event_started';
         details = `Sự kiện "${event.name}" chính thức bắt đầu (ongoing)`;
@@ -1923,7 +1994,7 @@ router.get('/:eventId/export-teams', authenticateToken, async (req, res) => {
       const role = await EventRole.findOne({
         userId: req.user._id,
         eventId,
-        role: { $in: ['coordinator', 'admin_view'] },
+        role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
         status: 'active'
       });
       if (!role) {

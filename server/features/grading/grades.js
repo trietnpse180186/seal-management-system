@@ -42,7 +42,7 @@ router.get('/suggestion', authenticateToken, async (req, res) => {
         userId: req.user._id,
         eventId: team.eventId,
         roundId: roundId,
-        role: { $in: ['judge', 'coordinator', 'admin_view'] },
+        role: { $in: ['judge', 'coordinator', 'admin_view', 'student_assistant'] },
         status: 'active'
       });
 
@@ -50,7 +50,7 @@ router.get('/suggestion', authenticateToken, async (req, res) => {
         userRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: team.eventId,
-          role: { $in: ['judge', 'coordinator', 'admin_view'] },
+          role: { $in: ['judge', 'coordinator', 'admin_view', 'student_assistant'] },
           $or: [{ roundId: null }, { roundId: { $exists: false } }],
           status: 'active'
         });
@@ -125,16 +125,13 @@ router.get('/team/:teamId/achievements', authenticateToken, async (req, res) => 
     const team = await Team.findById(req.params.teamId);
     if (!team) return res.status(404).json({ message: 'Team not found.' });
 
-    // Block non-coordinators/non-admins if event is archived
-    const Event = mongoose.model('Event');
-    const parentEvent = await Event.findById(team.eventId);
     if (parentEvent && parentEvent.isArchived) {
       let isCoordinatorOrAdmin = req.user.isSystemAdmin;
       if (!isCoordinatorOrAdmin) {
         const coordRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: team.eventId,
-          role: { $in: ['coordinator', 'admin_view'] },
+          role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
           status: 'active'
         });
         isCoordinatorOrAdmin = !!coordRole;
@@ -152,7 +149,7 @@ router.get('/team/:teamId/achievements', authenticateToken, async (req, res) => 
       const coordRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: team.eventId,
-        role: { $in: ['coordinator', 'admin_view'] },
+        role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
         status: 'active'
       });
       authorized = !!coordRole;
@@ -218,7 +215,7 @@ router.get('/team/:teamId/round/:roundId', authenticateToken, async (req, res) =
         const coordRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: team.eventId,
-          role: { $in: ['coordinator', 'admin_view'] },
+          role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
           status: 'active'
         });
         isCoordinatorOrAdmin = !!coordRole;
@@ -232,7 +229,7 @@ router.get('/team/:teamId/round/:roundId', authenticateToken, async (req, res) =
     const coordinatorRole = await EventRole.findOne({
       userId: req.user._id,
       eventId: team.eventId,
-      role: { $in: ['coordinator', 'admin_view'] },
+      role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
       status: 'active'
     });
     const isCoordinator = req.user.isSystemAdmin || !!coordinatorRole;
@@ -243,7 +240,7 @@ router.get('/team/:teamId/round/:roundId', authenticateToken, async (req, res) =
         userId: req.user._id,
         eventId: team.eventId,
         roundId: req.params.roundId,
-        role: { $in: ['judge', 'coordinator', 'admin_view'] },
+        role: { $in: ['judge', 'coordinator', 'admin_view', 'student_assistant'] },
         status: 'active'
       });
 
@@ -251,7 +248,7 @@ router.get('/team/:teamId/round/:roundId', authenticateToken, async (req, res) =
         userRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: team.eventId,
-          role: { $in: ['judge', 'coordinator', 'admin_view'] },
+          role: { $in: ['judge', 'coordinator', 'admin_view', 'student_assistant'] },
           $or: [{ roundId: null }, { roundId: { $exists: false } }],
           status: 'active'
         });
@@ -344,7 +341,7 @@ router.post('/submit', authenticateToken, async (req, res) => {
       userId: req.user._id,
       eventId: team.eventId,
       roundId: roundId,
-      role: { $in: ['judge', 'coordinator', 'admin_view'] },
+      role: { $in: ['judge', 'coordinator', 'admin_view', 'student_assistant'] },
       status: 'active'
     });
 
@@ -352,7 +349,7 @@ router.post('/submit', authenticateToken, async (req, res) => {
       userRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: team.eventId,
-        role: { $in: ['judge', 'coordinator', 'admin_view'] },
+        role: { $in: ['judge', 'coordinator', 'admin_view', 'student_assistant'] },
         $or: [{ roundId: null }, { roundId: { $exists: false } }],
         status: 'active'
       });
@@ -409,14 +406,14 @@ router.post('/submit', authenticateToken, async (req, res) => {
 
     // Decide who is the judge
     let targetJudgeId = req.user._id;
-    if (req.body.judgeId && (req.user.isSystemAdmin || (userRole && userRole.role === 'coordinator'))) {
+    if (req.body.judgeId && (req.user.isSystemAdmin || (userRole && ['coordinator', 'student_assistant'].includes(userRole.role)))) {
       targetJudgeId = req.body.judgeId;
     }
 
     // Create or update Score
     let score = await Score.findOne({ teamId, roundId, judgeId: targetJudgeId });
     if (score) {
-      if (score.status === 'locked' && !req.user.isSystemAdmin && !(userRole && userRole.role === 'coordinator')) {
+      if (score.status === 'locked' && !req.user.isSystemAdmin && !(userRole && ['coordinator', 'student_assistant'].includes(userRole.role))) {
         return res.status(400).json({ message: 'Điểm số của bạn cho đội thi này trong vòng đấu này đã bị khoá.' });
       }
       score.totalRawScore = totalRawScore;
@@ -509,7 +506,7 @@ router.post('/lock-round', authenticateToken, async (req, res) => {
   try {
     // Auth Check
     if (!req.user.isSystemAdmin) {
-      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator' });
+      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: { $in: ['coordinator', 'student_assistant'] } });
       if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
     }
 
@@ -687,7 +684,7 @@ router.post('/unlock-round', authenticateToken, async (req, res) => {
   try {
     // Auth Check
     if (!req.user.isSystemAdmin) {
-      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator' });
+      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: { $in: ['coordinator', 'student_assistant'] } });
       if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
     }
 
@@ -754,7 +751,7 @@ router.get('/leaderboard/:roundId', authenticateToken, async (req, res) => {
       const coordRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: round.eventId,
-        role: { $in: ['coordinator', 'admin_view'] },
+        role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
         status: 'active'
       });
       isCoordinator = !!coordRole;
@@ -797,7 +794,7 @@ router.get('/live-ranking/:roundId', authenticateToken, async (req, res) => {
       const coordRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: round.eventId,
-        role: { $in: ['coordinator', 'admin_view'] },
+        role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
         status: 'active'
       });
       isCoordinator = !!coordRole;
@@ -906,7 +903,7 @@ router.get('/judge-ranking/:roundId', authenticateToken, async (req, res) => {
       const roleRecord = await EventRole.findOne({
         userId: req.user._id,
         eventId: round.eventId,
-        role: { $in: ['judge', 'coordinator'] },
+        role: { $in: ['judge', 'coordinator', 'student_assistant'] },
         status: 'active'
       });
       hasAccess = !!roleRecord;
@@ -1021,7 +1018,7 @@ router.post('/advance-round', authenticateToken, async (req, res) => {
   try {
     // Auth Check
     if (!req.user.isSystemAdmin) {
-      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator' });
+      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: { $in: ['coordinator', 'student_assistant'] } });
       if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
     }
 
@@ -1139,7 +1136,7 @@ router.post('/rollback-round', authenticateToken, async (req, res) => {
   try {
     // Auth Check
     if (!req.user.isSystemAdmin) {
-      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator', status: 'active' });
+      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: { $in: ['coordinator', 'student_assistant'] }, status: 'active' });
       if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
     }
 

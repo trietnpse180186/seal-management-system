@@ -14,8 +14,14 @@ import {
 } from 'lucide-react';
 import CustomSelect from '../shared/CustomSelect';
 
-export default function AdminGradesView() {
+interface AdminGradesViewProps {
+  user?: any;
+  roles?: any[];
+}
+
+export default function AdminGradesView({ user, roles = [] }: AdminGradesViewProps) {
   const token = localStorage.getItem('token');
+  const isAssistant = roles?.some((r: any) => r.role === 'student_assistant');
 
   const [events, setEvents] = useState<any[]>([]);
   const [selectedEventId, setSelectedEventId] = useState('');
@@ -92,17 +98,24 @@ export default function AdminGradesView() {
     return matchingRounds.some((r: any) => r._id.toString() === tRoundId);
   });
 
+  const assistantEventId = roles?.find((r: any) => r.role === 'student_assistant')?.eventId;
+  const assistantEventIdStr = assistantEventId?._id || assistantEventId;
+
   // Fetch events on mount
   useEffect(() => {
     axios.get('http://localhost:5000/api/events')
       .then((res: any) => {
-        setEvents(res.data);
-        if (res.data.length > 0) {
-          setSelectedEventId(res.data[0]._id);
+        let eventData = res.data;
+        if (isAssistant && assistantEventIdStr) {
+          eventData = eventData.filter((e: any) => e._id === assistantEventIdStr);
+        }
+        setEvents(eventData);
+        if (eventData.length > 0) {
+          setSelectedEventId(eventData[0]._id);
         }
       })
       .catch((err: any) => console.error('Error fetching events:', err));
-  }, []);
+  }, [isAssistant, assistantEventIdStr]);
 
   // Fetch event details (tracks & rounds)
   useEffect(() => {
@@ -324,25 +337,27 @@ export default function AdminGradesView() {
         </div>
 
         {/* Export Buttons */}
-        <div className="flex flex-wrap gap-3">
-          <button
-            onClick={() => handleExportGradingSheet(false)}
-            disabled={!selectedRoundId || exportingSummary}
-            className="text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 cursor-pointer border border-slate-700/80 shadow-md disabled:opacity-50 disabled:cursor-not-allowed btn-import-export"
-          >
-            <Download size={14} className="text-cyan-400" />
-            <span>{exportingSummary ? "Đang xuất..." : "Xuất Điểm Tổng Hợp"}</span>
-          </button>
+        {!isAssistant && (
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => handleExportGradingSheet(false)}
+              disabled={!selectedRoundId || exportingSummary}
+              className="text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 cursor-pointer border border-slate-700/80 shadow-md disabled:opacity-50 disabled:cursor-not-allowed btn-import-export"
+            >
+              <Download size={14} className="text-cyan-400" />
+              <span>{exportingSummary ? "Đang xuất..." : "Xuất Điểm Tổng Hợp"}</span>
+            </button>
 
-          <button
-            onClick={() => handleExportGradingSheet(true)}
-            disabled={!selectedRoundId || exportingJudge || !gradingsData?.gradings?.length}
-            className="text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 bg-cyan-950/40 hover:bg-cyan-950/60 cursor-pointer border border-cyan-500/25 shadow-md disabled:opacity-50 disabled:cursor-not-allowed btn-import-export"
-          >
-            <Download size={14} className="text-cyan-400" />
-            <span>{exportingJudge ? "Đang xuất..." : "Xuất Phiếu Điểm Giám Khảo"}</span>
-          </button>
-        </div>
+            <button
+              onClick={() => handleExportGradingSheet(true)}
+              disabled={!selectedRoundId || exportingJudge || !gradingsData?.gradings?.length}
+              className="text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 bg-cyan-950/40 hover:bg-cyan-950/60 cursor-pointer border border-cyan-500/25 shadow-md disabled:opacity-50 disabled:cursor-not-allowed btn-import-export"
+            >
+              <Download size={14} className="text-cyan-400" />
+              <span>{exportingJudge ? "Đang xuất..." : "Xuất Phiếu Điểm Giám Khảo"}</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Selectors Event & Round */}
@@ -354,6 +369,7 @@ export default function AdminGradesView() {
           <CustomSelect
             value={selectedEventId}
             onChange={(val) => setSelectedEventId(val)}
+            disabled={isAssistant}
             options={events.map((e: any) => ({
               value: e._id,
               label: e.name,

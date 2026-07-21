@@ -5,7 +5,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'seal_hackathon_secret_key_2026';
  * Generates a random alphanumeric string of a given length.
  */
 function generateRandomText(length = 5) {
-  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjklmnpqrstuvwxyz'; // Exclude ambiguous characters like 1, l, 0, O
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjklmnpqrstuvwxyz'; // Exclude ambiguous characters
   let text = '';
   for (let i = 0; i < length; i++) {
     text += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -14,67 +14,50 @@ function generateRandomText(length = 5) {
 }
 
 /**
- * Generates a simple SVG captcha.
+ * Generates a crisp, 100% compatible SVG captcha.
+ * Fixed dimensions: 160px x 48px.
+ * Baseline y=33px, text-anchor="middle" for perfect vertical & horizontal alignment.
  */
 function generateSvgCaptcha(text) {
-  const width = 120;
-  const height = 40;
+  const width = 160;
+  const height = 48;
   
-  // Background lines
+  // High-contrast hex colors (100% mobile & browser compatible)
+  const hexColors = ['#c2410c', '#b45309', '#9a3412', '#ea580c', '#c2410c'];
+
+  // Background noise lines
   let lines = '';
-  for (let i = 0; i < 4; i++) {
-    const x1 = Math.floor(Math.random() * width);
-    const y1 = Math.floor(Math.random() * height);
-    const x2 = Math.floor(Math.random() * width);
-    const y2 = Math.floor(Math.random() * height);
-    lines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(242, 112, 36, 0.24)" stroke-width="1.5" />`;
-  }
+  lines += `<line x1="8" y1="14" x2="152" y2="34" stroke="#fed7aa" stroke-width="1.5" />`;
+  lines += `<line x1="12" y1="36" x2="148" y2="12" stroke="#fed7aa" stroke-width="1.5" />`;
 
   // Background noise dots
   let dots = '';
-  for (let i = 0; i < 30; i++) {
-    const cx = Math.floor(Math.random() * width);
-    const cy = Math.floor(Math.random() * height);
-    const r = Math.random() * 1.5 + 0.5;
-    dots += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="rgba(242, 112, 36, 0.18)" />`;
-  }
+  const dotCoords = [
+    [15, 12], [35, 38], [55, 10], [75, 40], [95, 12], 
+    [115, 36], [135, 14], [25, 25], [85, 22], [140, 28]
+  ];
+  dotCoords.forEach(([cx, cy]) => {
+    dots += `<circle cx="${cx}" cy="${cy}" r="1.5" fill="#fdba74" opacity="0.5" />`;
+  });
 
-  // Draw characters with random rotation, color, and font-size
+  // 5 fixed start positions across 160px: 14, 44, 74, 104, 134
+  // Absolute left-to-right horizontal alignment (NO text-anchor="middle" to avoid Android react-native-svg layout bugs)
+  const xPositions = [14, 44, 74, 104, 134];
   let charsSvg = '';
-  const charWidth = width / (text.length + 1);
+
   for (let i = 0; i < text.length; i++) {
     const char = text.charAt(i);
-    const x = (i + 0.5) * charWidth + (Math.random() * 5 - 2.5);
-    const y = 26 + (Math.random() * 6 - 3);
-    const angle = Math.floor(Math.random() * 30 - 15); // Rotate -15 to 15 deg
-    const fontSize = Math.floor(Math.random() * 4 + 18); // Font size 18 to 22px
-    
-    // Orange range for the light FPT landing theme
-    const hue = Math.floor(Math.random() * 18 + 18);
-    const color = `hsl(${hue}, 88%, 45%)`;
+    const x = xPositions[i] || (14 + i * 30);
+    const color = hexColors[i % hexColors.length];
 
-    charsSvg += `
-      <text 
-        x="${x}" 
-        y="${y}" 
-        font-family="monospace, Courier, sans-serif" 
-        font-weight="bold" 
-        font-size="${fontSize}" 
-        fill="${color}"
-        transform="rotate(${angle} ${x} ${y})"
-      >
-        ${char}
-      </text>
-    `;
+    charsSvg += `<text x="${x}" y="32" font-size="22" font-weight="bold" fill="${color}">${char}</text>`;
   }
 
-  const svg = `
-    <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg" style="background: #fff7f2; border: 1px solid rgba(242, 112, 36, 0.3); border-radius: 8px; user-select: none;">
-      ${lines}
-      ${dots}
-      ${charsSvg}
-    </svg>
-  `;
+  const svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" style="background: #fff7ed; border: 1.5px solid #fed7aa; border-radius: 10px;">
+    ${lines}
+    ${dots}
+    ${charsSvg}
+  </svg>`;
   return svg;
 }
 
@@ -98,7 +81,7 @@ function verifyCaptcha(captchaId, captchaValue) {
   if (!captchaId || !captchaValue) return false;
   try {
     const decoded = jwt.verify(captchaId, JWT_SECRET);
-    return decoded.text === captchaValue.trim();
+    return decoded.text.toLowerCase() === captchaValue.trim().toLowerCase();
   } catch (err) {
     return false; // Token expired or invalid signature
   }

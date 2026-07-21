@@ -20,6 +20,7 @@ import BottomTabs from '../components/BottomTabs';
 import GithubUserAutocomplete from '../components/GithubUserAutocomplete';
 import UniversityCombobox from '../components/UniversityCombobox';
 import { UserPlus, Trash2, Calendar, ClipboardList, RotateCw } from 'lucide-react-native';
+import { formatCaptchaSvg } from '../utils/captchaFormatter';
 
 export default function RegisterTeamScreen({ navigation }) {
   const [events, setEvents] = useState([]);
@@ -68,30 +69,10 @@ export default function RegisterTeamScreen({ navigation }) {
   const fetchCaptcha = async () => {
     try {
       const res = await api.get('/auth/captcha');
-      setCaptchaId(res.data.captchaId);
-      
-      let rawSvg = res.data.captchaSvg || '';
-      
-      // 1. Loại bỏ khoảng trắng và dòng mới thừa bên trong thẻ <text>...</text> để tránh lỗi bị thụt lề/lệch chữ trên mobile
-      rawSvg = rawSvg.replace(/<text([^>]*)>[\s\n]*([^<]+?)[\s\n]*<\/text>/gi, '<text$1>$2</text>');
-      
-      // 2. Chuyển đổi HSL sang RGB để tránh việc react-native-svg không nhận diện được màu HSL và hiển thị thành màu đen ẩn vào nền
-      const hslRegex = /hsl\(\s*(\d+)\s*,\s*(\d+)%\s*,\s*(\d+)%\s*\)/gi;
-      const hslToRgb = (h, s, l) => {
-        s /= 100;
-        l /= 100;
-        const k = n => (n + h / 30) % 12;
-        const a = s * Math.min(l, 1 - l);
-        const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
-        return [Math.round(255 * f(0)), Math.round(255 * f(8)), Math.round(255 * f(4))];
-      };
-      
-      const cleanedSvg = rawSvg.replace(hslRegex, (match, h, s, l) => {
-        const [r, g, b] = hslToRgb(Number(h), Number(s), Number(l));
-        return `rgb(${r},${g},${b})`;
-      });
-
-      setCaptchaSvg(cleanedSvg);
+      if (res.data && res.data.captchaId && res.data.captchaSvg) {
+        setCaptchaId(res.data.captchaId);
+        setCaptchaSvg(formatCaptchaSvg(res.data.captchaSvg));
+      }
     } catch (err) {
       console.log('Error fetching captcha:', err);
     }
@@ -392,7 +373,7 @@ export default function RegisterTeamScreen({ navigation }) {
   if (loadingProfile) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#00f0ff" />
+        <ActivityIndicator size="large" color="#ea580c" />
       </View>
     );
   }
@@ -400,7 +381,7 @@ export default function RegisterTeamScreen({ navigation }) {
   const selectedEvent = events.find((e) => e._id === selectedEventId);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -412,7 +393,7 @@ export default function RegisterTeamScreen({ navigation }) {
             nestedScrollEnabled={true}
           >
             <View style={styles.header}>
-              <ClipboardList size={22} color="#00f0ff" />
+              <ClipboardList size={22} color="#ea580c" />
               <Text style={styles.headerTitle}>ĐĂNG KÝ ĐỘI THI</Text>
             </View>
 
@@ -649,7 +630,7 @@ export default function RegisterTeamScreen({ navigation }) {
                 <View style={styles.membersHeader}>
                   <Text style={styles.sectionHeader}>3. THÀNH VIÊN ĐỘI THI ({members.length})</Text>
                   <TouchableOpacity style={styles.addBtn} onPress={addMemberRow}>
-                    <UserPlus size={16} color="#00f0ff" />
+                    <UserPlus size={16} color="#ea580c" />
                     <Text style={styles.addBtnText}>Thêm</Text>
                   </TouchableOpacity>
                 </View>
@@ -727,10 +708,10 @@ export default function RegisterTeamScreen({ navigation }) {
                     <Text style={styles.label}>MÃ XÁC THỰC (CAPTCHA) *</Text>
                     <View style={styles.captchaRow}>
                       <View style={styles.captchaImageWrap}>
-                        <SvgXml xml={captchaSvg} width="120" height="40" />
+                        <SvgXml xml={captchaSvg} width={160} height={48} />
                       </View>
                       <TouchableOpacity style={styles.refreshBtn} onPress={fetchCaptcha}>
-                        <RotateCw size={18} color="#00f0ff" />
+                        <RotateCw size={18} color="#ea580c" />
                       </TouchableOpacity>
                     </View>
                     <TextInput
@@ -751,7 +732,7 @@ export default function RegisterTeamScreen({ navigation }) {
                   disabled={loading}
                 >
                   {loading ? (
-                    <ActivityIndicator color="#000" />
+                    <ActivityIndicator color="#fff" />
                   ) : (
                     <Text style={styles.submitBtnText}>XÁC NHẬN ĐĂNG KÝ ĐỘI</Text>
                   )}
@@ -770,36 +751,36 @@ export default function RegisterTeamScreen({ navigation }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0a141d',
+    backgroundColor: '#f8fafc',
   },
   container: {
     flex: 1,
-  },
-  scrollContainer: {
-    paddingGrow: 1,
-    padding: 16,
+    backgroundColor: '#f8fafc',
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#0a141d',
+    backgroundColor: '#f8fafc',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  scrollContainer: {
+    padding: 16,
+    paddingBottom: 30,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    marginBottom: 20,
+    paddingVertical: 12,
+    marginBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 4,
+    borderBottomColor: '#e2e8f0',
   },
   headerTitle: {
-    color: '#fff',
+    color: '#0f172a',
     fontSize: 16,
     fontWeight: '800',
-    marginLeft: 10,
-    letterSpacing: 1.5,
+    marginLeft: 8,
+    letterSpacing: 0.5,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -811,7 +792,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   emptyText: {
-    color: '#849495',
+    color: '#64748b',
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
@@ -820,119 +801,122 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   label: {
-    color: '#849495',
-    fontSize: 10,
-    fontWeight: '800',
-    marginBottom: 8,
-    letterSpacing: 1,
+    color: '#475569',
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 6,
   },
   input: {
-    backgroundColor: '#131d25',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#3b494b',
-    color: '#dae3f0',
-    paddingHorizontal: 16,
+    borderColor: '#cbd5e1',
+    color: '#0f172a',
+    paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 14,
-    borderRadius: 4,
-    marginBottom: 16,
+    borderRadius: 10,
+    marginBottom: 14,
   },
   dropdownButton: {
-    backgroundColor: '#131d25',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#3b494b',
-    paddingHorizontal: 16,
+    borderColor: '#cbd5e1',
+    paddingHorizontal: 14,
     paddingVertical: 12,
-    borderRadius: 4,
+    borderRadius: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   dropdownButtonText: {
-    color: '#dae3f0',
+    color: '#0f172a',
     fontSize: 14,
     fontWeight: '600',
   },
   dropdownArrow: {
-    color: '#00f0ff',
+    color: '#ea580c',
     fontSize: 12,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(6, 15, 23, 0.85)',
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
   },
   modalContent: {
     width: '100%',
-    backgroundColor: '#131d25',
-    borderColor: '#00f0ff',
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 16,
     padding: 20,
     maxHeight: '80%',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
   },
   modalTitle: {
-    color: '#fff',
-    fontSize: 14,
+    color: '#0f172a',
+    fontSize: 15,
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: 16,
-    letterSpacing: 1.5,
   },
   modalList: {
     marginBottom: 16,
   },
   modalItem: {
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    borderBottomColor: '#f1f5f9',
   },
   modalItemActive: {
-    backgroundColor: 'rgba(0, 240, 255, 0.05)',
+    backgroundColor: '#fff7ed',
   },
   modalItemText: {
-    color: '#b9cacb',
+    color: '#334155',
     fontSize: 14,
     fontWeight: '600',
   },
   modalItemTextActive: {
-    color: '#00f0ff',
+    color: '#ea580c',
+    fontWeight: '800',
   },
   modalCloseBtn: {
-    borderColor: '#00f0ff',
+    backgroundColor: '#fff7ed',
+    borderColor: '#fed7aa',
     borderWidth: 1,
     paddingVertical: 10,
     alignItems: 'center',
-    borderRadius: 4,
+    borderRadius: 10,
   },
   modalCloseBtnText: {
-    color: '#00f0ff',
+    color: '#ea580c',
     fontWeight: '800',
     fontSize: 12,
-    letterSpacing: 1,
   },
   sectionHeader: {
-    color: '#00f0ff',
-    fontSize: 11,
+    color: '#ea580c',
+    fontSize: 12,
     fontWeight: '800',
-    letterSpacing: 1,
     marginTop: 10,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   sectionBox: {
-    backgroundColor: 'rgba(19, 29, 37, 0.5)',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
+    borderColor: '#e2e8f0',
     padding: 16,
-    borderRadius: 4,
-    marginBottom: 20,
+    borderRadius: 14,
+    marginBottom: 16,
   },
   subLabel: {
-    color: '#849495',
+    color: '#64748b',
     fontSize: 11,
     marginBottom: 4,
     fontWeight: '600',
@@ -942,73 +926,78 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 10,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderColor: '#00f0ff',
+    borderColor: '#fed7aa',
+    backgroundColor: '#fff7ed',
     borderWidth: 1,
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingVertical: 5,
+    borderRadius: 8,
   },
   addBtnText: {
-    color: '#00f0ff',
+    color: '#ea580c',
     fontSize: 11,
     fontWeight: '800',
     marginLeft: 6,
   },
   memberBox: {
-    backgroundColor: '#131d25',
-    borderColor: '#3b494b',
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
     borderWidth: 1,
     padding: 16,
-    borderRadius: 4,
-    marginBottom: 16,
+    borderRadius: 14,
+    marginBottom: 14,
   },
   memberBoxHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.04)',
+    borderBottomColor: '#f1f5f9',
     paddingBottom: 6,
   },
   memberTitle: {
-    color: '#fff',
-    fontSize: 12,
+    color: '#0f172a',
+    fontSize: 13,
     fontWeight: '700',
   },
   submitBtn: {
-    backgroundColor: '#00f0ff',
+    backgroundColor: '#ea580c',
     paddingVertical: 14,
     alignItems: 'center',
-    borderRadius: 4,
-    marginTop: 20,
+    borderRadius: 12,
+    marginTop: 16,
     marginBottom: 30,
+    shadowColor: '#ea580c',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   submitBtnText: {
-    color: '#000',
+    color: '#ffffff',
     fontWeight: '800',
-    letterSpacing: 1.5,
+    letterSpacing: 0.5,
     fontSize: 14,
   },
   historyContainer: {
-    backgroundColor: 'rgba(0, 240, 255, 0.04)',
-    borderColor: 'rgba(0, 240, 255, 0.2)',
+    backgroundColor: '#fff7ed',
+    borderColor: '#fed7aa',
     borderWidth: 1,
     padding: 14,
-    borderRadius: 4,
+    borderRadius: 12,
     marginBottom: 16,
   },
   historyLabel: {
-    color: '#00f0ff',
-    fontSize: 10,
+    color: '#ea580c',
+    fontSize: 11,
     fontWeight: '800',
     marginBottom: 8,
-    letterSpacing: 1,
   },
   historyRow: {
     flexDirection: 'row',
@@ -1016,42 +1005,42 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   applyBtn: {
-    backgroundColor: '#00f0ff',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 4,
+    backgroundColor: '#ea580c',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
   },
   applyBtnText: {
-    color: '#000',
+    color: '#ffffff',
     fontSize: 11,
     fontWeight: '800',
   },
   infoMessage: {
-    color: '#00f0ff',
-    fontSize: 10,
+    color: '#ea580c',
+    fontSize: 11,
     fontStyle: 'italic',
     marginTop: 6,
   },
   checkMessage: {
-    color: '#dae3f0',
+    color: '#475569',
     fontSize: 11,
     fontStyle: 'italic',
     marginBottom: 10,
     marginTop: -8,
   },
   msgEligible: {
-    color: '#10b981',
+    color: '#166534',
   },
   msgConflict: {
-    color: '#ef4444',
+    color: '#dc2626',
   },
   captchaContainer: {
-    backgroundColor: 'rgba(19, 29, 37, 0.5)',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
+    borderColor: '#e2e8f0',
     padding: 16,
-    borderRadius: 4,
-    marginBottom: 20,
+    borderRadius: 14,
+    marginBottom: 16,
   },
   captchaRow: {
     flexDirection: 'row',
@@ -1059,17 +1048,19 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   captchaImageWrap: {
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    borderColor: 'rgba(6, 182, 212, 0.2)',
+    backgroundColor: '#fff7ed',
+    borderColor: '#fed7aa',
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 10,
     overflow: 'hidden',
   },
   refreshBtn: {
-    borderColor: '#3b494b',
+    borderColor: '#fed7aa',
     borderWidth: 1,
-    padding: 10,
-    borderRadius: 4,
-    backgroundColor: '#131d25',
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: '#fff7ed',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

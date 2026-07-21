@@ -16,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import api from '../api/api';
 import BottomTabs from '../components/BottomTabs';
+import HeaderAvatar from '../components/HeaderAvatar';
 import socketService from '../api/socketService';
 import { BookOpen, Users, Save, RefreshCw, CheckCircle, Clock, MessageSquare, Download, FileText, Video, ExternalLink, Crown, ArrowLeft } from 'lucide-react-native';
 
@@ -71,12 +72,12 @@ export default function TeamAreaScreen({ navigation }) {
   const getRemainingTimeText = (startTimeStr) => {
     const diff = new Date(startTimeStr).getTime() - currentTime.getTime();
     if (diff <= 0) return '00:00:00';
-    
+
     const seconds = Math.floor((diff / 1000) % 60);
     const minutes = Math.floor((diff / 1000 / 60) % 60);
     const hours = Math.floor((diff / 1000 / 60 / 60) % 24);
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    
+
     const pad = (num) => num.toString().padStart(2, '0');
     if (days > 0) {
       return `${days} ngày ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
@@ -126,7 +127,7 @@ export default function TeamAreaScreen({ navigation }) {
       }
 
       setData(res.data);
-      
+
       const { repository } = res.data;
       if (team?.topicSubmission) {
         setTopicTitle(team.topicSubmission.title || '');
@@ -237,7 +238,7 @@ export default function TeamAreaScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#00f0ff" />
+        <ActivityIndicator size="large" color="#ea580c" />
       </View>
     );
   }
@@ -245,33 +246,37 @@ export default function TeamAreaScreen({ navigation }) {
   const { team, members, repository } = data || {};
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.container}>
-        {/* Simple Header with Chat icon */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBackBtn}>
-            <ArrowLeft size={24} color="#fff" />
+        {/* Header Bar với HeaderAvatar */}
+        <View style={styles.headerBar}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBackBtn} activeOpacity={0.7}>
+            <ArrowLeft size={22} color="#0f172a" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>KHU VỰC ĐỘI THI</Text>
-          <TouchableOpacity
-            style={styles.chatHeaderBtn}
-            onPress={() => {
-              setUnreadCount(0);
-              navigation.navigate('Chat');
-            }}
-          >
-            <MessageSquare size={24} color="#00f0ff" />
-            {unreadCount > 0 && (
-              <View style={styles.headerBadge}>
-                <Text style={styles.headerBadgeText}>{unreadCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          <View style={styles.headerRightActions}>
+            <TouchableOpacity
+              style={styles.chatHeaderBtn}
+              onPress={() => {
+                setUnreadCount(0);
+                navigation.navigate('Chat');
+              }}
+              activeOpacity={0.7}
+            >
+              <MessageSquare size={22} color="#ea580c" />
+              {unreadCount > 0 && (
+                <View style={styles.headerBadge}>
+                  <Text style={styles.headerBadgeText}>{unreadCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <HeaderAvatar navigation={navigation} />
+          </View>
         </View>
 
         <ScrollView
           contentContainerStyle={styles.scrollContainer}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00f0ff" />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ea580c" />}
         >
           {/* Header Banner Đội thi */}
           <View style={styles.banner}>
@@ -416,7 +421,7 @@ export default function TeamAreaScreen({ navigation }) {
                 <View style={styles.chatCard}>
                   <View style={styles.chatHeader}>
                     <View style={styles.chatIconBox}>
-                      <MessageSquare size={18} color="#00f0ff" />
+                      <MessageSquare size={18} color="#ea580c" />
                     </View>
                     <View style={styles.chatTitleBox}>
                       <Text style={styles.chatCardTitle}>Hỗ trợ từ Mentor</Text>
@@ -432,7 +437,7 @@ export default function TeamAreaScreen({ navigation }) {
               {/* Event Info Card */}
               <View style={styles.infoCard}>
                 <View style={styles.sectionTitleRow}>
-                  <FileText size={16} color="#00f0ff" />
+                  <FileText size={16} color="#ea580c" />
                   <Text style={styles.sectionTitle}>[THÔNG_TIN_CUỘC_THI]</Text>
                 </View>
                 <View style={styles.infoBody}>
@@ -458,7 +463,7 @@ export default function TeamAreaScreen({ navigation }) {
                   </View>
 
                   <TouchableOpacity style={styles.downloadBtn} onPress={handleOpenPdf}>
-                    <Download size={14} color="#00f0ff" />
+                    <Download size={14} color="#ea580c" />
                     <Text style={styles.downloadBtnText}>TẢI THỂ LỆ PDF</Text>
                   </TouchableOpacity>
                 </View>
@@ -470,7 +475,7 @@ export default function TeamAreaScreen({ navigation }) {
           {activeTab === 'members' && (
             <View style={styles.tabContent}>
               <View style={styles.sectionTitleRow}>
-                <Users size={16} color="#00f0ff" />
+                <Users size={16} color="#ea580c" />
                 <Text style={styles.sectionTitle}>[DANH_SÁCH_THÀNH_VIÊN]</Text>
               </View>
 
@@ -577,74 +582,83 @@ export default function TeamAreaScreen({ navigation }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0a141d',
+    backgroundColor: '#f8fafc',
   },
   container: {
     flex: 1,
+    backgroundColor: '#f8fafc',
   },
-  header: {
+  headerBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    borderBottomColor: '#e2e8f0',
   },
   headerBackBtn: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
+    padding: 4,
   },
   headerTitle: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '900',
-    letterSpacing: 1,
+    color: '#0f172a',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   chatHeaderBtn: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 6,
     position: 'relative',
+    backgroundColor: '#fff7ed',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#fed7aa',
   },
   headerBadge: {
     position: 'absolute',
-    top: 2,
-    right: 2,
-    backgroundColor: '#ff3b30',
+    top: -4,
+    right: -4,
+    backgroundColor: '#ef4444',
     minWidth: 16,
     height: 16,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 4,
-    borderWidth: 1,
-    borderColor: '#0a141d',
+    paddingHorizontal: 3,
   },
   headerBadgeText: {
-    color: '#fff',
+    color: '#ffffff',
     fontSize: 9,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   scrollContainer: {
-    paddingGrow: 1,
     padding: 16,
+    paddingBottom: 24,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#0a141d',
+    backgroundColor: '#f8fafc',
     alignItems: 'center',
     justifyContent: 'center',
   },
   banner: {
-    backgroundColor: '#131d25',
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
     borderWidth: 1,
-    padding: 20,
-    borderRadius: 6,
-    marginBottom: 20,
+    padding: 18,
+    borderRadius: 16,
+    marginBottom: 16,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   bannerHeader: {
     flexDirection: 'row',
@@ -653,52 +667,52 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   trackBadge: {
-    backgroundColor: 'rgba(0, 240, 255, 0.1)',
-    borderColor: 'rgba(0, 240, 255, 0.3)',
+    backgroundColor: '#fff7ed',
+    borderColor: '#fed7aa',
     borderWidth: 1,
     paddingHorizontal: 10,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 20,
   },
   trackBadgeText: {
-    color: '#00f0ff',
+    color: '#ea580c',
     fontSize: 10,
     fontWeight: '700',
   },
   statusBadge: {
     paddingHorizontal: 10,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 20,
   },
   statusBadgeSuccess: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+    backgroundColor: '#dcfce7',
+    borderColor: '#bbf7d0',
     borderWidth: 1,
   },
   statusBadgePending: {
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    borderColor: 'rgba(245, 158, 11, 0.3)',
+    backgroundColor: '#fff7ed',
+    borderColor: '#fed7aa',
     borderWidth: 1,
   },
   statusBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#fff',
+    color: '#0f172a',
   },
   teamName: {
-    color: '#fff',
+    color: '#0f172a',
     fontSize: 22,
     fontWeight: '900',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   eventText: {
-    color: '#849495',
+    color: '#64748b',
     fontSize: 12,
   },
   tabBar: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: '#e2e8f0',
     marginBottom: 16,
   },
   tabButton: {
@@ -709,15 +723,15 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   tabButtonActive: {
-    borderBottomColor: '#00f0ff',
+    borderBottomColor: '#ea580c',
   },
   tabButtonText: {
-    color: '#849495',
+    color: '#64748b',
     fontSize: 13,
     fontWeight: '700',
   },
   tabButtonTextActive: {
-    color: '#00f0ff',
+    color: '#ea580c',
   },
   tabContent: {
     marginBottom: 30,
@@ -725,32 +739,31 @@ const styles = StyleSheet.create({
   sectionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   sectionTitle: {
-    color: '#00f0ff',
-    fontSize: 11,
+    color: '#ea580c',
+    fontSize: 12,
     fontWeight: '800',
     marginLeft: 8,
-    letterSpacing: 1,
-  },
-  label: {
-    color: '#849495',
-    fontSize: 10,
-    fontWeight: '800',
-    marginBottom: 6,
     letterSpacing: 0.5,
   },
+  label: {
+    color: '#475569',
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
   input: {
-    backgroundColor: '#131d25',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#3b494b',
-    color: '#dae3f0',
-    paddingHorizontal: 16,
+    borderColor: '#cbd5e1',
+    color: '#0f172a',
+    paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 14,
-    borderRadius: 4,
-    marginBottom: 16,
+    borderRadius: 10,
+    marginBottom: 14,
   },
   textArea: {
     height: 100,
@@ -758,47 +771,52 @@ const styles = StyleSheet.create({
   },
   saveBtn: {
     flexDirection: 'row',
-    backgroundColor: '#00f0ff',
+    backgroundColor: '#ea580c',
     paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 4,
-    marginTop: 10,
+    borderRadius: 12,
+    marginTop: 6,
+    shadowColor: '#ea580c',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   saveBtnText: {
-    color: '#000',
+    color: '#ffffff',
     fontWeight: '800',
     fontSize: 13,
     marginLeft: 8,
-    letterSpacing: 1.5,
+    letterSpacing: 0.5,
   },
   memberCard: {
-    backgroundColor: '#131d25',
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
     borderWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
     marginBottom: 12,
-    borderRadius: 4,
+    borderRadius: 12,
   },
   memberInfo: {
     flex: 1,
     marginRight: 10,
   },
   memberName: {
-    color: '#fff',
+    color: '#0f172a',
     fontSize: 14,
     fontWeight: '700',
     marginBottom: 2,
   },
   memberEmail: {
-    color: '#849495',
+    color: '#64748b',
     fontSize: 11,
   },
   memberSubText: {
-    color: '#5c6d70',
+    color: '#94a3b8',
     fontSize: 10,
     marginTop: 4,
   },
@@ -807,77 +825,77 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 4,
+    borderRadius: 6,
   },
   confirmBadgeSuccess: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    backgroundColor: '#dcfce7',
   },
   confirmBadgePending: {
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    backgroundColor: '#fff7ed',
   },
   confirmBadgeTextSuccess: {
-    color: '#10b981',
+    color: '#166534',
     fontSize: 10,
     fontWeight: '700',
     marginLeft: 4,
   },
   confirmBadgeTextPending: {
-    color: '#f59e0b',
+    color: '#c2410c',
     fontSize: 10,
     fontWeight: '700',
     marginLeft: 4,
   },
   repoBox: {
-    backgroundColor: '#131d25',
-    borderColor: '#3b494b',
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
     borderWidth: 1,
     padding: 16,
-    borderRadius: 4,
+    borderRadius: 12,
   },
   repoName: {
-    color: '#fff',
+    color: '#0f172a',
     fontSize: 15,
     fontWeight: '800',
   },
   repoUrl: {
-    color: '#849495',
+    color: '#ea580c',
     fontSize: 12,
     marginTop: 4,
-    marginBottom: 16,
   },
   syncBtn: {
     flexDirection: 'row',
-    borderColor: '#00f0ff',
+    borderColor: '#ea580c',
     borderWidth: 1,
+    backgroundColor: '#fff7ed',
     paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 4,
-    marginBottom: 24,
+    borderRadius: 10,
+    marginBottom: 20,
+    marginTop: 10,
   },
   syncBtnText: {
-    color: '#00f0ff',
+    color: '#ea580c',
     fontSize: 12,
     fontWeight: '800',
     marginLeft: 8,
-    letterSpacing: 1,
   },
   commitsHeader: {
-    color: '#b9cacb',
-    fontSize: 11,
+    color: '#0f172a',
+    fontSize: 12,
     fontWeight: '800',
     marginBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: '#e2e8f0',
     paddingBottom: 6,
   },
   commitItem: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.04)',
+    borderBottomColor: '#f1f5f9',
     paddingVertical: 10,
   },
   commitMsg: {
-    color: '#fff',
+    color: '#1e293b',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -888,60 +906,58 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   commitAuthor: {
-    color: '#00f0ff',
-    fontSize: 9,
+    color: '#ea580c',
+    fontSize: 10,
     fontWeight: '700',
   },
   commitTime: {
-    color: '#5c6d70',
-    fontSize: 9,
+    color: '#94a3b8',
+    fontSize: 10,
   },
   noCommitsText: {
-    color: '#849495',
+    color: '#64748b',
     fontSize: 12,
     textAlign: 'center',
     paddingVertical: 16,
   },
   noRepoBox: {
-    backgroundColor: '#131d25',
+    backgroundColor: '#ffffff',
     padding: 30,
     alignItems: 'center',
-    borderRadius: 4,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
+    borderColor: '#e2e8f0',
   },
   noRepoIconText: {
-    color: '#849495',
+    color: '#94a3b8',
     fontWeight: '900',
     fontSize: 32,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     marginBottom: 12,
   },
   githubIconText: {
-    color: '#00f0ff',
+    color: '#ea580c',
     fontWeight: '900',
     fontSize: 14,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     marginRight: 6,
   },
   noRepoTitle: {
-    color: '#fff',
+    color: '#0f172a',
     fontSize: 14,
     fontWeight: '700',
     marginBottom: 6,
   },
   noRepoText: {
-    color: '#849495',
+    color: '#64748b',
     fontSize: 12,
     textAlign: 'center',
     lineHeight: 18,
   },
   examCard: {
-    backgroundColor: '#131d25',
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
     borderWidth: 1,
     padding: 16,
-    borderRadius: 6,
+    borderRadius: 14,
     marginBottom: 16,
   },
   countdownContainer: {
@@ -949,32 +965,30 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   countdownLabel: {
-    color: '#f59e0b',
+    color: '#ea580c',
     fontSize: 11,
     fontWeight: '700',
     marginBottom: 6,
     textAlign: 'center',
   },
   countdownTime: {
-    color: '#00f0ff',
+    color: '#ea580c',
     fontSize: 22,
     fontWeight: '900',
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    backgroundColor: '#0a141d',
+    backgroundColor: '#fff7ed',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 4,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
+    borderColor: '#fed7aa',
     textAlign: 'center',
     letterSpacing: 2,
     overflow: 'hidden',
   },
   countdownDetail: {
-    color: '#5c6d70',
-    fontSize: 9,
+    color: '#64748b',
+    fontSize: 10,
     marginTop: 6,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   examOpenContainer: {
     paddingVertical: 4,
@@ -985,59 +999,59 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   activeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: '#10b981',
     marginRight: 6,
   },
   activeLabel: {
     color: '#10b981',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
   },
   examFileName: {
-    color: '#fff',
-    fontSize: 13,
+    color: '#0f172a',
+    fontSize: 14,
     fontWeight: '700',
     marginBottom: 4,
   },
   examSubText: {
-    color: '#849495',
-    fontSize: 10,
+    color: '#64748b',
+    fontSize: 11,
     marginBottom: 12,
   },
   openExamBtn: {
-    backgroundColor: '#00f0ff',
+    backgroundColor: '#ea580c',
     paddingVertical: 12,
-    borderRadius: 4,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#00f0ff',
+    shadowColor: '#ea580c',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   openExamBtnText: {
-    color: '#000',
-    fontSize: 11,
-    fontWeight: '850',
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
     letterSpacing: 0.5,
   },
   italicText: {
-    color: '#849495',
+    color: '#64748b',
     fontSize: 12,
     fontStyle: 'italic',
     textAlign: 'center',
     paddingVertical: 10,
   },
   chatCard: {
-    backgroundColor: '#131d25',
-    borderColor: 'rgba(0, 240, 255, 0.15)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
     borderWidth: 1,
     padding: 16,
-    borderRadius: 6,
+    borderRadius: 14,
     marginBottom: 16,
   },
   chatHeader: {
@@ -1048,8 +1062,8 @@ const styles = StyleSheet.create({
   chatIconBox: {
     width: 36,
     height: 36,
-    backgroundColor: 'rgba(0, 240, 255, 0.1)',
-    borderRadius: 8,
+    backgroundColor: '#fff7ed',
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -1058,106 +1072,102 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   chatCardTitle: {
-    color: '#fff',
+    color: '#0f172a',
     fontSize: 13,
     fontWeight: '700',
   },
   chatCardDesc: {
-    color: '#849495',
+    color: '#64748b',
     fontSize: 10,
     marginTop: 2,
     lineHeight: 14,
   },
   chatBtn: {
-    backgroundColor: '#00f0ff',
+    backgroundColor: '#ea580c',
     paddingVertical: 10,
-    borderRadius: 6,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   chatBtnText: {
-    color: '#000',
-    fontSize: 11,
+    color: '#ffffff',
+    fontSize: 12,
     fontWeight: '800',
   },
   infoCard: {
-    backgroundColor: '#131d25',
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
     borderWidth: 1,
     padding: 16,
-    borderRadius: 6,
+    borderRadius: 14,
     marginBottom: 16,
   },
   infoBody: {
     paddingVertical: 4,
   },
   infoLabel: {
-    color: '#849495',
-    fontSize: 9,
+    color: '#64748b',
+    fontSize: 10,
     fontWeight: '800',
     textTransform: 'uppercase',
     marginBottom: 2,
   },
   infoValue: {
-    color: '#fff',
-    fontSize: 13,
+    color: '#0f172a',
+    fontSize: 14,
     fontWeight: '750',
   },
   infoSubText: {
-    color: '#5c6d70',
-    fontSize: 9,
+    color: '#94a3b8',
+    fontSize: 10,
     fontStyle: 'italic',
     marginTop: 1,
   },
   infoDivider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: '#f1f5f9',
     marginVertical: 10,
   },
   infoBodyText: {
-    color: '#cddce0',
-    fontSize: 11,
-    lineHeight: 16,
+    color: '#334155',
+    fontSize: 12,
+    lineHeight: 18,
   },
   criteriaRow: {
     marginTop: 4,
-    spaceY: 2,
   },
   criteriaText: {
-    color: '#cddce0',
-    fontSize: 11,
-    lineHeight: 16,
+    color: '#334155',
+    fontSize: 12,
+    lineHeight: 18,
   },
   criteriaHighlight: {
-    color: '#00f0ff',
+    color: '#ea580c',
     fontWeight: '700',
   },
   downloadBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0a141d',
-    borderColor: 'rgba(0, 240, 255, 0.2)',
+    backgroundColor: '#fff7ed',
+    borderColor: '#fed7aa',
     borderWidth: 1,
     paddingVertical: 10,
-    borderRadius: 6,
+    borderRadius: 10,
     marginTop: 14,
     gap: 8,
   },
   downloadBtnText: {
-    color: '#00f0ff',
-    fontSize: 11,
+    color: '#ea580c',
+    fontSize: 12,
     fontWeight: '800',
   },
-  spin: {
-    // Rotation is typically handled in JS animation, but here we can rely on standard spinner or simple state text
-  },
   seminarCard: {
-    backgroundColor: '#131d25',
-    borderColor: 'rgba(0, 240, 255, 0.15)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
     borderWidth: 1,
     padding: 16,
-    borderRadius: 6,
+    borderRadius: 14,
     marginBottom: 16,
   },
   seminarHeader: {
@@ -1168,93 +1178,87 @@ const styles = StyleSheet.create({
   seminarIconBox: {
     width: 36,
     height: 36,
-    backgroundColor: 'rgba(0, 240, 255, 0.1)',
-    borderRadius: 8,
+    backgroundColor: '#fff7ed',
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
     marginTop: 2,
   },
   seminarTag: {
-    color: '#00f0ff',
-    fontSize: 9,
+    color: '#ea580c',
+    fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 0.5,
   },
   seminarStatusTag: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '800',
     paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 3,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   tagUpcoming: {
-    backgroundColor: '#1e293b',
-    color: '#94a3b8',
-    borderColor: '#334155',
-    borderWidth: 0.5,
+    backgroundColor: '#f1f5f9',
+    color: '#64748b',
   },
   tagOngoing: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    color: '#34d399',
-    borderColor: 'rgba(16, 185, 129, 0.3)',
-    borderWidth: 0.5,
+    backgroundColor: '#dcfce7',
+    color: '#166534',
   },
   seminarTitle: {
-    color: '#fff',
+    color: '#0f172a',
     fontSize: 15,
     fontWeight: '700',
     marginBottom: 4,
   },
   seminarDesc: {
-    color: '#849495',
-    fontSize: 11,
-    lineHeight: 15,
+    color: '#64748b',
+    fontSize: 12,
+    lineHeight: 16,
     marginBottom: 8,
   },
   seminarMetaText: {
-    color: '#dae3f0',
+    color: '#334155',
     fontSize: 11,
     fontWeight: '600',
   },
   meetBtn: {
     backgroundColor: '#10b981',
     paddingVertical: 10,
-    borderRadius: 6,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 4,
   },
   meetBtnText: {
-    color: '#fff',
-    fontSize: 11,
+    color: '#ffffff',
+    fontSize: 12,
     fontWeight: '800',
-    letterSpacing: 0.5,
   },
   badgeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   leaderBadge: {
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    borderColor: 'rgba(245, 158, 11, 0.3)',
+    backgroundColor: '#fff7ed',
+    borderColor: '#fed7aa',
     borderWidth: 1,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: 6,
   },
   leaderBadgeText: {
-    color: '#f59e0b',
-    fontSize: 9,
+    color: '#ea580c',
+    fontSize: 10,
     fontWeight: '800',
   },
   memberBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+    backgroundColor: '#f1f5f9',
+    borderColor: '#e2e8f0',
     borderWidth: 1,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: 6,
   },
   memberBadgeText: {
     color: '#10b981',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,20 +7,47 @@ import {
   StyleSheet,
   ActivityIndicator,
   KeyboardAvoidingView,
+  NativeModules,
   Platform,
   ScrollView,
+  TurboModuleRegistry,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import api from '../api/api';
 import socketService from '../api/socketService';
-import { firebaseAuth, firebaseWebClientId } from '../config/firebase';
-import { ShieldAlert } from 'lucide-react-native';
+import { ShieldAlert, LogIn, ArrowLeft, LogOut } from 'lucide-react-native';
+import * as WebBrowser from 'expo-web-browser';
+import * as AuthSession from 'expo-auth-session';
+import * as GoogleAuthSession from 'expo-auth-session/providers/google';
+
+const googleServices = require('../../google-services.json');
+const androidClient = googleServices.client?.[0];
+const firebaseWebClientId = androidClient?.oauth_client?.find((client) => client.client_type === 3)?.client_id;
+const EXPO_GOOGLE_REDIRECT_URI = 'https://auth.expo.io/@ntngoc204/mobile';
 
 let isGoogleSigninConfigured = false;
+const GOOGLE_SIGNIN_NATIVE_MODULE = 'RNGoogleSignin';
+
+WebBrowser.maybeCompleteAuthSession();
+
+const hasGoogleSigninNativeModule = () => {
+  try {
+    return Boolean(
+      TurboModuleRegistry?.get?.(GOOGLE_SIGNIN_NATIVE_MODULE) ||
+      NativeModules?.[GOOGLE_SIGNIN_NATIVE_MODULE]
+    );
+  } catch (err) {
+    return Boolean(NativeModules?.[GOOGLE_SIGNIN_NATIVE_MODULE]);
+  }
+};
 
 const getGoogleSigninModule = () => {
+  if (!hasGoogleSigninNativeModule()) {
+    return null;
+  }
+
   const googleSigninModule = require('@react-native-google-signin/google-signin');
 
   if (!isGoogleSigninConfigured) {
@@ -34,12 +61,50 @@ const getGoogleSigninModule = () => {
   return googleSigninModule;
 };
 
+const getGoogleLoginErrorMessage = (err, statusCodes) => {
+  const code = err?.code || err?.nativeErrorCode;
+  const message = String(err?.message || '');
+
+  if (code === statusCodes?.SIGN_IN_CANCELLED) {
+    return '';
+  }
+
+  if (code === statusCodes?.IN_PROGRESS) {
+    return 'Đang có một phiên đăng nhập Google đang chạy.';
+  }
+
+  if (code === statusCodes?.PLAY_SERVICES_NOT_AVAILABLE) {
+    return 'Google Play Services không khả dụng hoặc cần cập nhật.';
+  }
+
+  if (
+    code === 'DEVELOPER_ERROR' ||
+    message.includes('DEVELOPER_ERROR') ||
+    message.includes('ApiException: 10')
+  ) {
+    return 'Google Sign-In chưa khớp Android package/SHA-1. Kiểm tra SHA-1 trên Firebase Console.';
+  }
+
+  if (err?.response?.data?.message) {
+    return err.response.data.message;
+  }
+
+  return code
+    ? `Đăng nhập Google thất bại (${code}). Vui lòng thử lại.`
+    : 'Đăng nhập Google thất bại. Vui lòng thử lại.';
+};
+
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState('');
+  const [sessionConflict, setSessionConflict] = useState(false);
+  const [lastGoogleToken, setLastGoogleToken] = useState(null);
+
+  const googleLoginInProgressRef = useRef(false);
+  const googleLoginCompletedRef = useRef(false);
 
   useEffect(() => {
     const checkExistingSession = async () => {
@@ -74,7 +139,76 @@ export default function LoginScreen({ navigation }) {
     await redirectUser(user, roles || []);
   };
 
+  const completeGoogleLoginWithIdToken = async (idToken, force = false) => {
+    if (!idToken) {
+      setError('Không lấy được Google ID token. Kiểm tra google-services.json.');
+      return;
+    }
+
+    try {
+      const res = await api.post('/auth/google', { idToken, force });
+      googleLoginCompletedRef.current = true;
+      await saveSession(res.data);
+    } catch (err) {
+      if (err.response?.status === 409 || err.response?.data?.code === 'ACTIVE_SESSION_EXISTS') {
+        setSessionConflict(true);
+        setLastGoogleToken(idToken);
+        setError(err.response?.data?.message || 'Tài khoản này đang được đăng nhập ở nơi khác. Vui lòng đăng xuất ở thiết bị cũ.');
+      } else {
+        throw err;
+      }
+    }
+  };
+
+  const handleExpoGoogleLogin = async () => {
+    const authSessionId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const expoGoogleRequest = new AuthSession.AuthRequest({
+      clientId: firebaseWebClientId,
+      redirectUri: EXPO_GOOGLE_REDIRECT_URI,
+      responseType: AuthSession.ResponseType.IdToken,
+      scopes: ['openid', 'profile', 'email'],
+      usePKCE: false,
+      extraParams: {
+        prompt: 'select_account',
+        nonce: authSessionId,
+      },
+    });
+
+    const authUrl = await expoGoogleRequest.makeAuthUrlAsync(GoogleAuthSession.discovery);
+    const returnUrl = AuthSession.getDefaultReturnUrl(`expo-auth-session/${authSessionId}`);
+    const startUrl = `${EXPO_GOOGLE_REDIRECT_URI}/start?authUrl=${encodeURIComponent(authUrl)}&returnUrl=${encodeURIComponent(returnUrl)}`;
+    const browserResult = await WebBrowser.openAuthSessionAsync(startUrl, returnUrl);
+
+    if (browserResult?.type === 'cancel' || browserResult?.type === 'dismiss') {
+      return;
+    }
+
+    if (browserResult?.type !== 'success') {
+      const authError = new Error(browserResult?.type || 'EXPO_GOOGLE_AUTH_FAILED');
+      authError.code = browserResult?.type;
+      throw authError;
+    }
+
+    const result = expoGoogleRequest.parseReturnUrl(browserResult.url);
+
+    if (result?.type !== 'success') {
+      const errorCode = result?.params?.error || result?.error?.code;
+      const authError = new Error(errorCode || 'EXPO_GOOGLE_AUTH_FAILED');
+      authError.code = errorCode;
+      throw authError;
+    }
+
+    const idToken = result.params?.id_token || result.authentication?.idToken;
+    await completeGoogleLoginWithIdToken(idToken);
+  };
+
   const handleGoogleLogin = async () => {
+    if (googleLoginInProgressRef.current) {
+      return;
+    }
+
+    googleLoginInProgressRef.current = true;
+    googleLoginCompletedRef.current = false;
     setError('');
     setLoading(true);
 
@@ -83,11 +217,30 @@ export default function LoginScreen({ navigation }) {
       googleSigninModule = getGoogleSigninModule();
     } catch (err) {
       console.log('Google Sign-In native module error:', err);
-      setError('Google native login chi hoat dong tren APK/EAS development build, khong ho tro Expo Go.');
+      googleSigninModule = null;
+    }
+
+    if (!firebaseWebClientId) {
+      setError('Không tìm thấy Firebase Web Client ID trong google-services.json.');
+      googleLoginInProgressRef.current = false;
       setLoading(false);
       return;
     }
 
+    if (!googleSigninModule) {
+      try {
+        await handleExpoGoogleLogin();
+      } catch (err) {
+        console.log('Expo Google login error:', err);
+        if (!googleLoginCompletedRef.current) {
+          setError(getGoogleLoginErrorMessage(err, null));
+        }
+      } finally {
+        googleLoginInProgressRef.current = false;
+        setLoading(false);
+      }
+      return;
+    }
     const {
       GoogleSignin,
       isCancelledResponse,
@@ -96,11 +249,6 @@ export default function LoginScreen({ navigation }) {
     } = googleSigninModule;
 
     try {
-      if (!firebaseWebClientId) {
-        setError('Khong tim thay Firebase Web Client ID trong google-services.json.');
-        return;
-      }
-
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       const signInResult = await GoogleSignin.signIn();
 
@@ -114,72 +262,66 @@ export default function LoginScreen({ navigation }) {
         idToken = tokens.idToken;
       }
 
-      if (!idToken) {
-        setError('Khong lay duoc Google ID token. Hay kiem tra Firebase Google Auth.');
-        return;
-      }
-
-      const googleCredential = GoogleAuthProvider.credential(idToken);
-      const firebaseCredential = await signInWithCredential(firebaseAuth, googleCredential);
-      const firebaseIdToken = await firebaseCredential.user.getIdToken();
-
-      const res = await api.post('/auth/firebase-google', { firebaseIdToken });
-      await saveSession(res.data);
+      await completeGoogleLoginWithIdToken(idToken);
     } catch (err) {
       console.log('Google login error:', err);
 
-      if (isErrorWithCode(err)) {
-        if (err.code === statusCodes.IN_PROGRESS) {
-          setError('Dang co mot phien dang nhap Google dang chay.');
-          return;
-        }
-
-        if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-          setError('Google Play Services khong kha dung hoac can cap nhat.');
-          return;
-        }
-      }
-
-      if (err.response?.data?.message) {
-        setError(err.response.data.message);
-      } else {
-        setError('Dang nhap Google that bai. Vui long thu lai.');
+      const googleErrorMessage = getGoogleLoginErrorMessage(err, isErrorWithCode(err) ? statusCodes : null);
+      if (googleErrorMessage) {
+        setError(googleErrorMessage);
       }
     } finally {
+      googleLoginInProgressRef.current = false;
       setLoading(false);
     }
   };
 
-  const handleLogin = async () => {
-
+  const handleLogin = async (force = false) => {
     if (!email || !password) {
       setError('Vui lòng nhập đầy đủ thông tin đăng nhập.');
       return;
     }
     setError('');
+    setSessionConflict(false);
     setLoading(true);
 
     try {
-      const res = await api.post('/auth/login', { email, password });
+      const res = await api.post('/auth/login', { email, password, force });
       await saveSession(res.data);
     } catch (err) {
       console.log('Login error:', err);
-      if (err.response && err.response.data && err.response.data.message) {
+      if (err.response?.status === 409 || err.response?.data?.code === 'ACTIVE_SESSION_EXISTS') {
+        setSessionConflict(true);
+        setError(err.response?.data?.message || 'Tài khoản này đang được đăng nhập ở nơi khác. Vui lòng đăng xuất ở thiết bị cũ.');
+      } else if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message);
       } else {
-        setError('Kết nối máy chủ thất bại. Hãy kiểm tra địa chỉ API của bạn.');
+        setError('Kết nối máy chủ thất bại. Hãy kiểm tra lại kết nối mạng.');
       }
     } finally {
       setLoading(false);
     }
   };
 
-
+  const handleForceLogin = async () => {
+    if (lastGoogleToken) {
+      setLoading(true);
+      try {
+        await completeGoogleLoginWithIdToken(lastGoogleToken, true);
+      } catch (err) {
+        setError(err.response?.data?.message || 'Không thể thực hiện đăng nhập đè.');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      await handleLogin(true);
+    }
+  };
 
   if (initializing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#00f0ff" />
+        <ActivityIndicator size="large" color="#ea580c" />
       </View>
     );
   }
@@ -190,38 +332,70 @@ export default function LoginScreen({ navigation }) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <View style={styles.header}>
+        <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+          {/* Top Bar */}
+          <View style={styles.topNav}>
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => navigation.navigate('Welcome')}
+              activeOpacity={0.7}
+            >
+              <ArrowLeft size={20} color="#0f172a" />
+              <Text style={styles.backBtnText}>Quay lại</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Logo Branding */}
+          {/* <View style={styles.header}>
             <Text style={styles.logoText}>SEAL</Text>
             <View style={styles.badge}>
               <Text style={styles.badgeText}>HACKATHON</Text>
             </View>
-          </View>
+          </View> */}
 
+          {/* Form Container */}
           <View style={styles.formContainer}>
-            <Text style={styles.title}>ĐĂNG NHẬP HỆ THỐNG</Text>
+            <View style={styles.formTitleRow}>
+              <Text style={styles.title}>ĐĂNG NHẬP</Text>
+            </View>
 
             {error ? (
-              <View style={styles.errorAlert}>
-                <ShieldAlert size={16} color="#ef4444" />
-                <Text style={styles.errorText}>{error}</Text>
+              <View style={styles.errorAlertContainer}>
+                <View style={styles.errorAlertRow}>
+                  <ShieldAlert size={18} color="#ef4444" style={{ marginTop: 2 }} />
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+
+                {sessionConflict && (
+                  <TouchableOpacity
+                    style={styles.forceLoginBtn}
+                    onPress={handleForceLogin}
+                    disabled={loading}
+                    activeOpacity={0.85}
+                  >
+                    <LogOut size={16} color="#ffffff" style={{ marginRight: 6 }} />
+                    <Text style={styles.forceLoginBtnText}>ĐĂNG XUẤT THIẾT BỊ KHÁC & ĐĂNG NHẬP</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             ) : null}
 
+            <Text style={styles.label}>Email</Text>
             <TextInput
               style={styles.input}
-              placeholder="Email"
-              placeholderTextColor="#849495"
+              placeholder="Email của bạn"
+              placeholderTextColor="#94a3b8"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
             />
 
+            <Text style={styles.label}>Mật khẩu</Text>
             <TextInput
               style={styles.input}
               placeholder="Mật khẩu"
-              placeholderTextColor="#849495"
+              placeholderTextColor="#94a3b8"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -232,30 +406,41 @@ export default function LoginScreen({ navigation }) {
               style={styles.loginBtn}
               onPress={handleLogin}
               disabled={loading}
+              activeOpacity={0.85}
             >
               {loading ? (
-                <ActivityIndicator color="#000" />
+                <ActivityIndicator color="#ffffff" />
               ) : (
                 <Text style={styles.loginBtnText}>ĐĂNG NHẬP</Text>
               )}
             </TouchableOpacity>
 
-            {/* Divider Hoặc đăng nhập bằng */}
+            {/* Divider */}
             <View style={styles.dividerContainer}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>Hoặc đăng nhập bằng</Text>
               <View style={styles.dividerLine} />
             </View>
 
-            {/* Nút bấm Google */}
-            <View style={styles.oauthRow}>
-              <TouchableOpacity
-                style={styles.oauthBtn}
-                onPress={handleGoogleLogin}
-                disabled={loading}
-              >
-                <Text style={[styles.googleIconText, { marginRight: 8 }]}>[G]</Text>
-                <Text style={styles.oauthBtnText}>Google</Text>
+            {/* Google OAuth Button */}
+            <TouchableOpacity
+              style={styles.oauthBtn}
+              onPress={handleGoogleLogin}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              <Image
+                source={require('../../assets/images.jpg')}
+                style={styles.googleIconImage}
+                resizeMode="contain"
+              />
+              <Text style={styles.oauthBtnText}>Đăng nhập với Google</Text>
+            </TouchableOpacity>
+
+            <View style={styles.registerRedirect}>
+              <Text style={styles.registerRedirectText}>Chưa có tài khoản? </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                <Text style={styles.registerRedirectLink}>Đăng ký tài khoản ngay</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -268,151 +453,154 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0a141d',
+    backgroundColor: '#f8fafc',
   },
   scrollContainer: {
     flexGrow: 1,
-    justifyContent: 'center',
     padding: 24,
+    justifyContent: 'center',
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#0a141d',
+    backgroundColor: '#f8fafc',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  topNav: {
+    marginBottom: 16,
+  },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0f172a',
+    marginLeft: 4,
+  },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 28,
   },
   logoText: {
     fontSize: 40,
     fontWeight: '900',
-    color: '#00f0ff',
-    textShadowColor: 'rgba(0, 240, 255, 0.4)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
+    color: '#ea580c',
+    letterSpacing: 2,
   },
   badge: {
-    backgroundColor: '#131d25',
-    borderColor: '#3b494b',
-    borderWidth: 1,
+    backgroundColor: '#0f172a',
     paddingHorizontal: 10,
     paddingVertical: 2,
-    marginTop: 4,
+    borderRadius: 4,
+    marginTop: 2,
   },
   badgeText: {
-    color: '#b9cacb',
-    fontSize: 12,
-    fontWeight: '700',
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '800',
     letterSpacing: 2,
   },
   formContainer: {
-    backgroundColor: '#131d25',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: 'rgba(0, 240, 255, 0.15)',
-    padding: 20,
-    borderRadius: 4,
+    borderColor: '#e2e8f0',
+    padding: 22,
+    borderRadius: 16,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  formTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 18,
+    gap: 8,
   },
   title: {
-    color: '#fff',
-    fontSize: 16,
+    color: '#0f172a',
+    fontSize: 24,
     fontWeight: '800',
-    textAlign: 'center',
-    marginBottom: 20,
-    letterSpacing: 1,
+    letterSpacing: 0.5,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
+    marginBottom: 6,
   },
   input: {
-    backgroundColor: 'rgba(6, 15, 23, 0.8)',
+    backgroundColor: '#f8fafc',
     borderWidth: 1,
-    borderColor: '#3b494b',
-    color: '#dae3f0',
-    paddingHorizontal: 16,
+    borderColor: '#cbd5e1',
+    color: '#0f172a',
+    paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
     marginBottom: 16,
-    borderRadius: 4,
+    borderRadius: 10,
   },
   loginBtn: {
-    backgroundColor: '#00f0ff',
+    backgroundColor: '#ea580c',
     paddingVertical: 14,
     alignItems: 'center',
-    borderRadius: 4,
+    borderRadius: 12,
+    marginTop: 4,
+    shadowColor: '#ea580c',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   loginBtnText: {
-    color: '#000',
+    color: '#ffffff',
     fontWeight: '800',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     fontSize: 14,
   },
-  errorAlert: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+  errorAlertContainer: {
+    backgroundColor: '#fef2f2',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)',
-    padding: 10,
+    borderColor: '#fecaca',
+    padding: 12,
+    borderRadius: 12,
     marginBottom: 16,
   },
+  errorAlertRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
   errorText: {
-    color: '#fca5a5',
-    fontSize: 12,
+    color: '#dc2626',
+    fontSize: 13,
     marginLeft: 8,
     flex: 1,
+    lineHeight: 18,
   },
-  settingsSection: {
-    marginTop: 30,
-    alignItems: 'center',
-  },
-  settingsToggle: {
+  forceLoginBtn: {
+    backgroundColor: '#ea580c',
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  settingsToggleText: {
-    color: '#849495',
-    fontSize: 12,
-    marginLeft: 6,
-    fontWeight: '600',
-  },
-  settingsBox: {
-    width: '100%',
-    backgroundColor: '#131d25',
-    borderWidth: 1,
-    borderColor: '#3b494b',
-    padding: 16,
-    marginTop: 12,
-    borderRadius: 4,
-  },
-  settingsTitle: {
-    color: '#849495',
-    fontSize: 10,
-    fontWeight: '800',
-    marginBottom: 8,
-    letterSpacing: 1,
-  },
-  settingsInput: {
-    backgroundColor: 'rgba(6, 15, 23, 0.8)',
-    borderWidth: 1,
-    borderColor: '#3b494b',
-    color: '#dae3f0',
+    justifyContent: 'center',
+    paddingVertical: 10,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 12,
-    marginBottom: 10,
-    borderRadius: 4,
+    borderRadius: 10,
+    marginTop: 10,
+    shadowColor: '#ea580c',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  settingsSaveBtn: {
-    borderColor: '#00f0ff',
-    borderWidth: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: 4,
-  },
-  settingsSaveBtnText: {
-    color: '#00f0ff',
+  forceLoginBtnText: {
+    color: '#ffffff',
     fontSize: 12,
     fontWeight: '800',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   dividerContainer: {
     flexDirection: 'row',
@@ -422,42 +610,46 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(59, 73, 75, 0.4)',
+    backgroundColor: '#e2e8f0',
   },
   dividerText: {
-    color: '#849495',
+    color: '#64748b',
     fontSize: 11,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     paddingHorizontal: 10,
-    textTransform: 'uppercase',
-  },
-  oauthRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
+    fontWeight: '600',
   },
   oauthBtn: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#131d25',
-    borderColor: '#3b494b',
+    backgroundColor: '#fff7ed',
+    borderColor: '#fed7aa',
     borderWidth: 1,
     paddingVertical: 12,
-    borderRadius: 4,
+    borderRadius: 10,
   },
-  googleIconText: {
-    color: '#00f0ff',
-    fontWeight: '900',
-    fontSize: 14,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  googleIconImage: {
+    width: 20,
+    height: 20,
+    marginRight: 8,
   },
   oauthBtnText: {
-    color: '#dae3f0',
+    color: '#ea580c',
     fontWeight: '700',
     fontSize: 13,
-    letterSpacing: 0.5,
+  },
+  registerRedirect: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 20,
+  },
+  registerRedirectText: {
+    color: '#64748b',
+    fontSize: 13,
+  },
+  registerRedirectLink: {
+    color: '#ea580c',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
-

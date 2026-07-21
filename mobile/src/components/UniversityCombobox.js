@@ -9,7 +9,6 @@ import {
   ScrollView,
 } from 'react-native';
 
-
 const LOCAL_UNIVERSITIES = [
   { name: 'Trường Đại học FPT TP.HCM', short: 'FPT TP.HCM', aliases: ['FPT', 'FPT University', 'FU', 'FU HCMC'] },
   { name: 'Trường Đại học Công nghệ thông tin - ĐHQG TP.HCM', short: 'UIT', aliases: ['UIT', 'CNTT', 'Cong nghe thong tin'] },
@@ -42,8 +41,6 @@ const removeAccents = (str) => {
     .replace(/Đ/g, 'D');
 };
 
-
-
 export default function UniversityCombobox({
   value,
   onChange,
@@ -55,7 +52,6 @@ export default function UniversityCombobox({
   const [universities, setUniversities] = useState(LOCAL_UNIVERSITIES);
   const [loading, setLoading] = useState(false);
 
-  // Sync external value -> internal input (displays short name for brevity if matched)
   useEffect(() => {
     const matched = LOCAL_UNIVERSITIES.find(u => u.name === value || u.short === value);
     if (matched) {
@@ -68,10 +64,6 @@ export default function UniversityCombobox({
   useEffect(() => {
     setUniversities(LOCAL_UNIVERSITIES);
   }, []);
-
-  const ensureApiLoaded = () => {
-    // API loading disabled to prevent pollution outside regional scope
-  };
 
   const query = removeAccents(inputValue.trim()).toLowerCase();
 
@@ -87,8 +79,6 @@ export default function UniversityCombobox({
     : universities;
 
   const handleSelect = (univ) => {
-    // Save/fill with the short name (e.g. FPT TP.HCM) for visual display
-    // but pass the full name (e.g. Trường Đại học FPT TP.HCM) to parent state/database
     setInputValue(univ.short);
     onChange(univ.name);
     setIsOpen(false);
@@ -99,25 +89,21 @@ export default function UniversityCombobox({
          u.short.toLowerCase() === inputValue.trim().toLowerCase()
   );
 
-
-
   return (
     <View style={[styles.container, isOpen && { height: 240, marginBottom: -180, zIndex: 100 }]}>
       <View style={styles.inputContainer}>
         <TextInput
           style={[styles.input, disabled && styles.disabledInput]}
           placeholder={placeholder}
-          placeholderTextColor="#849495"
+          placeholderTextColor="#94a3b8"
           value={inputValue}
           onChangeText={(text) => {
             setInputValue(text);
             onChange(text);
             setIsOpen(true);
-            ensureApiLoaded();
           }}
           onFocus={() => {
             setIsOpen(true);
-            ensureApiLoaded();
           }}
           onBlur={() => {
             setTimeout(() => setIsOpen(false), 200);
@@ -126,7 +112,7 @@ export default function UniversityCombobox({
         />
         {loading && (
           <View style={styles.loader}>
-            <ActivityIndicator size="small" color="#00f0ff" />
+            <ActivityIndicator size="small" color="#ea580c" />
           </View>
         )}
       </View>
@@ -188,33 +174,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   input: {
-    backgroundColor: '#131d25',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#3b494b',
-    color: '#dae3f0',
+    borderColor: '#e2e8f0',
+    color: '#0f172a',
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 14,
-    borderRadius: 4,
-  },
-  inputTrigger: {
-    backgroundColor: '#131d25',
-    borderWidth: 1,
-    borderColor: '#3b494b',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 4,
-    justifyContent: 'center',
-  },
-  triggerText: {
-    color: '#dae3f0',
-    fontSize: 14,
-  },
-  placeholderText: {
-    color: '#849495',
+    borderRadius: 10,
   },
   disabledInput: {
-    opacity: 0.5,
+    opacity: 0.6,
+    backgroundColor: '#f1f5f9',
   },
   loader: {
     position: 'absolute',
@@ -225,17 +196,17 @@ const styles = StyleSheet.create({
     top: 46,
     left: 0,
     right: 0,
-    backgroundColor: '#131d25',
-    borderColor: '#3b494b',
+    backgroundColor: '#ffffff',
+    borderColor: '#fed7aa',
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 10,
     maxHeight: 200,
     zIndex: 9999,
-    shadowColor: '#000',
+    shadowColor: '#ea580c',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
   },
   list: {
     padding: 4,
@@ -245,29 +216,29 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    borderBottomColor: '#f1f5f9',
   },
   itemSelected: {
-    backgroundColor: '#00f0ff',
+    backgroundColor: '#fff7ed',
   },
   itemShort: {
-    color: '#dae3f0',
+    color: '#0f172a',
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   itemName: {
-    color: '#849495',
+    color: '#64748b',
     fontSize: 10,
     marginTop: 2,
   },
   itemTextSelected: {
-    color: '#000',
+    color: '#ea580c',
   },
   itemTextSelectedSub: {
-    color: 'rgba(0, 0, 0, 0.7)',
+    color: '#c2410c',
   },
   emptyText: {
-    color: '#849495',
+    color: '#64748b',
     fontSize: 12,
     fontStyle: 'italic',
     textAlign: 'center',
@@ -275,13 +246,13 @@ const styles = StyleSheet.create({
   },
   customBox: {
     borderTopWidth: 1,
-    borderTopColor: '#3b494b',
-    backgroundColor: '#0f172a',
+    borderTopColor: '#fed7aa',
+    backgroundColor: '#fff7ed',
     paddingVertical: 8,
     paddingHorizontal: 12,
   },
   customText: {
-    color: '#f59e0b',
+    color: '#c2410c',
     fontSize: 10,
     fontWeight: '600',
   },

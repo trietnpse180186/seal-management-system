@@ -76,9 +76,9 @@ export const UsersTab: React.FC<UsersTabProps> = ({
       fetchUsers();
       axios.get(`${API_BASE}/api/events`)
         .then((res) => {
-          setHasRegistrationEvent(res.data.some((e: any) => e.status === "registration"));
+          setHasRegistrationEvent(res.data.some((e: any) => ['registration', 'ongoing'].includes(e.status)));
         })
-        .catch((err) => console.error("Failed to fetch events for registration check", err));
+        .catch((err) => console.error("Failed to fetch events for active check", err));
     }
   }, [token, search]);
 

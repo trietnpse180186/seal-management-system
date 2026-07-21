@@ -1286,9 +1286,9 @@ router.post('/users', authenticateToken, requireAdminOrAssistant, async (req, re
 
     if (isStudentAssistant) {
       const Event = mongoose.model('Event');
-      const registrationEvent = await Event.findOne({ status: 'registration' });
-      if (!registrationEvent) {
-        return res.status(400).json({ message: 'Chỉ được phép tạo Cộng tác viên khi có sự kiện đang mở đăng ký.' });
+      const activeEvent = await Event.findOne({ status: { $in: ['registration', 'ongoing'] } });
+      if (!activeEvent) {
+        return res.status(400).json({ message: 'Chỉ được phép tạo Cộng tác viên khi có sự kiện đang diễn ra hoặc mở đăng ký.' });
       }
     }
 
@@ -1309,7 +1309,7 @@ router.post('/users', authenticateToken, requireAdminOrAssistant, async (req, re
 
     if (isStudentAssistant) {
       const Event = mongoose.model('Event');
-      const activeEvents = await Event.find({ status: { $in: ['registration', 'active'] } });
+      const activeEvents = await Event.find({ status: { $in: ['registration', 'ongoing'] } });
       if (activeEvents.length > 0) {
         for (const ev of activeEvents) {
           await EventRole.updateOne(
@@ -1578,25 +1578,29 @@ router.post('/users/:id/toggle-student-assistant', authenticateToken, requireSys
 
     if (nextVal) {
       const Event = mongoose.model('Event');
-      const registrationEvent = await Event.findOne({ status: 'registration' });
-      if (!registrationEvent) {
-        return res.status(400).json({ message: 'Chỉ được phép cấp quyền Cộng tác viên khi có sự kiện đang mở đăng ký.' });
+      const activeEvents = await Event.find({ status: { $in: ['registration', 'ongoing'] } });
+      if (!activeEvents || activeEvents.length === 0) {
+        return res.status(400).json({ message: 'Chỉ được phép cấp quyền Cộng tác viên khi có sự kiện đang diễn ra hoặc mở đăng ký.' });
       }
+
+      const activeEventIds = activeEvents.map(e => e._id);
 
       const hasOtherRole = await EventRole.findOne({
         userId,
-        eventId: registrationEvent._id,
+        eventId: { $in: activeEventIds },
         role: { $in: ['judge', 'mentor', 'coordinator'] },
         status: 'active'
       });
       if (hasOtherRole) {
-        return res.status(400).json({ message: 'Tài khoản này đang có vai trò khác trong sự kiện, không thể cấp quyền Cộng tác viên.' });
+        const roleNameMap = { judge: 'Giám khảo', mentor: 'Mentor', coordinator: 'Coordinator' };
+        const roleTitle = roleNameMap[hasOtherRole.role] || hasOtherRole.role;
+        return res.status(400).json({ message: `Tài khoản này đang có vai trò ${roleTitle} trong sự kiện, không thể cấp quyền Cộng tác viên.` });
       }
 
       // Check if they are a participant and are in a team (contestant)
       const isParticipant = await EventRole.findOne({
         userId,
-        eventId: registrationEvent._id,
+        eventId: { $in: activeEventIds },
         role: 'participant',
         status: 'active'
       });
@@ -1604,11 +1608,11 @@ router.post('/users/:id/toggle-student-assistant', authenticateToken, requireSys
         const TeamMember = mongoose.model('TeamMember');
         const isTeamMember = await TeamMember.findOne({
           userId,
-          eventId: registrationEvent._id,
+          eventId: { $in: activeEventIds },
           confirmStatus: 'confirmed'
         });
         if (isTeamMember) {
-          return res.status(400).json({ message: 'Tài khoản này đang là Thí sinh trong sự kiện, không thể cấp quyền Cộng tác viên.' });
+          return res.status(400).json({ message: 'Tài khoản này đang là Thí sinh chính thức trong sự kiện, không thể cấp quyền Cộng tác viên.' });
         }
       }
     }
@@ -1621,16 +1625,16 @@ router.post('/users/:id/toggle-student-assistant', authenticateToken, requireSys
       return res.json({ message: 'Đã thu hồi quyền Cộng tác viên Sinh viên!', isStudentAssistant: false });
     } else {
       const Event = mongoose.model('Event');
-      const registrationEvents = await Event.find({ status: 'registration' });
-      if (registrationEvents.length > 0) {
-        for (const ev of registrationEvents) {
+      const activeEvents = await Event.find({ status: { $in: ['registration', 'ongoing'] } });
+      if (activeEvents.length > 0) {
+        for (const ev of activeEvents) {
           await EventRole.updateOne(
             { userId, eventId: ev._id, role: 'student_assistant' },
             { $set: { status: 'active', assignedBy: req.user._id } },
             { upsert: true }
           );
         }
-        const eventNames = registrationEvents.map(e => e.name || e.semester).filter(Boolean).join(', ');
+        const eventNames = activeEvents.map(e => e.name || e.semester).filter(Boolean).join(', ');
         return res.json({ message: `Đã cấp quyền Cộng tác viên cho sự kiện: ${eventNames}!`, isStudentAssistant: true });
       }
       return res.json({ message: 'Đã cấp quyền Cộng tác viên Sinh viên thành công!', isStudentAssistant: true });

@@ -799,7 +799,6 @@ input:focus, select:focus, textarea:focus {
   background-color: #ffffff !important;
   border: 1px solid rgba(0, 0, 0, 0.12) !important;
   color: #0f172a !important;
-  font-size: 1.0625rem !important;
 }
 
 .team-area-light input:focus, 
@@ -844,21 +843,37 @@ input:focus, select:focus, textarea:focus {
   border-color: rgba(0, 0, 0, 0.08) !important;
 }
 
-/* Tăng kích thước tất cả các text khác title */
+/* Custom Select & Button Overflow Protections */
+select, input, textarea {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+select {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+button {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Tăng thêm 1.5px cho dễ đọc theo yêu cầu */
 body {
-  font-size: 1.25rem; /* Tăng lên ~20px */
+  font-size: 1.0625rem; /* ~17px base body */
 }
 
 .text-xs {
-  font-size: 1.0rem !important; /* Tăng lên ~16px */
+  font-size: 0.90625rem !important; /* ~14.5px */
 }
 
 .text-sm {
-  font-size: 1.125rem !important; /* Tăng lên ~18px */
+  font-size: 1.0rem !important; /* ~16px */
 }
 
 .text-base {
-  font-size: 1.25rem !important; /* Tăng lên ~20px */
+  font-size: 1.125rem !important; /* ~18px */
 }
 
 /* Profile Modal Light Theme overrides to fix dark background when focused */
@@ -884,6 +899,13 @@ body {
 /* ==========================================================================
    COORDINATOR / ADMIN LIGHT THEME OVERRIDES
    ========================================================================== */
+/* Body background adjustment for light theme pages */
+body:has(.coordinator-light-theme),
+body:has(.team-area-light) {
+  background-color: #faf9f6 !important;
+  background-image: linear-gradient(rgba(0, 0, 0, 0.012) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.012) 1px, transparent 1px) !important;
+}
+
 .coordinator-light-theme {
   background-color: #faf9f6 !important;
   color: #334155 !important;
@@ -956,7 +978,7 @@ body {
   text-transform: none !important;
   letter-spacing: normal !important;
   font-family: 'Inter', 'Plus Jakarta Sans', 'Outfit', sans-serif !important;
-  font-size: 1.0rem !important; /* text-xs equivalent */
+  font-size: 1.0rem !important; /* ~16px */
   font-weight: 500 !important;
   padding: 0.5rem 1.0rem !important; /* py-2 px-4 */
   border-radius: 0.5rem !important; /* rounded-lg */
@@ -1085,7 +1107,94 @@ body {
 .coordinator-light-theme span.bg-slate-950 {
   color: #f27024 !important;
   background-color: rgba(242, 112, 36, 0.08) !important;
-  border-color: rgba(242, 112, 36, 0.15) !important;
+  border-color: rgba(242, 112, 36, 0.2) !important;
+}
+
+.coordinator-light-theme span.bg-slate-950 strong.text-cyan-300,
+.coordinator-light-theme span.bg-slate-950 strong {
+  color: #f27024 !important;
+}
+
+.coordinator-light-theme span.bg-slate-950 span.text-slate-400 {
+  color: #64748b !important;
+}
+
+/* All cyan text and icons in coordinator light theme mapped to primary orange */
+.coordinator-light-theme svg[class*="text-cyan"],
+.coordinator-light-theme [class*="text-cyan"],
+.coordinator-light-theme [class*="group-hover:text-cyan"] {
+  color: #f27024 !important;
+}
+
+/* Light theme action button hover fixes */
+.coordinator-light-theme button:hover.hover\:bg-slate-800\/80,
+.coordinator-light-theme button:hover.hover\:bg-slate-800,
+.coordinator-light-theme button:hover.hover\:bg-slate-900\/40,
+.coordinator-light-theme button:hover.hover\:bg-slate-900 {
+  background-color: rgba(242, 112, 36, 0.1) !important;
+  color: #f27024 !important;
+}
+
+.coordinator-light-theme button:hover.hover\:bg-rose-950\/60,
+.coordinator-light-theme button:hover.hover\:bg-rose-950\/40,
+.coordinator-light-theme button:hover.hover\:bg-rose-900\/60 {
+  background-color: rgba(244, 63, 94, 0.1) !important;
+  color: #f43f5e !important;
+}
+
+.coordinator-light-theme button.hover\:bg-orange-500\/10:hover {
+  background-color: rgba(242, 112, 36, 0.1) !important;
+}
+
+.coordinator-light-theme button.hover\:bg-rose-500\/10:hover {
+  background-color: rgba(244, 63, 94, 0.1) !important;
+}
+
+/* Criteria title color in light theme */
+.coordinator-light-theme .bg-slate-900\/30 span.font-bold,
+.coordinator-light-theme .bg-slate-900\/30 span.text-slate-900,
+.coordinator-light-theme .bg-slate-900\/30 span.text-slate-100 {
+  color: #0f172a !important;
+}
+
+.coordinator-light-theme .bg-slate-900\/30 p.text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Drive file name in light theme */
+.coordinator-light-theme div.bg-emerald-500\/10 p.font-black,
+.coordinator-light-theme div.bg-emerald-500\/10 p.text-slate-900,
+.coordinator-light-theme div.bg-emerald-950\/30 p.font-black {
+  color: #0f172a !important;
+}
+
+/* Track and Round cards light theme overrides */
+.coordinator-light-theme div.bg-white,
+.coordinator-light-theme button.bg-white {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+.coordinator-light-theme .border-slate-200 {
+  border-color: #e2e8f0 !important;
+}
+
+.coordinator-light-theme .border-slate-800\/80 {
+  border-color: #e2e8f0 !important;
+}
+
+.coordinator-light-theme .bg-slate-900\/10 {
+  background-color: #ffffff !important;
+}
+
+/* Track & Round card title pure black text override */
+.coordinator-light-theme .text-track-title,
+.coordinator-light-theme strong.text-track-title,
+.coordinator-light-theme span.text-track-title,
+.coordinator-light-theme button .text-track-title,
+.coordinator-light-theme div .text-track-title {
+  color: #0f172a !important;
+  font-weight: 900 !important;
 }
 
 /* Form Inputs */
@@ -1313,13 +1422,31 @@ body {
   color: #334155 !important;
 }
 
-.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50 {
+.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50,
+.coordinator-light-theme button.bg-cyan-500\/10.border-cyan-500\/50 {
   background-color: rgba(242, 112, 36, 0.08) !important;
-  border-color: rgba(242, 112, 36, 0.4) !important;
+  border-color: rgba(242, 112, 36, 0.5) !important;
   color: #f27024 !important;
 }
 
-.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50 span {
+.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50 p,
+.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50 span,
+.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50 div {
+  color: #0f172a !important;
+}
+
+.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50 p.text-cyan-300,
+.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50 span.text-cyan-300,
+.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50 p.font-bold {
+  color: #f27024 !important;
+}
+
+.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50 p.text-slate-400,
+.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50 p.text-slate-500 {
+  color: #64748b !important;
+}
+
+.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50 svg {
   color: #f27024 !important;
 }
 
@@ -1537,8 +1664,6 @@ body {
 }
 
 /* Force white text on buttons that should have white text in light theme, including all children */
-.coordinator-light-theme button.text-white,
-.coordinator-light-theme button.text-white *,
 .coordinator-light-theme button.bg-cyan-500,
 .coordinator-light-theme button.bg-cyan-500 *,
 .coordinator-light-theme button.bg-cyan-600,
@@ -1695,37 +1820,76 @@ body {
 /* White backdrop blur overlay for modals, confirm dialogs and popups in light theme */
 .coordinator-light-theme div.fixed.inset-0[class*="bg-slate-"],
 .coordinator-light-theme div.fixed.inset-0[class*="bg-black"],
+.coordinator-light-theme div.fixed.inset-0[class*="bg-opacity-"] {
+  background-color: rgba(15, 23, 42, 0.4) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* UniversityCombobox Dropdown Strict Light Theme Styling */
+.uni-combobox-dropdown {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+.uni-combobox-dropdown button {
+  color: #334155 !important;
+}
+
+.uni-combobox-dropdown button span.text-slate-800,
+.uni-combobox-dropdown button span.text-slate-900 {
+  color: #334155 !important;
+  font-weight: 700 !important;
+}
+
+.uni-combobox-dropdown button span.text-slate-400,
+.uni-combobox-dropdown button span.text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+.uni-combobox-dropdown button:hover {
+  background-color: rgba(242, 112, 36, 0.08) !important;
+  color: #f27024 !important;
+}
+
+.uni-combobox-dropdown button.bg-orange-500\/10,
+.uni-combobox-dropdown button.bg-orange-500\/15 {
+  background-color: rgba(242, 112, 36, 0.1) !important;
+  border-color: rgba(242, 112, 36, 0.25) !important;
+  color: #f27024 !important;
+}
+
+.uni-combobox-dropdown button.bg-orange-500\/10 span,
+.uni-combobox-dropdown button.bg-orange-500\/15 span {
+  color: #f27024 !important;
+}
+
+/* Light theme custom scrollbars for dropdown and light shell */
+.coordinator-light-theme ::-webkit-scrollbar-track,
+.team-area-light ::-webkit-scrollbar-track,
+.uni-combobox-dropdown ::-webkit-scrollbar-track,
+.uni-combobox-dropdown div::-webkit-scrollbar-track {
+  background: #f8fafc !important;
+}
+
+.coordinator-light-theme ::-webkit-scrollbar-thumb,
+.team-area-light ::-webkit-scrollbar-thumb,
+.uni-combobox-dropdown ::-webkit-scrollbar-thumb,
+.uni-combobox-dropdown div::-webkit-scrollbar-thumb {
+  background: #cbd5e1 !important;
+  border-radius: 4px !important;
+}
+
+.coordinator-light-theme ::-webkit-scrollbar-thumb:hover,
+.team-area-light ::-webkit-scrollbar-thumb:hover,
+.uni-combobox-dropdown ::-webkit-scrollbar-thumb:hover,
+.uni-combobox-dropdown div::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8 !important;
+}
+
 .coordinator-light-theme div.fixed.inset-0.bg-black\/70,
 .coordinator-light-theme div.fixed.inset-0.bg-slate-955\/80,
 .coordinator-light-theme div.fixed.inset-0.bg-slate-950\/80 {
   background-color: rgba(255, 255, 255, 0.45) !important;
   backdrop-filter: blur(8px) !important;
   -webkit-backdrop-filter: blur(8px) !important;
-}
-
-/* Make small font sizes under coordinator light theme larger (approx 2x) */
-.coordinator-light-theme .text-\[10px\],
-.coordinator-light-theme .text-\[11px\],
-.coordinator-light-theme .text-\[9px\],
-.coordinator-light-theme .text-\[10px\] *,
-.coordinator-light-theme .text-\[11px\] *,
-.coordinator-light-theme .text-\[9px\] * {
-  font-size: 16px !important;
-}
-
-.coordinator-light-theme .text-\[12px\],
-.coordinator-light-theme .text-xs,
-.coordinator-light-theme .text-\[12px\] *,
-.coordinator-light-theme .text-xs * {
-  font-size: 17px !important;
-}
-
-.coordinator-light-theme .text-sm,
-.coordinator-light-theme .text-sm * {
-  font-size: 18px !important;
-}
-
-.coordinator-light-theme .font-mono.text-xs,
-.coordinator-light-theme .font-mono.text-xs * {
-  font-size: 17px !important;
 }

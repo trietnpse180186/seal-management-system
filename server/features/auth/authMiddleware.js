@@ -64,6 +64,16 @@ function requireSystemAdmin(req, res, next) {
 }
 
 /**
+ * Middleware to verify the user is a system admin or a student assistant (CTV).
+ */
+function requireAdminOrAssistant(req, res, next) {
+  if (!req.user || (!req.user.isSystemAdmin && !req.user.isStudentAssistant)) {
+    return res.status(403).json({ message: 'Access denied. Administrator or Student Assistant privileges required.' });
+  }
+  next();
+}
+
+/**
  * Higher-order middleware to verify if user has a specific role in a specific event.
  * Expects eventId in req.params.eventId, req.body.eventId, or req.query.eventId
  * @param {Array<string>} allowedRoles - List of allowed roles (e.g. ['coordinator', 'judge'])
@@ -123,5 +133,6 @@ function requireEventRole(allowedRoles) {
 module.exports = {
   authenticateToken,
   requireSystemAdmin,
+  requireAdminOrAssistant,
   requireEventRole
 };

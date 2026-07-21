@@ -15,6 +15,7 @@ const EventRoleSchema = new Schema(
         "judge",
         "coordinator",
         "admin_view",
+        "student_assistant",
       ],
       required: true,
     },

@@ -1856,13 +1856,12 @@ router.post(
           .status(404)
           .json({ message: "Không tìm thấy thông tin cuộc thi." });
 
-      // Auth check: Is user admin or coordinator?
       let isCoordinator = req.user.isSystemAdmin;
       if (!isCoordinator) {
         const coordinatorRole = await EventRole.findOne({
           userId: req.user._id,
           eventId,
-          role: "coordinator",
+          role: { $in: ["coordinator", "student_assistant"] },
           status: "active",
         });
         isCoordinator = !!coordinatorRole;
@@ -2406,7 +2405,7 @@ router.get("/all/:eventId", authenticateToken, async (req, res) => {
         const coordRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: event._id,
-          role: { $in: ["coordinator", "admin_view"] },
+          role: { $in: ["coordinator", "admin_view", "student_assistant"] },
           status: "active",
         });
         authorized = !!coordRole;
@@ -2612,7 +2611,7 @@ router.get("/all/:eventId", authenticateToken, async (req, res) => {
       const coordRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: req.params.eventId,
-        role: { $in: ["coordinator", "admin_view"] },
+        role: { $in: ["coordinator", "admin_view", "student_assistant"] },
         status: "active",
       });
       isCoordinator = !!coordRole;
@@ -2731,7 +2730,7 @@ router.get("/:teamId", authenticateToken, async (req, res) => {
         const coordRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: team.eventId._id,
-          role: { $in: ["coordinator", "admin_view"] },
+          role: { $in: ["coordinator", "admin_view", "student_assistant"] },
           status: "active",
         });
         authorized = !!coordRole;
@@ -2769,7 +2768,7 @@ router.get("/:teamId", authenticateToken, async (req, res) => {
       let isAuthorized = false;
 
       for (const roleObj of userRoles) {
-        if (roleObj.role === "coordinator" || roleObj.role === "admin_view") {
+        if (roleObj.role === "coordinator" || roleObj.role === "admin_view" || roleObj.role === "student_assistant") {
           isAuthorized = true;
           break;
         }
@@ -2938,7 +2937,7 @@ router.put("/:teamId/assign-track", authenticateToken, async (req, res) => {
       const coordinatorRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: team.eventId,
-        role: "coordinator",
+        role: { $in: ["coordinator", "student_assistant"] },
         status: "active",
       });
       if (!coordinatorRole)
@@ -3144,7 +3143,7 @@ router.put("/:teamId/assign-mentor", authenticateToken, async (req, res) => {
       const coordinatorRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: team.eventId,
-        role: "coordinator",
+        role: { $in: ["coordinator", "student_assistant"] },
         status: "active",
       });
       if (!coordinatorRole) {
@@ -3259,7 +3258,7 @@ router.post("/:teamId/sync-mqtt", authenticateToken, async (req, res) => {
       const coordinatorRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: team.eventId,
-        role: "coordinator",
+        role: { $in: ["coordinator", "student_assistant"] },
         status: "active",
       });
       if (coordinatorRole) {

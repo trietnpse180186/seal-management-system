@@ -28,6 +28,7 @@ export default function AdminLayout({
   const navigate = useNavigate();
   const isAdminView =
     !user?.isSystemAdmin && roles?.some((r) => r.role === "admin_view");
+  const isAssistant = roles?.some((r) => r.role === "student_assistant");
 
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -137,6 +138,23 @@ export default function AdminLayout({
     },
   ];
 
+  const filteredNavItems = navItems.filter(item => {
+    if (isAssistant) {
+      return ['/admin/users', '/admin/events', '/admin/grades', '/admin/leaderboard'].includes(item.path);
+    }
+    return true;
+  }).map(item => {
+    if (isAssistant) {
+      if (item.path === '/admin/events') {
+        return { ...item, label: 'Quản lý đội thi' };
+      }
+      if (item.path === '/admin/users') {
+        return { ...item, label: 'Quản lý thí sinh' };
+      }
+    }
+    return item;
+  });
+
   const handleLogoutClick = () => {
     onLogout();
     navigate("/login");
@@ -156,14 +174,14 @@ export default function AdminLayout({
               {user?.fullName || "Admin Name"}
             </h4>
             <p className="text-[9px] text-cyan-400 font-mono uppercase tracking-wider">
-              {isAdminView ? "Người xem" : "Admin"}
+              {user?.isSystemAdmin ? 'Admin' : isAssistant ? 'Cộng tác viên' : isAdminView ? 'Người xem' : 'Admin'}
             </p>
           </div>
         </div>
 
         {/* Navigation Links */}
         <nav className="flex-1 py-6 space-y-2 overflow-y-auto px-3">
-          {navItems.map((item) => {
+          {filteredNavItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
             return (
@@ -283,7 +301,7 @@ export default function AdminLayout({
 
         {/* Dynamic Route Content */}
         <main className="flex-1 p-8 relative z-0">
-          <Outlet context={{ readOnly: isAdminView, roles }} />
+          <Outlet context={{ readOnly: isAdminView, roles, user }} />
         </main>
       </div>
     </div>

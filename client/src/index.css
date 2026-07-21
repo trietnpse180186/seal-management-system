@@ -1150,10 +1150,13 @@ body:has(.team-area-light) {
   background-color: rgba(244, 63, 94, 0.1) !important;
 }
 
-/* Criteria title color in light theme */
+/* Criteria & Team title color in light theme */
 .coordinator-light-theme .bg-slate-900\/30 span.font-bold,
 .coordinator-light-theme .bg-slate-900\/30 span.text-slate-900,
-.coordinator-light-theme .bg-slate-900\/30 span.text-slate-100 {
+.coordinator-light-theme .bg-slate-900\/30 span.text-slate-100,
+.coordinator-light-theme .bg-cyan-500\/10 span.font-bold,
+.coordinator-light-theme .bg-cyan-500\/20 span.font-bold,
+.coordinator-light-theme button span.font-bold {
   color: #0f172a !important;
 }
 

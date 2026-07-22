@@ -116,7 +116,16 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
     }
   };
 
-  const usesLightShell = location.pathname === '/' || location.pathname === '/team-area' || location.pathname === '/register-team' || location.pathname === '/login' || location.pathname === '/achievements' || location.pathname === '/guest-portal' || location.pathname.startsWith('/album') || location.pathname === '/confirm-survey';
+  const usesLightShell = 
+    location.pathname === '/' || 
+    location.pathname === '/team-area' || 
+    location.pathname === '/register-team' || 
+    location.pathname === '/login' || 
+    location.pathname === '/achievements' || 
+    location.pathname === '/my-achievements' || 
+    location.pathname === '/guest-portal' || 
+    location.pathname.startsWith('/album') || 
+    location.pathname === '/confirm-survey';
 
   const showChatWidget = user && (
     (!isJudgeRoute && (!isAdminRoute || isCoordinator)) ||

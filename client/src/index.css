@@ -315,10 +315,8 @@ input:focus, select:focus, textarea:focus {
 
 /* FPT Light Mode & Orange Utilities */
 .glass-nav-light {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(242, 112, 36, 0.12);
+  background: #ffffff;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
 }
 
 .btn-fpt {

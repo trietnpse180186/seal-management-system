@@ -325,16 +325,26 @@ export default function JudgeProjects() {
                             {team.name.charAt(0)}
                           </div>
                           <div>
-                            <div className="flex items-center">
+                            <div className="flex items-center gap-2">
                               <span className="text-base font-bold text-slate-800 block">
                                 {team.name}
                               </span>
+                              {(team.originalTrackName || team.trackId?.name) && (
+                                <span className="bg-cyan-50 text-cyan-800 border border-cyan-200 text-[10px] font-bold px-2 py-0.5 rounded-md font-mono">
+                                  {team.originalTrackName || team.trackId?.name}
+                                </span>
+                              )}
                               {team._id === highlightedTeamId && (
-                                <span className="bg-amber-100 text-amber-800 font-extrabold text-[10px] uppercase px-2 py-0.5 rounded-md tracking-normal animate-pulse ml-2">
+                                <span className="bg-amber-100 text-amber-800 font-extrabold text-[10px] uppercase px-2 py-0.5 rounded-md tracking-normal animate-pulse">
                                   Đang chấm
                                 </span>
                               )}
                             </div>
+                            {(team.originalTrackId?.topicName || team.trackId?.topicName || team.topicSubmission?.title) && (
+                              <span className="text-xs text-slate-500 block mt-0.5">
+                                Đề tài: {team.originalTrackId?.topicName || team.trackId?.topicName || team.topicSubmission?.title}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </td>

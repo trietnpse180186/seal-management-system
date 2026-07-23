@@ -180,17 +180,16 @@ export default function GithubTab({
                 </div>
                 <div className="flex items-center gap-2 self-end sm:self-auto">
                   <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      r.syncStatus === "success"
-                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                        : r.syncStatus === "syncing"
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${r.syncStatus === "success"
+                      ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                      : r.syncStatus === "syncing"
                         ? "bg-cyan-500/10 text-cyan-400 animate-pulse border border-cyan-500/20"
                         : r.syncStatus === "failed"
-                        ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
-                        : r.syncStatus === "queued"
-                        ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                        : "bg-slate-800 text-slate-400 border border-slate-700/50"
-                    }`}
+                          ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                          : r.syncStatus === "queued"
+                            ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                            : "bg-slate-800 text-slate-400 border border-slate-700/50"
+                      }`}
                   >
                     {r.syncStatus.toUpperCase()}
                   </span>
@@ -218,7 +217,7 @@ export default function GithubTab({
           <div className="bg-slate-900/60 p-5 rounded-2xl border border-slate-800/80 space-y-4">
             <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
               <Clock size={14} className="text-cyan-400" />
-              <span>Tự động đồng bộ (Cron Job)</span>
+              <span>Tự động đồng bộ Github</span>
             </h4>
 
             <div className="space-y-3">
@@ -242,13 +241,12 @@ export default function GithubTab({
             <button
               onClick={handleSyncAllRepos}
               disabled={loading || syncingAll || repos.length === 0}
-              className={`w-full text-xs font-bold py-3 px-4 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed ${
-                syncingAll
-                  ? "bg-slate-800 text-slate-500 border border-slate-700/50"
-                  : repos.length === 0
-                  ? "bg-slate-800/80 text-slate-500 border border-slate-700/50 cursor-not-allowed"
+              className={`w-full text-xs font-bold py-3 px-4 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed ${syncingAll
+                ? "bg-slate-800 text-slate-500 border border-slate-700/50"
+                : repos.length === 0
+                  ? "bg-slate-800/80 text-white border border-slate-700/50 cursor-not-allowed"
                   : "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-lg shadow-emerald-600/25 border border-emerald-500/20"
-              }`}
+                }`}
             >
               <RefreshCw size={14} className={syncingAll ? "animate-spin" : ""} />
               <span>{syncingAll ? "Đang đồng bộ chung..." : "Đồng bộ tất cả Repo"}</span>

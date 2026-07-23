@@ -4,6 +4,7 @@ const Schema = mongoose.Schema;
 const TeamSchema = new Schema({
   eventId: { type: Schema.Types.ObjectId, ref: 'Event', required: true },
   trackId: { type: Schema.Types.ObjectId, ref: 'Track' },
+  originalTrackId: { type: Schema.Types.ObjectId, ref: 'Track' },
   leaderId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   currentRoundId: { type: Schema.Types.ObjectId, ref: 'Round' },
   name: { type: String, required: true },

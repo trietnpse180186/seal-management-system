@@ -81,7 +81,7 @@ export default function AdminLiveInteraction() {
     const socketUrl =
       import.meta.env.VITE_API_URL ||
       (window.location.hostname !== "localhost" &&
-      window.location.hostname !== "127.0.0.1"
+        window.location.hostname !== "127.0.0.1"
         ? window.location.origin
         : "http://localhost:5000");
     const socket = io(socketUrl, { auth: { token } });
@@ -451,11 +451,11 @@ export default function AdminLiveInteraction() {
                 Object.entries(groupedTeams).map(([trackId, group]) => (
                   <div key={trackId} className="space-y-2">
                     {/* Track Header Divider */}
-                    <div className="flex items-center gap-2 pt-2 pb-1 sticky top-0 bg-slate-950 z-10">
-                      <span className="text-[10px] uppercase font-bold text-cyan-400 font-mono tracking-wider bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-800/30">
+                    <div className="flex items-center gap-2 pt-2 pb-1 sticky top-0 dark:bg-slate-950 z-10">
+                      <span className="text-[16px] uppercase font-bold text-cyan-600 dark:text-cyan-400 bg-white font-mono tracking-wider dark:bg-cyan-950/40 px-2 py-0.5 rounded border border-orange-400 dark:border-cyan-800/30">
                         Bảng đấu: {group.trackName}
                       </span>
-                      <div className="h-px bg-slate-800/60 flex-1"></div>
+                      <div className="h-px bg-slate-200 dark:bg-slate-800/60 flex-1"></div>
                     </div>
 
                     <div className="space-y-2">
@@ -469,13 +469,12 @@ export default function AdminLiveInteraction() {
                           <div
                             key={item.teamId._id}
                             onClick={() => setSelectedTeam(item)}
-                            className={`relative flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer group ${
-                              isSelected
-                                ? "bg-slate-900/60 border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.1)]"
-                                : isHighlighted
-                                  ? "bg-amber-500/10 border-amber-500/40"
-                                  : "bg-slate-950/40 border-slate-850 hover:bg-slate-900/30"
-                            }`}
+                            className={`relative flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer group ${isSelected
+                              ? "bg-orange-500/10 dark:bg-slate-900/60 border-orange-500/50 dark:border-cyan-500/50 shadow-sm"
+                              : isHighlighted
+                                ? "bg-amber-500/10 border-amber-500/40"
+                                : "bg-white dark:bg-slate-950/40 border-slate-200 dark:border-slate-850 hover:bg-slate-50 dark:hover:bg-slate-900/30"
+                              }`}
                           >
                             {/* Left glowing marker */}
                             {isHighlighted && (
@@ -485,22 +484,21 @@ export default function AdminLiveInteraction() {
                             <div className="flex items-center gap-3">
                               {/* Rank Badge */}
                               <div
-                                className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold font-mono text-[10px] ${
-                                  rank === 1
-                                    ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                                    : rank === 2
-                                      ? "bg-slate-300/20 text-slate-300 border border-slate-300/30"
-                                      : rank === 3
-                                        ? "bg-amber-700/20 text-amber-600 border border-amber-700/30"
-                                        : "bg-slate-900 text-slate-500 border border-slate-800"
-                                }`}
+                                className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold font-mono text-[10px] ${rank === 1
+                                  ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                                  : rank === 2
+                                    ? "bg-slate-200 dark:bg-slate-300/20 !text-slate-800 dark:text-slate-300 border border-slate-300/30"
+                                    : rank === 3
+                                      ? "bg-amber-700/20 text-amber-700 dark:text-amber-600 border border-amber-700/30"
+                                      : "bg-slate-100 dark:bg-slate-900 !text-slate-800 dark:text-slate-500 border border-slate-200 dark:border-slate-800"
+                                  }`}
                               >
                                 {rank}
                               </div>
 
                               <div>
                                 <div className="flex items-center gap-1.5">
-                                  <span className="font-extrabold text-xs text-white tracking-wide group-hover:text-cyan-300 transition-colors">
+                                  <span className="font-extrabold text-xs tracking-wide !text-slate-950 dark:!text-white">
                                     {item.teamId.name}
                                   </span>
                                   {isHighlighted && (
@@ -509,7 +507,7 @@ export default function AdminLiveInteraction() {
                                     </span>
                                   )}
                                 </div>
-                                <span className="text-[10px] text-slate-500 block truncate max-w-[200px] mt-0.5">
+                                <span className="text-[10px] !text-slate-700 dark:!text-slate-400 block truncate max-w-[200px] mt-0.5 font-sans">
                                   {item.teamId.topicSubmission?.title ||
                                     "Chưa nộp đề tài"}
                                 </span>
@@ -519,18 +517,18 @@ export default function AdminLiveInteraction() {
                             {/* Right: Scores */}
                             <div className="text-right flex items-center gap-4">
                               <div>
-                                <span className="text-xs font-mono font-bold text-cyan-400 block">
+                                <span className="text-xs font-mono font-bold text-cyan-600 dark:text-cyan-400 block">
                                   {item.averageScore > 0
                                     ? `${item.averageScore}đ`
                                     : "--"}
                                 </span>
-                                <span className="text-[9px] text-slate-500 block font-mono">
+                                <span className="text-[9px] text-slate-500 dark:text-slate-400 block font-mono">
                                   {item.judgeCount} Giám khảo
                                 </span>
                               </div>
                               <ChevronRight
                                 size={14}
-                                className="text-slate-600 group-hover:text-cyan-400 transition-colors"
+                                className="text-slate-400 group-hover:text-cyan-500 dark:group-hover:text-cyan-400 transition-colors"
                               />
                             </div>
                           </div>
@@ -604,11 +602,10 @@ export default function AdminLiveInteraction() {
                 {!readOnly && (
                   <button
                     onClick={() => handleHighlightTeam(selectedTeam.teamId._id)}
-                    className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-lg ${
-                      highlightedTeamId === selectedTeam.teamId._id
-                        ? "bg-amber-500 text-slate-950 hover:bg-amber-400 hover:shadow-[0_0_15px_rgba(245,158,11,0.5)] animate-pulse"
-                        : "bg-slate-900 hover:bg-slate-850 text-amber-500 border border-amber-500/20"
-                    }`}
+                    className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-lg ${highlightedTeamId === selectedTeam.teamId._id
+                      ? "bg-amber-500 text-slate-950 hover:bg-amber-400 hover:shadow-[0_0_15px_rgba(245,158,11,0.5)] animate-pulse"
+                      : "bg-slate-900 hover:bg-slate-850 text-amber-500 border border-amber-500/20"
+                      }`}
                   >
                     <Sparkles size={14} />
                     <span>

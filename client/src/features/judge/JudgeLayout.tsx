@@ -6,7 +6,9 @@ import {
   BookOpen,
   LogOut,
   Bell,
-  Users
+  Users,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 
 interface JudgeLayoutProps {
@@ -21,6 +23,17 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
 
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    return localStorage.getItem("judge_sidebar_collapsed") === "true";
+  });
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("judge_sidebar_collapsed", String(next));
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (user) {
@@ -116,22 +129,38 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
   return (
     <div className="min-h-screen bg-slate-50 text-slate-700 flex font-sans selection:bg-[#F27024]/30">
       {/* SideNavBar */}
-      <aside className="fixed left-0 top-0 h-full w-[280px] bg-white border-r border-slate-200 flex flex-col z-20 shadow-sm">
+      <aside
+        className={`fixed left-0 top-0 h-full bg-white border-r border-slate-200 flex flex-col z-20 shadow-sm transition-all duration-300 ${
+          isSidebarCollapsed ? "w-[72px]" : "w-[280px]"
+        }`}
+      >
         {/* User Quick Info */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center gap-3 bg-slate-50">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#F27024] to-[#f9823a] text-white flex items-center justify-center font-bold text-base shadow-sm">
-            {user?.fullName?.charAt(0) || 'J'}
+        <div
+          className={`py-4 border-b border-slate-200 flex items-center bg-slate-50 ${
+            isSidebarCollapsed ? "px-3 justify-center" : "px-6 gap-3"
+          }`}
+        >
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#F27024] to-[#f9823a] text-white flex items-center justify-center font-bold text-base shadow-sm shrink-0">
+            {user?.fullName?.charAt(0) || "J"}
           </div>
-          <div className="overflow-hidden">
-            <h4 className="text-sm font-bold text-slate-800 truncate">{user?.fullName || 'Judge Name'}</h4>
-            <p className="text-xs text-[#F27024] font-semibold mt-0.5 tracking-normal">
-              Vai trò: {isMentor ? 'Giám khảo & Mentor' : 'Giám khảo'}
-            </p>
-          </div>
+          {!isSidebarCollapsed && (
+            <div className="overflow-hidden">
+              <h4 className="text-sm font-bold text-slate-800 truncate">
+                {user?.fullName || "Judge Name"}
+              </h4>
+              <p className="text-xs text-[#F27024] font-semibold mt-0.5 tracking-normal">
+                Vai trò: {isMentor ? "Giám khảo & Mentor" : "Giám khảo"}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Navigation Links */}
-        <nav className="flex-1 py-6 space-y-2 overflow-y-auto px-3">
+        <nav
+          className={`flex-1 py-6 space-y-2 overflow-y-auto ${
+            isSidebarCollapsed ? "px-2" : "px-3"
+          }`}
+        >
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
@@ -139,41 +168,72 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-300 relative overflow-hidden ${active
-                  ? 'bg-[#F27024]/10 text-[#F27024] border border-[#F27024]/20'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-transparent hover:border-slate-200'
-                  }`}
+                title={isSidebarCollapsed ? item.label : undefined}
+                className={`flex items-center rounded-xl text-sm font-bold transition-all duration-300 relative overflow-hidden ${
+                  isSidebarCollapsed
+                    ? "justify-center p-3"
+                    : "gap-3 px-4 py-3"
+                } ${
+                  active
+                    ? "bg-[#F27024]/10 text-[#F27024] border border-[#F27024]/20"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-transparent hover:border-slate-200"
+                }`}
               >
                 {active && (
                   <div className="absolute left-0 top-0 h-full w-[3.5px] bg-[#F27024] shadow-[0_0_8px_rgba(242,112,36,0.4)]"></div>
                 )}
-                <Icon size={18} className={active ? 'text-[#F27024]' : 'text-slate-500'} />
-                <span>{item.label}</span>
+                <Icon
+                  size={18}
+                  className={`shrink-0 ${active ? "text-[#F27024]" : "text-slate-500"}`}
+                />
+                {!isSidebarCollapsed && <span>{item.label}</span>}
               </Link>
             );
           })}
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-slate-200 bg-slate-50">
+        <div
+          className={`border-t border-slate-200 bg-slate-50 ${
+            isSidebarCollapsed ? "p-2 flex justify-center" : "p-4"
+          }`}
+        >
           <button
             onClick={handleLogoutClick}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-50 hover:bg-rose-100/70 border border-rose-200 rounded-xl text-rose-600 text-sm font-bold transition-all shadow-sm"
+            title={isSidebarCollapsed ? "Đăng xuất" : undefined}
+            className={`flex items-center justify-center bg-rose-50 hover:bg-rose-100/70 border border-rose-200 rounded-xl text-rose-600 text-sm font-bold transition-all shadow-sm ${
+              isSidebarCollapsed ? "w-10 h-10 p-0" : "w-full gap-2 px-4 py-2.5"
+            }`}
           >
-            <LogOut size={16} />
-            <span>Đăng xuất</span>
+            <LogOut size={16} className="shrink-0" />
+            {!isSidebarCollapsed && <span>Đăng xuất</span>}
           </button>
         </div>
       </aside>
 
       {/* Main Content Wrapper */}
-      <div className="flex-1 ml-[280px] flex flex-col min-h-screen relative">
+      <div
+        className={`flex-1 transition-all duration-300 flex flex-col min-h-screen relative ${
+          isSidebarCollapsed ? "ml-[72px]" : "ml-[280px]"
+        }`}
+      >
         {/* Background Grid Pattern */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.015)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none"></div>
 
         {/* TopAppBar */}
         <header className="h-16 w-full px-8 bg-white border-b border-slate-200 flex justify-between items-center z-10 sticky top-0 shadow-sm">
           <div className="flex items-center gap-3">
+            <button
+              onClick={toggleSidebar}
+              title={isSidebarCollapsed ? "Mở rộng menu" : "Thu gọn menu"}
+              className="p-2 text-slate-500 hover:text-[#F27024] hover:bg-slate-100 rounded-lg transition-colors flex items-center justify-center border border-slate-200 cursor-pointer"
+            >
+              {isSidebarCollapsed ? (
+                <PanelLeftOpen size={18} />
+              ) : (
+                <PanelLeftClose size={18} />
+              )}
+            </button>
             <span className="font-extrabold text-slate-800 text-sm tracking-wider uppercase">
               Hệ thống SEAL Hackathon
             </span>

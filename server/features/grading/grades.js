@@ -768,7 +768,11 @@ router.get('/leaderboard/:roundId', authenticateToken, async (req, res) => {
 
     const leaderboard = await Ranking.find({ roundId: req.params.roundId })
       .sort({ rank: 1 })
-      .populate('teamId', 'name status topicSubmission')
+      .populate({
+        path: 'teamId',
+        select: 'name status topicSubmission originalTrackId',
+        populate: { path: 'originalTrackId', select: 'name topicName topicLink description' }
+      })
       .populate('trackId', 'name');
 
     res.json({ locked: false, isCoordinator, standings: leaderboard });
@@ -1074,14 +1078,16 @@ router.post('/advance-round', authenticateToken, async (req, res) => {
         await nextRoundTrack.save();
       }
 
-      // Promote teams to next round and assign to the consolidated track
-      await Team.updateMany(
-        { _id: { $in: advancedTeamIds } },
-        {
-          currentRoundId: nextRound._id,
-          trackId: nextRoundTrack._id
+      // Promote teams to next round and assign to the consolidated track while preserving originalTrackId
+      const teamsToPromote = await Team.find({ _id: { $in: advancedTeamIds } });
+      for (const t of teamsToPromote) {
+        if (!t.originalTrackId && t.trackId) {
+          t.originalTrackId = t.trackId;
         }
-      );
+        t.currentRoundId = nextRound._id;
+        t.trackId = nextRoundTrack._id;
+        await t.save();
+      }
 
       // Transition round statuses
       currentRound.status = 'completed';

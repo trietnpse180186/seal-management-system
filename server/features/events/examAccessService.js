@@ -188,9 +188,25 @@ async function canUserAccessTrackExam(userId, trackId) {
     return { ok: false, reason: 'inactive', message: 'Tài khoản không hợp lệ hoặc đã bị khóa.' };
   }
 
-  const track = await Track.findById(trackId).lean();
+  let track = await Track.findById(trackId).lean();
   if (!track) {
     return { ok: false, reason: 'not_found', message: 'Không tìm thấy bảng đấu.' };
+  }
+
+  // Fallback: If current track has no material (e.g. Bảng Chung Kết), check if team's originalTrackId has material
+  if (!track.examDriveFileUrl && !track.examDriveFileId) {
+    const Team = mongoose.model('Team');
+    const TeamMember = mongoose.model('TeamMember');
+    const memberRecord = await TeamMember.findOne({ userId, status: 'confirmed' });
+    if (memberRecord) {
+      const team = await Team.findById(memberRecord.teamId);
+      if (team && team.originalTrackId) {
+        const origTrack = await Track.findById(team.originalTrackId).lean();
+        if (origTrack && (origTrack.examDriveFileUrl || origTrack.examDriveFileId)) {
+          track = origTrack;
+        }
+      }
+    }
   }
 
   if (!track.examDriveFileUrl && !track.examDriveFileId) {

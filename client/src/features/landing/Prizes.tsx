@@ -7,26 +7,37 @@ import axios from 'axios';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const prizeItems = [
+const defaultPrizeItems = [
   {
-    title: '01 Giải Nhất',
+    title: '01 GIẢI NHẤT',
     amount: '7.000.000 đồng',
     benefits: 'Giấy chứng nhận + hoa',
   },
   {
-    title: '01 Giải Nhì',
+    title: '01 GIẢI NHÌ',
     amount: '5.000.000 đồng',
     benefits: 'Giấy chứng nhận + hoa',
   },
   {
-    title: '01 Giải Ba',
+    title: '01 GIẢI BA',
     amount: '3.000.000 đồng',
     benefits: 'Giấy chứng nhận + hoa',
   },
   {
-    title: '01 Giải Khuyến Khích',
+    title: '01 GIẢI KHUYẾN KHÍCH',
     amount: '1.500.000 đồng',
     benefits: 'Giấy chứng nhận',
+  },
+];
+
+const defaultSpecialPrizes = [
+  {
+    title: 'HẠNG MỤC ĐẶC BIỆT',
+    description: 'Vinh danh dành cho thí sinh đồng hành trọn vẹn 3 mùa giải (Fall 2025, Spring 2026, Summer 2026).',
+  },
+  {
+    title: 'GIẤY CHỨNG NHẬN',
+    description: 'Tất cả các thí sinh tham gia cuộc thi đều nhận giấy chứng nhận.',
   },
 ];
 
@@ -39,13 +50,10 @@ export default function Prizes() {
       try {
         const res = await axios.get("http://localhost:5000/api/events");
         const allEvents = res.data;
-        // Prioritize registration or ongoing events
         let filtered = allEvents.filter((e: any) => e.status === "registration" || e.status === "ongoing");
-        // Fallback to prepare or others if none of the above exist
         if (filtered.length === 0) {
           filtered = allEvents.filter((e: any) => e.status === "prepare" || e.status === "completed");
         }
-        // Sort by newest
         const sorted = filtered.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setActiveEvent(sorted[0] || null);
       } catch (err) {
@@ -55,8 +63,15 @@ export default function Prizes() {
     fetchEvents();
   }, []);
 
+  const prizesList = activeEvent?.prizes && activeEvent.prizes.length > 0
+    ? activeEvent.prizes
+    : defaultPrizeItems;
+
+  const specialPrizesList = activeEvent?.specialPrizes && activeEvent.specialPrizes.length > 0
+    ? activeEvent.specialPrizes
+    : defaultSpecialPrizes;
+
   useGSAP(() => {
-    // 1. Header Animation
     gsap.fromTo(
       ".prize-header",
       { y: 30, opacity: 0 },
@@ -73,18 +88,17 @@ export default function Prizes() {
       }
     );
 
-    // 2. Card Animation
     gsap.fromTo(
-      ".prize-card",
-      { y: 50, scale: 0.95, opacity: 0 },
+      ".prize-card-item",
+      { y: 30, opacity: 0 },
       {
         y: 0,
-        scale: 1,
         opacity: 1,
-        duration: 1,
-        ease: "back.out(1.2)",
+        duration: 0.6,
+        stagger: 0.1,
+        ease: "power2.out",
         scrollTrigger: {
-          trigger: ".prize-cards-container",
+          trigger: ".prize-cards-grid",
           start: "top 80%",
           toggleActions: "play none none reverse",
         }
@@ -93,162 +107,103 @@ export default function Prizes() {
   }, { scope: containerRef });
 
   return (
-    <section ref={containerRef} className="py-24 bg-slate-100 overflow-hidden" id="prizes">
-      {/* Animating LED Neon Border CSS */}
-      <style dangerouslySetInnerHTML={{
-        __html: `
-        @keyframes neon-border-rotate {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        .led-border-container {
-          display: grid !important;
-          position: relative;
-          overflow: hidden;
-          padding: 1.5px; /* border thickness */
-          background: rgba(242, 112, 36, 0.05);
-        }
-        .led-border-container::before {
-          content: '';
-          position: absolute;
-          top: -50%;
-          left: -50%;
-          width: 200%;
-          height: 200%;
-          background: conic-gradient(
-            from 0deg,
-            transparent 20%,
-            #f27024 40%,
-            #f27024 60%,
-            transparent 80%
-          );
-          animation: neon-border-rotate 4s linear infinite;
-          z-index: 1;
-        }
-        .led-border-inner {
-          z-index: 2;
-          background: #ffffff;
-          display: flex;
-          flex-direction: column;
-          align-items: stretch;
-          width: 100%;
-          height: 100%;
-        }
-        @keyframes gradient-flow {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-        .animate-gradient-flow {
-          background-image: linear-gradient(90deg, #f27024, #fbbf24, #f27024);
-          background-size: 200% auto;
-          -webkit-background-clip: text;
-          background-clip: text;
-          animation: gradient-flow 3s ease infinite;
-        }
-      `}} />
-
-      <div className="w-full max-w-[1680px] mx-auto px-4 sm:px-6 lg:px-10 2xl:px-12">
+    <section ref={containerRef} className="py-20 bg-slate-50 border-t border-slate-200/60" id="prizes">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Section Header */}
-        <div className="prize-header flex flex-col md:flex-row justify-between items-center md:items-end mb-16 gap-4 opacity-0">
+        <div className="prize-header flex flex-col md:flex-row justify-between items-start md:items-end mb-14 gap-4 opacity-0">
           <div>
-            <span className="font-mono text-xs text-[#F27024] uppercase font-semibold">
+            <span className="font-mono text-xs text-[#F27024] uppercase font-bold tracking-wider py-1 ">
               CƠ CẤU GIẢI THƯỞNG
             </span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 uppercase tracking-tight font-sans mt-1">
-              GIẢI THƯỞNG CUỘC THI {activeEvent ? activeEvent.name : 'SEAL HACKATHON SPRING 2026'}
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight font-sans">
+              Giải Thưởng Cuộc Thi {activeEvent ? activeEvent.name : 'SEAL Hackathon'}
             </h2>
           </div>
-          <div className="hidden md:block h-px flex-1 mx-8 bg-slate-200"></div>
         </div>
 
-        {/* Prizes Cards Container */}
-        <div className="prize-cards-container flex justify-center mt-8">
+        {/* Minimalist Prize Grid */}
+        <div className="prize-cards-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {prizesList.map((item: any, index: number) => {
+            const isFirst = index === 0;
+            return (
+              <div
+                key={index}
+                className={`prize-card-item opacity-0 group relative bg-white rounded-2xl p-6 border transition-all duration-300 flex flex-col justify-between hover:-translate-y-1.5 ${isFirst
+                  ? "border-[#F27024]/40 shadow-lg shadow-[#F27024]/10 hover:shadow-xl hover:shadow-[#F27024]/20 hover:border-[#F27024]"
+                  : "border-slate-200/80 shadow-sm hover:shadow-md hover:border-slate-300"
+                  }`}
+              >
+                {/* Accent Top Bar */}
+                <div
+                  className={`absolute top-0 left-6 right-6 h-1 rounded-b-full transition-colors ${isFirst ? "bg-[#F27024]" : "bg-slate-200 group-hover:bg-[#F27024]/50"
+                    }`}
+                ></div>
 
-          <div className="prize-card led-border-container rounded-none text-center group hover:scale-[1.01] hover:-translate-y-2 hover:shadow-[0_0_50px_rgba(242,112,36,0.25)] active:scale-[0.99] transition-all duration-500 z-10 opacity-0 w-full max-w-none">
-            <div className="led-border-inner p-5 md:p-8 xl:p-10 relative overflow-hidden">
-              {/* Glowing Background Radial */}
-              <div className="absolute -inset-px bg-gradient-to-b from-[#F27024]/10 to-transparent opacity-50 group-hover:opacity-100 transition-opacity duration-500 -z-10"></div>
-
-              {/* Decorative Tech Grid background */}
-              <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.01)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none opacity-40"></div>
-
-              {/* Corner tech accents */}
-              <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-[#F27024]/40 group-hover:border-[#F27024] transition-colors"></div>
-              <div className="absolute top-4 right-4 w-4 h-4 border-t-2 border-r-2 border-[#F27024]/40 group-hover:border-[#F27024] transition-colors"></div>
-              <div className="absolute bottom-4 left-4 w-4 h-4 border-b-2 border-l-2 border-[#F27024]/40 group-hover:border-[#F27024] transition-colors"></div>
-              <div className="absolute bottom-4 right-4 w-4 h-4 border-b-2 border-r-2 border-[#F27024]/40 group-hover:border-[#F27024] transition-colors"></div>
-
-              {/* Icon Frame */}
-              <div className="flex justify-center mb-5 relative">
-                <div className="w-20 h-20 rounded-full border-2 border-[#F27024]/30 flex items-center justify-center bg-[#F27024]/10 shadow-[0_0_30px_rgba(242,112,36,0.15)] group-hover:scale-110 group-hover:border-[#F27024] group-hover:shadow-[0_0_40px_rgba(242,112,36,0.3)] transition-all duration-500">
-                  <Trophy size={40} className="text-[#F27024] group-hover:rotate-12 transition-transform duration-500" />
-                </div>
-                <span className="absolute top-0 right-[44%] text-[#F27024]/40 animate-pulse">
-                  <Sparkles size={16} />
-                </span>
-              </div>
-
-              {/* Details Content */}
-              <div className="flex flex-col items-center relative z-10">
-                <h3 className="text-xl md:text-2xl font-extrabold text-slate-900 mb-7 tracking-tight font-sans uppercase">
-                  Cơ cấu giải thưởng chính thức
-                </h3>
-
-                <div className="w-full grid gap-4 text-left lg:grid-cols-2 2xl:grid-cols-4">
-                  {prizeItems.map((item, index) => (
+                <div>
+                  {/* Badge & Icon */}
+                  <div className="flex items-center justify-between mb-5 pt-2">
+                    <span className="font-mono text-xs font-bold text-slate-400 group-hover:text-[#F27024] transition-colors">
+                      #{String(index + 1).padStart(2, '0')}
+                    </span>
                     <div
-                      key={item.title}
-                      className="flex min-h-[148px] flex-col justify-between rounded-[6px] border border-[#F27024]/15 bg-[#F27024]/[0.04] p-4 transition-all duration-300 hover:border-[#F27024]/35 hover:bg-[#F27024]/[0.08]"
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isFirst
+                        ? "bg-[#F27024]/10 text-[#F27024]"
+                        : "bg-slate-100 text-slate-500 group-hover:bg-[#F27024]/10 group-hover:text-[#F27024]"
+                        }`}
                     >
-                      <div className="flex items-start gap-3">
-                        <span className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-[4px] border border-[#F27024]/20 bg-[#F27024]/10 font-mono text-xs font-bold text-[#F27024]">
-                          {String(index + 1).padStart(2, '0')}
-                        </span>
-                        <div>
-                          <p className="text-sm font-bold text-slate-900 uppercase tracking-wide xl:text-base">{item.title}</p>
-                          <p className="mt-1 text-sm leading-6 text-slate-600">{item.benefits}</p>
-                        </div>
-                      </div>
-                      <div className="mt-5 flex items-center gap-2 border-t border-[#F27024]/10 pt-4 pl-11">
-                        <Award size={18} className="text-[#F27024]" />
-                        <span className="font-mono text-xl font-black text-[#F27024] xl:text-2xl">{item.amount}</span>
-                      </div>
+                      {isFirst ? (
+                        <Trophy size={20} className="text-[#F27024]" />
+                      ) : (
+                        <Award size={20} />
+                      )}
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Title & Amount */}
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider font-mono mb-2">
+                    {item.title}
+                  </h3>
+                  <div className="text-2xl xl:text-3xl font-black text-slate-900 font-mono tracking-tight group-hover:text-[#F27024] transition-colors">
+                    {item.amount}
+                  </div>
                 </div>
 
-                <div className="mt-5 grid w-full gap-4 text-left lg:grid-cols-2">
-                  <div className="rounded-[6px] border border-[#F27024]/15 bg-[#F27024]/[0.04] p-4">
-                    <div className="flex items-start gap-3">
-                      <Sparkles size={20} className="mt-0.5 shrink-0 text-[#F27024]" />
-                      <div>
-                        <p className="text-sm font-bold uppercase tracking-wide text-slate-900">Hạng mục đặc biệt</p>
-                        <p className="mt-1 text-sm leading-6 text-slate-600">
-                          Vinh danh dành cho thí sinh đồng hành trọn vẹn 3 mùa giải (Fall 2025, Spring 2026, Summer 2026).
-                        </p>
-                      </div>
-                    </div>
+                {/* Benefits */}
+                {item.benefits && (
+                  <div className="mt-6 pt-4 border-t border-slate-100 flex items-center gap-2 text-xs font-medium text-slate-600">
+                    <Sparkles size={14} className="text-[#F27024] shrink-0" />
+                    <span>{item.benefits}</span>
                   </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
 
-                  <div className="rounded-[6px] border border-[#F27024]/15 bg-[#F27024]/[0.04] p-4">
-                    <div className="flex items-start gap-3">
-                      <FileText size={20} className="mt-0.5 shrink-0 text-[#F27024]" />
-                      <div>
-                        <p className="text-sm font-bold uppercase tracking-wide text-slate-900">Giấy chứng nhận</p>
-                        <p className="mt-1 text-sm leading-6 text-slate-600">
-                          Tất cả các thí sinh tham gia cuộc thi đều nhận giấy chứng nhận.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+        {/* Special Categories Section */}
+        {specialPrizesList && specialPrizesList.length > 0 && (
+          <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-5">
+            {specialPrizesList.map((special: any, idx: number) => (
+              <div
+                key={idx}
+                className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex items-start gap-4 hover:border-slate-300 transition-all"
+              >
+                <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 mt-0.5">
+                  {idx === 0 ? <Sparkles size={18} className="text-[#F27024]" /> : <FileText size={18} className="text-slate-600" />}
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider font-mono">
+                    {special.title}
+                  </h4>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    {special.description}
+                  </p>
                 </div>
               </div>
-            </div>
+            ))}
           </div>
-
-        </div>
+        )}
 
       </div>
     </section>

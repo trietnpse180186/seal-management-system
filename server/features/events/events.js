@@ -1424,7 +1424,7 @@ router.post('/:eventId/distribute-teams', authenticateToken, async (req, res) =>
  * @access  Private
  */
 router.put('/:id', authenticateToken, async (req, res) => {
-  const { name, semester, year, description, bannerUrl, maxTeams, githubOrgName, status, registrationOpen, registrationClose, contestStart, contestEnd, commitSyncInterval, mainGoal, durationText, memberLimitText, prizePoolText, phase1Description, phase2Description, phase3Description, rules, zaloUrl, customTimeline } = req.body;
+  const { name, semester, year, description, bannerUrl, maxTeams, githubOrgName, status, registrationOpen, registrationClose, contestStart, contestEnd, commitSyncInterval, mainGoal, durationText, memberLimitText, prizePoolText, phase1Description, phase2Description, phase3Description, rules, zaloUrl, customTimeline, prizes, specialPrizes } = req.body;
   try {
     const event = await Event.findById(req.params.id);
     if (!event) return res.status(404).json({ message: 'Không tìm thấy sự kiện.' });
@@ -1616,6 +1616,14 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (customTimeline !== undefined) {
       logDetails.push(`Lịch trình tùy chỉnh`);
       event.customTimeline = customTimeline;
+    }
+    if (prizes !== undefined) {
+      logDetails.push(`Cơ cấu giải thưởng tùy chỉnh`);
+      event.prizes = prizes;
+    }
+    if (specialPrizes !== undefined) {
+      logDetails.push(`Giải thưởng phụ/Hạng mục đặc biệt`);
+      event.specialPrizes = specialPrizes;
     }
 
     let action = 'update_event';

@@ -13,6 +13,21 @@ import {
   Activity,
   ChevronDown,
   Trash2,
+  Award,
+  Plus,
+  ArrowUp,
+  ArrowDown,
+  Settings,
+  Rocket,
+  Globe,
+  FileText,
+  Trophy,
+  FolderKanban,
+  Users,
+  Radio,
+  Megaphone,
+  Layout,
+  ScrollText,
 } from "lucide-react";
 import TeamsTab from "./TeamsTab";
 import TracksTab from "./TracksTab";
@@ -50,6 +65,43 @@ const Github = ({
   </svg>
 );
 
+const CATEGORY_GROUPS = [
+  {
+    id: "setup",
+    label: "CẤU HÌNH VÀ THỂ THỨC",
+    icon: Settings,
+    description: "Cấu hình chung, thời gian, vòng thi & bảng đấu",
+    tabs: [
+      { id: "events", label: "Thông tin sự kiện", icon: FileText },
+      { id: "schedule", label: "Thiết lập thời gian", icon: Clock },
+      { id: "rounds", label: "Vòng thi & Tiêu chí", icon: Trophy },
+      { id: "tracks", label: "Bảng đấu", icon: FolderKanban },
+    ],
+  },
+  {
+    id: "operations",
+    label: "VẬN HÀNH VÀ ĐỘI THI",
+    icon: Rocket,
+    description: "Quản lý đội thi, điều hành live & thông báo",
+    tabs: [
+      { id: "teams", label: "Đội thi tham gia", icon: Users },
+      { id: "operations", label: "Điều hành cuộc thi", icon: Radio, highlight: true },
+      { id: "seminar", label: "Seminar & Thông báo", icon: Megaphone },
+    ],
+  },
+  {
+    id: "tools",
+    label: "CÔNG CỤ VÀ TRUYỀN THÔNG",
+    icon: Globe,
+    description: "Trang chủ, công cụ AI & Nhật ký hệ thống",
+    tabs: [
+      { id: "portal", label: "Nội dung hiển thị", icon: Layout },
+      { id: "github", label: "GitHub & AI Đánh giá", icon: Github },
+      { id: "logs", label: "Nhật ký hoạt động", icon: ScrollText },
+    ],
+  },
+];
+
 interface AdminEventsProps {
   defaultTab?: "events";
 }
@@ -70,7 +122,7 @@ export default function AdminEvents({
           headers: { Authorization: `Bearer ${token}` },
         })
         .then((res) => setCurrentUser(res.data.user))
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [token]);
 
@@ -90,12 +142,12 @@ export default function AdminEvents({
   const displayedEvents = useMemo(() => {
     return isAssistant
       ? events.filter((e: any) =>
-          roles?.some(
-            (r: any) =>
-              r.role === "student_assistant" &&
-              (r.eventId?._id === e._id || r.eventId === e._id),
-          ),
-        )
+        roles?.some(
+          (r: any) =>
+            r.role === "student_assistant" &&
+            (r.eventId?._id === e._id || r.eventId === e._id),
+        ),
+      )
       : events;
   }, [isAssistant, events, roles]);
 
@@ -178,6 +230,14 @@ export default function AdminEvents({
     sessionStorage.setItem("activeTab", tab);
   };
 
+  const currentGroup = useMemo(() => {
+    return (
+      CATEGORY_GROUPS.find((group) =>
+        group.tabs.some((tab) => tab.id === activeTab),
+      ) || CATEGORY_GROUPS[0]
+    );
+  }, [activeTab]);
+
   useEffect(() => {
     if (isAssistant && activeTab !== "teams") {
       setActiveTab("teams");
@@ -233,8 +293,10 @@ export default function AdminEvents({
   const [editPhase3Description, setEditPhase3Description] = useState("");
   const [editRules, setEditRules] = useState<any[]>([]);
   const [editCustomTimeline, setEditCustomTimeline] = useState<any[]>([]);
+  const [editPrizes, setEditPrizes] = useState<any[]>([]);
+  const [editSpecialPrizes, setEditSpecialPrizes] = useState<any[]>([]);
   const [portalSubTab, setPortalSubTab] = useState<
-    "candidate" | "timeline" | null
+    "candidate" | "timeline" | "prizes" | null
   >(null);
   const [newMilestoneTime, setNewMilestoneTime] = useState("");
   const [newMilestoneTitle, setNewMilestoneTitle] = useState("");
@@ -555,7 +617,7 @@ export default function AdminEvents({
       console.error(err);
       toast.error(
         err.response?.data?.message ||
-          "Lỗi khi xóa cài đặt thời gian vòng thi.",
+        "Lỗi khi xóa cài đặt thời gian vòng thi.",
       );
     } finally {
       setLoading(false);
@@ -586,7 +648,7 @@ export default function AdminEvents({
         const socketUrl =
           import.meta.env.VITE_API_URL ||
           (window.location.hostname !== "localhost" &&
-          window.location.hostname !== "127.0.0.1"
+            window.location.hostname !== "127.0.0.1"
             ? window.location.origin
             : "http://localhost:5000");
         const sock = io(socketUrl, { auth: { token } });
@@ -876,7 +938,7 @@ export default function AdminEvents({
       );
       toast.success(
         res.data.message ||
-          "Đã kích hoạt đồng bộ toàn bộ repository thành công!",
+        "Đã kích hoạt đồng bộ toàn bộ repository thành công!",
       );
     } catch (err: any) {
       console.error(err);
@@ -1111,6 +1173,24 @@ export default function AdminEvents({
       ],
     );
     setEditCustomTimeline(eventObj.customTimeline || []);
+    setEditPrizes(
+      eventObj.prizes && eventObj.prizes.length > 0
+        ? eventObj.prizes
+        : [
+          { title: "01 GIẢI NHẤT", amount: "7.000.000 đồng", benefits: "Giấy chứng nhận + hoa" },
+          { title: "01 GIẢI NHÌ", amount: "5.000.000 đồng", benefits: "Giấy chứng nhận + hoa" },
+          { title: "01 GIẢI BA", amount: "3.000.000 đồng", benefits: "Giấy chứng nhận + hoa" },
+          { title: "01 GIẢI KHUYẾN KHÍCH", amount: "1.500.000 đồng", benefits: "Giấy chứng nhận" },
+        ]
+    );
+    setEditSpecialPrizes(
+      eventObj.specialPrizes && eventObj.specialPrizes.length > 0
+        ? eventObj.specialPrizes
+        : [
+          { title: "HẠNG MỤC ĐẶC BIỆT", description: "Vinh danh dành cho thí sinh đồng hành trọn vẹn 3 mùa giải (Fall 2025, Spring 2026, Summer 2026)." },
+          { title: "GIẤY CHỨNG NHẬN", description: "Tất cả các thí sinh tham gia cuộc thi đều nhận giấy chứng nhận." },
+        ]
+    );
 
     // If we are currently on the 'events' tab/route, sync URL
     if (defaultTab === "events") {
@@ -1371,7 +1451,7 @@ export default function AdminEvents({
       console.error(err);
       toast.error(
         err.response?.data?.message ||
-          "Lỗi khi cập nhật nội dung Guest Portal.",
+        "Lỗi khi cập nhật nội dung Guest Portal.",
       );
       setMessage({
         type: "error",
@@ -1379,6 +1459,46 @@ export default function AdminEvents({
           err.response?.data?.message ||
           "Lỗi khi cập nhật nội dung Guest Portal.",
       });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSavePrizes = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEvent) return;
+
+    if (editPrizes.length === 0) {
+      toast.error("Cơ cấu giải thưởng phải có ít nhất 1 mốc giải thưởng.");
+      return;
+    }
+    const invalidPrize = editPrizes.find(
+      (p) => !p.title?.trim() || !p.amount?.trim()
+    );
+    if (invalidPrize) {
+      toast.error("Mỗi giải thưởng phải có đầy đủ Tên giải và Giá trị.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await axios.put(
+        `http://localhost:5000/api/events/${selectedEvent._id}`,
+        {
+          prizes: editPrizes,
+          specialPrizes: editSpecialPrizes,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setSelectedEvent(res.data.event);
+      toast.success("Đã cập nhật cơ cấu giải thưởng thành công!");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(
+        err.response?.data?.message || "Lỗi khi cập nhật cơ cấu giải thưởng."
+      );
     } finally {
       setLoading(false);
     }
@@ -2404,9 +2524,8 @@ export default function AdminEvents({
                 [DETAIL_BOARD]
               </span>
               <h1
-                className={`text-2xl font-black text-white mt-2 font-mono uppercase tracking-tight flex items-center gap-2 select-none ${
-                  displayedEvents.length > 1 && !isAssistant ? "group cursor-pointer" : ""
-                }`}
+                className={`text-2xl font-black text-white mt-2 font-mono uppercase tracking-tight flex items-center gap-2 select-none ${displayedEvents.length > 1 && !isAssistant ? "group cursor-pointer" : ""
+                  }`}
                 onClick={() =>
                   displayedEvents.length > 1 && !isAssistant && setIsEditingEventTitle((v) => !v)
                 }
@@ -2430,10 +2549,9 @@ export default function AdminEvents({
                         setIsEditingEventTitle(false);
                       }}
                       className={`w-full text-left px-4 py-2.5 text-sm font-mono transition-colors cursor-pointer
-                        ${
-                          e._id === selectedEvent._id
-                            ? "bg-orange-500/15 text-orange-400 font-bold"
-                            : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                        ${e._id === selectedEvent._id
+                          ? "bg-orange-500/15 text-orange-400 font-bold"
+                          : "text-slate-300 hover:bg-slate-800 hover:text-white"
                         }`}
                     >
                       <span className="uppercase font-bold block truncate">
@@ -2548,11 +2666,10 @@ export default function AdminEvents({
             <>
               <button
                 onClick={() => setActiveTab("events")}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
-                  activeTab === "events"
-                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                }`}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeTab === "events"
+                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  }`}
               >
                 1. Thông tin sự kiện
               </button>
@@ -2566,11 +2683,10 @@ export default function AdminEvents({
                   }
                   setActiveTab("rounds");
                 }}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${!selectedEvent ? "opacity-40 cursor-not-allowed" : ""} ${
-                  activeTab === "rounds"
-                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                }`}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${!selectedEvent ? "opacity-40 cursor-not-allowed" : ""} ${activeTab === "rounds"
+                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  }`}
               >
                 2. Vòng thi & Tiêu chí
               </button>
@@ -2590,11 +2706,10 @@ export default function AdminEvents({
                   }
                   setActiveTab("tracks");
                 }}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${!selectedEvent || rounds.length === 0 ? "opacity-40 cursor-not-allowed" : ""} ${
-                  activeTab === "tracks"
-                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                }`}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${!selectedEvent || rounds.length === 0 ? "opacity-40 cursor-not-allowed" : ""} ${activeTab === "tracks"
+                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  }`}
               >
                 3. Bảng đấu
               </button>
@@ -2620,11 +2735,10 @@ export default function AdminEvents({
                   }
                   setActiveTab("schedule");
                 }}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${!selectedEvent || tracks.length === 0 ? "opacity-40 cursor-not-allowed" : ""} ${
-                  activeTab === "schedule"
-                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                }`}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${!selectedEvent || tracks.length === 0 ? "opacity-40 cursor-not-allowed" : ""} ${activeTab === "schedule"
+                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  }`}
               >
                 4. Thiết lập thời gian
               </button>
@@ -2638,128 +2752,134 @@ export default function AdminEvents({
                   }
                   setActiveTab("seminar");
                 }}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${!selectedEvent ? "opacity-40 cursor-not-allowed" : ""} ${
-                  activeTab === "seminar"
-                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                }`}
+                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${!selectedEvent ? "opacity-40 cursor-not-allowed" : ""} ${activeTab === "seminar"
+                  ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
+                  }`}
               >
                 5. Seminar & Thông báo
               </button>
             </>
           ) : (
-            <>
-              <button
-                onClick={() => setActiveTab("events")}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
-                  activeTab === "events"
-                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                }`}
-              >
-                Thông tin sự kiện
-              </button>
-              <button
-                onClick={() => setActiveTab("schedule")}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
-                  activeTab === "schedule"
-                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                }`}
-              >
-                Thiết lập thời gian
-              </button>
-              <button
-                onClick={() => setActiveTab("teams")}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
-                  activeTab === "teams"
-                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                }`}
-              >
-                Đội thi tham gia
-              </button>
-              <button
-                onClick={() => setActiveTab("rounds")}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
-                  activeTab === "rounds"
-                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                }`}
-              >
-                Vòng thi & Tiêu chí
-              </button>
-              <button
-                onClick={() => setActiveTab("tracks")}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
-                  activeTab === "tracks"
-                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                }`}
-              >
-                Bảng đấu
-              </button>
-              <button
-                onClick={() => setActiveTab("seminar")}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
-                  activeTab === "seminar"
-                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                }`}
-              >
-                Seminar & Thông báo
-              </button>
-              <button
-                onClick={() => setActiveTab("github")}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
-                  activeTab === "github"
-                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                }`}
-              >
-                <Github size={14} />
-                GitHub & AI Đánh giá
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab("portal");
-                  setPortalSubTab(null);
-                }}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
-                  activeTab === "portal"
-                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                }`}
-              >
-                Nội dung hiển thị
-              </button>
-              <button
-                onClick={() => setActiveTab("logs")}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
-                  activeTab === "logs"
-                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                }`}
-              >
-                Nhật ký hoạt động
-              </button>
-              <button
-                onClick={() => {
-                  if (!selectedEvent) {
-                    toast.error("Vui lòng chọn cuộc thi trước!");
-                    return;
-                  }
-                  setActiveTab("operations");
-                }}
-                className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all cursor-pointer ${!selectedEvent ? "opacity-40 cursor-not-allowed" : ""} ${
-                  activeTab === "operations"
-                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 font-semibold"
-                    : "text-slate-400 hover:text-slate-200 bg-slate-900/40 border border-slate-800"
-                }`}
-              >
-                Điều hành cuộc thi
-              </button>
-            </>
+            <div className="w-full space-y-3">
+              {/* Level 1: Category Group Bar */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-100 dark:bg-slate-900/60 p-2 rounded-2xl border border-slate-200 dark:border-slate-800/80 shadow-xs">
+                {CATEGORY_GROUPS.map((group) => {
+                  const GroupIcon = group.icon;
+                  const isActiveGroup = group.id === currentGroup.id;
+                  return (
+                    <button
+                      key={group.id}
+                      type="button"
+                      onClick={() => {
+                        if (!group.tabs.some((t) => t.id === activeTab)) {
+                          if (group.id === "operations" && !selectedEvent) {
+                            toast.error("Vui lòng chọn cuộc thi trước!");
+                            return;
+                          }
+                          setActiveTab(group.tabs[0].id as any);
+                        }
+                      }}
+                      style={
+                        isActiveGroup
+                          ? { backgroundColor: "#F27024", color: "#ffffff" }
+                          : undefined
+                      }
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer text-left select-none min-h-[68px] ${
+                        isActiveGroup
+                          ? "shadow-md font-bold"
+                          : "bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 hover:border-[#F27024]/50"
+                      }`}
+                    >
+                      {/* Icon container: Unselected = Icon white in black box */}
+                      <div
+                        style={
+                          isActiveGroup
+                            ? { backgroundColor: "rgba(255, 255, 255, 0.25)", color: "#ffffff" }
+                            : { backgroundColor: "#0f172a", color: "#ffffff" }
+                        }
+                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-xs"
+                      >
+                        <GroupIcon size={16} style={{ color: "#ffffff" }} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <span
+                          style={
+                            isActiveGroup
+                              ? { color: "#ffffff" }
+                              : undefined
+                          }
+                          className={`font-mono text-xs sm:text-[13px] font-extrabold uppercase tracking-wider block leading-tight ${
+                            isActiveGroup
+                              ? "!text-white"
+                              : "text-slate-900 dark:text-slate-100"
+                          }`}
+                        >
+                          {group.label}
+                        </span>
+                        <span
+                          style={
+                            isActiveGroup
+                              ? { color: "rgba(255, 255, 255, 0.95)" }
+                              : undefined
+                          }
+                          className={`text-[10px] font-sans block mt-0.5 leading-normal ${
+                            isActiveGroup
+                              ? "!text-white/90"
+                              : "text-slate-500 dark:text-slate-400"
+                          }`}
+                        >
+                          {group.description}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Level 2: Sub-tabs inside active group */}
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                {currentGroup.tabs.map((tab) => {
+                  const TabIcon = tab.icon;
+                  const isTabActive = activeTab === tab.id;
+                  const isOperationsLive = tab.id === "operations";
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => {
+                        if (isOperationsLive && !selectedEvent) {
+                          toast.error("Vui lòng chọn cuộc thi trước!");
+                          return;
+                        }
+                        if (tab.id === "portal") {
+                          setPortalSubTab(null);
+                        }
+                        setActiveTab(tab.id as any);
+                      }}
+                      className={`font-mono text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-2 select-none ${
+                        isTabActive
+                          ? isOperationsLive
+                            ? "bg-[#F27024] !text-white shadow-md font-extrabold"
+                            : "bg-[#F27024] dark:bg-cyan-500 !text-white shadow-md font-bold"
+                          : isOperationsLive
+                          ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/20"
+                          : "bg-white dark:bg-slate-900/40 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:border-[#F27024]/40 hover:text-[#F27024]"
+                      }`}
+                    >
+                      <TabIcon
+                        size={14}
+                        className={isTabActive ? "!text-white" : ""}
+                      />
+                      <span>{tab.label}</span>
+                      {isOperationsLive && (
+                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse ml-0.5" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -3593,13 +3713,54 @@ export default function AdminEvents({
           <div className="glass p-6 rounded-2xl relative animate-fadeIn">
             <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-3xl"></div>
             <div>
+              {/* Sub-tab navigation bar when inside a sub-tab */}
+              {portalSubTab !== null && (
+                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800 flex-wrap">
+                  <button
+                    onClick={() => setPortalSubTab(null)}
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono font-bold transition-all cursor-pointer"
+                  >
+                    ← Danh mục
+                  </button>
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={() => setPortalSubTab("candidate")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${portalSubTab === "candidate"
+                        ? "bg-cyan-500 text-white shadow-md shadow-cyan-500/20"
+                        : "bg-slate-900/60 text-slate-400 hover:text-white border border-slate-800"
+                        }`}
+                    >
+                      Nội dung trang thí sinh
+                    </button>
+                    <button
+                      onClick={() => setPortalSubTab("timeline")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${portalSubTab === "timeline"
+                        ? "bg-[#F27024] text-white shadow-md shadow-[#F27024]/20"
+                        : "bg-slate-900/60 text-slate-400 hover:text-white border border-slate-800"
+                        }`}
+                    >
+                      Lịch trình cuộc thi
+                    </button>
+                    <button
+                      onClick={() => setPortalSubTab("prizes")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${portalSubTab === "prizes"
+                        ? "bg-amber-500 text-white shadow-md shadow-amber-500/20"
+                        : "bg-slate-900/60 text-slate-400 hover:text-white border border-slate-800"
+                        }`}
+                    >
+                      Cơ cấu giải thưởng
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Option Cards when portalSubTab is null */}
               {portalSubTab === null && (
                 <div className="py-6">
                   <h3 className="text-xs font-bold text-slate-400 mb-8 uppercase tracking-wider font-mono text-center">
                     -- Vui lòng chọn nội dung cấu hình hiển thị --
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
                     {/* Card 1: Candidate Portal */}
                     <div
                       onClick={() => setPortalSubTab("candidate")}
@@ -3631,6 +3792,22 @@ export default function AdminEvents({
                       <p className="text-slate-400 text-xs leading-relaxed max-w-xs">
                         Thiết lập các mốc thời gian chi tiết của sự kiện hiển
                         thị trên Landing Page.
+                      </p>
+                    </div>
+
+                    {/* Card 3: Prize Structure */}
+                    <div
+                      onClick={() => setPortalSubTab("prizes")}
+                      className="glass p-8 rounded-2xl border border-slate-800 hover:border-amber-500/50 hover:shadow-[0_0_30px_rgba(245,158,11,0.15)] transition-all duration-300 cursor-pointer group text-center flex flex-col items-center justify-center min-h-[220px]"
+                    >
+                      <div className="w-16 h-16 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <Award size={32} />
+                      </div>
+                      <h4 className="text-md font-bold text-white mb-2 font-mono group-hover:text-amber-400 transition-colors">
+                        Cơ cấu giải thưởng
+                      </h4>
+                      <p className="text-slate-400 text-xs leading-relaxed max-w-xs">
+                        Tùy chỉnh các mốc giải thưởng, giá trị số tiền và quyền lợi hiển thị trên Landing Page.
                       </p>
                     </div>
                   </div>
@@ -4050,6 +4227,271 @@ export default function AdminEvents({
                   </form>
                 </div>
               )}
+
+              {/* Edit Prize Structure */}
+              {portalSubTab === "prizes" && (
+                <div>
+                  <div className="flex justify-between items-center mb-6">
+                    <div>
+                      <h3 className="text-md font-bold text-white flex items-center gap-1.5 font-mono">
+                        <Award size={16} className="text-amber-400" />
+                        <span>Tùy chỉnh Cơ cấu giải thưởng: {selectedEvent.name}</span>
+                      </h3>
+                      <p className="text-slate-400 text-xs mt-1">
+                        Chỉnh sửa danh sách các mốc giải thưởng và thông tin hạng mục phụ hiển thị trên Landing Page.
+                      </p>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleSavePrizes} className="space-y-8">
+                    {/* 1. Primary Prize Tiers */}
+                    <div className=" p-5 rounded-2xl border border-slate-800">
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 font-mono flex items-center gap-2">
+                          Danh sách mốc giải thưởng
+                        </h4>
+                        {!readOnly && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditPrizes([
+                                ...editPrizes,
+                                {
+                                  title: `0${editPrizes.length + 1} GIẢI MỚI`,
+                                  amount: "1.000.000 đồng",
+                                  benefits: "Giấy chứng nhận",
+                                },
+                              ]);
+                            }}
+                            className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1 cursor-pointer"
+                          >
+                            <Plus size={14} /> Thêm giải thưởng
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="space-y-4">
+                        {editPrizes.map((prize, idx) => (
+                          <div
+                            key={idx}
+                            className="p-4 bg-slate-950/60 rounded-xl border border-slate-800 flex flex-col md:flex-row items-start md:items-center gap-4"
+                          >
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-xs font-bold">
+                              {String(idx + 1).padStart(2, "0")}
+                            </span>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 flex-1 w-full">
+                              <div>
+                                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1 font-mono">
+                                  Tên giải thưởng
+                                </label>
+                                <input
+                                  type="text"
+                                  required
+                                  value={prize.title || ""}
+                                  onChange={(e) => {
+                                    const updated = [...editPrizes];
+                                    updated[idx].title = e.target.value;
+                                    setEditPrizes(updated);
+                                  }}
+                                  placeholder="Ví dụ: 01 GIẢI NHẤT"
+                                  disabled={readOnly}
+                                  className="w-full bg-slate-900 border border-slate-700 hover:border-amber-500/50 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1 font-mono">
+                                  Giá trị / Số tiền
+                                </label>
+                                <input
+                                  type="text"
+                                  required
+                                  value={prize.amount || ""}
+                                  onChange={(e) => {
+                                    const updated = [...editPrizes];
+                                    updated[idx].amount = e.target.value;
+                                    setEditPrizes(updated);
+                                  }}
+                                  placeholder="Ví dụ: 7.000.000 đồng"
+                                  disabled={readOnly}
+                                  className="w-full bg-slate-900 border border-slate-700 hover:border-amber-500/50 rounded-lg px-3 py-2 text-xs text-amber-300 font-bold focus:outline-none focus:border-amber-500 font-mono"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1 font-mono">
+                                  Quyền lợi kèm theo
+                                </label>
+                                <input
+                                  type="text"
+                                  value={prize.benefits || ""}
+                                  onChange={(e) => {
+                                    const updated = [...editPrizes];
+                                    updated[idx].benefits = e.target.value;
+                                    setEditPrizes(updated);
+                                  }}
+                                  placeholder="Ví dụ: Giấy chứng nhận + hoa"
+                                  disabled={readOnly}
+                                  className="w-full bg-slate-900 border border-slate-700 hover:border-amber-500/50 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500 font-mono"
+                                />
+                              </div>
+                            </div>
+
+                            {!readOnly && (
+                              <div className="flex items-center gap-1 self-end md:self-center shrink-0">
+                                {idx > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updated = [...editPrizes];
+                                      const temp = updated[idx];
+                                      updated[idx] = updated[idx - 1];
+                                      updated[idx - 1] = temp;
+                                      setEditPrizes(updated);
+                                    }}
+                                    title="Lên trên"
+                                    className="p-1.5 text-slate-400 hover:text-white bg-slate-800 rounded-md transition-colors cursor-pointer"
+                                  >
+                                    <ArrowUp size={14} />
+                                  </button>
+                                )}
+                                {idx < editPrizes.length - 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updated = [...editPrizes];
+                                      const temp = updated[idx];
+                                      updated[idx] = updated[idx + 1];
+                                      updated[idx + 1] = temp;
+                                      setEditPrizes(updated);
+                                    }}
+                                    title="Xuống dưới"
+                                    className="p-1.5 text-slate-400 hover:text-white bg-slate-800 rounded-md transition-colors cursor-pointer"
+                                  >
+                                    <ArrowDown size={14} />
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditPrizes(
+                                      editPrizes.filter((_, i) => i !== idx)
+                                    );
+                                  }}
+                                  title="Xóa mốc giải"
+                                  className="p-1.5 text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 rounded-md transition-colors cursor-pointer"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 2. Special Prize Categories */}
+                    <div className="p-5 rounded-2xl border border-slate-800">
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-cyan-400 font-mono flex items-center gap-2">
+                          Hạng mục đặc biệt / Thông tin phụ
+                        </h4>
+                        {!readOnly && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditSpecialPrizes([
+                                ...editSpecialPrizes,
+                                {
+                                  title: "HẠNG MỤC MỚI",
+                                  description: "Mô tả chi tiết hạng mục...",
+                                },
+                              ]);
+                            }}
+                            className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1 cursor-pointer"
+                          >
+                            <Plus size={14} /> Thêm hạng mục phụ
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {editSpecialPrizes.map((item, idx) => (
+                          <div
+                            key={idx}
+                            className="p-4 bg-slate-950/60 rounded-xl border border-slate-800 space-y-3 relative"
+                          >
+                            <div className="flex justify-between items-center">
+                              <input
+                                type="text"
+                                required
+                                value={item.title || ""}
+                                onChange={(e) => {
+                                  const updated = [...editSpecialPrizes];
+                                  updated[idx].title = e.target.value;
+                                  setEditSpecialPrizes(updated);
+                                }}
+                                placeholder="Tiêu đề hạng mục phụ"
+                                disabled={readOnly}
+                                className="bg-slate-900 border border-slate-700 hover:border-cyan-500/50 rounded-lg px-3 py-1.5 text-xs text-cyan-300 font-bold focus:outline-none focus:border-cyan-500 font-mono w-full mr-2"
+                              />
+                              {!readOnly && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditSpecialPrizes(
+                                      editSpecialPrizes.filter((_, i) => i !== idx)
+                                    );
+                                  }}
+                                  title="Xóa hạng mục phụ"
+                                  className="p-1.5 text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 rounded-md transition-colors shrink-0 cursor-pointer"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
+                            </div>
+
+                            <textarea
+                              rows={2}
+                              required
+                              value={item.description || ""}
+                              onChange={(e) => {
+                                const updated = [...editSpecialPrizes];
+                                updated[idx].description = e.target.value;
+                                setEditSpecialPrizes(updated);
+                              }}
+                              placeholder="Nội dung chi tiết..."
+                              disabled={readOnly}
+                              className="w-full bg-slate-900 border border-slate-700 hover:border-cyan-500/50 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-cyan-500 font-mono"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex gap-3 pt-4 border-t border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setPortalSubTab(null)}
+                        className="px-5 py-2.5 border border-slate-700 hover:border-slate-500 text-slate-300 rounded-xl text-xs font-bold font-mono transition-all cursor-pointer"
+                      >
+                        Quay lại lựa chọn
+                      </button>
+                      {!readOnly && (
+                        <button
+                          type="submit"
+                          disabled={loading}
+                          className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all uppercase tracking-wider cursor-pointer shadow-lg shadow-amber-500/20 active:scale-95 flex items-center gap-2"
+                        >
+                          {loading ? "Đang lưu..." : "Lưu cơ cấu giải thưởng"}
+                        </button>
+                      )}
+                    </div>
+                  </form>
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -4136,21 +4578,20 @@ export default function AdminEvents({
                   Loại hành động:
                 </span>
                 <span
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold font-mono tracking-wide ${
-                    selectedLog.action.includes("event")
-                      ? "bg-blue-500/10 border border-blue-500/30 text-blue-400"
-                      : selectedLog.action.includes("role")
-                        ? "bg-purple-500/10 border border-purple-500/30 text-purple-400"
-                        : selectedLog.action.includes("track") ||
-                            selectedLog.action.includes("team")
-                          ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400"
-                          : selectedLog.action.includes("rubric") ||
-                              selectedLog.action.includes("criterion")
-                            ? "bg-amber-500/10 border border-amber-500/30 text-amber-400"
-                            : selectedLog.action.includes("results")
-                              ? "bg-rose-500/10 border border-rose-500/30 text-rose-400"
-                              : "bg-slate-500/10 border border-slate-500/30 text-slate-400"
-                  }`}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold font-mono tracking-wide ${selectedLog.action.includes("event")
+                    ? "bg-blue-500/10 border border-blue-500/30 text-blue-400"
+                    : selectedLog.action.includes("role")
+                      ? "bg-purple-500/10 border border-purple-500/30 text-purple-400"
+                      : selectedLog.action.includes("track") ||
+                        selectedLog.action.includes("team")
+                        ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400"
+                        : selectedLog.action.includes("rubric") ||
+                          selectedLog.action.includes("criterion")
+                          ? "bg-amber-500/10 border border-amber-500/30 text-amber-400"
+                          : selectedLog.action.includes("results")
+                            ? "bg-rose-500/10 border border-rose-500/30 text-rose-400"
+                            : "bg-slate-500/10 border border-slate-500/30 text-slate-400"
+                    }`}
                 >
                   {selectedLog.action}
                 </span>

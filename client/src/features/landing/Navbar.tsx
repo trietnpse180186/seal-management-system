@@ -18,6 +18,7 @@ import {
   Calendar,
   UserPlus,
   UserCog,
+  LogIn,
 } from "lucide-react";
 
 interface NavbarProps {
@@ -268,6 +269,13 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
   const linkClass = (path: string, forceActive?: boolean) => {
     const active = forceActive !== undefined ? forceActive : isActive(path);
     if (usesLightShell) {
+      if (isLandingPage) {
+        return `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 font-mono
+          ${active
+            ? "bg-[#F27024]/20 text-[#F27024] border border-[#F27024]/30 shadow-[0_0_15px_-3px_rgba(242,112,36,0.3)]"
+            : "text-slate-350 hover:text-[#F27024] hover:bg-white/5 border border-transparent"
+          }`;
+      }
       return `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 font-mono
         ${active
           ? "bg-[#F27024]/10 text-[#F27024] border border-[#F27024]/20 shadow-[0_0_15px_-3px_rgba(242,112,36,0.2)]"
@@ -297,7 +305,7 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
 
   const navClass = isLandingPage
     ? isScrolled
-      ? "fixed top-0 left-0 w-full z-50 glass-nav-light transition-all duration-300"
+      ? "fixed top-0 left-0 w-full z-50 backdrop-blur-md bg-[#0B0805]/75 border-b border-slate-800/40 transition-all duration-300 shadow-lg"
       : "absolute top-0 left-0 w-full z-50 bg-transparent border-b-transparent shadow-none transition-all duration-300"
     : usesLightShell
       ? "glass-nav-light sticky top-0 z-50 w-full"
@@ -308,13 +316,12 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
       <div className={`w-full flex items-center justify-between px-4 sm:px-6 lg:px-8 ${isLandingPage ? (isScrolled ? "py-3" : "py-4") : "py-4"}`}>
         {/* Brand Logo */}
         <div className="flex-1 flex justify-start">
-          <Link to="/" className="flex items-center gap-2.5 group">
-            <img src={logo} alt="SEAL Logo" className="h-8 w-auto object-contain" />
-            <div className="flex items-center">
-              <span className={`font-extrabold text-lg tracking-wider font-mono-tech ${usesLightShell ? "text-[#F27024] text-orange-glow" : "text-cyan-400 text-cyan-glow"}`}>
+          <Link to="/" className="flex items-center gap-2 group">
+            <div>
+              <span className={`font-extrabold text-lg tracking-wider font-mono-tech ${isLandingPage ? "text-white" : (usesLightShell ? "text-[#F27024] text-orange-glow" : "text-cyan-400 text-cyan-glow")}`}>
                 SEAL
               </span>
-              <span className={`font-semibold text-xs ml-1 px-2 py-0.5 font-mono-tech ${usesLightShell ? "bg-[#F27024] text-white" : "bg-slate-800 text-white"}`}>
+              <span className={`font-semibold text-xs ml-1 px-2 py-0.5 font-mono-tech ${isLandingPage ? "bg-[#F27024] text-white" : (usesLightShell ? "bg-[#F27024] text-white" : "bg-slate-800 text-white")}`}>
                 HACKATHON
               </span>
             </div>
@@ -572,9 +579,10 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
               !isLoginPage && (
                 <Link
                   to="/login"
-                  className={`${usesLightShell ? "btn-fpt" : "btn-primary"} text-xs font-bold uppercase tracking-wider px-5 py-2.5 flex items-center justify-center`}
+                  className={`${isLandingPage ? "border border-[#F27024]/40 text-[#F27024] hover:bg-[#F27024]/10 rounded-xl hover:border-[#F27024]/75 transition-all duration-300 gap-1.5" : (usesLightShell ? "btn-fpt" : "btn-primary")} text-xs font-bold uppercase tracking-wider px-5 py-2.5 flex items-center justify-center`}
                 >
-                  Đăng nhập
+                  <LogIn size={14} />
+                  <span>Đăng nhập</span>
                 </Link>
               )
             )}

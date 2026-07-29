@@ -390,6 +390,77 @@ router.put('/profile', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @route   PUT /api/auth/change-password
+ * @desc    Change the current user's password
+ * @access  Private
+ */
+const handleChangePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ message: 'Vui lòng nhập đầy đủ mật khẩu hiện tại và mật khẩu mới.' });
+  }
+
+  if (newPassword.length < 8) {
+    return res.status(400).json({ message: 'Mật khẩu mới phải có ít nhất 8 ký tự.' });
+  }
+
+  if (currentPassword === newPassword) {
+    return res.status(400).json({ message: 'Mật khẩu mới phải khác mật khẩu hiện tại.' });
+  }
+
+  try {
+    const passwordMatches = await bcrypt.compare(currentPassword, req.user.passwordHash);
+    if (!passwordMatches) {
+      return res.status(400).json({ message: 'Mật khẩu hiện tại không chính xác.' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    req.user.passwordHash = await bcrypt.hash(newPassword, salt);
+    await req.user.save();
+
+    return res.json({ message: 'Đổi mật khẩu thành công.' });
+  } catch (error) {
+    console.error('Change Password Error:', error.message);
+    return res.status(500).json({ message: 'Không thể đổi mật khẩu lúc này.' });
+  }
+};
+
+router.put('/change-password', authenticateToken, handleChangePassword);
+
+/**
+ * @route   DELETE /api/auth/account
+ * @desc    Permanently delete the current user's account
+ * @access  Private
+ */
+const handleDeleteOwnAccount = async (req, res) => {
+  const { currentPassword } = req.body;
+
+  if (req.user.isSystemAdmin) {
+    return res.status(403).json({ message: 'Tài khoản quản trị hệ thống không thể tự xóa.' });
+  }
+
+  if (!currentPassword) {
+    return res.status(400).json({ message: 'Vui lòng nhập mật khẩu để xác nhận.' });
+  }
+
+  try {
+    const passwordMatches = await bcrypt.compare(currentPassword, req.user.passwordHash);
+    if (!passwordMatches) {
+      return res.status(400).json({ message: 'Mật khẩu hiện tại không chính xác.' });
+    }
+
+    await User.findByIdAndDelete(req.user._id);
+    return res.json({ message: 'Tài khoản đã được xóa vĩnh viễn.' });
+  } catch (error) {
+    console.error('Delete Own Account Error:', error.message);
+    return res.status(500).json({ message: 'Không thể xóa tài khoản lúc này.' });
+  }
+};
+
+router.delete('/account', authenticateToken, handleDeleteOwnAccount);
+
+/**
  * @route   POST /api/auth/assign-role
  * @desc    Assign event role to a user (System Admin only)
  * @access  Private (System Admin)

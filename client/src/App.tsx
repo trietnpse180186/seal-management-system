@@ -29,6 +29,7 @@ import MentorDashboard from './features/mentor/MentorDashboard';
 import MentorTeamDetail from './features/mentor/MentorTeamDetail';
 import MentorChat from './features/mentor/MentorChat';
 import Gallery from './features/landing/Gallery';
+import ProfileModal from './features/profile/ProfileModal';
 import { Toaster, toast } from 'sonner';
 import { ConformProvider } from './features/shared/ModalConform';
 import { ConfirmProvider } from './features/shared/ConfirmDialog';
@@ -249,7 +250,17 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
       )}
 
       {isProfileOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-955/80 backdrop-blur-sm p-4 animate-fade-in animate-duration-150">
+        <ProfileModal
+          user={user}
+          isLight={usesLightShell}
+          onClose={() => setIsProfileOpen(false)}
+          onLogout={handleLogout}
+          onUserUpdated={setUser}
+        />
+      )}
+
+      {isProfileOpen && isEditing && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-955/95 p-4 animate-fade-in animate-duration-150">
           <div className={`relative w-full max-w-md p-6 rounded-2xl shadow-2xl transition-all duration-300 font-sans ${
             usesLightShell 
               ? "bg-[#faf9f6] border border-slate-200 text-slate-800 profile-modal-light" 

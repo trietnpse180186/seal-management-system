@@ -179,25 +179,12 @@ export default function TracksTab({
   const remainingTeams = maxEventTeams - totalAllocatedTeams;
 
   const displayableTracks = useMemo(
-    () =>
-      tracks.filter((t: any) => {
-        const roundOfTrack = rounds.find(
-          (r: any) => r._id === (t.roundId?._id || t.roundId),
-        );
-        const isFinal =
-          isFinalRound(roundOfTrack) ||
-          t.name.toLowerCase().includes("chung kết") ||
-          isDefaultFinalRoundTrack(t);
-        return !isFinal;
-      }),
-    [tracks, rounds, finalRoundId],
+    () => tracks,
+    [tracks],
   );
 
   useEffect(() => {
-    if (
-      displayableTracks.length > 0 &&
-      (!selectedTrack || isDefaultFinalRoundTrack(selectedTrack))
-    ) {
+    if (displayableTracks.length > 0 && !selectedTrack) {
       setSelectedTrack(displayableTracks[0]);
     }
   }, [displayableTracks, selectedTrack, setSelectedTrack]);
@@ -524,24 +511,20 @@ export default function TracksTab({
 
       {/* Column 2: Attachments & Judges list stack */}
       <div className="space-y-6">
-        {/* Drive Upload Card — gắn link Drive cho bảng đấu đang chọn */}
-        <div className="glass p-6 rounded-2xl space-y-4">
-          <h3 className="text-md font-bold text-slate-900 dark:text-white flex items-center gap-1.5 font-mono border-b border-slate-200 dark:border-slate-800/80 pb-3">
-            <BookOpen size={16} className="text-orange-500" />
-            <span>Đề bài & Tài liệu</span>
-            {selectedTrack && (
-              <span className="ml-auto text-xs font-bold text-orange-500 border border-orange-500/30 bg-orange-500/10 px-3 py-1 rounded font-mono uppercase tracking-wider">
-                {formatTrackName(selectedTrack.name)}
-              </span>
-            )}
-          </h3>
+        {/* Drive Upload Card — gắn link Drive cho bảng đấu đang chọn (Không hiển thị ở Bảng Chung Kết) */}
+        {selectedTrack && !isDefaultFinalRoundTrack(selectedTrack) && (
+          <div className="glass p-6 rounded-2xl space-y-4">
+            <h3 className="text-md font-bold text-slate-900 dark:text-white flex items-center gap-1.5 font-mono border-b border-slate-200 dark:border-slate-800/80 pb-3">
+              <BookOpen size={16} className="text-orange-500" />
+              <span>Đề bài & Tài liệu</span>
+              {selectedTrack && (
+                <span className="ml-auto text-xs font-bold text-orange-500 border border-orange-500/30 bg-orange-500/10 px-3 py-1 rounded font-mono uppercase tracking-wider">
+                  {formatTrackName(selectedTrack.name)}
+                </span>
+              )}
+            </h3>
 
-          {!selectedTrack ? (
-            <p className="text-xs text-slate-500 italic text-center py-4 font-sans">
-              Chọn một bảng đấu ở cột bên trái để gắn link Drive riêng.
-            </p>
-          ) : (
-            (() => {
+            {(() => {
               // Đọc trực tiếp từ track — mỗi bảng có link riêng
               const currentUrl = selectedTrack.examDriveFileUrl;
               const currentName = selectedTrack.examDriveFileName;
@@ -622,9 +605,9 @@ export default function TracksTab({
                   )}
                 </div>
               );
-            })()
-          )}
-        </div>
+            })()}
+          </div>
+        )}
 
         {/* Judge Assignment Card */}
         {selectedTrack ? (

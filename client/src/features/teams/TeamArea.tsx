@@ -733,17 +733,13 @@ export default function TeamArea() {
   }
 
   return (
-    <div className="team-area-light relative overflow-hidden font-sans bg-slate-50 text-slate-900 min-h-screen">
+    <div className="team-area-light relative overflow-hidden font-sans bg-[#faf9f6] text-slate-900 min-h-screen">
       {/* Background Grid & Glow */}
       <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle_at_15%_15%,rgba(242,112,36,0.08)_0%,transparent_40%),radial-gradient(circle_at_85%_85%,rgba(242,112,36,0.05)_0%,transparent_40%)]"></div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 py-12 space-y-8 font-mono">
         {/* Top Banner team details */}
-        <div className="glass p-8 rounded-3xl relative overflow-hidden border border-slate-800 hover:border-cyan-500/30 transition-all">
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
-          <div className="absolute -left-10 -bottom-10 w-40 h-40 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none"></div>
-
+        <div className="bg-white p-8 rounded-3xl relative overflow-hidden border border-slate-200 shadow-sm transition-all text-slate-800">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
             {/* Main Info (Col 5): Team name & Status */}
             <div className="lg:col-span-5 space-y-4">
@@ -751,8 +747,8 @@ export default function TeamArea() {
                 <span
                   className={`text-[10px] px-2.5 py-0.5 rounded font-extrabold tracking-wider ${
                     team?.status?.toLowerCase() === "confirmed"
-                      ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                      : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                      ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
+                      : "bg-amber-500/10 text-amber-600 border border-amber-500/20"
                   }`}
                 >
                   {getTeamStatusText(team?.status)}
@@ -760,30 +756,30 @@ export default function TeamArea() {
               </div>
 
               <div>
-                <h1 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tight text-cyan-glow">
+                <h1 className="text-3xl sm:text-4xl font-black text-slate-800 uppercase tracking-tight">
                   {team?.name}
                 </h1>
               </div>
             </div>
 
             {/* Vertical Divider (Hidden on mobile) */}
-            <div className="hidden lg:block lg:col-span-1 h-16 border-l border-slate-800/80 mx-auto"></div>
+            <div className="hidden lg:block lg:col-span-1 h-16 border-l border-slate-200 mx-auto"></div>
 
             {/* Contest Metadata (Col 3): Event & Semester */}
             <div className="lg:col-span-3 space-y-3 font-sans">
               <div>
-                <span className="text-[9px] text-slate-500 block uppercase font-mono tracking-wider font-bold">
+                <span className="text-[9px] text-slate-400 block uppercase font-mono tracking-wider font-bold">
                   CUỘC THI
                 </span>
-                <span className="text-xl font-extrabold text-white font-mono uppercase truncate block">
+                <span className="text-xl font-extrabold text-slate-800 font-mono uppercase truncate block">
                   {team?.eventId?.name || "---"}
                 </span>
               </div>
               <div>
-                <span className="text-[9px] text-slate-500 block uppercase font-mono tracking-wider font-bold">
+                <span className="text-[9px] text-slate-400 block uppercase font-mono tracking-wider font-bold">
                   HỌC KỲ
                 </span>
-                <span className="text-xl font-bold text-slate-300 font-mono">
+                <span className="text-xl font-bold text-slate-600 font-mono">
                   {team?.eventId?.semester
                     ? `${team.eventId.semester} ${team.eventId.year}`
                     : "---"}
@@ -794,19 +790,19 @@ export default function TeamArea() {
             {/* Track & Size Info (Col 3): Bảng đấu & Thành viên */}
             <div className="lg:col-span-3 space-y-3 font-sans">
               <div>
-                <span className="text-[9px] text-slate-500 block uppercase font-mono tracking-wider font-bold">
+                <span className="text-[9px] text-slate-400 block uppercase font-mono tracking-wider font-bold">
                   BẢNG ĐẤU
                 </span>
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-400 bg-cyan-950/40 border border-cyan-800/60 px-3 py-1 rounded-full mt-1">
-                  <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#F27024] bg-[#F27024]/10 border border-[#F27024]/20 px-3 py-1 rounded-full mt-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#F27024]"></span>
                   {team?.trackId?.name || "Chờ phân bảng"}
                 </span>
               </div>
               <div>
-                <span className="text-[9px] text-slate-500 block uppercase font-mono tracking-wider font-bold">
+                <span className="text-[9px] text-slate-400 block uppercase font-mono tracking-wider font-bold">
                   THÀNH VIÊN
                 </span>
-                <span className="text-xl font-semibold text-slate-300 flex items-center gap-1.5 mt-1 font-mono">
+                <span className="text-xl font-semibold text-slate-600 flex items-center gap-1.5 mt-1 font-mono">
                   <Users size={14} className="text-slate-400" />
                   <span>{members?.length || 0} Thành viên</span>
                 </span>
@@ -820,16 +816,16 @@ export default function TeamArea() {
           (() => {
             const countdown = getRoundCountdown();
             return (
-              <div className="glass p-5 rounded-2xl border border-cyan-500/20 bg-gradient-to-r from-cyan-950/40 via-slate-900/40 to-cyan-950/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-[0_0_15px_rgba(6,182,212,0.05)]">
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm text-slate-800">
                 <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-cyan-400"></div>
+                  <div className="w-2 h-2 rounded-full bg-[#F27024]"></div>
                   <div>
-                    <span className="text-[10px] text-slate-500 block uppercase font-mono tracking-wider font-bold">
+                    <span className="text-[10px] text-slate-400 block uppercase font-mono tracking-wider font-bold">
                       Trạng thái giải đấu
                     </span>
-                    <p className="text-xs sm:text-sm font-bold text-slate-200">
+                    <p className="text-xs sm:text-sm font-bold text-slate-800">
                       Vòng thi hiện tại:{" "}
-                      <span className="text-cyan-400 font-extrabold uppercase font-mono">
+                      <span className="text-[#F27024] font-extrabold uppercase font-mono">
                         {team.currentEventRound}
                       </span>
                     </p>
@@ -837,10 +833,10 @@ export default function TeamArea() {
                 </div>
                 {/* Timer section */}
                 {countdown && (
-                  <div className="flex items-center gap-2 bg-slate-950/60 px-4 py-2 rounded-xl border border-slate-800 self-start sm:self-auto">
-                    <Clock size={14} className="text-cyan-400" />
+                  <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 self-start sm:self-auto">
+                    <Clock size={14} className="text-[#F27024]" />
                     <div className="text-xs font-mono">
-                      <span className="text-slate-500 uppercase tracking-wider text-[9px] block">
+                      <span className="text-slate-400 uppercase tracking-wider text-[9px] block">
                         Thời gian làm bài
                       </span>
                       <span className={`${countdown.color} font-bold`}>
@@ -864,14 +860,14 @@ export default function TeamArea() {
 
         {/* Chat Section */}
         {team && team.eventId?.status === "ongoing" && !team.isEliminated && (
-          <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-8 flex flex-col md:flex-row items-center justify-between gap-4 text-slate-800">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-cyan-950 text-cyan-400 rounded-xl">
+              <div className="p-3 bg-[#F27024]/10 text-[#F27024] rounded-xl border border-[#F27024]/20">
                 <MessageSquare size={20} />
               </div>
               <div>
-                <h3 className="text-white font-bold">Hỗ trợ từ Mentor</h3>
-                <p className="text-xs text-slate-400 font-sans">
+                <h3 className="text-slate-800 font-bold">Hỗ trợ từ Mentor</h3>
+                <p className="text-xs text-slate-500 font-sans">
                   Bạn có câu hỏi hoặc cần sự giúp đỡ? Hãy nhắn tin trao đổi trực
                   tiếp với Mentor hướng dẫn.
                 </p>
@@ -885,7 +881,7 @@ export default function TeamArea() {
                   }),
                 );
               }}
-              className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase rounded-xl transition-all shadow-lg shadow-cyan-600/25 whitespace-nowrap cursor-pointer font-sans"
+              className="px-5 py-2.5 bg-[#F27024] hover:bg-[#d95f1f] !text-white text-xs font-bold uppercase rounded-xl transition-all shadow-md shadow-orange-500/20 whitespace-nowrap cursor-pointer font-sans"
             >
               Nhắn tin ngay
             </button>
@@ -900,22 +896,18 @@ export default function TeamArea() {
               <div
                 className={`${
                   showMqttCard ? "lg:col-span-4" : "lg:col-span-8"
-                } glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all relative overflow-hidden`}
+                } bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-slate-800 relative overflow-hidden`}
               >
-                {(round?.hasExamMaterial && round?.examOpened) ||
-                team?.trackId?.examAccess?.examOpened ? (
-                  <div className="absolute inset-0 pointer-events-none laser-scan-effect opacity-10"></div>
-                ) : null}
                 <div>
-                  <div className="flex justify-between items-center border-b border-slate-800 pb-3 mb-5">
-                    <h2 className="text-sm font-bold text-white flex items-center gap-2 font-mono-tech">
-                      <BookOpen size={18} className="text-cyan-400" />
-                      <span className="text-cyan-400">
+                  <div className="flex justify-between items-center border-b border-slate-100 pb-3 mb-5">
+                    <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2 font-mono-tech">
+                      <BookOpen size={18} className="text-[#F27024]" />
+                      <span className="text-[#F27024]">
                         [ĐỀ_BÀI_&amp;_TÀI_LIỆU_THI]
                       </span>
                     </h2>
                     {round && (
-                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400 font-mono uppercase tracking-wider">
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-600 font-mono uppercase tracking-wider">
                         Vòng: {round.name}
                       </span>
                     )}
@@ -925,18 +917,18 @@ export default function TeamArea() {
                   new Date(team.eventId.contestStart) > currentTime ? (
                     <div className="flex flex-col items-center justify-center py-6 space-y-4">
                       <div className="space-y-1.5 text-center">
-                        <p className="text-xs text-amber-500 font-sans font-semibold uppercase tracking-wider">
+                        <p className="text-xs text-amber-600 font-sans font-semibold uppercase tracking-wider">
                           Đề bài cuộc thi &quot;{team.eventId.name}&quot; sẽ
                           được mở sau:
                         </p>
-                        <p className="text-[9px] text-slate-500 font-mono">
+                        <p className="text-[9px] text-slate-400 font-mono">
                           Thời gian mở đề:{" "}
                           {new Date(team.eventId.contestStart).toLocaleString(
                             "vi-VN",
                           )}
                         </p>
                       </div>
-                      <div className="text-2xl sm:text-3xl font-black text-cyan-400 font-mono bg-slate-950/70 px-6 py-3.5 rounded-xl border border-slate-900 tracking-widest text-cyan-glow">
+                      <div className="text-2xl sm:text-3xl font-black text-[#F27024] font-mono bg-slate-50 px-6 py-3.5 rounded-xl border border-slate-200 tracking-widest">
                         {getRemainingTimeText(team.eventId.contestStart)}
                       </div>
                     </div>
@@ -944,82 +936,85 @@ export default function TeamArea() {
                     new Date(round.startTime) > currentTime ? (
                     <div className="flex flex-col items-center justify-center py-6 space-y-4">
                       <div className="space-y-1.5 text-center">
-                        <p className="text-xs text-amber-500 font-sans font-semibold uppercase tracking-wider">
+                        <p className="text-xs text-amber-600 font-sans font-semibold uppercase tracking-wider">
                           Đề bài vòng thi &quot;{round.name}&quot; sẽ được mở
                           sau:
                         </p>
-                        <p className="text-[9px] text-slate-500 font-mono">
+                        <p className="text-[9px] text-slate-400 font-mono">
                           Thời gian mở đề:{" "}
                           {new Date(round.startTime).toLocaleString("vi-VN")}
                         </p>
                       </div>
-                      <div className="text-2xl sm:text-3xl font-black text-cyan-400 font-mono bg-slate-950/70 px-6 py-3.5 rounded-xl border border-slate-900 tracking-widest text-cyan-glow">
+                      <div className="text-2xl sm:text-3xl font-black text-[#F27024] font-mono bg-slate-50 px-6 py-3.5 rounded-xl border border-slate-200 tracking-widest">
                         {getRemainingTimeText(round.startTime)}
                       </div>
                     </div>
-                  ) : team?.trackId?.examAccess?.examOpened ? (
-                    <div className="space-y-6 py-2">
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                          <p className="text-[10px] font-bold text-emerald-400 uppercase font-mono tracking-wider">
-                            ĐỀ BÀI ĐÃ MỞ KHÓA — BẢNG{" "}
-                            {team.trackId.name?.toUpperCase()}
+                  ) : team?.trackId?.examAccess?.examOpened ? (() => {
+                    const effectiveTrackName = team.trackId.originalTrackName || team.trackId.name || "";
+                    return (
+                      <div className="space-y-6 py-2">
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            <p className="text-[10px] font-bold text-emerald-600 uppercase font-mono tracking-wider">
+                              ĐỀ BÀI ĐÃ MỞ KHÓA — BẢNG{" "}
+                              {effectiveTrackName.toUpperCase()}
+                            </p>
+                          </div>
+                          <h3
+                            className="text-sm sm:text-base font-extrabold text-slate-800 leading-snug font-sans flex items-center gap-2"
+                            title={
+                              team.trackId.examAccess.examDriveFileName ||
+                              `Đề bảng ${effectiveTrackName}`
+                            }
+                          >
+                            <BookOpen
+                              size={18}
+                              className="text-[#F27024] shrink-0"
+                            />
+                            {team.trackId.examAccess.examDriveFileName ||
+                              `Đề thi & Tài liệu hướng dẫn — Bảng ${effectiveTrackName}`}
+                          </h3>
+                          <p className="text-xs text-slate-500 font-sans leading-relaxed">
+                            Tài liệu đề bài, sơ đồ kiến trúc hệ thống và dữ liệu
+                            mẫu được lưu trữ trên thư mục Google Drive riêng của
+                            bảng {effectiveTrackName}. Thí sinh vui lòng tải về để
+                            bắt đầu nghiên cứu và thiết lập thiết bị làm bài.
                           </p>
                         </div>
-                        <h3
-                          className="text-sm sm:text-base font-extrabold text-white leading-snug font-sans flex items-center gap-2"
-                          title={
-                            team.trackId.examAccess.examDriveFileName ||
-                            `Đề bảng ${team.trackId.name}`
-                          }
-                        >
-                          <BookOpen
-                            size={18}
-                            className="text-cyan-400 shrink-0"
-                          />
-                          {team.trackId.examAccess.examDriveFileName ||
-                            `Đề thi & Tài liệu hướng dẫn — ${team.trackId.name}`}
-                        </h3>
-                        <p className="text-xs text-slate-400 font-sans leading-relaxed">
-                          Tài liệu đề bài, sơ đồ kiến trúc hệ thống và dữ liệu
-                          mẫu được lưu trữ trên thư mục Google Drive riêng của
-                          bảng {team.trackId.name}. Thí sinh vui lòng tải về để
-                          bắt đầu nghiên cứu và thiết lập thiết bị làm bài.
-                        </p>
-                      </div>
 
-                      <div className="pt-2">
-                        <a
-                          href={team.trackId.examAccess.examDriveFileUrl || "#"}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-bold uppercase py-2.5 px-4 rounded-xl transition-all shadow-md shadow-cyan-900/20 text-center cursor-pointer hover:-translate-y-0.5 duration-150 animate-pulse-subtle"
-                        >
-                          <BookOpen size={14} />
-                          Mở đề thi bảng {team.trackId.name}
-                        </a>
+                        <div className="pt-2">
+                          <a
+                            href={team.trackId.examAccess.examDriveFileUrl || "#"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full flex items-center justify-center gap-2 bg-[#F27024] hover:bg-[#d95f1f] !text-white text-xs font-bold uppercase py-2.5 px-4 rounded-xl transition-all shadow-md shadow-orange-500/20 text-center cursor-pointer"
+                          >
+                            <BookOpen size={14} />
+                            Mở đề thi bảng {effectiveTrackName}
+                          </a>
+                        </div>
                       </div>
-                    </div>
-                  ) : team?.trackId?.examAccess?.hasExamMaterial ? (
-                    <div className="text-center py-6 text-slate-450 font-sans text-xs">
+                    );
+                  })() : team?.trackId?.examAccess?.hasExamMaterial ? (
+                    <div className="text-center py-6 text-slate-500 font-sans text-xs">
                       <Clock
                         size={32}
-                        className="mx-auto text-amber-500 mb-2 animate-pulse"
+                        className="mx-auto text-amber-500 mb-2"
                       />
-                      <p className="font-semibold text-slate-300">
+                      <p className="font-semibold text-slate-700">
                         Đề thi đang được chuẩn bị
                       </p>
-                      <p className="text-[10px] text-slate-550 mt-1">
+                      <p className="text-[10px] text-slate-400 mt-1">
                         Đề đã được gắn nhưng chưa đến giờ mở khóa hoặc chưa cấu
                         hình thời gian mở đề.
                       </p>
                     </div>
                   ) : (
-                    <div className="text-center py-6 text-slate-500 italic font-sans text-xs">
+                    <div className="text-center py-6 text-slate-400 italic font-sans text-xs">
                       <BookOpen
                         size={32}
-                        className="mx-auto text-slate-650 mb-2"
+                        className="mx-auto text-slate-300 mb-2"
                       />
                       <p>
                         Hiện chưa có đề bài hoặc tài liệu thi được phân phối cho
@@ -1034,25 +1029,24 @@ export default function TeamArea() {
             {/* Middle: MQTT Connection Card (Col 4) */}
             {showMqttCard && (
               <div
-                className={`${isExamVisible ? "lg:col-span-4" : "lg:col-span-6"} glass p-6 rounded-2xl border border-cyan-500/40 glow-cyan transition-all relative overflow-hidden bg-slate-900/10 shadow-[inset_0_0_20px_rgba(0,240,255,0.02)]`}
+                className={`${isExamVisible ? "lg:col-span-4" : "lg:col-span-6"} bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-slate-800 relative overflow-hidden`}
               >
-                <div className="absolute inset-0 pointer-events-none laser-scan-effect opacity-10"></div>
                 <div>
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
-                    <h2 className="text-sm font-bold text-white flex items-center gap-2 font-mono-tech">
-                      <Cpu size={16} className="text-cyan-400 animate-pulse" />
-                      <span className="text-cyan-400">[MQTT_CREDENTIALS]</span>
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                    <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2 font-mono-tech">
+                      <Cpu size={16} className="text-[#F27024]" />
+                      <span className="text-[#F27024]">[MQTT_CREDENTIALS]</span>
                     </h2>
                     <button
                       onClick={handleSyncMqtt}
                       disabled={syncingMqtt}
-                      className="text-slate-400 hover:text-cyan-400 disabled:opacity-50 p-1 cursor-pointer transition-colors"
+                      className="text-slate-400 hover:text-[#F27024] disabled:opacity-50 p-1 cursor-pointer transition-colors"
                       title="Lấy Key"
                     >
                       <RefreshCw
                         size={12}
                         className={
-                          syncingMqtt ? "animate-spin text-cyan-400" : ""
+                          syncingMqtt ? "animate-spin text-[#F27024]" : ""
                         }
                       />
                     </button>
@@ -1060,13 +1054,13 @@ export default function TeamArea() {
 
                   {!team.mqttUsername || !team.testApiKey ? (
                     <div className="text-center py-4 space-y-3">
-                      <p className="text-xs text-amber-500 font-sans font-semibold">
+                      <p className="text-xs text-amber-600 font-sans font-semibold">
                         Khóa kết nối MQTT chưa được đồng bộ từ Simulator.
                       </p>
                       <button
                         onClick={handleSyncMqtt}
                         disabled={syncingMqtt}
-                        className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold text-xs py-2 rounded-xl uppercase tracking-wider transition-colors cursor-pointer"
+                        className="w-full bg-[#F27024] hover:bg-[#d95f1f] disabled:opacity-50 !text-white font-bold text-xs py-2 rounded-xl uppercase tracking-wider transition-colors cursor-pointer shadow-md shadow-orange-500/20"
                       >
                         {syncingMqtt ? "Đang đồng bộ..." : "Đồng bộ kết nối"}
                       </button>
@@ -1074,16 +1068,16 @@ export default function TeamArea() {
                   ) : (
                     <div className="space-y-2.5 text-xs sm:text-[13px] font-mono">
                       {team.isJudgeActive && (
-                        <div className="space-y-2 border border-emerald-500/30 bg-emerald-500/5 p-3 rounded-xl animate-pulse">
-                          <span className="text-[10px] text-emerald-400 font-bold block uppercase tracking-wider animate-pulse">
+                        <div className="space-y-2 border border-emerald-500/20 bg-emerald-500/10 p-3 rounded-xl">
+                          <span className="text-[10px] text-emerald-600 font-bold block uppercase tracking-wider">
                             [MÔI TRƯỜNG CHẤM THI ĐANG BẬT]
                           </span>
 
-                          <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900">
-                            <span className="text-[10px] text-emerald-400 font-bold block uppercase tracking-wider">
+                          <div className="space-y-1 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                            <span className="text-[10px] text-emerald-600 font-bold block uppercase tracking-wider">
                               JUDGE API Key
                             </span>
-                            <div className="flex justify-between items-center text-emerald-300 font-mono">
+                            <div className="flex justify-between items-center text-emerald-700 font-mono">
                               <span className="truncate max-w-[85%]">
                                 {team.judgeApiKey || "---"}
                               </span>
@@ -1094,46 +1088,16 @@ export default function TeamArea() {
                                     "JUDGE API Key",
                                   )
                                 }
-                                className="text-slate-500 hover:text-emerald-400 cursor-pointer p-1"
+                                className="text-slate-400 hover:text-emerald-600 cursor-pointer p-1"
                                 title="Sao chép JUDGE API Key"
                               >
                                 {copiedField === "JUDGE API Key" ? (
                                   <CheckCircle
-                                    size={13}
-                                    className="text-emerald-400"
+                                    size={14}
+                                    className="text-emerald-500"
                                   />
                                 ) : (
-                                  <Copy size={13} />
-                                )}
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900">
-                            <span className="text-[10px] text-emerald-400 font-bold block uppercase tracking-wider">
-                              JUDGE Topic
-                            </span>
-                            <div className="flex justify-between items-center text-emerald-300 font-mono">
-                              <span className="truncate max-w-[85%]">
-                                {team.judgeTopic || "---"}
-                              </span>
-                              <button
-                                onClick={() =>
-                                  handleCopy(
-                                    team.judgeTopic || "",
-                                    "JUDGE Topic",
-                                  )
-                                }
-                                className="text-slate-500 hover:text-emerald-400 cursor-pointer p-1"
-                                title="Sao chép JUDGE Topic"
-                              >
-                                {copiedField === "JUDGE Topic" ? (
-                                  <CheckCircle
-                                    size={13}
-                                    className="text-emerald-400"
-                                  />
-                                ) : (
-                                  <Copy size={13} />
+                                  <Copy size={14} />
                                 )}
                               </button>
                             </div>
@@ -1141,63 +1105,40 @@ export default function TeamArea() {
                         </div>
                       )}
 
-                      <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900">
-                        <span className="text-[10px] text-slate-500 font-bold block uppercase tracking-wider">
-                          Access Code (Simulator)
+                      {/* TEST Key */}
+                      <div className="space-y-1 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">
+                          TEST Key
                         </span>
-                        <div className="flex justify-between items-center text-cyan-400 font-bold">
-                          <span>{team.accessCode || "---"}</span>
-                          <button
-                            onClick={() =>
-                              handleCopy(team.accessCode || "", "Access Code")
-                            }
-                            className="text-slate-500 hover:text-cyan-400 cursor-pointer p-1"
-                            title="Sao chép Access Code"
-                          >
-                            {copiedField === "Access Code" ? (
-                              <CheckCircle
-                                size={13}
-                                className="text-emerald-400"
-                              />
-                            ) : (
-                              <Copy size={13} />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="space-y-1 bg-cyan-500/10 p-2.5 rounded-xl border border-cyan-500/35 shadow-[0_0_15px_rgba(6,182,212,0.12)]">
-                        <span className="text-[10px] text-cyan-400 font-bold block uppercase tracking-wider">
-                          Test Key
-                        </span>
-                        <div className="flex justify-between items-center text-slate-200 font-semibold">
+                        <div className="flex justify-between items-center text-slate-700 font-mono">
                           <span className="truncate max-w-[85%]">
                             {team.testApiKey || "---"}
                           </span>
                           <button
                             onClick={() =>
-                              handleCopy(team.testApiKey || "", "Test Key")
+                              handleCopy(team.testApiKey || "", "TEST Key")
                             }
-                            className="text-slate-400 hover:text-cyan-400 cursor-pointer p-1"
-                            title="Sao chép Test Key"
+                            className="text-slate-400 hover:text-[#F27024] cursor-pointer p-1"
+                            title="Sao chép TEST Key"
                           >
-                            {copiedField === "Test Key" ? (
+                            {copiedField === "TEST Key" ? (
                               <CheckCircle
-                                size={13}
-                                className="text-emerald-400"
+                                size={14}
+                                className="text-emerald-500"
                               />
                             ) : (
-                              <Copy size={13} />
+                              <Copy size={14} />
                             )}
                           </button>
                         </div>
                       </div>
 
-                      <div className="space-y-1 bg-cyan-500/10 p-2.5 rounded-xl border border-cyan-500/35 shadow-[0_0_15px_rgba(6,182,212,0.12)]">
-                        <span className="text-[10px] text-cyan-400 font-bold block uppercase tracking-wider">
+                      {/* TEST Topic */}
+                      <div className="space-y-1 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">
                           TEST Topic
                         </span>
-                        <div className="flex justify-between items-center text-slate-200 font-semibold">
+                        <div className="flex justify-between items-center text-slate-700 font-mono">
                           <span className="truncate max-w-[85%]">
                             {team.testTopic || "---"}
                           </span>
@@ -1205,64 +1146,72 @@ export default function TeamArea() {
                             onClick={() =>
                               handleCopy(team.testTopic || "", "TEST Topic")
                             }
-                            className="text-slate-400 hover:text-cyan-400 cursor-pointer p-1"
+                            className="text-slate-400 hover:text-[#F27024] cursor-pointer p-1"
                             title="Sao chép TEST Topic"
                           >
                             {copiedField === "TEST Topic" ? (
                               <CheckCircle
-                                size={13}
-                                className="text-emerald-400"
+                                size={14}
+                                className="text-emerald-500"
                               />
                             ) : (
-                              <Copy size={13} />
+                              <Copy size={14} />
                             )}
                           </button>
                         </div>
                       </div>
 
-                      <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900">
-                        <span className="text-[10px] text-slate-550 font-bold block uppercase tracking-wider">
+                      {/* Username */}
+                      <div className="space-y-1 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">
                           Username
                         </span>
-                        <div className="flex justify-between items-center text-slate-300">
-                          <span>{team.mqttUsername}</span>
+                        <div className="flex justify-between items-center text-slate-700 font-mono">
+                          <span className="truncate max-w-[85%]">
+                            {team.mqttUsername || "---"}
+                          </span>
                           <button
                             onClick={() =>
-                              handleCopy(team.mqttUsername, "Username")
+                              handleCopy(team.mqttUsername || "", "Username")
                             }
-                            className="text-slate-500 hover:text-cyan-400 cursor-pointer p-1"
+                            className="text-slate-400 hover:text-[#F27024] cursor-pointer p-1"
+                            title="Sao chép Username"
                           >
                             {copiedField === "Username" ? (
                               <CheckCircle
-                                size={13}
-                                className="text-emerald-400"
+                                size={14}
+                                className="text-emerald-500"
                               />
                             ) : (
-                              <Copy size={13} />
+                              <Copy size={14} />
                             )}
                           </button>
                         </div>
                       </div>
 
-                      <div className="space-y-1 bg-slate-950/40 p-2.5 rounded-xl border border-slate-900">
-                        <span className="text-[10px] text-slate-550 font-bold block uppercase tracking-wider">
+                      {/* Password */}
+                      <div className="space-y-1 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">
                           Password
                         </span>
-                        <div className="flex justify-between items-center text-slate-300">
-                          <span>••••••••</span>
+                        <div className="flex justify-between items-center text-slate-700 font-mono">
+                          <span className="truncate max-w-[85%]">
+                            ••••••••
+                          </span>
                           <button
                             onClick={() =>
-                              handleCopy(team.mqttPassword, "Password")
+                              handleCopy(team.mqttPassword || "", "Password")
                             }
-                            className="text-slate-500 hover:text-cyan-400 cursor-pointer p-1"
+                            className="text-slate-400 hover:text-[#F27024] cursor-pointer p-1"
+                            title="Sao chép Password"
                           >
                             {copiedField === "Password" ? (
                               <CheckCircle
-                                size={13}
-                                className="text-emerald-400"
+                                size={14}
+                                className="text-emerald-500"
                               />
                             ) : (
-                              <Copy size={13} />
+                              <Copy size={14} />
                             )}
                           </button>
                         </div>
@@ -1277,17 +1226,17 @@ export default function TeamArea() {
             <div
               className={`${isExamVisible ? "lg:col-span-4" : showMqttCard ? "lg:col-span-6" : "lg:col-span-6"} space-y-6`}
             >
-              <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all text-left">
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-slate-800 text-left">
                 <div>
-                  <h2 className="text-sm font-bold text-white mb-4 flex items-center justify-between font-mono-tech border-b border-slate-800 pb-3">
+                  <h2 className="text-sm font-bold text-slate-800 mb-4 flex items-center justify-between font-mono-tech border-b border-slate-100 pb-3">
                     <div className="flex items-center gap-2">
-                      <Users size={18} className="text-cyan-400" />
-                      <span className="text-cyan-400">THÀNH VIÊN NHÓM</span>
+                      <Users size={18} className="text-[#F27024]" />
+                      <span className="text-[#F27024]">THÀNH VIÊN NHÓM</span>
                     </div>
                     {isLeader && !hasContestStarted && (
                       <button
                         onClick={handleOpenEditModal}
-                        className="inline-flex items-center gap-1.5 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 px-2.5 py-1 rounded border border-cyan-500/25 transition-all cursor-pointer font-sans uppercase tracking-wider"
+                        className="inline-flex items-center gap-1.5 text-[10px] font-bold text-[#F27024] hover:bg-[#F27024]/10 px-2.5 py-1 rounded border border-[#F27024]/20 transition-all cursor-pointer font-sans uppercase tracking-wider"
                       >
                         <Edit3 size={10} />
                         Sửa thông tin
@@ -1295,7 +1244,7 @@ export default function TeamArea() {
                     )}
                   </h2>
                   {!hasContestStarted && (
-                    <div className="mb-4 p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start gap-2.5 text-xs text-amber-400 leading-relaxed font-sans">
+                    <div className="mb-4 p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start gap-2.5 text-xs text-amber-600 leading-relaxed font-sans">
                       <AlertTriangle size={15} className="shrink-0 mt-0.5" />
                       <span>
                         Đảm bảo đúng thông tin đội thi và thành viên trước khi
@@ -1307,23 +1256,23 @@ export default function TeamArea() {
                     {members?.map((m: any) => (
                       <div
                         key={m._id}
-                        className={`flex items-center justify-between p-3 bg-slate-900/30 rounded-xl border text-xs ${
+                        className={`flex items-center justify-between p-3 bg-slate-50 rounded-xl border text-xs ${
                           m.role === "leader"
-                            ? "border-amber-500/30 hover:border-amber-500/50"
-                            : "border-slate-800"
+                            ? "border-amber-500/30"
+                            : "border-slate-200"
                         }`}
                       >
                         <div className="min-w-0 flex-1 pr-2">
                           <div className="flex items-center gap-1.5">
                             <p
-                              className={`font-bold truncate ${m.role === "leader" ? "text-amber-400" : "text-slate-200"}`}
+                              className={`font-bold truncate ${m.role === "leader" ? "text-amber-600" : "text-slate-800"}`}
                             >
                               {m.userId?.fullName}
                             </p>
                             {m.role === "leader" && (
                               <Crown
                                 size={12}
-                                className="text-amber-400 shrink-0 fill-amber-400/20 animate-pulse"
+                                className="text-amber-500 shrink-0 fill-amber-500/20"
                               />
                             )}
                           </div>
@@ -1331,7 +1280,7 @@ export default function TeamArea() {
                             {m.userId?.email}
                           </p>
                           {(m.userId?.studentId || m.userId?.university) && (
-                            <p className="text-[10px] text-slate-550 font-mono mt-0.5 truncate">
+                            <p className="text-[10px] text-slate-500 font-mono mt-0.5 truncate">
                               {m.userId?.studentId &&
                                 `MSSV: ${m.userId.studentId}`}
                               {m.userId?.studentId &&
@@ -1344,11 +1293,11 @@ export default function TeamArea() {
                         <div className="shrink-0 flex items-center gap-1">
                           {m.confirmStatus === "confirmed" ? (
                             m.role === "leader" ? (
-                              <span className="flex items-center gap-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-0.5 rounded text-[9px] font-extrabold uppercase">
+                              <span className="flex items-center gap-0.5 bg-amber-500/10 text-amber-600 border border-amber-500/20 px-2.5 py-0.5 rounded text-[9px] font-extrabold uppercase">
                                 Leader
                               </span>
                             ) : (
-                              <span className="flex items-center gap-0.5 bg-emerald-500/10 text-emerald-450 border border-emerald-500/20 px-2.5 py-0.5 rounded text-[9px] font-extrabold uppercase">
+                              <span className="flex items-center gap-0.5 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-2.5 py-0.5 rounded text-[9px] font-extrabold uppercase">
                                 Member
                               </span>
                             )
@@ -1366,18 +1315,17 @@ export default function TeamArea() {
 
               {/* Zalo Card */}
               {team.eventId?.zaloUrl && (
-                <div className="glass p-5 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all relative overflow-hidden shadow-lg text-left">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl pointer-events-none"></div>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm text-slate-800 relative overflow-hidden text-left">
                   <div className="flex items-start gap-3.5">
-                    <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-400 shrink-0">
+                    <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-600 shrink-0">
                       <MessageSquare size={20} />
                     </div>
                     <div className="space-y-3 flex-1 min-w-0">
                       <div>
-                        <h3 className="text-xs font-bold text-white font-mono uppercase tracking-wide">
+                        <h3 className="text-xs font-bold text-slate-800 font-mono uppercase tracking-wide">
                           KÊNH ZALO HỖ TRỢ ĐỘI THI
                         </h3>
-                        <p className="text-[10px] text-slate-400 mt-1 leading-relaxed font-sans">
+                        <p className="text-[10px] text-slate-500 mt-1 leading-relaxed font-sans">
                           Tham gia nhóm Zalo hỗ trợ kỹ thuật và nhận thông báo
                           khẩn cấp từ BTC.
                         </p>
@@ -1386,7 +1334,7 @@ export default function TeamArea() {
                         href={team.eventId.zaloUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] uppercase rounded-xl transition-all shadow-md shadow-blue-600/10 tracking-wider font-mono cursor-pointer border border-blue-400/20"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 !text-white font-bold text-[10px] uppercase rounded-xl transition-all shadow-md shadow-blue-600/10 tracking-wider font-mono cursor-pointer border border-blue-400/20"
                       >
                         <span>Tham gia ngay</span>
                         <ExternalLink size={12} />
@@ -1405,18 +1353,18 @@ export default function TeamArea() {
             {repository ? (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 {/* Repository Info Column */}
-                <div className="lg:col-span-3 glass p-5 rounded-2xl space-y-4 border border-slate-800 text-left">
-                  <h3 className="text-sm font-bold text-slate-200 flex items-center gap-1.5 font-mono-tech border-b border-slate-800 pb-3">
-                    <Github size={16} className="text-cyan-400" />
-                    <span className="text-cyan-400">[GITHUB_REPOSITORY]</span>
+                <div className="lg:col-span-3 bg-white p-5 rounded-2xl space-y-4 border border-slate-200 shadow-sm text-slate-800 text-left">
+                  <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5 font-mono-tech border-b border-slate-100 pb-3">
+                    <Github size={16} className="text-[#F27024]" />
+                    <span className="text-[#F27024]">[GITHUB_REPOSITORY]</span>
                   </h3>
 
                   <div className="space-y-4 font-mono text-xs">
                     <div>
-                      <span className="text-[10px] text-slate-500 font-bold block uppercase tracking-wider">
+                      <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">
                         Tên Repo
                       </span>
-                      <p className="text-xs font-bold text-white mt-1 break-all">
+                      <p className="text-xs font-bold text-slate-800 mt-1 break-all">
                         {repository.orgName
                           ? `${repository.orgName}/${repository.repoName}`
                           : repository.repoName}
@@ -1429,7 +1377,7 @@ export default function TeamArea() {
                           href={repository.repoUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-bold uppercase py-2 px-4 rounded-xl transition-all shadow-md shadow-cyan-900/20 text-center cursor-pointer hover:-translate-y-0.5 duration-150"
+                          className="w-full flex items-center justify-center gap-2 bg-[#F27024] hover:bg-[#d95f1f] !text-white text-xs font-bold uppercase py-2 px-4 rounded-xl transition-all shadow-md shadow-orange-500/20 text-center cursor-pointer"
                         >
                           <ExternalLink size={12} />
                           Mở GitHub Repo
@@ -1493,9 +1441,9 @@ export default function TeamArea() {
                 </div>
               </div>
             ) : (
-              <div className="glass p-8 text-center text-slate-400 flex flex-col items-center justify-center min-h-[300px]">
-                <Github size={48} className="text-slate-600 mb-3" />
-                <p className="font-semibold text-lg">
+              <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm text-slate-800 text-center flex flex-col items-center justify-center min-h-[300px]">
+                <Github size={48} className="text-slate-400 mb-3" />
+                <p className="font-semibold text-lg text-slate-800">
                   Chưa thiết lập GitHub Repository
                 </p>
                 <p className="text-sm text-slate-500 max-w-sm mt-1">
@@ -1508,38 +1456,38 @@ export default function TeamArea() {
         )}
 
         {team?.isEliminated && (
-          <div className="glass p-8 rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-cyan-950/20 via-slate-900/60 to-slate-950/30 text-center space-y-6 max-w-2xl mx-auto shadow-[0_0_30px_rgba(6,182,212,0.05)] mt-4">
-            <div className="w-16 h-16 rounded-full bg-cyan-950/80 border border-cyan-500/30 text-cyan-400 flex items-center justify-center mx-auto shadow-[0_0_15px_rgba(34,211,238,0.2)]">
+          <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm text-slate-800 text-center space-y-6 max-w-2xl mx-auto mt-4">
+            <div className="w-16 h-16 rounded-full bg-[#F27024]/10 border border-[#F27024]/20 text-[#F27024] flex items-center justify-center mx-auto">
               <Trophy size={28} />
             </div>
 
             <div className="space-y-2 font-sans">
-              <h2 className="text-xl font-black text-white uppercase tracking-wider font-mono-tech">
+              <h2 className="text-xl font-black text-slate-800 uppercase tracking-wider font-mono-tech">
                 Kết Quả Đạt Được
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500">
                 Thành tích chính thức của đội thi{" "}
-                <strong className="text-slate-200">{team.name}</strong> ghi nhận
+                <strong className="text-slate-800">{team.name}</strong> ghi nhận
                 tại cuộc thi.
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4 max-w-md mx-auto pt-2">
-              <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-2xl space-y-1">
-                <span className="text-[10px] text-slate-500 block uppercase font-mono tracking-wider font-bold">
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
+                <span className="text-[10px] text-slate-400 block uppercase font-mono tracking-wider font-bold">
                   Thứ hạng (Bảng)
                 </span>
-                <p className="text-2xl font-black text-cyan-400 font-mono text-cyan-glow">
+                <p className="text-2xl font-black text-[#F27024] font-mono">
                   {team.achievedResult?.rank
                     ? `Top ${team.achievedResult.rank}`
                     : "---"}
                 </p>
               </div>
-              <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-2xl space-y-1">
-                <span className="text-[10px] text-slate-500 block uppercase font-mono tracking-wider font-bold">
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
+                <span className="text-[10px] text-slate-400 block uppercase font-mono tracking-wider font-bold">
                   Điểm trung bình
                 </span>
-                <p className="text-2xl font-black text-emerald-400 font-mono text-cyan-glow">
+                <p className="text-2xl font-black text-emerald-600 font-mono">
                   {team.achievedResult?.score
                     ? `${team.achievedResult.score.toFixed(2)}`
                     : "---"}
@@ -1548,7 +1496,7 @@ export default function TeamArea() {
             </div>
 
             {team.achievedResult && (
-              <div className="text-[11px] text-slate-550 font-mono pt-2 border-t border-slate-850/60 max-w-sm mx-auto">
+              <div className="text-[11px] text-slate-500 font-mono pt-2 border-t border-slate-100 max-w-sm mx-auto">
                 <span>
                   Ghi nhận tại: {team.achievedResult.roundName} (
                   {team.achievedResult.trackName})
@@ -1556,9 +1504,9 @@ export default function TeamArea() {
               </div>
             )}
 
-            <p className="text-xs text-slate-400 leading-relaxed font-sans max-w-md mx-auto pt-2">
+            <p className="text-xs text-slate-500 leading-relaxed font-sans max-w-md mx-auto pt-2">
               Cảm ơn bạn đã cống hiến hết mình tại giải đấu năm nay! Chúc đội
-              thi <strong className="text-slate-200">{team.name}</strong> gặt
+              thi <strong className="text-slate-800">{team.name}</strong> gặt
               hái được nhiều thành công hơn nữa trên con đường phát triển công
               nghệ sắp tới.
             </p>

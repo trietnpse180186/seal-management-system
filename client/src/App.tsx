@@ -486,6 +486,8 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
                             studentId: user.studentId || "",
                             university: user.university || "",
                             githubUsername: user.githubUsername || "",
+                            height: user.height !== undefined && user.height !== null ? String(user.height) : "",
+                            weight: user.weight !== undefined && user.weight !== null ? String(user.weight) : "",
                           });
                         }
                       }}

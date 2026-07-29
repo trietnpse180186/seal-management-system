@@ -125,6 +125,8 @@ router.get('/team/:teamId/achievements', authenticateToken, async (req, res) => 
     const team = await Team.findById(req.params.teamId);
     if (!team) return res.status(404).json({ message: 'Team not found.' });
 
+    const Event = mongoose.model('Event');
+    const parentEvent = await Event.findById(team.eventId);
     if (parentEvent && parentEvent.isArchived) {
       let isCoordinatorOrAdmin = req.user.isSystemAdmin;
       if (!isCoordinatorOrAdmin) {

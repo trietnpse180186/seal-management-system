@@ -38,6 +38,40 @@ const githubService = require("../github-ai/githubService");
 const captchaService = require("../auth/captchaService");
 const { ensureChatRoomForTeam } = require("../chat/chatRoomService");
 
+const DEPLOYED_CLIENT_URL = "https://seal-management-staging.vercel.app";
+
+function resolveClientUrl() {
+  const configuredUrl = process.env.CLIENT_URL?.trim();
+  const isHostedEnvironment =
+    process.env.NODE_ENV === "production" ||
+    Boolean(
+      process.env.RENDER ||
+        process.env.VERCEL ||
+        process.env.RAILWAY_ENVIRONMENT,
+    );
+
+  if (configuredUrl) {
+    try {
+      const parsedUrl = new URL(configuredUrl);
+      const isLoopback = ["localhost", "127.0.0.1", "::1"].includes(
+        parsedUrl.hostname,
+      );
+
+      if (!isLoopback || !isHostedEnvironment) {
+        return configuredUrl.replace(/\/+$/, "");
+      }
+    } catch (error) {
+      console.warn(
+        `[TEAM INVITE] Ignoring invalid CLIENT_URL: ${configuredUrl}`,
+      );
+    }
+  }
+
+  return isHostedEnvironment
+    ? DEPLOYED_CLIENT_URL
+    : "http://localhost:5173";
+}
+
 /**
  * Normalizes university names to avoid duplicates and double prefixes.
  */
@@ -341,11 +375,16 @@ router.post("/register", authenticateToken, async (req, res) => {
       .json({ message: "Số lượng thành viên không đủ (tối thiểu 3)." });
   }
 
-  // Validate required fields for leader
-  if (!leaderInfo || !leaderInfo.fullName || !leaderInfo.githubUsername) {
+  if (!leaderInfo || !leaderInfo.fullName || !leaderInfo.githubUsername || !leaderInfo.height || !leaderInfo.weight) {
     return res
       .status(400)
-      .json({ message: "Họ tên Trưởng nhóm và GitHub Username là bắt buộc." });
+      .json({ message: "Họ tên, GitHub Username, chiều cao và cân nặng của Trưởng nhóm là bắt buộc." });
+  }
+
+  if (isNaN(Number(leaderInfo.height)) || isNaN(Number(leaderInfo.weight))) {
+    return res
+      .status(400)
+      .json({ message: "Chiều cao và cân nặng của Trưởng nhóm phải là số hợp lệ." });
   }
 
   // Validate required fields for members
@@ -389,6 +428,8 @@ router.post("/register", authenticateToken, async (req, res) => {
       if (leaderInfo.githubUsername)
         leader.githubUsername = leaderInfo.githubUsername;
       if (leaderInfo.university) leader.university = leaderInfo.university;
+      if (leaderInfo.height) leader.height = Number(leaderInfo.height);
+      if (leaderInfo.weight) leader.weight = Number(leaderInfo.weight);
       await leader.save();
     } else {
       return res
@@ -531,7 +572,7 @@ router.post("/register", authenticateToken, async (req, res) => {
 
     // 5. Loop through and invite other members
     for (const memberData of membersList) {
-      const { email, fullName, githubUsername, studentId, university } =
+      const { email, fullName, githubUsername, studentId, university, height, weight } =
         memberData;
       if (!email) continue;
 
@@ -550,6 +591,8 @@ router.post("/register", authenticateToken, async (req, res) => {
           studentId: studentId || "",
           githubUsername: githubUsername || "",
           university: university || "",
+          height: height ? Number(height) : null,
+          weight: weight ? Number(weight) : null,
           isApproved: true,
         });
         await memberUser.save();
@@ -561,6 +604,14 @@ router.post("/register", authenticateToken, async (req, res) => {
         }
         if (university && !memberUser.university) {
           memberUser.university = university;
+          changed = true;
+        }
+        if (height && !memberUser.height) {
+          memberUser.height = Number(height);
+          changed = true;
+        }
+        if (weight && !memberUser.weight) {
+          memberUser.weight = Number(weight);
           changed = true;
         }
         if (changed) {
@@ -730,8 +781,7 @@ router.post("/register", authenticateToken, async (req, res) => {
 router.get("/confirm-invite", async (req, res) => {
   const { token } = req.query;
 
-  const clientUrl =
-    process.env.CLIENT_URL || "https://seal-management-staging.vercel.app";
+  const clientUrl = resolveClientUrl();
 
   if (!token) {
     return res.status(400).send(`
@@ -1027,8 +1077,7 @@ router.get("/confirm-invite", async (req, res) => {
     return res.redirect(`${clientUrl}/confirm-survey?teamName=${encodeURIComponent(team.name)}`);
   } catch (error) {
     console.error("Invite Confirmation Error:", error.message);
-    const clientUrl =
-      process.env.CLIENT_URL || "https://seal-management-staging.vercel.app";
+    const clientUrl = resolveClientUrl();
     res.status(500).send(`
       <!DOCTYPE html>
       <html class="dark" lang="vi">
@@ -1535,7 +1584,7 @@ router.put("/:teamId/basic-info", authenticateToken, async (req, res) => {
       const m = members[idx];
 
       if (m.isNew) {
-        const { email, fullName, githubUsername, studentId, university } = m;
+        const { email, fullName, githubUsername, studentId, university, height, weight } = m;
         const normEmail = String(email || "")
           .trim()
           .toLowerCase();
@@ -1544,6 +1593,19 @@ router.put("/:teamId/basic-info", authenticateToken, async (req, res) => {
           errors.push(`Dòng ${idx + 1}: Email của thành viên mới là bắt buộc.`);
           continue;
         }
+        if (!height) {
+          errors.push(`Chiều cao của thành viên không được để trống.`);
+          continue;
+        }
+        if (!weight) {
+          errors.push(`Cân nặng của thành viên không được để trống.`);
+          continue;
+        }
+        if (isNaN(Number(height)) || isNaN(Number(weight))) {
+          errors.push(`Chiều cao và cân nặng của thành viên phải là số hợp lệ.`);
+          continue;
+        }
+
         if (!fullName) {
           errors.push(
             `Dòng ${idx + 1}: Họ tên của thành viên mới là bắt buộc.`,
@@ -1554,6 +1616,19 @@ router.put("/:teamId/basic-info", authenticateToken, async (req, res) => {
           errors.push(
             `Dòng ${idx + 1}: GitHub Username của thành viên mới là bắt buộc.`,
           );
+          continue;
+        }
+
+        if (!height) {
+          errors.push(`Dòng ${idx + 1}: Chiều cao của thành viên mới là bắt buộc.`);
+          continue;
+        }
+        if (!weight) {
+          errors.push(`Dòng ${idx + 1}: Cân nặng của thành viên mới là bắt buộc.`);
+          continue;
+        }
+        if (isNaN(Number(height)) || isNaN(Number(weight))) {
+          errors.push(`Dòng ${idx + 1}: Chiều cao và cân nặng phải là số hợp lệ.`);
           continue;
         }
 
@@ -1589,9 +1664,11 @@ router.put("/:teamId/basic-info", authenticateToken, async (req, res) => {
           githubUsername,
           studentId: studentId || "",
           university: university || "",
+          height,
+          weight
         });
       } else {
-        const { userId, fullName, githubUsername, studentId, university } = m;
+        const { userId, fullName, githubUsername, studentId, university, height, weight } = m;
 
         if (!userId) {
           errors.push(
@@ -1631,6 +1708,8 @@ router.put("/:teamId/basic-info", authenticateToken, async (req, res) => {
             u.githubUsername = githubUsername;
             u.studentId = studentId || "";
             u.university = university || "";
+            u.height = Number(height);
+            u.weight = Number(weight);
             await u.save();
           }
         });
@@ -1671,6 +1750,8 @@ router.put("/:teamId/basic-info", authenticateToken, async (req, res) => {
           studentId: nMember.studentId,
           githubUsername: nMember.githubUsername,
           university: nMember.university,
+          height: nMember.height ? Number(nMember.height) : null,
+          weight: nMember.weight ? Number(nMember.weight) : null,
           isApproved: true,
         });
         await memberUser.save();
@@ -1680,6 +1761,8 @@ router.put("/:teamId/basic-info", authenticateToken, async (req, res) => {
         if (nMember.githubUsername)
           memberUser.githubUsername = nMember.githubUsername;
         if (nMember.university) memberUser.university = nMember.university;
+        if (nMember.height) memberUser.height = Number(nMember.height);
+        if (nMember.weight) memberUser.weight = Number(nMember.weight);
         await memberUser.save();
       }
 

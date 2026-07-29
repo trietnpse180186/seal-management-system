@@ -8,6 +8,8 @@ const UserSchema = new Schema({
   studentId: { type: String },
   university: { type: String },
   githubUsername: { type: String },
+  height: { type: Number },
+  weight: { type: Number },
   githubAccessTokenEncrypted: { type: String },
   avatarUrl: { type: String },
   isSystemAdmin: { type: Boolean, default: false },

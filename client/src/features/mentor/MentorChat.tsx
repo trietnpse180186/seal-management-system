@@ -617,7 +617,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
           })()}
 
           {/* Body */}
-          <div className="flex-1 flex flex-col min-h-0 bg-slate-50">
+          <div className="flex-1 flex flex-col min-h-0 bg-white">
             {selectedRoom ? (
               /* Room Chat view */
               <>
@@ -625,7 +625,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                 <div
                   ref={messagesContainerRef}
                   onScroll={handleScroll}
-                  className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0"
+                  className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0 bg-white chat-scroll"
                 >
                   {loadingMessages && page > 1 && (
                     <div className="text-center text-xs text-[#F27024] py-1">Đang tải tin nhắn cũ...</div>
@@ -807,7 +807,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                           value={newMessage}
                           onChange={(e) => setNewMessage(e.target.value)}
                           placeholder="Nhập tin nhắn..."
-                          className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#F27024] focus:ring-1 focus:ring-[#F27024]/30 transition-all placeholder:text-slate-400"
+                          className="flex-1 chat-input-light border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 font-medium transition-all"
                         />
                         <button
                           type="submit"
@@ -908,7 +908,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                             >
                               {isHighlighted && (
                                 <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+
                                   <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
                                 </span>
                               )}

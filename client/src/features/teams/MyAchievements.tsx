@@ -32,28 +32,35 @@ export default function MyAchievements() {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/teams/history", {
+        const res = await axios.get("/api/teams/history", {
           headers: { Authorization: `Bearer ${token}` }
         });
-        const teamHistory = res.data || [];
+        const teamHistory: TeamHistory[] = res.data || [];
         setTeams(teamHistory);
 
         // Fetch achievements/rankings for each past team
         const achievementsMap: { [teamId: string]: any[] } = {};
-        for (const t of teamHistory) {
+        const requests = teamHistory.map(async (t: TeamHistory) => {
           try {
-            const achRes = await axios.get(`http://localhost:5000/api/grades/team/${t._id}/achievements`, {
+            const achRes = await axios.get(`/api/grades/team/${t._id}/achievements`, {
               headers: { Authorization: `Bearer ${token}` }
             });
-            achievementsMap[t._id] = achRes.data || [];
-          } catch (err) {
-            console.error(`Lỗi tải thành tích cho đội ${t.name}:`, err);
-            achievementsMap[t._id] = [];
+            return { id: t._id, data: achRes.data || [] };
+          } catch (err: any) {
+            console.warn(`Lỗi tải thành tích cho đội ${t.name}:`, err?.message || err);
+            return { id: t._id, data: [] };
           }
-        }
+        });
+
+        const results = await Promise.allSettled(requests);
+        results.forEach((res) => {
+          if (res.status === 'fulfilled' && res.value) {
+            achievementsMap[res.value.id] = res.value.data;
+          }
+        });
         setAchievements(achievementsMap);
-      } catch (err) {
-        console.error("Lỗi tải lịch sử đội thi:", err);
+      } catch (err: any) {
+        console.warn("Lỗi tải lịch sử đội thi:", err?.message || err);
       } finally {
         setLoading(false);
       }
@@ -92,7 +99,7 @@ export default function MyAchievements() {
       </div>
 
       {teams.length === 0 ? (
-        <div className="glass p-12 rounded-3xl text-center max-w-xl mx-auto space-y-4 bg-white/70 backdrop-blur-md border border-slate-200">
+        <div className="glass p-12 rounded-3xl text-center max-w-xl mx-auto space-y-4 bg-white/95 border border-slate-200">
           <Trophy size={48} className="mx-auto text-slate-400" />
           <p className="text-sm font-bold text-slate-700">Bạn chưa có thành tích nào</p>
           <div className="pt-2">

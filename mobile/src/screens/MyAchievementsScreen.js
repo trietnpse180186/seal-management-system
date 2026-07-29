@@ -28,18 +28,25 @@ export default function MyAchievementsScreen({ navigation }) {
       setTeamsHistory(history);
 
       const map = {};
-      for (const t of history) {
+      const requests = history.map(async (t) => {
         try {
           const achRes = await api.get(`/grades/team/${t._id}/achievements`);
-          map[t._id] = achRes.data || [];
+          return { id: t._id, data: achRes.data || [] };
         } catch (err) {
-          console.error(`Lỗi tải thành tích cho đội ${t.name}:`, err);
-          map[t._id] = [];
+          console.warn(`Lỗi tải thành tích cho đội ${t.name}:`, err.message || err);
+          return { id: t._id, data: [] };
         }
-      }
+      });
+
+      const results = await Promise.allSettled(requests);
+      results.forEach((res) => {
+        if (res.status === 'fulfilled' && res.value) {
+          map[res.value.id] = res.value.data;
+        }
+      });
       setAchievementsMap(map);
     } catch (err) {
-      console.error('Lỗi tải lịch sử đội thi:', err);
+      console.warn('Lỗi tải lịch sử đội thi:', err.message || err);
     } finally {
       setLoading(false);
       setRefreshing(false);

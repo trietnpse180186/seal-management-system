@@ -27,9 +27,7 @@ body {
 
 /* Premium Visual Elements */
 .glass {
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(15, 23, 42, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -68,16 +66,12 @@ body {
 }
 
 .glass-light {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .glass-nav {
-  background: rgba(9, 13, 22, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(9, 13, 22, 0.95);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -111,18 +105,19 @@ body {
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #090d16;
+  background: #ffffff !important;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  border-radius: 4px;
+  background: #cbd5e1 !important;
+  border-radius: 9999px !important;
+  border: 1px solid #ffffff !important;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #94a3b8 !important;
 }
 
 /* Input Styles */
@@ -138,6 +133,18 @@ input:focus, select:focus, textarea:focus {
   outline: none;
   box-shadow: 0 0 0 2px rgba(0, 240, 255, 0.15), 0 0 10px rgba(0, 240, 255, 0.2);
   background-color: rgba(15, 23, 42, 0.8);
+}
+
+/* Chat Input Light Mode Fix - Prevents global input:focus dark background override */
+.chat-input-light,
+.chat-input-light:focus,
+.chat-input-light:active,
+.chat-input-light:focus-visible {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 0 0 2px rgba(242, 112, 36, 0.25) !important;
+  outline: none !important;
 }
 
 /* Font Utility */

@@ -378,17 +378,17 @@ export default function AdminLiveInteraction() {
   return (
     <div className="space-y-6 font-sans text-slate-300">
       {/* HEADER BAR */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-950 p-6 rounded-2xl border border-slate-800/80 shadow-2xl gap-4 relative z-20">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl border border-slate-200 shadow-sm gap-4 relative z-20">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 drop-shadow-[0_0_15px_rgba(6,182,212,0.3)]">
-            <Tv size={24} className="animate-pulse" />
+          <div className="w-12 h-12 rounded-xl bg-[#F27024]/10 border border-[#F27024]/20 flex items-center justify-center text-[#F27024]">
+            <Tv size={24} />
           </div>
           <div>
-            <h2 className="text-xl font-extrabold text-white tracking-widest font-mono">
+            <h2 className="text-xl font-extrabold text-slate-800 tracking-widest font-mono">
               SEAL LIVE CONTROL CENTER
             </h2>
-            <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5 font-mono">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping inline-block"></span>
+            <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5 font-mono">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
               <span>Đồng bộ và điều khiển chấm điểm thời gian thực</span>
             </p>
           </div>
@@ -432,15 +432,15 @@ export default function AdminLiveInteraction() {
         {/* LEFT COLUMN: TEAMS RANKING & SOCKET LOGS (col-span-5) */}
         <div className="lg:col-span-5 space-y-6">
           {/* TEAMS CARD */}
-          <div className="bg-slate-950/60 backdrop-blur-md rounded-2xl border border-slate-800/80 p-5 space-y-4 shadow-xl">
-            <div className="flex justify-between items-center pb-2 border-b border-slate-800/60">
-              <h3 className="text-sm font-bold text-white font-mono flex items-center gap-2">
-                <ListFilter size={16} className="text-cyan-400" />
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+              <h3 className="text-sm font-bold text-slate-800 font-mono flex items-center gap-2">
+                <ListFilter size={16} className="text-[#F27024]" />
                 <span>DANH SÁCH ĐỘI & ĐIỂM SỐ LIVE</span>
               </h3>
               <button
                 onClick={fetchLiveRankings}
-                className="text-[10px] font-mono text-cyan-400 hover:text-cyan-300 transition-colors"
+                className="text-[10px] font-mono text-[#F27024] hover:text-[#d95f1f] transition-colors"
               >
                 Tải lại
               </button>
@@ -546,9 +546,9 @@ export default function AdminLiveInteraction() {
           </div>
 
           {/* REAL-TIME EVENT LOGS BLOCK */}
-          <div className="bg-slate-950/60 backdrop-blur-md rounded-2xl border border-slate-800/80 p-5 space-y-4 shadow-xl">
-            <h3 className="text-sm font-bold text-white font-mono flex items-center gap-2 pb-2 border-b border-slate-800/60">
-              <Activity size={16} className="text-cyan-400" />
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
+            <h3 className="text-sm font-bold text-slate-800 font-mono flex items-center gap-2 pb-2 border-b border-slate-100">
+              <Activity size={16} className="text-[#F27024]" />
               <span>LIVE LOGGING (SOCKET)</span>
             </h3>
             <div className="space-y-2.5 max-h-[180px] overflow-y-auto text-[10px] font-mono pr-1">
@@ -556,16 +556,16 @@ export default function AdminLiveInteraction() {
                 liveLogs.map((log, lIdx) => (
                   <div
                     key={lIdx}
-                    className="flex gap-2 pb-2 border-b border-slate-900/50 last:border-0 last:pb-0"
+                    className="flex gap-2 pb-2 border-b border-slate-100 last:border-0 last:pb-0"
                   >
-                    <span className="text-slate-500 shrink-0">
+                    <span className="text-slate-400 shrink-0">
                       {new Date(log.createdAt).toLocaleTimeString()}
                     </span>
-                    <span className="text-slate-350">{log.details}</span>
+                    <span className="text-slate-600">{log.details}</span>
                   </div>
                 ))
               ) : (
-                <p className="text-center py-4 text-slate-600 italic">
+                <p className="text-center py-4 text-slate-400 italic">
                   Chờ các tương tác hoặc cập nhật từ server...
                 </p>
               )}
@@ -576,7 +576,7 @@ export default function AdminLiveInteraction() {
         {/* RIGHT COLUMN: DETAIL CONTROL PANEL & SCORE OVERRIDE (col-span-7) */}
         <div className="lg:col-span-7 space-y-6">
           {selectedTeam ? (
-            <div className="bg-slate-950/60 backdrop-blur-md rounded-2xl border border-slate-800/80 p-6 space-y-6 shadow-xl">
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-6 shadow-sm">
               {/* Profile Card */}
               <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pb-4 border-b border-slate-850">
                 <div className="space-y-1">
@@ -764,10 +764,10 @@ export default function AdminLiveInteraction() {
               </div>
             </div>
           ) : (
-            <div className="bg-slate-950/60 backdrop-blur-md rounded-2xl border border-slate-800/80 p-12 text-center shadow-xl flex flex-col items-center justify-center space-y-4">
-              <Tv size={48} className="text-slate-700 animate-pulse" />
+            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm flex flex-col items-center justify-center space-y-4">
+              <Tv size={48} className="text-slate-300" />
               <div>
-                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider font-mono">
+                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider font-mono">
                   LIVE CONTROL PANEL
                 </h3>
                 <p className="text-xs text-slate-500 max-w-sm mt-1 mx-auto leading-relaxed">

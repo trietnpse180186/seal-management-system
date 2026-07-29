@@ -12,6 +12,8 @@ import JudgeDashboardScreen from '../screens/JudgeDashboardScreen';
 import JudgeScoringScreen from '../screens/JudgeScoringScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ChatScreen from '../screens/ChatScreen';
+import MentorDashboardScreen from '../screens/MentorDashboardScreen';
+import MentorTeamDetailScreen from '../screens/MentorTeamDetailScreen';
 
 const Stack = createStackNavigator();
 
@@ -34,6 +36,8 @@ export default function AppNavigator({ initialRoute = 'Welcome' }) {
       <Stack.Screen name="RegisterTeam" component={RegisterTeamScreen} />
       <Stack.Screen name="TeamArea" component={TeamAreaScreen} />
       <Stack.Screen name="JudgeDashboard" component={JudgeDashboardScreen} />
+      <Stack.Screen name="MentorDashboard" component={MentorDashboardScreen} />
+      <Stack.Screen name="MentorTeamDetail" component={MentorTeamDetailScreen} />
       <Stack.Screen name="JudgeScoring" component={JudgeScoringScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
     </Stack.Navigator>

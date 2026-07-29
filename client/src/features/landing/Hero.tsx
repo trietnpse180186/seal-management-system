@@ -338,6 +338,18 @@ export default function Hero({ user, roles }: HeroProps) {
             />
           </div>
         </div>
+
+        {/* Right Video Block */}
+        <div className="hero-video relative h-72 sm:h-96 md:h-[420px] lg:h-[480px] aspect-video max-w-full flex items-center justify-center opacity-0">
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover"
+            src="/davinci_edit_the_existing_video_only__keep_the_exact_shiel.mp4"
+          />
+        </div>
       </div>
 
       {/* 5. Bottom Center Scroll Indicator */}

@@ -14,6 +14,8 @@ interface MemberInput {
   githubUsername: string;
   studentId: string;
   university: string;
+  height: string;
+  weight: string;
   universityCustom?: string;
   isUniversityCustom?: boolean;
   checkingStatus?: 'idle' | 'checking' | 'eligible' | 'conflict';
@@ -35,6 +37,8 @@ export default function RegisterTeam() {
   const [leaderStudentId, setLeaderStudentId] = useState('');
   const [leaderGithubUsername, setLeaderGithubUsername] = useState('');
   const [leaderUniversity, setLeaderUniversity] = useState('');
+  const [leaderHeight, setLeaderHeight] = useState('');
+  const [leaderWeight, setLeaderWeight] = useState('');
 
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
@@ -219,6 +223,8 @@ export default function RegisterTeam() {
           setLeaderFullName(u.fullName || '');
           setLeaderStudentId(u.studentId || '');
           setLeaderGithubUsername(u.githubUsername || '');
+          setLeaderHeight(u.height !== undefined && u.height !== null ? String(u.height) : '');
+          setLeaderWeight(u.weight !== undefined && u.weight !== null ? String(u.weight) : '');
           const univ = u.university || '';
           if (univ) {
             setLeaderUniversity(univ);
@@ -249,6 +255,8 @@ export default function RegisterTeam() {
           if (u.studentId) setLeaderStudentId(u.studentId);
           if (u.githubUsername) setLeaderGithubUsername(u.githubUsername);
           if (u.university) setLeaderUniversity(u.university);
+          if (u.height !== undefined && u.height !== null) setLeaderHeight(String(u.height));
+          if (u.weight !== undefined && u.weight !== null) setLeaderWeight(String(u.weight));
         }
       } catch (err) {
         // Do not overwrite manually entered fields on lookup failure
@@ -297,6 +305,8 @@ export default function RegisterTeam() {
       githubUsername: '',
       studentId: '',
       university: '',
+      height: '',
+      weight: '',
       universityCustom: '',
       isUniversityCustom: false,
       checkingStatus: 'idle',
@@ -373,6 +383,8 @@ export default function RegisterTeam() {
             if (u.studentId) nextUpdated[index].studentId = u.studentId;
             if (u.githubUsername) nextUpdated[index].githubUsername = u.githubUsername;
             if (u.university) nextUpdated[index].university = u.university;
+            if (u.height !== undefined && u.height !== null) nextUpdated[index].height = String(u.height);
+            if (u.weight !== undefined && u.weight !== null) nextUpdated[index].weight = String(u.weight);
           }
         } else {
           nextUpdated[index] = {
@@ -414,8 +426,14 @@ export default function RegisterTeam() {
       return;
     }
 
-    if (!leaderFullName.trim() || !leaderGithubUsername.trim()) {
-      setError('Họ tên Trưởng nhóm và GitHub Username là bắt buộc.');
+    if (!leaderFullName.trim() || !leaderGithubUsername.trim() || !leaderHeight || !leaderWeight) {
+      setError('Họ tên, GitHub Username, chiều cao và cân nặng Trưởng nhóm là bắt buộc.');
+      setLoading(false);
+      return;
+    }
+
+    if (isNaN(Number(leaderHeight)) || isNaN(Number(leaderWeight))) {
+      setError('Chiều cao và cân nặng Trưởng nhóm phải là số hợp lệ.');
       setLoading(false);
       return;
     }
@@ -429,8 +447,13 @@ export default function RegisterTeam() {
     // Validate members
     for (let i = 0; i < members.length; i++) {
       const m = members[i];
-      if (!m.email.trim() || !m.fullName.trim() || !m.githubUsername.trim()) {
-        setError(`Thành viên thứ ${i + 1} phải điền đầy đủ Email, Họ Tên và GitHub Username.`);
+      if (!m.email.trim() || !m.fullName.trim() || !m.githubUsername.trim() || !m.height || !m.weight) {
+        setError(`Thành viên thứ ${i + 1} phải điền đầy đủ Email, Họ Tên, GitHub Username, chiều cao và cân nặng.`);
+        setLoading(false);
+        return;
+      }
+      if (isNaN(Number(m.height)) || isNaN(Number(m.weight))) {
+        setError(`Thành viên thứ ${i + 1} phải có chiều cao và cân nặng hợp lệ.`);
         setLoading(false);
         return;
       }
@@ -459,14 +482,18 @@ export default function RegisterTeam() {
             fullName: m.fullName.trim(),
             githubUsername: m.githubUsername.trim(),
             studentId: m.studentId.trim(),
-            university: m.university.trim()
+            university: m.university.trim(),
+            height: Number(m.height),
+            weight: Number(m.weight)
           })),
           leaderInfo: {
             email: leaderEmail.trim(),
             fullName: leaderFullName.trim(),
             studentId: leaderStudentId.trim(),
             githubUsername: leaderGithubUsername.trim(),
-            university: leaderUniversity.trim()
+            university: leaderUniversity.trim(),
+            height: Number(leaderHeight),
+            weight: Number(leaderWeight)
           },
           captchaId,
           captchaValue
@@ -934,6 +961,32 @@ export default function RegisterTeam() {
                   inputClassName="bg-slate-900/50 border border-slate-800 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
                 />
               </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                  Chiều cao (cm) <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  required
+                  value={leaderHeight}
+                  onChange={e => setLeaderHeight(e.target.value)}
+                  className="w-full bg-slate-900/50 border border-slate-800 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(0,240,255,0.05)] transition-all font-mono"
+                  placeholder="Ví dụ: 170"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                  Cân nặng (kg) <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  required
+                  value={leaderWeight}
+                  onChange={e => setLeaderWeight(e.target.value)}
+                  className="w-full bg-slate-900/50 border border-slate-800 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-cyan-500/50 focus:shadow-[0_0_15px_rgba(0,240,255,0.05)] transition-all font-mono"
+                  placeholder="Ví dụ: 60"
+                />
+              </div>
             </div>
           </div>
 
@@ -1094,6 +1147,28 @@ export default function RegisterTeam() {
                           placeholder="Nhập hoặc chọn trường..."
                           className="w-full"
                           inputClassName="bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1">Chiều cao (cm) <span className="text-rose-500">*</span></label>
+                        <input
+                          type="number"
+                          required
+                          placeholder="Ví dụ: 170"
+                          value={member.height}
+                          onChange={e => handleMemberChange(index, 'height', e.target.value)}
+                          className="w-full bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-400 mb-1">Cân nặng (kg) <span className="text-rose-500">*</span></label>
+                        <input
+                          type="number"
+                          required
+                          placeholder="Ví dụ: 60"
+                          value={member.weight}
+                          onChange={e => handleMemberChange(index, 'weight', e.target.value)}
+                          className="w-full bg-slate-900/50 border border-slate-800 text-white px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
                         />
                       </div>
                     </div>

@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
+import logo from "../../assets/logo.png";
 import {
   LogOut,
   Award,
@@ -136,7 +137,7 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
       try {
         new Notification(notif.title, {
           body: notif.body,
-          icon: "/favicon.ico",
+          icon: "/favicon.png",
         });
       } catch (err) {
         console.warn("Failed to create desktop notification:", err);
@@ -261,6 +262,7 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
     location.pathname === "/album" ||
     location.pathname === "/guest-portal" ||
     location.pathname === "/team-area" ||
+    location.pathname === "/confirm-survey" ||
     location.pathname === "/my-achievements";
 
   const linkClass = (path: string, forceActive?: boolean) => {
@@ -306,8 +308,9 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
       <div className={`w-full flex items-center justify-between px-4 sm:px-6 lg:px-8 ${isLandingPage ? (isScrolled ? "py-3" : "py-4") : "py-4"}`}>
         {/* Brand Logo */}
         <div className="flex-1 flex justify-start">
-          <Link to="/" className="flex items-center gap-2 group">
-            <div>
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <img src={logo} alt="SEAL Logo" className="h-8 w-auto object-contain" />
+            <div className="flex items-center">
               <span className={`font-extrabold text-lg tracking-wider font-mono-tech ${usesLightShell ? "text-[#F27024] text-orange-glow" : "text-cyan-400 text-cyan-glow"}`}>
                 SEAL
               </span>

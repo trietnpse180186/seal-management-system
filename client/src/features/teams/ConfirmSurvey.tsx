@@ -120,8 +120,8 @@ export default function ConfirmSurvey() {
   };
 
   return (
-    <div className="team-area-light min-h-screen bg-[#faf9f6] text-slate-800 font-sans flex items-center justify-center p-4 sm:p-6 lg:p-8">
-      <div className="w-full max-w-2xl bg-white border border-slate-200/80 rounded-3xl shadow-xl p-6 sm:p-10 space-y-8 relative overflow-hidden">
+    <main className="team-area-light min-h-screen bg-[#faf9f6] text-slate-800 font-sans flex items-center justify-center p-4 sm:p-8 lg:p-12">
+      <section aria-labelledby="confirm-survey-title" className="w-full max-w-3xl bg-white border border-orange-100 rounded-3xl shadow-[0_24px_70px_rgba(15,23,42,0.10)] p-6 sm:p-10 space-y-8 relative overflow-visible">
         {/* Top Decorative Banner */}
         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-orange-400 via-[#F27024] to-amber-500"></div>
 
@@ -132,7 +132,7 @@ export default function ConfirmSurvey() {
             <span>XÁC NHẬN THAM GIA THÀNH CÔNG</span>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h1 id="confirm-survey-title" className="text-2xl sm:text-3xl font-extrabold text-slate-950 tracking-tight">
             Khảo sát Lịch sử Tham gia SEAL Hackathon
           </h1>
 
@@ -156,16 +156,18 @@ export default function ConfirmSurvey() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Option A: Chưa từng */}
-            <div
+            <button
+              type="button"
+              aria-pressed={hasParticipated === "never"}
               onClick={() => {
                 setHasParticipated("never");
                 setVerifyStatus("idle");
                 setVerifyMessage("");
               }}
-              className={`p-5 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-4 ${
+              className={`w-full p-5 rounded-2xl border text-left transition-all cursor-pointer flex items-start gap-4 focus:outline-none focus:ring-2 focus:ring-[#F27024]/30 ${
                 hasParticipated === "never"
-                  ? "bg-orange-500/10 border-[#F27024] shadow-md"
-                  : "bg-slate-50 hover:bg-slate-100/80 border-slate-200"
+                  ? "bg-orange-50 border-[#F27024] shadow-[0_10px_24px_rgba(242,112,36,0.12)]"
+                  : "bg-white hover:bg-orange-50/60 hover:border-orange-200 border-slate-200"
               }`}
             >
               <div className={`p-2.5 rounded-xl shrink-0 ${hasParticipated === "never" ? "bg-[#F27024] text-white" : "bg-slate-200 text-slate-600"}`}>
@@ -179,19 +181,21 @@ export default function ConfirmSurvey() {
                   Đây là mùa giải đầu tiên tôi đăng ký tham gia SEAL Hackathon.
                 </p>
               </div>
-            </div>
+            </button>
 
             {/* Option B: Đã từng */}
-            <div
+            <button
+              type="button"
+              aria-pressed={hasParticipated === "past"}
               onClick={() => {
                 setHasParticipated("past");
                 setVerifyStatus("idle");
                 setVerifyMessage("");
               }}
-              className={`p-5 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-4 ${
+              className={`w-full p-5 rounded-2xl border text-left transition-all cursor-pointer flex items-start gap-4 focus:outline-none focus:ring-2 focus:ring-[#F27024]/30 ${
                 hasParticipated === "past"
-                  ? "bg-orange-500/10 border-[#F27024] shadow-md"
-                  : "bg-slate-50 hover:bg-slate-100/80 border-slate-200"
+                  ? "bg-orange-50 border-[#F27024] shadow-[0_10px_24px_rgba(242,112,36,0.12)]"
+                  : "bg-white hover:bg-orange-50/60 hover:border-orange-200 border-slate-200"
               }`}
             >
               <div className={`p-2.5 rounded-xl shrink-0 ${hasParticipated === "past" ? "bg-[#F27024] text-white" : "bg-slate-200 text-slate-600"}`}>
@@ -205,13 +209,13 @@ export default function ConfirmSurvey() {
                   Tôi đã từng tham gia thi đấu ở các mùa SEAL Hackathon trước đó.
                 </p>
               </div>
-            </div>
+            </button>
           </div>
         </div>
 
         {/* Dynamic Section for Option "Đã từng" */}
         {hasParticipated === "past" && (
-          <div className="bg-orange-500/5 p-6 rounded-2xl border border-orange-500/20 space-y-5 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="bg-orange-50/70 p-5 sm:p-6 rounded-2xl border border-orange-200 space-y-5 animate-in fade-in slide-in-from-top-2 duration-200">
             <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-[#F27024] flex items-center gap-2">
               <Award size={16} />
               <span>XÁC THỰC LỊCH SỬ THAM GIA MÙA TRƯỚC</span>
@@ -222,7 +226,7 @@ export default function ConfirmSurvey() {
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
                   <Calendar size={14} className="text-[#F27024]" />
-                  <span>Chọn Sự kiện đã tham gia trước đó <span className="text-rose-500">*</span></span>
+                  <span>Tên sự kiện <span className="text-rose-500">*</span></span>
                 </label>
                 {loadingEvents ? (
                   <p className="text-xs text-slate-500 animate-pulse font-mono">Đang tải danh sách sự kiện...</p>
@@ -234,7 +238,7 @@ export default function ConfirmSurvey() {
                       value: e._id,
                       label: `${e.name} (${e.semester} ${e.year})`,
                     }))}
-                    placeholder="Chọn sự kiện đã kết thúc..."
+                    placeholder="Chọn sự kiện"
                     className="w-full font-mono"
                   />
                 )}
@@ -251,7 +255,7 @@ export default function ConfirmSurvey() {
                   value={pastEmail}
                   onChange={(e) => setPastEmail(e.target.value)}
                   placeholder="Nhập email bạn đã từng đăng ký ở mùa trước..."
-                  className="w-full bg-white border border-slate-300 text-slate-900 px-4 py-2.5 rounded-xl text-xs focus:outline-none focus:border-[#F27024] transition-all font-mono"
+                  className="w-full min-h-11 bg-white border border-slate-300 text-slate-900 px-4 py-2.5 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#F27024]/20 focus:border-[#F27024] transition-all"
                 />
               </div>
 
@@ -260,7 +264,7 @@ export default function ConfirmSurvey() {
                 type="button"
                 onClick={handleVerifyPastParticipation}
                 disabled={verifying || !selectedEventId || !pastEmail.trim()}
-                className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-[#F27024] hover:bg-[#e05e1b] disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold rounded-xl text-xs transition-all uppercase tracking-wider cursor-pointer shadow-md active:scale-95"
+                className="w-full min-h-12 flex items-center justify-center gap-2 px-5 py-3 bg-[#F27024] hover:bg-[#d95f1d] focus:outline-none focus:ring-2 focus:ring-[#F27024]/30 focus:ring-offset-2 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none text-white font-bold rounded-xl text-xs transition-all uppercase tracking-wider cursor-pointer disabled:cursor-not-allowed shadow-[0_10px_24px_rgba(242,112,36,0.22)] active:scale-[0.99]"
               >
                 {verifying ? (
                   <>
@@ -310,13 +314,13 @@ export default function ConfirmSurvey() {
             type="button"
             disabled={!hasParticipated}
             onClick={handleFinish}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold rounded-2xl text-xs uppercase tracking-wider transition-all cursor-pointer shadow-lg active:scale-95"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 bg-[#F27024] hover:bg-[#d95f1d] focus:outline-none focus:ring-2 focus:ring-[#F27024]/30 focus:ring-offset-2 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer disabled:cursor-not-allowed shadow-[0_10px_24px_rgba(242,112,36,0.22)] active:scale-[0.99]"
           >
             <span>HOÀN TẤT & VỀ TRANG ĐỘI THI</span>
             <ArrowRight size={16} />
           </button>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }

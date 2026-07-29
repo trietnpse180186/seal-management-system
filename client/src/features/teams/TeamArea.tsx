@@ -280,6 +280,10 @@ export default function TeamArea() {
             if (u.githubUsername)
               nextUpdated[index].githubUsername = u.githubUsername;
             if (u.university) nextUpdated[index].university = u.university;
+            if (u.height !== undefined && u.height !== null)
+              nextUpdated[index].height = String(u.height);
+            if (u.weight !== undefined && u.weight !== null)
+              nextUpdated[index].weight = String(u.weight);
           }
         } else {
           nextUpdated[index] = {
@@ -355,6 +359,8 @@ export default function TeamArea() {
           githubUsername: m.userId?.githubUsername || "",
           studentId: m.userId?.studentId || "",
           university: m.userId?.university || "",
+          height: m.userId?.height !== undefined && m.userId?.height !== null ? String(m.userId?.height) : "",
+          weight: m.userId?.weight !== undefined && m.userId?.weight !== null ? String(m.userId?.weight) : "",
         })),
       );
     }
@@ -552,6 +558,27 @@ export default function TeamArea() {
       return;
     }
 
+    // Validate members
+    for (let i = 0; i < editMembers.length; i++) {
+      const m = editMembers[i];
+      if (m.isNew && !m.email.trim()) {
+        toast.error(`Thành viên thứ ${i + 1}: Email là bắt buộc.`);
+        return;
+      }
+      if (!m.fullName.trim() || !m.githubUsername.trim() || !m.height || !m.weight) {
+        toast.error(
+          `Thành viên thứ ${i + 1}: Họ tên, GitHub Username, chiều cao và cân nặng là bắt buộc.`,
+        );
+        return;
+      }
+      if (isNaN(Number(m.height)) || isNaN(Number(m.weight))) {
+        toast.error(
+          `Thành viên thứ ${i + 1}: Chiều cao và cân nặng phải là số hợp lệ.`,
+        );
+        return;
+      }
+    }
+
     setSavingBasicInfo(true);
     try {
       const res = await axios.put(
@@ -563,6 +590,10 @@ export default function TeamArea() {
             githubUsername: m.githubUsername,
             studentId: m.studentId || "",
             university: m.university || "",
+            height: Number(m.height),
+            weight: Number(m.weight),
+            isNew: m.isNew,
+            email: m.email,
           })),
         },
         {
@@ -1753,6 +1784,44 @@ export default function TeamArea() {
                             inputClassName="w-full bg-slate-955 border border-slate-800 text-slate-200 px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
                           />
                         </div>
+
+                        {/* Height */}
+                        <div className="space-y-1">
+                          <label className="block text-slate-455 font-semibold uppercase tracking-wider text-[9px]">
+                            Chiều cao (cm) <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            required
+                            value={member.height || ""}
+                            onChange={(e) => {
+                              const updated = [...editMembers];
+                              updated[index].height = e.target.value;
+                              setEditMembers(updated);
+                            }}
+                            placeholder="Ví dụ: 170"
+                            className="w-full bg-slate-955 border border-slate-800 text-slate-200 px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                          />
+                        </div>
+
+                        {/* Weight */}
+                        <div className="space-y-1">
+                          <label className="block text-slate-455 font-semibold uppercase tracking-wider text-[9px]">
+                            Cân nặng (kg) <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            required
+                            value={member.weight || ""}
+                            onChange={(e) => {
+                              const updated = [...editMembers];
+                              updated[index].weight = e.target.value;
+                              setEditMembers(updated);
+                            }}
+                            placeholder="Ví dụ: 60"
+                            className="w-full bg-slate-955 border border-slate-800 text-slate-200 px-3.5 py-2.5 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
+                          />
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1771,6 +1840,8 @@ export default function TeamArea() {
                             githubUsername: "",
                             studentId: "",
                             university: "",
+                            height: "",
+                            weight: "",
                           },
                         ]);
                       }}

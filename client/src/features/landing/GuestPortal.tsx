@@ -344,7 +344,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
               muted
               playsInline
               className="w-full h-full object-cover opacity-80 mix-blend-screen"
-              src="/mp_.mp4"
+              src="/davinci_edit_the_existing_video_only__keep_the_exact_shiel.mp4"
             />
             <div className="absolute inset-0 border border-[#F27024]/20 pointer-events-none rounded-xl"></div>
           </div>

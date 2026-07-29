@@ -7,6 +7,7 @@ import AppRoutes from './app/routes';
 import { AppProviders } from './app/providers';
 import errorMessages from './utils/errorMessages';
 import MentorChat from './features/mentor/MentorChat';
+import ProfileModal from './features/profile/ProfileModal';
 import { toast } from 'sonner';
 import { Settings2, UserCog } from 'lucide-react';
 
@@ -133,6 +134,16 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
       )}
 
       {isProfileOpen && (
+        <ProfileModal
+          user={user}
+          isLight={usesLightShell}
+          onClose={() => setIsProfileOpen(false)}
+          onLogout={handleLogout}
+          onUserUpdated={setUser}
+        />
+      )}
+
+      {isProfileOpen && isEditing && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-955/95 p-4 animate-fade-in animate-duration-150">
           <div className={`relative w-full max-w-md p-6 rounded-2xl shadow-2xl transition-all duration-300 font-sans ${
             usesLightShell 

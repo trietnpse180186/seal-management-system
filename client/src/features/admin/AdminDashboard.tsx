@@ -201,15 +201,15 @@ export default function AdminDashboard() {
       </div>
 
       {/* EVENT LOGS SECTION */}
-      <div className="w-full space-y-4 pt-6 border-t border-slate-800/50">
+      <div className="w-full space-y-4 pt-6 border-t border-slate-200">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <h3 className="text-md font-bold text-white flex items-center gap-2 font-mono">
-            <Info size={18} className="text-cyan-400" />
+          <h3 className="text-md font-bold text-slate-800 flex items-center gap-2 font-mono">
+            <Info size={18} className="text-[#F27024]" />
             <span>NHẬT KÝ HOẠT ĐỘNG HỆ THỐNG</span>
           </h3>
           <div className="flex flex-wrap gap-3 items-center">
             {/* Filter buttons */}
-            <div className="flex bg-slate-100 dark:bg-slate-900/60 p-0.5 rounded-lg border border-slate-200 dark:border-white/5 shadow-inner shrink-0">
+            <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200 shadow-inner shrink-0">
               {[
                 { value: 'all', label: 'Tất cả' },
                 { value: 'operation', label: 'Thao tác' },
@@ -222,11 +222,11 @@ export default function AdminDashboard() {
                   className={`px-3 py-1.5 text-[9px] font-bold rounded uppercase transition-all cursor-pointer ${
                     logFilter === btn.value
                       ? btn.value === 'error'
-                        ? 'bg-rose-500 !text-white shadow-[0_0_10px_rgba(244,63,94,0.4)]'
+                        ? 'bg-rose-500 !text-white shadow-sm'
                         : btn.value === 'grading'
-                        ? 'bg-amber-500 !text-white shadow-[0_0_10px_rgba(245,158,11,0.4)]'
-                        : 'bg-[#F27024] dark:bg-cyan-500 !text-white shadow-sm'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                        ? 'bg-amber-500 !text-white shadow-sm'
+                        : 'bg-[#F27024] !text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   {btn.label}
@@ -235,14 +235,14 @@ export default function AdminDashboard() {
             </div>
             <button
               onClick={fetchAllLogs}
-              className="bg-slate-900 hover:bg-slate-850 text-slate-350 hover:text-white px-3 py-1.5 rounded-xl border border-slate-850 text-xs font-mono transition-all cursor-pointer shrink-0"
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-mono transition-all cursor-pointer shrink-0"
             >
               Tải lại
             </button>
           </div>
         </div>
 
-        <div className="glass p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 max-h-96 overflow-y-auto">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm max-h-96 overflow-y-auto">
           {filteredLogs.length > 0 ? (
             <div className="flow-root">
               <ul className="-mb-8">
@@ -251,23 +251,23 @@ export default function AdminDashboard() {
                     <div className="relative pb-8">
                       {logIdx !== filteredLogs.length - 1 ? (
                         <span
-                          className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-slate-800"
+                          className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-slate-200"
                           aria-hidden="true"
                         />
                       ) : null}
                       <div 
                         onClick={() => setSelectedLog(log)}
-                        className="relative flex space-x-3 cursor-pointer group hover:bg-slate-800/30 p-3 -m-3 rounded-2xl transition-all"
+                        className="relative flex space-x-3 cursor-pointer group hover:bg-slate-50 p-3 -m-3 rounded-2xl transition-all"
                       >
                         <div>
-                          <span className="h-8 w-8 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center ring-8 ring-slate-900/50">
+                          <span className="h-8 w-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center ring-4 ring-slate-100">
                             <span className={`h-2 w-2 rounded-full animate-pulse ${getLogDotColor(log.type)}`} />
                           </span>
                         </div>
                         <div className="flex-1 min-w-0 pt-1.5 flex justify-between space-x-4">
                           <div>
-                            <p className="text-sm text-slate-200">
-                              <span className="text-cyan-400 font-bold font-mono mr-2 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20 text-[10px]">
+                            <p className="text-sm text-slate-800">
+                              <span className="text-[#F27024] font-bold font-mono mr-2 bg-[#F27024]/10 px-2 py-0.5 rounded border border-[#F27024]/20 text-[10px]">
                                 {log.eventId?.name || "HỆ THỐNG"}
                               </span>
                               {log.details}{" "}
@@ -278,7 +278,7 @@ export default function AdminDashboard() {
                             </p>
                             <p className="text-xs text-slate-500 mt-1.5 flex items-center gap-2">
                               <span>Thực hiện bởi:</span>
-                              <span className="text-cyan-400 font-semibold font-mono">
+                              <span className="text-[#F27024] font-semibold font-mono">
                                 {log.actorId?.fullName || "Hệ thống"}
                               </span>
                               <span>({log.actorId?.email || "N/A"})</span>
@@ -288,7 +288,7 @@ export default function AdminDashboard() {
                             <time dateTime={log.createdAt}>
                               {new Date(log.createdAt).toLocaleString("vi-VN")}
                             </time>
-                            <span className="text-cyan-400 opacity-0 group-hover:opacity-100 transition-all text-xs font-mono flex items-center gap-1 mt-1">
+                            <span className="text-[#F27024] opacity-0 group-hover:opacity-100 transition-all text-xs font-mono flex items-center gap-1 mt-1">
                               <span>Chi tiết</span>
                               <Eye size={12} />
                             </span>

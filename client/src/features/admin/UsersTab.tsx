@@ -230,13 +230,13 @@ export const UsersTab: React.FC<UsersTabProps> = ({
   return (
     <div className="space-y-6 font-sans">
       {/* Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-900/60 border border-slate-800/80 p-5 rounded-2xl backdrop-blur-md">
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-white border border-slate-200 shadow-sm p-5 rounded-2xl">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2 font-mono">
-            <Users className="text-cyan-400" size={24} />
+          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 font-mono">
+            <Users className="text-[#F27024]" size={24} />
             <span>{isAssistant ? "Danh sách Thí sinh" : "Quản lý Tài khoản"}</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             {isAssistant
               ? "Xem danh sách các thí sinh chính thức tham gia cuộc thi."
               : "Quản lý danh sách tài khoản người dùng tham gia hệ thống."}
@@ -246,7 +246,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative">
             <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
               size={16}
             />
             <input
@@ -254,14 +254,14 @@ export const UsersTab: React.FC<UsersTabProps> = ({
               placeholder="Tìm theo tên, email, MSSV..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 w-56 transition-all font-mono"
+              className="bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#F27024] w-56 transition-all font-mono"
             />
           </div>
 
           {!readOnly && !isAssistant && (
             <button
               onClick={handleOpenCreateModal}
-              className="bg-cyan-500 hover:bg-cyan-400 text-white px-4 py-2 rounded-xl text-xs font-bold font-mono flex items-center gap-2 shadow-lg shadow-cyan-500/20 transition-all cursor-pointer shrink-0"
+              className="bg-[#F27024] hover:bg-[#d95f1f] text-white px-4 py-2 rounded-xl text-xs font-bold font-mono flex items-center gap-2 shadow-sm transition-all cursor-pointer shrink-0"
             >
               <UserPlus size={16} />
               Thêm Tài Khoản Mới

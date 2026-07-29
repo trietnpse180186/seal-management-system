@@ -55,7 +55,7 @@ async function callN8nWebhook(payload) {
   console.log(`[N8N] Calling n8n webhook: ${n8nUrl} for ${payload.analysisType}...`);
   
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s timeout
+  const timeoutId = setTimeout(() => controller.abort(), 300000); // 300s (5 min) timeout — n8n cần 2-3 phút để xử lý Gemini AI
 
   try {
     const response = await fetch(n8nUrl, {
@@ -102,7 +102,7 @@ async function callN8nWebhook(payload) {
     const latency = Date.now() - startTime;
     hitlManager.recordTelemetry(latency, 0, false);
     if (error.name === 'AbortError') {
-      console.error(`[N8N] Webhook call timed out after 35 seconds.`);
+      console.error(`[N8N] Webhook call timed out after 300 seconds (5 min).`);
     } else {
       console.error(`[N8N] Webhook call failed:`, error.message);
     }

@@ -414,7 +414,7 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
                     <Bell size={18} />
                     {unreadCount > 0 && (
                       <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+
                         <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 border border-slate-900"></span>
                       </span>
                     )}
@@ -423,7 +423,7 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
                   {/* Notifications Dropdown */}
                   {showNotifications && (
                     <div className="absolute right-0 mt-2 w-[420px] max-h-96 overflow-y-auto border border-slate-200 rounded-xl shadow-2xl z-50 bg-white text-slate-800 notif-scroll">
-                      <div className="flex justify-between items-center p-3 border-b sticky top-0 backdrop-blur z-10 bg-white/95 border-slate-200 text-slate-800">
+                      <div className="flex justify-between items-center p-3 border-b sticky top-0 z-10 bg-white/100 border-slate-200 text-slate-800">
                         <h4 className="text-sm font-semibold text-slate-800">
                           Thông báo
                         </h4>

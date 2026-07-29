@@ -249,7 +249,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
       )}
 
       {isProfileOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-955/80 backdrop-blur-sm p-4 animate-fade-in animate-duration-150">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-955/95 p-4 animate-fade-in animate-duration-150">
           <div className={`relative w-full max-w-md p-6 rounded-2xl shadow-2xl transition-all duration-300 font-sans ${
             usesLightShell 
               ? "bg-[#faf9f6] border border-slate-200 text-slate-800 profile-modal-light" 

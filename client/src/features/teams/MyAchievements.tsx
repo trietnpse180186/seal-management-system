@@ -99,7 +99,7 @@ export default function MyAchievements() {
       </div>
 
       {teams.length === 0 ? (
-        <div className="glass p-12 rounded-3xl text-center max-w-xl mx-auto space-y-4 bg-white/70 backdrop-blur-md border border-slate-200">
+        <div className="glass p-12 rounded-3xl text-center max-w-xl mx-auto space-y-4 bg-white/95 border border-slate-200">
           <Trophy size={48} className="mx-auto text-slate-400" />
           <p className="text-sm font-bold text-slate-700">Bạn chưa có thành tích nào</p>
           <div className="pt-2">

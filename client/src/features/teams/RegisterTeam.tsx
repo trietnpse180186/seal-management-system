@@ -602,7 +602,7 @@ export default function RegisterTeam() {
       <div className="team-area-light relative overflow-hidden font-sans bg-slate-50 text-slate-900 min-h-screen flex items-center justify-center py-24">
         {/* Background Grid & Glow */}
         <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle_at_15%_15%,rgba(242,112,36,0.08)_0%,transparent_40%),radial-gradient(circle_at_85%_85%,rgba(242,112,36,0.05)_0%,transparent_40%)]"></div>
-        <div className="glass p-8 rounded-3xl border border-slate-200 max-w-xl mx-auto space-y-6 relative z-10 bg-white/70 backdrop-blur-md text-center shadow-lg">
+        <div className="glass p-8 rounded-3xl border border-slate-200 max-w-xl mx-auto space-y-6 relative z-10 bg-white/95 text-center shadow-lg">
           <div className="inline-flex bg-[#F27024]/10 p-4 rounded-full text-[#F27024] mb-2 border border-[#F27024]/20">
             <Users size={40} />
           </div>
@@ -636,7 +636,7 @@ export default function RegisterTeam() {
               <p className="text-slate-500 text-sm mt-1 font-sans">Thành lập nhóm và mời các thành viên tham gia</p>
             </div>
           </div>
-          <div className="glass p-8 rounded-3xl text-center mb-8 border border-slate-200 space-y-4 bg-white/70 backdrop-blur-md">
+          <div className="glass p-8 rounded-3xl text-center mb-8 border border-slate-200 space-y-4 bg-white/95">
             <div className="inline-flex bg-[#F27024]/10 p-4 rounded-full text-[#F27024] mb-2 border border-[#F27024]/20">
               <Calendar size={40} />
             </div>

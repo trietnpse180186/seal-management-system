@@ -51,7 +51,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     <ConfirmContext.Provider value={confirm}>
       {children}
       {isOpen && options && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm transition-all duration-300">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-955/95 transition-all duration-300">
           <div className={`relative w-full max-w-md p-6 rounded-2xl space-y-6 font-sans animate-in fade-in zoom-in-95 duration-200 ${
             usesLightShell 
               ? "bg-[#faf9f6] border border-slate-200 text-slate-800 shadow-2xl" 

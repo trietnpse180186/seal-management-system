@@ -27,23 +27,17 @@ body {
 
 /* Premium Visual Elements */
 .glass {
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(15, 23, 42, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .glass-light {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .glass-nav {
-  background: rgba(9, 13, 22, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(9, 13, 22, 0.95);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 

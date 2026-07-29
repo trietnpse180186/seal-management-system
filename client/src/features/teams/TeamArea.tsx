@@ -822,7 +822,7 @@ export default function TeamArea() {
             return (
               <div className="glass p-5 rounded-2xl border border-cyan-500/20 bg-gradient-to-r from-cyan-950/40 via-slate-900/40 to-cyan-950/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-[0_0_15px_rgba(6,182,212,0.05)]">
                 <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></div>
+                  <div className="w-2 h-2 rounded-full bg-cyan-400"></div>
                   <div>
                     <span className="text-[10px] text-slate-500 block uppercase font-mono tracking-wider font-bold">
                       Trạng thái giải đấu
@@ -1567,7 +1567,7 @@ export default function TeamArea() {
 
         {/* Edit Basic Info Modal */}
         {showEditModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-fade-in animate-duration-150">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 p-4 animate-fade-in animate-duration-150">
             <div className="glass max-w-2xl w-full rounded-3xl border border-slate-800 p-6 md:p-8 space-y-6 relative overflow-hidden shadow-2xl">
               <form
                 onSubmit={handleSaveBasicInfo}
@@ -1892,7 +1892,7 @@ export default function TeamArea() {
 
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/80 backdrop-blur-sm p-4 animate-fade-in animate-duration-150">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/95 p-4 animate-fade-in animate-duration-150">
             <div className="bg-slate-900 max-w-md w-full rounded-3xl border border-rose-500/20 p-6 md:p-8 space-y-6 relative overflow-hidden shadow-2xl">
               <div className="space-y-2 text-left font-sans">
                 <h3 className="text-lg font-black text-rose-400 uppercase tracking-wider font-mono-tech">

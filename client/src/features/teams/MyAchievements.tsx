@@ -32,17 +32,17 @@ export default function MyAchievements() {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/teams/history", {
+        const res = await axios.get("/api/teams/history", {
           headers: { Authorization: `Bearer ${token}` }
         });
-        const teamHistory = res.data || [];
+        const teamHistory: TeamHistory[] = res.data || [];
         setTeams(teamHistory);
 
         // Fetch achievements/rankings for each past team
         const achievementsMap: { [teamId: string]: any[] } = {};
-        const requests = teamHistory.map(async (t) => {
+        const requests = teamHistory.map(async (t: TeamHistory) => {
           try {
-            const achRes = await axios.get(`http://localhost:5000/api/grades/team/${t._id}/achievements`, {
+            const achRes = await axios.get(`/api/grades/team/${t._id}/achievements`, {
               headers: { Authorization: `Bearer ${token}` }
             });
             return { id: t._id, data: achRes.data || [] };

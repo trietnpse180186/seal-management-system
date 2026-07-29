@@ -1,0 +1,17 @@
+/* src/styles/candidate-theme.css - Candidate / Team portal light theme overrides */
+
+.team-area-light {
+  background-color: #faf9f6 !important;
+  color: #1e293b !important;
+}
+
+.team-area-light .glass {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02) !important;
+}
+
+.team-area-light .bg-slate-900\/60,
+.team-area-light .bg-slate-900\/80 {
+  background-color: #ffffff !important;
+}

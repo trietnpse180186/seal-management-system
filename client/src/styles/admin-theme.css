@@ -1,0 +1,17 @@
+/* src/styles/admin-theme.css - Admin & Coordinator light theme overrides */
+
+.coordinator-light-theme {
+  background-color: #faf9f6 !important;
+  color: #1e293b !important;
+}
+
+.coordinator-light-theme .glass {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02) !important;
+}
+
+.coordinator-light-theme div.fixed.inset-0[class*="bg-slate-"],
+.coordinator-light-theme div.fixed.inset-0[class*="bg-black"] {
+  background-color: rgba(15, 23, 42, 0.55) !important;
+}

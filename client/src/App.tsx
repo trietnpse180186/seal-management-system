@@ -1,54 +1,14 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
+import { BrowserRouter, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import errorMessages from './utils/errorMessages';
 import Navbar from './features/landing/Navbar';
 import Footer from './features/landing/Footer';
-import Login from './features/auth/Login';
-import ForgotPassword from './features/auth/ForgotPassword';
-import ResetPassword from './features/auth/ResetPassword';
-import LandingPage from './features/landing/LandingPage';
-import AdminDashboard from './features/admin/AdminDashboard';
-import AdminEvents from './features/admin/AdminEvents';
-import AdminLiveInteraction from './features/admin/AdminLiveInteraction';
-import TeamArea from './features/teams/TeamArea';
-import MyAchievements from './features/teams/MyAchievements';
-import ConfirmSurvey from './features/teams/ConfirmSurvey';
-import Leaderboard from './features/leaderboard/Leaderboard';
-import ProtectedRoute from './features/auth/ProtectedRoute';
-import GuestPortal from './features/landing/GuestPortal';
-import ExpertLayout from './features/shared/ExpertLayout';
-import ExpertDashboard from './features/shared/ExpertDashboard';
-import JudgeProjects from './features/judge/JudgeProjects';
-import JudgeScoring from './features/judge/JudgeScoring';
-import JudgeTeamActivity from './features/judge/JudgeTeamActivity';
-import AdminGradesView from './features/admin/AdminGradesView';
-import AdminUsersView from './features/admin/AdminUsersView';
-import AdminLayout from './features/admin/AdminLayout';
-import MentorDashboard from './features/mentor/MentorDashboard';
-import MentorTeamDetail from './features/mentor/MentorTeamDetail';
+import AppRoutes from './app/routes';
+import { AppProviders } from './app/providers';
+import errorMessages from './utils/errorMessages';
 import MentorChat from './features/mentor/MentorChat';
-import Gallery from './features/landing/Gallery';
-import { Toaster, toast } from 'sonner';
-import { ConformProvider } from './features/shared/ModalConform';
-import { ConfirmProvider } from './features/shared/ConfirmDialog';
+import { toast } from 'sonner';
 import { Settings2, UserCog } from 'lucide-react';
-
-function RedirectToExpertScore() {
-  const { teamId } = useParams();
-  const location = useLocation();
-  return <Navigate to={`/expert/score/${teamId}${location.search}`} replace />;
-}
-
-function RedirectToExpertActivity() {
-  const { teamId } = useParams();
-  return <Navigate to={`/expert/activity/${teamId}`} replace />;
-}
-
-function RedirectToExpertMentorTeam() {
-  const { teamId } = useParams();
-  return <Navigate to={`/expert/mentored-team/${teamId}`} replace />;
-}
 
 function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: any) {
   const location = useLocation();
@@ -158,88 +118,12 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
       )}
       
       <main className="flex-1">
-        <Routes>
-          <Route path="/" element={
-            user ? (
-              (user.isSystemAdmin || roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view' || r.role === 'student_assistant')) ? (
-                <Navigate to="/admin" />
-              ) : (roles.some((r: any) => r.role === 'judge') || roles.some((r: any) => r.role === 'mentor')) ? (
-                <Navigate to="/expert/dashboard" />
-              ) : (
-                <Navigate to="/guest-portal" />
-              )
-            ) : (
-              <LandingPage user={user} roles={roles} />
-            )
-          } />
-          <Route path="/login" element={!user ? <Login onLoginSuccess={handleLoginSuccess} /> : <Navigate to="/" />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-
-          <Route path="/register-team" element={<Navigate to="/team-area" replace />} />
-
-          <Route path="/guest-portal" element={
-            <ProtectedRoute user={user} roles={roles} allowedRoles={['participant']}>
-              <GuestPortal user={user} />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/team-area" element={
-            <ProtectedRoute user={user} roles={roles} allowedRoles={['participant']}>
-              <TeamArea />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/my-achievements" element={
-            <ProtectedRoute user={user} roles={roles} allowedRoles={['participant']}>
-              <MyAchievements />
-            </ProtectedRoute>
-          } />
-          
-          {/* Admin Routes under AdminLayout */}
-          <Route path="/admin" element={
-            <ProtectedRoute user={user} roles={roles} allowedRoles={['coordinator', 'student_assistant']}>
-              <AdminLayout user={user} roles={roles} onLogout={handleLogout} />
-            </ProtectedRoute>
-          }>
-            <Route index element={<AdminDashboard />} />
-            <Route path="events" element={<AdminEvents />} />
-            <Route path="users" element={<AdminUsersView />} />
-            <Route path="live" element={<AdminLiveInteraction />} />
-            <Route path="grades" element={<AdminGradesView user={user} roles={roles} />} />
-            <Route path="leaderboard" element={<Leaderboard user={user} roles={roles} />} />
-            <Route path="album" element={<Gallery user={user} roles={roles} />} />
-          </Route>
-          
-          {/* Expert Sub-Routes under ExpertLayout (Judge & Mentor combined) */}
-          <Route path="/expert" element={
-            <ProtectedRoute user={user} roles={roles} allowedRoles={['judge', 'mentor']}>
-              <ExpertLayout user={user} roles={roles} onLogout={handleLogout} />
-            </ProtectedRoute>
-          }>
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<ExpertDashboard user={user} roles={roles} />} />
-            <Route path="projects" element={<JudgeProjects />} />
-            <Route path="score/:teamId" element={<JudgeScoring />} />
-            <Route path="activity/:teamId" element={<JudgeTeamActivity />} />
-            <Route path="mentored-teams" element={<MentorDashboard user={user} roles={roles} />} />
-            <Route path="mentored-team/:teamId" element={<MentorTeamDetail />} />
-            <Route path="album" element={<Gallery user={user} roles={roles} />} />
-          </Route>
-
-          {/* Fallbacks for backward compatibility */}
-          <Route path="/judge" element={<Navigate to="/expert/dashboard" replace />} />
-          <Route path="/judge/dashboard" element={<Navigate to="/expert/dashboard" replace />} />
-          <Route path="/judge/projects" element={<Navigate to="/expert/projects" replace />} />
-          <Route path="/judge/score/:teamId" element={<RedirectToExpertScore />} />
-          <Route path="/judge/activity/:teamId" element={<RedirectToExpertActivity />} />
-          <Route path="/mentor/dashboard" element={<Navigate to="/expert/mentored-teams" replace />} />
-          <Route path="/mentor/team/:teamId" element={<RedirectToExpertMentorTeam />} />
-          
-          <Route path="/leaderboard" element={<Leaderboard user={user} roles={roles} />} />
-          <Route path="/album" element={<Gallery user={user} roles={roles} />} />
-          <Route path="/confirm-survey" element={<ConfirmSurvey />} />
-        </Routes>
+        <AppRoutes 
+          user={user} 
+          roles={roles} 
+          handleLoginSuccess={handleLoginSuccess} 
+          handleLogout={handleLogout} 
+        />
       </main>
 
       {!isJudgeRoute && !isAdminRoute && <Footer />}
@@ -249,7 +133,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
       )}
 
       {isProfileOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-955/80 backdrop-blur-sm p-4 animate-fade-in animate-duration-150">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-955/95 p-4 animate-fade-in animate-duration-150">
           <div className={`relative w-full max-w-md p-6 rounded-2xl shadow-2xl transition-all duration-300 font-sans ${
             usesLightShell 
               ? "bg-[#faf9f6] border border-slate-200 text-slate-800 profile-modal-light" 
@@ -581,7 +465,7 @@ export default function App() {
         const activeTabId = localStorage.getItem('active_tab_id');
         if (activeTabId && activeTabId !== tabId) {
           const activeTabTimestamp = localStorage.getItem('active_tab_timestamp');
-          if (activeTabTimestamp && Date.now() - parseInt(activeTabTimestamp, 10) < 3000) {
+          if (activeTabTimestamp && Date.now() - parseInt(activeTabTimestamp, 10) < 8000) {
             setIsDuplicateTab(true);
             clearInterval(heartbeatInterval);
             return;
@@ -589,7 +473,7 @@ export default function App() {
         }
         localStorage.setItem('active_tab_id', tabId!);
         localStorage.setItem('active_tab_timestamp', Date.now().toString());
-      }, 1000);
+      }, 5000);
     }
 
     const handleStorageChange = (e: StorageEvent) => {
@@ -799,18 +683,15 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <ConformProvider>
-        <ConfirmProvider>
-          <AppContent 
-            user={user} 
-            roles={roles} 
-            handleLoginSuccess={handleLoginSuccess} 
-            handleLogout={handleLogout} 
-            setUser={setUser}
-          />
-          <Toaster position="top-right" theme="light" closeButton richColors />
-        </ConfirmProvider>
-      </ConformProvider>
+      <AppProviders>
+        <AppContent 
+          user={user} 
+          roles={roles} 
+          handleLoginSuccess={handleLoginSuccess} 
+          handleLogout={handleLogout} 
+          setUser={setUser}
+        />
+      </AppProviders>
     </BrowserRouter>
   );
 }

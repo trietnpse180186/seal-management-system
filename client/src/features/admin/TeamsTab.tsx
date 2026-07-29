@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import axios from "axios";
 import { Users, RefreshCw, Download } from "lucide-react";
 import CustomSelect from "../shared/CustomSelect";
@@ -16,7 +16,7 @@ interface TeamsTabProps {
   readOnly?: boolean;
 }
 
-export default function TeamsTab({
+function TeamsTab({
   selectedEvent,
   teamsList,
   tracks,
@@ -431,3 +431,5 @@ export default function TeamsTab({
     </div>
   );
 }
+
+export default React.memo(TeamsTab);

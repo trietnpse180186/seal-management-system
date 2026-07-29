@@ -177,7 +177,7 @@ export default function AdminLayout({
     <div className="min-h-screen bg-[#faf9f6] text-slate-800 flex font-sans selection:bg-orange-500/20 coordinator-light-theme">
       {/* SideNavBar */}
       <aside
-        className={`fixed left-0 top-0 h-full bg-slate-900/40 backdrop-blur-2xl border-r border-white/5 flex flex-col z-20 shadow-2xl transition-all duration-300 ${
+        className={`fixed left-0 top-0 h-full bg-[#131b2e] border-r border-white/5 flex flex-col z-20 shadow-2xl transition-all duration-300 ${
           isSidebarCollapsed ? "w-[72px]" : "w-[280px]"
         }`}
       >
@@ -274,7 +274,7 @@ export default function AdminLayout({
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none"></div>
 
         {/* TopAppBar */}
-        <header className="h-16 w-full px-8 bg-slate-950/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center z-10 sticky top-0 shadow-lg">
+        <header className="h-16 w-full px-8 bg-[#0d1322] border-b border-white/5 flex justify-between items-center z-10 sticky top-0 shadow-lg">
           <div className="flex items-center gap-3">
             <button
               onClick={toggleSidebar}
@@ -301,7 +301,6 @@ export default function AdminLayout({
                 <Bell size={18} />
                 {unreadCount > 0 && (
                   <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]"></span>
                   </span>
                 )}
@@ -310,7 +309,7 @@ export default function AdminLayout({
               {/* Notifications Dropdown */}
               {showNotifications && (
                 <div className="absolute right-0 mt-2 w-[420px] max-h-96 overflow-y-auto bg-slate-900 border border-slate-700 rounded-xl shadow-[0_0_20px_rgba(0,0,0,0.5)] z-50">
-                  <div className="flex justify-between items-center p-3 border-b border-slate-800 sticky top-0 bg-slate-900/95 backdrop-blur z-10">
+                  <div className="flex justify-between items-center p-3 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">
                     <h4 className="text-sm font-semibold text-white font-mono">
                       Thông báo
                     </h4>

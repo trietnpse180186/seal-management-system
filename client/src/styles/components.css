@@ -1,0 +1,40 @@
+/* src/styles/components.css - Reusable UI component classes */
+
+.glass {
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-light {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-nav {
+  background: rgba(9, 13, 22, 0.95);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.glass-panel {
+  background-color: rgba(10, 20, 29, 0.92);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(0, 240, 255, 0.05);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.glow-purple {
+  box-shadow: 0 0 50px -10px rgba(139, 92, 246, 0.2);
+}
+
+.glow-blue {
+  box-shadow: 0 0 50px -10px rgba(14, 165, 233, 0.2);
+}
+
+.btn-orange-fix {
+  background-color: #f27024 !important;
+  color: #ffffff !important;
+}
+
+.btn-orange-fix * {
+  color: #ffffff !important;
+}

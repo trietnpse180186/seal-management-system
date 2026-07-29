@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useOutletContext, Navigate } from "react-router-dom";
 import axios from "axios";
 import { io, Socket } from "socket.io-client";
@@ -48,7 +48,10 @@ export default function AdminDashboard() {
     }
   };
 
-  const filteredLogs = logs.filter(log => logFilter === 'all' || log.type === logFilter);
+  const filteredLogs = useMemo(
+    () => logs.filter((log) => logFilter === "all" || log.type === logFilter),
+    [logs, logFilter],
+  );
 
   useEffect(() => {
     fetchEvents();
@@ -242,7 +245,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="glass p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 max-h-96 overflow-y-auto">
+        <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl max-h-96 overflow-y-auto">
           {filteredLogs.length > 0 ? (
             <div className="flow-root">
               <ul className="-mb-8">
@@ -261,7 +264,7 @@ export default function AdminDashboard() {
                       >
                         <div>
                           <span className="h-8 w-8 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center ring-8 ring-slate-900/50">
-                            <span className={`h-2 w-2 rounded-full animate-pulse ${getLogDotColor(log.type)}`} />
+                            <span className={`h-2 w-2 rounded-full ${getLogDotColor(log.type)}`} />
                           </span>
                         </div>
                         <div className="flex-1 min-w-0 pt-1.5 flex justify-between space-x-4">
@@ -310,7 +313,7 @@ export default function AdminDashboard() {
 
       {/* DETAIL EVENT LOG MODAL */}
       {selectedLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm transition-all duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 transition-all duration-300">
           <div className="relative w-full max-w-lg border border-slate-800/80 bg-slate-950 p-6 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] space-y-6 font-sans text-slate-200 animate-in fade-in zoom-in-95 duration-200">
             {/* Top decorative line */}
             <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>

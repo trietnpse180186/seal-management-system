@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 import {
@@ -79,7 +79,7 @@ const isFinalRound = (round: any) => {
     name === "final"
   );
 };
-export default function TracksTab({
+function TracksTab({
   selectedEvent,
   tracks,
   trackName,
@@ -805,3 +805,5 @@ export default function TracksTab({
     </div>
   );
 }
+
+export default React.memo(TracksTab);

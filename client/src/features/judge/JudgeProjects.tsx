@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "axios";
 import { Search, Check, ChevronRight, AlertCircle } from "lucide-react";
@@ -173,16 +173,18 @@ export default function JudgeProjects() {
       .catch((err: any) => console.error("Error fetching rubric:", err));
   }, [selectedRoundId, token]);
 
-  const filteredTeams = teams.filter((t) => {
-    const matchSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredTeams = useMemo(() => {
+    return teams.filter((t) => {
+      const matchSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const isGraded = gradedTeams[t._id];
-    const matchFilter =
-      statusFilter === "all" ||
-      (statusFilter === "graded" && isGraded) ||
-      (statusFilter === "pending" && !isGraded);
-    return matchSearch && matchFilter;
-  });
+      const isGraded = gradedTeams[t._id];
+      const matchFilter =
+        statusFilter === "all" ||
+        (statusFilter === "graded" && isGraded) ||
+        (statusFilter === "pending" && !isGraded);
+      return matchSearch && matchFilter;
+    });
+  }, [teams, searchQuery, gradedTeams, statusFilter]);
 
   const isRoundCompleted = activeRound?.status === 'completed';
 

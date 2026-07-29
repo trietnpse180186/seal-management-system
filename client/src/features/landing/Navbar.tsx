@@ -419,15 +419,9 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
 
                   {/* Notifications Dropdown */}
                   {showNotifications && (
-                    <div className={`absolute right-0 mt-2 w-[420px] max-h-96 overflow-y-auto border rounded-xl shadow-2xl z-50 ${usesLightShell
-                        ? "bg-[#faf9f6] border-slate-200 text-slate-800"
-                        : "bg-slate-900 border-slate-700 text-slate-200"
-                      }`}>
-                      <div className={`flex justify-between items-center p-3 border-b sticky top-0 backdrop-blur z-10 ${usesLightShell
-                          ? "bg-[#faf9f6]/95 border-slate-200 text-slate-800"
-                          : "bg-slate-900/95 border-slate-800 text-white"
-                        }`}>
-                        <h4 className="text-sm font-semibold">
+                    <div className="absolute right-0 mt-2 w-[420px] max-h-96 overflow-y-auto border border-slate-200 rounded-xl shadow-2xl z-50 bg-white text-slate-800 notif-scroll">
+                      <div className="flex justify-between items-center p-3 border-b sticky top-0 backdrop-blur z-10 bg-white/95 border-slate-200 text-slate-800">
+                        <h4 className="text-sm font-semibold text-slate-800">
                           Thông báo
                         </h4>
                         {unreadCount > 0 && (

@@ -742,7 +742,7 @@ export default function App() {
             handleLogout={handleLogout} 
             setUser={setUser}
           />
-          <Toaster position="top-right" theme="dark" closeButton richColors />
+          <Toaster position="top-right" theme="light" closeButton richColors />
         </ConfirmProvider>
       </ConformProvider>
     </BrowserRouter>

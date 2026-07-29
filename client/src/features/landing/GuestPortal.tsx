@@ -283,7 +283,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
   const phase3 = getPhaseStyles(3);
 
   return (
-    <div className="relative overflow-hidden font-sans bg-slate-50 text-slate-900 min-h-screen">
+    <div className="relative overflow-hidden font-sans bg-[#faf9f6] text-slate-900 min-h-screen">
       {/* Background Grid & Glow */}
       <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle_at_15%_15%,rgba(242,112,36,0.08)_0%,transparent_40%),radial-gradient(circle_at_85%_85%,rgba(242,112,36,0.05)_0%,transparent_40%)]"></div>
 

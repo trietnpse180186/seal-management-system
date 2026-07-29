@@ -35,7 +35,14 @@ export default function MyAchievements() {
         const res = await axios.get("/api/teams/history", {
           headers: { Authorization: `Bearer ${token}` }
         });
-        const teamHistory: TeamHistory[] = res.data || [];
+        const resData = res.data;
+        const teamHistory: TeamHistory[] = Array.isArray(resData) 
+          ? resData 
+          : Array.isArray(resData?.teams) 
+          ? resData.teams 
+          : Array.isArray(resData?.history) 
+          ? resData.history 
+          : [];
         setTeams(teamHistory);
 
         // Fetch achievements/rankings for each past team
@@ -61,6 +68,7 @@ export default function MyAchievements() {
         setAchievements(achievementsMap);
       } catch (err: any) {
         console.warn("Lỗi tải lịch sử đội thi:", err?.message || err);
+        setTeams([]);
       } finally {
         setLoading(false);
       }
@@ -75,37 +83,37 @@ export default function MyAchievements() {
 
   if (loading) {
     return (
-      <div className="team-area-light relative overflow-hidden font-sans bg-slate-50 text-slate-900 min-h-screen flex items-center justify-center font-mono">
-        <p className="text-slate-455 text-sm animate-pulse">Đang tải thành tích lịch sử...</p>
+      <div className="team-area-light relative overflow-hidden font-sans bg-[#faf9f6] text-slate-800 min-h-screen flex items-center justify-center font-mono">
+        <p className="text-slate-500 text-sm animate-pulse">Đang tải thành tích lịch sử...</p>
       </div>
     );
   }
 
   return (
-    <div className="team-area-light relative overflow-hidden font-sans bg-slate-50 text-slate-900 min-h-screen">
+    <div className="team-area-light relative overflow-hidden font-sans bg-[#faf9f6] text-slate-800 min-h-screen">
       {/* Background Grid & Glow */}
       <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle_at_15%_15%,rgba(242,112,36,0.08)_0%,transparent_40%),radial-gradient(circle_at_85%_85%,rgba(242,112,36,0.05)_0%,transparent_40%)]"></div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12 font-mono">
       {/* Header section */}
       <div>
-        <h1 className="text-3xl font-extrabold text-white flex items-center gap-3">
-          <Award size={32} className="text-cyan-400 text-cyan-glow" />
-          <span className="text-cyan-400 text-cyan-glow font-mono-tech">THÀNH TÍCH CỦA TÔI</span>
+        <h1 className="text-3xl font-extrabold text-slate-800 flex items-center gap-3">
+          <Award size={32} className="text-[#F27024]" />
+          <span className="text-slate-800 font-mono-tech">THÀNH TÍCH CỦA TÔI</span>
         </h1>
-        <p className="text-slate-400 text-sm mt-1.5">
+        <p className="text-slate-500 text-sm mt-1.5">
           Lịch sử các đội thi và thứ hạng bạn đã đạt được qua các mùa Hackathon
         </p>
       </div>
 
-      {teams.length === 0 ? (
-        <div className="glass p-12 rounded-3xl text-center max-w-xl mx-auto space-y-4 bg-white/95 border border-slate-200">
+      {!Array.isArray(teams) || teams.length === 0 ? (
+        <div className="bg-white p-12 rounded-3xl text-center max-w-xl mx-auto space-y-4 border border-slate-200 shadow-sm">
           <Trophy size={48} className="mx-auto text-slate-400" />
           <p className="text-sm font-bold text-slate-700">Bạn chưa có thành tích nào</p>
           <div className="pt-2">
             <button
               onClick={() => navigate("/guest-portal")}
-              className="px-6 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase rounded-xl transition-all cursor-pointer font-sans"
+              className="px-6 py-2.5 bg-[#F27024] hover:bg-[#d95f1f] !text-white text-xs font-bold uppercase rounded-xl transition-all cursor-pointer font-sans shadow-md shadow-orange-500/20"
             >
               Trở về Trang chủ
             </button>
@@ -119,26 +127,23 @@ export default function MyAchievements() {
             return (
               <div
                 key={t._id}
-                className="glass p-6 md:p-8 rounded-3xl border border-slate-800 hover:border-cyan-500/20 transition-all space-y-6 relative overflow-hidden bg-slate-900/10"
+                className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6 relative overflow-hidden text-slate-800"
               >
-                {/* Background glow decoration */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
-
                 {/* Team & Event Header */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="text-sm font-bold text-cyan-400 border border-cyan-500/30 px-3 py-1 rounded-xl bg-cyan-950/25 tracking-wider shadow-[0_0_10px_rgba(34,211,238,0.1)]">
+                      <span className="text-sm font-bold text-[#F27024] border border-[#F27024]/20 px-3 py-1 rounded-xl bg-[#F27024]/10 tracking-wider">
                         Cuộc thi: {t.event?.name}
                       </span>
                     </div>
-                    <h3 className="text-2xl font-black text-white uppercase tracking-tight text-cyan-glow">
+                    <h3 className="text-2xl font-black text-slate-800 uppercase tracking-tight">
                       Đội: {t.name}
                     </h3>
                   </div>
                   <div className="text-right font-sans">
-                    <span className="text-[10px] text-slate-500 block uppercase font-mono tracking-wider">HỌC KỲ</span>
-                    <span className="text-xs font-bold text-slate-300 font-mono">
+                    <span className="text-[10px] text-slate-400 block uppercase font-mono tracking-wider">HỌC KỲ</span>
+                    <span className="text-xs font-bold text-slate-600 font-mono">
                       Kỳ {t.event?.semester} {t.event?.year}
                     </span>
                   </div>

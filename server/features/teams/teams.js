@@ -183,10 +183,11 @@ async function syncTeamToExternalSimulator(team) {
       return;
     }
 
-    const track = await Track.findById(team.trackId);
+    const targetTrackId = team.originalTrackId || team.trackId;
+    const track = await Track.findById(targetTrackId);
     if (!track || !track.environmentId) {
       console.warn(
-        `[MQTT SERVICE] Track not found or environmentId is empty for track "${team.trackId}". Skipping external sync.`,
+        `[MQTT SERVICE] Track not found or environmentId is empty for track "${targetTrackId}". Skipping external sync.`,
       );
       return;
     }
@@ -1410,6 +1411,9 @@ router.get("/my-team", authenticateToken, async (req, res) => {
       );
       if (effectiveOriginalTrack) {
         trackPlain.originalTrackName = effectiveOriginalTrack.name;
+        if (effectiveOriginalTrack.environmentId) {
+          trackPlain.environmentId = effectiveOriginalTrack.environmentId;
+        }
         if (effectiveOriginalTrack.topicName) {
           trackPlain.topicName = effectiveOriginalTrack.topicName;
         }
@@ -3377,13 +3381,14 @@ router.post("/:teamId/sync-mqtt", authenticateToken, async (req, res) => {
     }
 
     // Check if track and environmentId are present
-    if (!team.trackId) {
+    const targetTrackId = team.originalTrackId || team.trackId;
+    if (!targetTrackId) {
       return res
         .status(400)
         .json({ message: "Đội thi chưa được phân vào bảng đấu." });
     }
 
-    const track = await Track.findById(team.trackId);
+    const track = await Track.findById(targetTrackId);
     if (!track || !track.environmentId) {
       return res
         .status(400)

@@ -3,7 +3,6 @@ import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
-import logo from "../../assets/logo.png";
 import {
   LogOut,
   Award,

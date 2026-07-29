@@ -83,6 +83,29 @@ const EventSchema = new Schema({
     emailSentAt: { type: Date },
     attendanceFormUrl: { type: String },
     attendanceSpreadsheetUrl: { type: String }
+  },
+  prizes: {
+    type: [{
+      title: { type: String, required: true },
+      amount: { type: String, required: true },
+      benefits: { type: String }
+    }],
+    default: [
+      { title: '01 GIẢI NHẤT', amount: '7.000.000 đồng', benefits: 'Giấy chứng nhận + hoa' },
+      { title: '01 GIẢI NHÌ', amount: '5.000.000 đồng', benefits: 'Giấy chứng nhận + hoa' },
+      { title: '01 GIẢI BA', amount: '3.000.000 đồng', benefits: 'Giấy chứng nhận + hoa' },
+      { title: '01 GIẢI KHUYẾN KHÍCH', amount: '1.500.000 đồng', benefits: 'Giấy chứng nhận' }
+    ]
+  },
+  specialPrizes: {
+    type: [{
+      title: { type: String, required: true },
+      description: { type: String, required: true }
+    }],
+    default: [
+      { title: 'HẠNG MỤC ĐẶC BIỆT', description: 'Vinh danh dành cho thí sinh đồng hành trọn vẹn 3 mùa giải (Fall 2025, Spring 2026, Summer 2026).' },
+      { title: 'GIẤY CHỨNG NHẬN', description: 'Tất cả các thí sinh tham gia cuộc thi đều nhận giấy chứng nhận.' }
+    ]
   }
 }, {
   timestamps: true

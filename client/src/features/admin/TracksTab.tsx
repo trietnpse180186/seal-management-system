@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import {
   FolderKanban,
   ChevronRight,
+  ChevronDown,
   BookOpen,
   Users,
   Edit,
@@ -119,6 +120,8 @@ export default function TracksTab({
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [memberRole, setMemberRole] = useState<"judge" | "mentor">("judge");
   const [selectedTeamId, setSelectedTeamId] = useState("");
+  const [isCreateTrackOpen, setIsCreateTrackOpen] = useState(false);
+  const isFormVisible = editingTrack ? true : isCreateTrackOpen;
   const conform = useConform();
 
   // Drive upload state
@@ -168,12 +171,36 @@ export default function TracksTab({
     );
   };
   const totalAllocatedTeams = tracks
-    .filter((t) => {
+    .filter((t: any) => {
       const tRoundId = t.roundId?._id || t.roundId;
       return tRoundId && tRoundId.toString() !== finalRoundId?.toString();
     })
-    .reduce((sum, t) => sum + (t.maxTeams || 0), 0);
+    .reduce((sum: number, t: any) => sum + (t.maxTeams || 0), 0);
   const remainingTeams = maxEventTeams - totalAllocatedTeams;
+
+  const displayableTracks = useMemo(
+    () =>
+      tracks.filter((t: any) => {
+        const roundOfTrack = rounds.find(
+          (r: any) => r._id === (t.roundId?._id || t.roundId),
+        );
+        const isFinal =
+          isFinalRound(roundOfTrack) ||
+          t.name.toLowerCase().includes("chung kết") ||
+          isDefaultFinalRoundTrack(t);
+        return !isFinal;
+      }),
+    [tracks, rounds, finalRoundId],
+  );
+
+  useEffect(() => {
+    if (
+      displayableTracks.length > 0 &&
+      (!selectedTrack || isDefaultFinalRoundTrack(selectedTrack))
+    ) {
+      setSelectedTrack(displayableTracks[0]);
+    }
+  }, [displayableTracks, selectedTrack, setSelectedTrack]);
 
   const trackMembers = eventRoles.filter(
     (role: any) =>
@@ -246,14 +273,13 @@ export default function TracksTab({
             <span>Các bảng đấu (Tracks)</span>
           </h3>
           <div className="space-y-2 mb-6 max-h-[300px] overflow-y-auto pr-1">
-            {tracks.map((t: any) => (
+            {displayableTracks.map((t: any) => (
               <div
                 key={t._id}
-                className={`w-full p-3 rounded-xl border text-xs flex justify-between items-center transition-all ${
-                  selectedTrack?._id === t._id
-                    ? "bg-orange-500/10 border-orange-500/50 text-slate-900 dark:text-orange-300 font-bold shadow-xs"
-                    : "bg-white dark:bg-slate-900/40 border-slate-200 dark:border-slate-800/80 hover:border-orange-500/40 text-slate-900 dark:text-slate-300 shadow-xs"
-                }`}
+                className={`w-full p-3 rounded-xl border text-xs flex justify-between items-center transition-all ${selectedTrack?._id === t._id
+                  ? "bg-orange-500/10 border-orange-500/50 text-slate-900 dark:text-orange-300 font-bold shadow-xs"
+                  : "bg-white dark:bg-slate-900/40 border-slate-200 dark:border-slate-800/80 hover:border-orange-500/40 text-slate-900 dark:text-slate-300 shadow-xs"
+                  }`}
               >
                 <button
                   type="button"
@@ -350,7 +376,7 @@ export default function TracksTab({
                 </div>
               </div>
             ))}
-            {tracks.length === 0 && (
+            {displayableTracks.length === 0 && (
               <p className="text-xs text-slate-500 italic">
                 Chưa có bảng đấu nào.
               </p>
@@ -359,117 +385,140 @@ export default function TracksTab({
         </div>
 
         {!readOnly && (
-          <form
-            onSubmit={editingTrack ? handleUpdateTrack : handleCreateTrack}
-            className="space-y-3.5 pt-3 border-t border-slate-800/80"
-          >
-            <p className="text-[10px] font-bold text-slate-300 uppercase font-mono">
-              {editingTrack ? "Cập nhật bảng đấu:" : "Tạo thêm bảng đấu:"}
-            </p>
-
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
-                Chọn Vòng thi
-              </label>
-              <CustomSelect
-                value={trackRoundId}
-                onChange={(val) => setTrackRoundId(val)}
-                options={availableTrackRounds.map((r: any) => ({
-                  value: r._id,
-                  label: `${r.name} (Vòng ${r.order})${r.status === "completed" ? " - Đã kết thúc" : ""}`,
-                  disabled: r.status === "completed",
-                }))}
-                placeholder="-- Chọn Vòng thi --"
-                className="w-full"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
-                Tên bảng đấu
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="Tên bảng đấu (e.g. AI & IoT)"
-                value={trackName}
-                onChange={(e) => setTrackName(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
-                Số lượng đội tối đa{" "}
-                {maxEventTeams > 0
-                  ? editingTrack
-                    ? `(Còn lại: ${remainingTeams + (editingTrack.maxTeams || 0)} / ${maxEventTeams} đội)`
-                    : `(Còn lại: ${remainingTeams} / ${maxEventTeams} đội)`
-                  : ""}
-              </label>
-              <input
-                type="number"
-                required
-                placeholder="Số lượng đội tối đa (e.g. 5)"
-                value={trackMax}
-                onChange={(e) => setTrackMax(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
-                Số đội lấy đi tiếp (N đội cao điểm nhất)
-              </label>
-              <input
-                type="number"
-                required
-                placeholder="Số đội đi tiếp (e.g. 3)"
-                value={trackAdvanceTopN}
-                onChange={(e) => setTrackAdvanceTopN(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
-                Environment ID (UUID) CHO CUỘC THI LIÊN QUAN ĐẾN MQTT (OPTIONAL)
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. 6c10dc7a-4021-4299-a12b-215278a89c72"
-                value={trackEnvironmentId}
-                onChange={(e) => setTrackEnvironmentId(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200"
-              />
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-semibold py-2 rounded-lg cursor-pointer font-mono transition-colors"
-              >
-                {editingTrack ? "Lưu thay đổi" : "+ Thêm Bảng đấu"}
-              </button>
-              {editingTrack && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingTrack(null);
-                    setTrackRoundId("");
-                    setTrackName("");
-                    setTrackMax("");
-                    setTrackAdvanceTopN("");
-                    setTrackDesc("");
-                    setTrackEnvironmentId("");
-                  }}
-                  className="px-4 py-2 border border-slate-700 hover:border-slate-600 hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs font-semibold rounded-lg cursor-pointer font-mono transition-all"
-                >
-                  Hủy
-                </button>
+          <div className="pt-3 border-t border-slate-800/80 space-y-3">
+            {/* Header trigger span */}
+            <div
+              onClick={() => setIsCreateTrackOpen(!isCreateTrackOpen)}
+              className="flex items-center justify-between cursor-pointer group py-1 select-none"
+            >
+              <span className="text-xs font-bold text-slate-300 group-hover:text-cyan-400 transition-colors flex items-center gap-1.5 font-mono">
+                {isFormVisible ? (
+                  <ChevronDown size={15} className="text-cyan-400" />
+                ) : (
+                  <ChevronRight size={15} className="text-slate-400 group-hover:text-cyan-400 transition-colors" />
+                )}
+                {editingTrack
+                  ? `Cập nhật bảng đấu [${editingTrack.name}]`
+                  : "Tạo thêm bảng đấu"}
+              </span>
+              {!editingTrack && (
+                <span className="text-[14px] font-mono text-cyan-400/90 group-hover:text-cyan-300 text-cyan-400/90 border text-cyan-400/90 px-2 py-0.5 rounded-full transition-all">
+                  {isFormVisible ? "Thu gọn" : "+ Thêm bảng đấu"}
+                </span>
               )}
             </div>
-          </form>
+
+            {/* Expandable Form Body */}
+            {isFormVisible && (
+              <form
+                onSubmit={editingTrack ? handleUpdateTrack : handleCreateTrack}
+                className="space-y-3.5 pt-1 animate-fadeIn"
+              >
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
+                    Chọn Vòng thi
+                  </label>
+                  <CustomSelect
+                    value={trackRoundId}
+                    onChange={(val) => setTrackRoundId(val)}
+                    options={availableTrackRounds.map((r: any) => ({
+                      value: r._id,
+                      label: `${r.name} (Vòng ${r.order})${r.status === "completed" ? " - Đã kết thúc" : ""}`,
+                      disabled: r.status === "completed",
+                    }))}
+                    placeholder="-- Chọn Vòng thi --"
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
+                    Tên bảng đấu
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Tên bảng đấu (e.g. AI & IoT)"
+                    value={trackName}
+                    onChange={(e) => setTrackName(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200 placeholder:text-[11px] placeholder:text-slate-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
+                    Số lượng đội tối đa{" "}
+                    {maxEventTeams > 0
+                      ? editingTrack
+                        ? `(Còn lại: ${remainingTeams + (editingTrack.maxTeams || 0)} / ${maxEventTeams} đội)`
+                        : `(Còn lại: ${remainingTeams} / ${maxEventTeams} đội)`
+                      : ""}
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    placeholder="Số lượng đội tối đa (e.g. 5)"
+                    value={trackMax}
+                    onChange={(e) => setTrackMax(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200 placeholder:text-[11px] placeholder:text-slate-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
+                    Số đội lấy đi tiếp (N đội cao điểm nhất)
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    placeholder="Số đội đi tiếp (e.g. 3)"
+                    value={trackAdvanceTopN}
+                    onChange={(e) => setTrackAdvanceTopN(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200 placeholder:text-[11px] placeholder:text-slate-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 font-mono">
+                    Environment ID (UUID) CHO CUỘC THI LIÊN QUAN ĐẾN MQTT (OPTIONAL)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 6c10dc7a-4021-4299-a12b-215278a89c72"
+                    value={trackEnvironmentId}
+                    onChange={(e) => setTrackEnvironmentId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-xs font-mono bg-slate-950 border border-slate-850 text-slate-200 placeholder:text-[11px] placeholder:text-slate-500"
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-semibold py-2 rounded-lg cursor-pointer font-mono transition-colors"
+                  >
+                    {editingTrack ? "Lưu thay đổi" : "+ Thêm Bảng đấu"}
+                  </button>
+                  {editingTrack && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingTrack(null);
+                        setTrackRoundId("");
+                        setTrackName("");
+                        setTrackMax("");
+                        setTrackAdvanceTopN("");
+                        setTrackDesc("");
+                        setTrackEnvironmentId("");
+                      }}
+                      className="px-4 py-2 border border-slate-700 hover:border-slate-600 hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs font-semibold rounded-lg cursor-pointer font-mono transition-all"
+                    >
+                      Hủy
+                    </button>
+                  )}
+                </div>
+              </form>
+            )}
+          </div>
         )}
       </div>
 

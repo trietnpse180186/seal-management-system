@@ -11,6 +11,8 @@ import {
   Bell,
   Tv,
   Camera,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 
 interface AdminLayoutProps {
@@ -28,9 +30,21 @@ export default function AdminLayout({
   const navigate = useNavigate();
   const isAdminView =
     !user?.isSystemAdmin && roles?.some((r) => r.role === "admin_view");
+  const isAssistant = roles?.some((r) => r.role === "student_assistant");
 
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    return localStorage.getItem("admin_sidebar_collapsed") === "true";
+  });
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("admin_sidebar_collapsed", String(next));
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (user) {
@@ -137,6 +151,23 @@ export default function AdminLayout({
     },
   ];
 
+  const filteredNavItems = navItems.filter(item => {
+    if (isAssistant) {
+      return ['/admin/users', '/admin/events', '/admin/grades', '/admin/leaderboard'].includes(item.path);
+    }
+    return true;
+  }).map(item => {
+    if (isAssistant) {
+      if (item.path === '/admin/events') {
+        return { ...item, label: 'Quản lý đội thi' };
+      }
+      if (item.path === '/admin/users') {
+        return { ...item, label: 'Quản lý thí sinh' };
+      }
+    }
+    return item;
+  });
+
   const handleLogoutClick = () => {
     onLogout();
     navigate("/login");
@@ -145,32 +176,57 @@ export default function AdminLayout({
   return (
     <div className="min-h-screen bg-[#faf9f6] text-slate-800 flex font-sans selection:bg-orange-500/20 coordinator-light-theme">
       {/* SideNavBar */}
-      <aside className="fixed left-0 top-0 h-full w-[280px] bg-slate-900/40 backdrop-blur-2xl border-r border-white/5 flex flex-col z-20 shadow-2xl">
+      <aside
+        className={`fixed left-0 top-0 h-full bg-slate-900/40 backdrop-blur-2xl border-r border-white/5 flex flex-col z-20 shadow-2xl transition-all duration-300 ${
+          isSidebarCollapsed ? "w-[72px]" : "w-[280px]"
+        }`}
+      >
         {/* User Quick Info */}
-        <div className="px-6 py-3 border-b border-white/5 flex items-center gap-3 bg-slate-900/20">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-teal-600 text-white flex items-center justify-center font-bold text-sm shadow-[0_0_10px_rgba(6,182,212,0.4)]">
+        <div
+          className={`py-3 border-b border-white/5 flex items-center bg-slate-900/20 ${
+            isSidebarCollapsed ? "px-3 justify-center" : "px-6 gap-3"
+          }`}
+        >
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-teal-600 text-white flex items-center justify-center font-bold text-sm shadow-[0_0_10px_rgba(6,182,212,0.4)] shrink-0">
             {user?.fullName?.charAt(0) || "A"}
           </div>
-          <div className="overflow-hidden">
-            <h4 className="text-xs font-bold text-white truncate">
-              {user?.fullName || "Admin Name"}
-            </h4>
-            <p className="text-[9px] text-cyan-400 font-mono uppercase tracking-wider">
-              {isAdminView ? "Người xem" : "Admin"}
-            </p>
-          </div>
+          {!isSidebarCollapsed && (
+            <div className="overflow-hidden">
+              <h4 className="text-xs font-bold text-white truncate">
+                {user?.fullName || "Admin Name"}
+              </h4>
+              <p className="text-[9px] text-cyan-400 font-mono uppercase tracking-wider">
+                {user?.isSystemAdmin
+                  ? "Admin"
+                  : isAssistant
+                  ? "Cộng tác viên"
+                  : isAdminView
+                  ? "Người xem"
+                  : "Admin"}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Navigation Links */}
-        <nav className="flex-1 py-6 space-y-2 overflow-y-auto px-3">
-          {navItems.map((item) => {
+        <nav
+          className={`flex-1 py-6 space-y-2 overflow-y-auto ${
+            isSidebarCollapsed ? "px-2" : "px-3"
+          }`}
+        >
+          {filteredNavItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 relative overflow-hidden ${
+                title={isSidebarCollapsed ? item.label : undefined}
+                className={`flex items-center rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 relative overflow-hidden ${
+                  isSidebarCollapsed
+                    ? "justify-center p-3"
+                    : "gap-3 px-4 py-3"
+                } ${
                   active
                     ? "bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 shadow-[inset_0_0_20px_rgba(6,182,212,0.1)]"
                     : "text-slate-500 hover:text-slate-300 hover:bg-slate-800/30 border border-transparent hover:border-white/5"
@@ -180,36 +236,58 @@ export default function AdminLayout({
                   <div className="absolute left-0 top-0 h-full w-[3px] bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)]"></div>
                 )}
                 <Icon
-                  size={16}
-                  className={active ? "text-cyan-400" : "text-slate-500"}
+                  size={18}
+                  className={`shrink-0 ${active ? "text-cyan-400" : "text-slate-500"}`}
                 />
-                <span>{item.label}</span>
+                {!isSidebarCollapsed && <span>{item.label}</span>}
               </Link>
             );
           })}
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-white/5 bg-slate-900/10">
+        <div
+          className={`border-t border-white/5 bg-slate-900/10 ${
+            isSidebarCollapsed ? "p-2 flex justify-center" : "p-4"
+          }`}
+        >
           <button
             onClick={handleLogoutClick}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-lg text-rose-400 hover:text-rose-300 text-xs font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(244,63,94,0.1)] hover:shadow-[0_0_15px_rgba(244,63,94,0.2)]"
+            title={isSidebarCollapsed ? "Đăng xuất" : undefined}
+            className={`flex items-center justify-center bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-lg text-rose-400 hover:text-rose-300 text-xs font-bold uppercase tracking-wider transition-all shadow-[0_0_10px_rgba(244,63,94,0.1)] hover:shadow-[0_0_15px_rgba(244,63,94,0.2)] ${
+              isSidebarCollapsed ? "w-10 h-10 p-0" : "w-full gap-2 px-4 py-2.5"
+            }`}
           >
-            <LogOut size={14} />
-            <span>Đăng xuất</span>
+            <LogOut size={14} className="shrink-0" />
+            {!isSidebarCollapsed && <span>Đăng xuất</span>}
           </button>
         </div>
       </aside>
 
       {/* Main Content Wrapper */}
-      <div className="flex-1 ml-[280px] flex flex-col min-h-screen relative">
+      <div
+        className={`flex-1 transition-all duration-300 flex flex-col min-h-screen relative ${
+          isSidebarCollapsed ? "ml-[72px]" : "ml-[280px]"
+        }`}
+      >
         {/* Background Grid Pattern */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none"></div>
 
         {/* TopAppBar */}
         <header className="h-16 w-full px-8 bg-slate-950/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center z-10 sticky top-0 shadow-lg">
           <div className="flex items-center gap-3">
-            <span className="font-extrabold text-cyan-300 text-sm tracking-widest uppercase    font-mono">
+            <button
+              onClick={toggleSidebar}
+              title={isSidebarCollapsed ? "Mở rộng menu" : "Thu gọn menu"}
+              className="p-2 text-slate-400 hover:text-cyan-300 hover:bg-slate-800/50 rounded-lg transition-colors flex items-center justify-center border border-white/5 cursor-pointer"
+            >
+              {isSidebarCollapsed ? (
+                <PanelLeftOpen size={18} />
+              ) : (
+                <PanelLeftClose size={18} />
+              )}
+            </button>
+            <span className="font-extrabold text-cyan-300 text-sm tracking-widest uppercase font-mono">
               Hệ thống SEAL Hackathon
             </span>
           </div>
@@ -283,7 +361,7 @@ export default function AdminLayout({
 
         {/* Dynamic Route Content */}
         <main className="flex-1 p-8 relative z-0">
-          <Outlet context={{ readOnly: isAdminView, roles }} />
+          <Outlet context={{ readOnly: isAdminView, roles, user }} />
         </main>
       </div>
     </div>

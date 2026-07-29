@@ -282,8 +282,21 @@ export default function HomeScreen({ navigation }) {
                     statusColor = '#64748b';
                 }
 
+                const handleCardPress = () => {
+                  if (hasTeam || evt.status === 'ongoing' || evt.status === 'completed') {
+                    navigation.navigate('TeamArea');
+                  } else {
+                    navigation.navigate('RegisterTeam', { eventId: evt._id });
+                  }
+                };
+
                 return (
-                  <View key={evt._id} style={styles.eventCard}>
+                  <TouchableOpacity
+                    key={evt._id}
+                    style={styles.eventCard}
+                    activeOpacity={0.9}
+                    onPress={handleCardPress}
+                  >
                     <View style={styles.eventHeader}>
                       <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
                         <Text style={[styles.eventStatus, { color: statusColor }]}>{statusLabel}</Text>
@@ -309,13 +322,7 @@ export default function HomeScreen({ navigation }) {
                       {evt.status === 'registration' && (
                         <TouchableOpacity
                           style={styles.actionBtn}
-                          onPress={() => {
-                            if (hasTeam) {
-                              navigation.navigate('TeamArea');
-                            } else {
-                              navigation.navigate('RegisterTeam', { eventId: evt._id });
-                            }
-                          }}
+                          onPress={handleCardPress}
                           activeOpacity={0.85}
                         >
                           <Text style={styles.actionBtnText}>
@@ -327,14 +334,24 @@ export default function HomeScreen({ navigation }) {
                       {evt.status === 'ongoing' && (
                         <TouchableOpacity
                           style={styles.actionBtn}
-                          onPress={() => navigation.navigate('TeamArea')}
+                          onPress={handleCardPress}
                           activeOpacity={0.85}
                         >
                           <Text style={styles.actionBtnText}>VÀO KHU VỰC THI DỰ ÁN</Text>
                         </TouchableOpacity>
                       )}
+
+                      {evt.status === 'completed' && (
+                        <TouchableOpacity
+                          style={styles.actionBtn}
+                          onPress={handleCardPress}
+                          activeOpacity={0.85}
+                        >
+                          <Text style={styles.actionBtnText}>VÀO KHU VỰC ĐỘI THI</Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
             </View>

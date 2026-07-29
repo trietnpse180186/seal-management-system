@@ -32,7 +32,7 @@ module.exports = {
       // Support secure auth token handshake or query token fallback
       const token = socket.handshake.auth?.token || (socket.handshake.query && socket.handshake.query.token);
       if (token) {
-        jwt.verify(token, process.env.JWT_SECRET || 'seal_hackathon_secret_key_2026', function(err, decoded) {
+        jwt.verify(token, process.env.JWT_SECRET || 'seal_hackathon_secret_key_2026', function (err, decoded) {
           if (err) {
             console.error('Socket authentication error:', err.message);
             return next(new Error('Authentication error'));
@@ -43,7 +43,7 @@ module.exports = {
       }
       else {
         next(new Error('Authentication error'));
-      }    
+      }
     });
 
     io.on('connection', (socket) => {
@@ -55,7 +55,7 @@ module.exports = {
         const user = await User.findById(userId).select('isSystemAdmin').lean();
         return { isSystemAdmin: !!user?.isSystemAdmin, requireWrite };
       };
-      
+
       // Each user joins their personal room for targeted push notifications
       socket.join(`user:${userId}`);
 
@@ -67,7 +67,7 @@ module.exports = {
             const { checkRoomAccess } = require('./chatRoomService');
             const accessOptions = await getAccessOptions(false);
             const hasAccess = await checkRoomAccess(room, userId, accessOptions);
-            
+
             if (hasAccess) {
               socket.join(roomId);
               console.log(`User ${userId} joined room ${roomId}`);
@@ -186,7 +186,7 @@ module.exports = {
               const notifDocs = recipients.map(recipientId => ({
                 userId: recipientId,
                 type: 'chat_message',
-                title: `💬 Tin nhắn mới từ ${user.fullName || user.email}`,
+                title: `Tin nhắn mới từ ${user.fullName || user.email}`,
                 body: preview,
                 channel: 'in_app',
                 status: 'sent',

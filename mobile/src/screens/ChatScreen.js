@@ -32,6 +32,73 @@ export default function ChatScreen({ navigation, route }) {
   const [replyingTo, setReplyingTo] = useState(null);
 
   const flatListRef = useRef(null);
+  const currentUserRef = useRef(currentUser);
+  const selectedRoomRef = useRef(selectedRoom);
+
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
+  useEffect(() => {
+    selectedRoomRef.current = selectedRoom;
+  }, [selectedRoom]);
+
+  const handleNewMessage = useCallback((message) => {
+    const curRoom = selectedRoomRef.current;
+    const msgRoomId = typeof message.roomId === 'object' ? message.roomId?._id : message.roomId;
+    const curRoomId = curRoom?._id;
+
+    if (curRoomId && msgRoomId === curRoomId) {
+      setMessages((prev) => {
+        // 1. Check exact _id match
+        const exactIndex = prev.findIndex((m) => m._id === message._id);
+        if (exactIndex !== -1) {
+          const updated = [...prev];
+          updated[exactIndex] = message;
+          return updated;
+        }
+
+        // 2. Match temporary optimistic message (starts with 'temp_' and same content)
+        const myUser = currentUserRef.current;
+        const myUserId = myUser?.userId || myUser?._id || myUser?.id;
+        const msgSenderId = typeof message.senderId === 'object' ? message.senderId?._id : message.senderId;
+
+        const tempIndex = prev.findIndex(
+          (m) =>
+            m._id &&
+            typeof m._id === 'string' &&
+            m._id.startsWith('temp_') &&
+            (m.content === message.content || m.content === message.content?.trim()) &&
+            (!msgSenderId || !myUserId || msgSenderId === myUserId || m.senderId === msgSenderId || m.senderId === myUserId)
+        );
+
+        if (tempIndex !== -1) {
+          const updated = [...prev];
+          updated[tempIndex] = message;
+          return updated;
+        }
+
+        return [...prev, message];
+      });
+
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 50);
+    } else {
+      if (msgRoomId) {
+        setUnreadCounts((prev) => ({
+          ...prev,
+          [msgRoomId]: (prev[msgRoomId] || 0) + 1,
+        }));
+      }
+    }
+  }, []);
+
+  const handleMessageRecalled = useCallback((data) => {
+    setMessages((prev) =>
+      prev.map((m) => (m._id === data.messageId ? { ...m, isRecalled: true, content: data.content } : m))
+    );
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -53,7 +120,7 @@ export default function ChatScreen({ navigation, route }) {
       socketService.off('new_message');
       socketService.off('message_recalled');
     };
-  }, []);
+  }, [handleNewMessage, handleMessageRecalled]);
 
   useEffect(() => {
     if (selectedRoom) {
@@ -61,36 +128,12 @@ export default function ChatScreen({ navigation, route }) {
       socketService.emit('join_room', selectedRoom._id);
 
       // Clear unread count for this room
-      setUnreadCounts(prev => ({
+      setUnreadCounts((prev) => ({
         ...prev,
-        [selectedRoom._id]: 0
+        [selectedRoom._id]: 0,
       }));
     }
   }, [selectedRoom]);
-
-  const handleNewMessage = (message) => {
-    // If we are in the room, add it to messages
-    if (selectedRoom && message.roomId === selectedRoom._id) {
-      setMessages(prev => {
-        if (prev.find(m => m._id === message._id)) return prev;
-        return [...prev, message];
-      });
-      // Scroll to bottom
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
-    } else {
-      // Otherwise, update unread counts
-      setUnreadCounts(prev => ({
-        ...prev,
-        [message.roomId]: (prev[message.roomId] || 0) + 1
-      }));
-    }
-  };
-
-  const handleMessageRecalled = (data) => {
-    setMessages(prev => prev.map(m =>
-      m._id === data.messageId ? { ...m, isRecalled: true, content: data.content } : m
-    ));
-  };
 
   const fetchRooms = async () => {
     try {
@@ -99,10 +142,10 @@ export default function ChatScreen({ navigation, route }) {
 
       // If a roomId was passed in route params, auto-select it
       if (route.params?.roomId) {
-        const room = res.data.find(r => r._id === route.params.roomId);
+        const room = res.data.find((r) => r._id === route.params.roomId);
         if (room) setSelectedRoom(room);
       } else if (route.params?.teamId) {
-        const room = res.data.find(r => r.teamId?._id === route.params.teamId);
+        const room = res.data.find((r) => r.teamId?._id === route.params.teamId);
         if (room) setSelectedRoom(room);
       }
     } catch (error) {
@@ -118,7 +161,7 @@ export default function ChatScreen({ navigation, route }) {
     try {
       const res = await api.get(`/chat/rooms/${roomId}/messages?page=1&limit=50`);
       setMessages(res.data);
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: false }), 200);
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: false }), 150);
     } catch (error) {
       console.error('Error fetching messages:', error);
     } finally {
@@ -135,19 +178,47 @@ export default function ChatScreen({ navigation, route }) {
       return;
     }
 
-    socketService.emit('send_message', {
-      roomId: selectedRoom._id,
-      content: newMessage.trim(),
-      replyTo: replyingTo ? {
-        messageId: replyingTo._id,
-        senderName: replyingTo.senderName,
-        content: replyingTo.content
-      } : undefined
-    });
+    const trimmed = newMessage.trim();
+    const tempId = 'temp_' + Date.now();
 
+    // Optimistic UI Update: Hiển thị ngay tin nhắn trên Mobile lập tức!
+    const tempMsg = {
+      _id: tempId,
+      tempId,
+      roomId: selectedRoom._id,
+      senderId: currentUser?.userId || currentUser?._id || currentUser?.id,
+      senderName: currentUser?.fullName || currentUser?.name || 'Tôi',
+      senderRole: currentUser?.role || 'user',
+      content: trimmed,
+      createdAt: new Date().toISOString(),
+      replyTo: replyingTo
+        ? {
+            messageId: replyingTo._id,
+            senderName: replyingTo.senderName,
+            content: replyingTo.content,
+          }
+        : undefined,
+    };
+
+    setMessages((prev) => [...prev, tempMsg]);
     setNewMessage('');
     setReplyingTo(null);
-    Keyboard.dismiss();
+
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 50);
+
+    socketService.emit('send_message', {
+      roomId: selectedRoom._id,
+      content: trimmed,
+      replyTo: replyingTo
+        ? {
+            messageId: replyingTo._id,
+            senderName: replyingTo.senderName,
+            content: replyingTo.content,
+          }
+        : undefined,
+    });
   };
 
   const getRoomName = (room) => {
@@ -157,162 +228,188 @@ export default function ChatScreen({ navigation, route }) {
     if (room.type === 'track_mentors') {
       return `Kênh Mentor - Bảng ${room.trackId?.name || 'Chung'}`;
     }
-
-    // Check if current user is a member of the team
-    const isTeamMember = room.members && room.members.some(m =>
-      (m._id || m) === (currentUser?._id || currentUser?.id)
-    );
-
-    if (isTeamMember) {
-      const mentorName = room.mentorId?.fullName || room.teamId?.mentorId?.fullName;
-      return mentorName ? `Mentor: ${mentorName}` : `Hỗ trợ từ Mentor`;
+    if (room.type === 'team_mentor') {
+      return `Đội thi: ${room.teamId?.name || 'Đội'}`;
     }
-    return `Đội thi: ${room.teamId?.name || 'Đội thi'}`;
+    return room.name || 'Phòng trò chuyện';
+  };
+
+  const getRoomIcon = (type) => {
+    switch (type) {
+      case 'event_general':
+        return <Megaphone size={18} color="#ea580c" />;
+      case 'track_mentors':
+        return <Users size={18} color="#0284c7" />;
+      case 'team_mentor':
+        return <MessageCircle size={18} color="#16a34a" />;
+      default:
+        return <MessagesSquare size={18} color="#64748b" />;
+    }
   };
 
   const renderRoomItem = ({ item }) => {
-    const roomUnread = unreadCounts[item._id] || 0;
-    const isTeamRoom = item.type === 'team_mentor';
-
-    let icon = <Users size={20} color="#00f0ff" />;
-    if (item.type === 'event_general') icon = <Megaphone size={20} color="#f59e0b" />;
-    else if (item.type === 'track_mentors') icon = <MessagesSquare size={20} color="#6366f1" />;
-    else if (isTeamRoom) icon = <MessageCircle size={20} color="#10b981" />;
+    const isSelected = selectedRoom?._id === item._id;
+    const unread = unreadCounts[item._id] || 0;
 
     return (
       <TouchableOpacity
-        style={styles.roomItem}
+        style={[styles.roomCard, isSelected && styles.roomCardSelected]}
         onPress={() => setSelectedRoom(item)}
+        activeOpacity={0.7}
       >
-        <View style={styles.roomIconBox}>{icon}</View>
+        <View style={styles.roomIconBox}>{getRoomIcon(item.type)}</View>
         <View style={styles.roomInfo}>
-          <Text style={styles.roomName} numberOfLines={1}>{getRoomName(item)}</Text>
-          <Text style={styles.roomEvent} numberOfLines={1}>{item.eventId?.name}</Text>
-        </View>
-        {roomUnread > 0 && (
-          <View style={styles.unreadBadge}>
-            <Text style={styles.unreadText}>{roomUnread}</Text>
+          <View style={styles.roomHeaderRow}>
+            <Text style={[styles.roomNameText, isSelected && styles.roomNameTextSelected]} numberOfLines={1}>
+              {getRoomName(item)}
+            </Text>
+            {unread > 0 && (
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadBadgeText}>{unread}</Text>
+              </View>
+            )}
           </View>
-        )}
+          <Text style={styles.roomSubText} numberOfLines={1}>
+            {item.lastMessage?.content || 'Chưa có tin nhắn'}
+          </Text>
+        </View>
       </TouchableOpacity>
     );
   };
 
   const renderMessageItem = ({ item }) => {
-    const isMe = (item.senderId?._id || item.senderId) === (currentUser?._id || currentUser?.id);
+    const isMe =
+      item.senderId === currentUser?.userId ||
+      item.senderId === currentUser?._id ||
+      item.senderId === currentUser?.id;
     const isRecalled = item.isRecalled;
 
     return (
-      <View style={[styles.messageContainer, isMe ? styles.myMessageContainer : styles.otherMessageContainer]}>
-        {!isMe && <Text style={styles.senderName}>{item.senderName}</Text>}
-        <View style={[
-          styles.messageBubble,
-          isMe ? styles.myBubble : styles.otherBubble,
-          isRecalled && styles.recalledBubble
-        ]}>
-          {item.replyTo && !isRecalled && (
+      <View style={[styles.msgRow, isMe ? styles.msgRowMe : styles.msgRowOther]}>
+        <View style={[styles.msgBubble, isMe ? styles.msgBubbleMe : styles.msgBubbleOther]}>
+          {!isMe && <Text style={styles.msgSenderName}>{item.senderName || 'Người dùng'}</Text>}
+
+          {item.replyTo && (
             <View style={styles.replyBox}>
-              <Text style={styles.replySender}>@{item.replyTo.senderName}</Text>
-              <Text style={styles.replyContent} numberOfLines={1}>{item.replyTo.content}</Text>
+              <Text style={styles.replySender}>@{item.replyTo.senderName}:</Text>
+              <Text style={styles.replyContent} numberOfLines={1}>
+                {item.replyTo.content}
+              </Text>
             </View>
           )}
-          <Text style={[styles.messageText, isMe ? styles.myMessageText : styles.otherMessageText, isRecalled && styles.recalledText]}>
-            {item.content}
+
+          <Text style={[styles.msgContentText, isMe ? styles.msgContentTextMe : styles.msgContentTextOther]}>
+            {isRecalled ? 'Tin nhắn đã bị thu hồi' : item.content}
+          </Text>
+
+          <Text style={[styles.msgTimeText, isMe ? styles.msgTimeTextMe : styles.msgTimeTextOther]}>
+            {new Date(item.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
           </Text>
         </View>
-        <Text style={styles.messageTime}>
-          {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </Text>
+
+        {!isRecalled && !isMe && (
+          <TouchableOpacity style={styles.replyBtn} onPress={() => setReplyingTo(item)}>
+            <Quote size={12} color="#64748b" />
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
 
-  if (loadingRooms) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#00f0ff" />
-      </View>
-    );
-  }
-
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => {
-            if (selectedRoom) setSelectedRoom(null);
-            else navigation.goBack();
-          }}>
-            <ArrowLeft size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>
-            {selectedRoom ? getRoomName(selectedRoom) : 'PHÒNG CHAT'}
-          </Text>
-          <View style={{ width: 24 }} />
-        </View>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <View style={styles.container}>
+          {/* Top Header */}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+              <ArrowLeft size={20} color="#0f172a" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              {selectedRoom ? getRoomName(selectedRoom) : 'Trò chuyện'}
+            </Text>
+            {selectedRoom && (
+              <TouchableOpacity onPress={() => setSelectedRoom(null)} style={styles.closeRoomBtn}>
+                <X size={18} color="#64748b" />
+              </TouchableOpacity>
+            )}
+          </View>
 
-        {!selectedRoom ? (
-          /* Room List */
-          <FlatList
-            data={rooms}
-            renderItem={renderRoomItem}
-            keyExtractor={item => item._id}
-            contentContainerStyle={styles.listContainer}
-            ListEmptyComponent={
-              <Text style={styles.emptyText}>Chưa có phòng chat nào.</Text>
-            }
-          />
-        ) : (
-          /* Message View */
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={{ flex: 1 }}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-          >
-            <FlatList
-              ref={flatListRef}
-              data={messages}
-              renderItem={renderMessageItem}
-              keyExtractor={item => item._id}
-              contentContainerStyle={styles.messageList}
-              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
-            />
+          {/* Main Area: Rooms List OR Active Chat Room */}
+          {!selectedRoom ? (
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sectionHeaderTitle}>DANH SÁCH PHÒNG TRÒ CHUYỆN</Text>
+              {loadingRooms ? (
+                <View style={styles.centerContainer}>
+                  <ActivityIndicator size="large" color="#ea580c" />
+                </View>
+              ) : (
+                <FlatList
+                  data={rooms}
+                  renderItem={renderRoomItem}
+                  keyExtractor={(item) => item._id}
+                  contentContainerStyle={styles.roomsListContent}
+                  ListEmptyComponent={
+                    <View style={styles.centerContainer}>
+                      <MessagesSquare size={40} color="#cbd5e1" />
+                      <Text style={styles.emptyText}>Chưa có phòng trò chuyện nào.</Text>
+                    </View>
+                  }
+                />
+              )}
+            </View>
+          ) : (
+            <View style={{ flex: 1 }}>
+              {/* Messages Feed */}
+              {loadingMessages ? (
+                <View style={styles.centerContainer}>
+                  <ActivityIndicator size="small" color="#ea580c" />
+                </View>
+              ) : (
+                <FlatList
+                  ref={flatListRef}
+                  data={messages}
+                  renderItem={renderMessageItem}
+                  keyExtractor={(item, index) => item._id || String(index)}
+                  contentContainerStyle={styles.messagesListContent}
+                  onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+                />
+              )}
 
-            {/* Input Area */}
-            <View style={styles.inputArea}>
+              {/* Replying Banner */}
               {replyingTo && (
-                <View style={styles.replyingArea}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.replyingTitle}>Đang trả lời @{replyingTo.senderName}</Text>
-                    <Text style={styles.replyingText} numberOfLines={1}>{replyingTo.content}</Text>
-                  </View>
+                <View style={styles.replyingBanner}>
+                  <Text style={styles.replyingBannerText} numberOfLines={1}>
+                    Đang trả lời <Text style={{ fontWeight: '800' }}>@{replyingTo.senderName}</Text>: {replyingTo.content}
+                  </Text>
                   <TouchableOpacity onPress={() => setReplyingTo(null)}>
-                    <X size={16} color="#849495" />
+                    <X size={14} color="#ea580c" />
                   </TouchableOpacity>
                 </View>
               )}
-              <View style={styles.inputRow}>
+
+              {/* Chat Input Bar */}
+              <View style={styles.inputBar}>
                 <TextInput
-                  style={styles.input}
+                  style={styles.textInput}
                   placeholder="Nhập tin nhắn..."
-                  placeholderTextColor="#849495"
+                  placeholderTextColor="#94a3b8"
                   value={newMessage}
                   onChangeText={setNewMessage}
-                  multiline
+                  multiline={false}
                 />
                 <TouchableOpacity
                   style={[styles.sendBtn, !newMessage.trim() && styles.sendBtnDisabled]}
                   onPress={sendMessage}
                   disabled={!newMessage.trim()}
                 >
-                  <Send size={20} color={newMessage.trim() ? "#000" : "#5c6d70"} />
+                  <Send size={16} color="#ffffff" />
                 </TouchableOpacity>
               </View>
             </View>
-          </KeyboardAvoidingView>
-        )}
-      </View>
+          )}
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -320,229 +417,236 @@ export default function ChatScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#ffffff',
   },
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  centerContainer: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: '#f1f5f9',
+  },
+  backBtn: {
+    padding: 4,
   },
   headerTitle: {
-    color: '#0f172a',
     fontSize: 15,
     fontWeight: '800',
+    color: '#0f172a',
     flex: 1,
     textAlign: 'center',
-    marginHorizontal: 10,
+    marginHorizontal: 8,
   },
-  listContainer: {
+  closeRoomBtn: {
+    padding: 4,
+  },
+  sectionHeaderTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#64748b',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    letterSpacing: 0.5,
+  },
+  centerContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: '#64748b',
+    marginTop: 8,
+  },
+  roomsListContent: {
     padding: 16,
+    gap: 8,
   },
-  roomItem: {
+  roomCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    padding: 14,
+    backgroundColor: '#f8fafc',
+    padding: 12,
     borderRadius: 12,
-    marginBottom: 10,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 2,
+  },
+  roomCardSelected: {
+    backgroundColor: '#fff7ed',
+    borderColor: '#fed7aa',
   },
   roomIconBox: {
-    width: 40,
-    height: 40,
-    backgroundColor: '#fff7ed',
-    borderRadius: 20,
-    justifyContent: 'center',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#ffffff',
     alignItems: 'center',
-    marginRight: 12,
+    justifyContent: 'center',
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   roomInfo: {
     flex: 1,
   },
-  roomName: {
-    color: '#0f172a',
+  roomHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  roomNameText: {
     fontSize: 14,
     fontWeight: '700',
-    marginBottom: 2,
+    color: '#0f172a',
   },
-  roomEvent: {
-    color: '#64748b',
-    fontSize: 11,
+  roomNameTextSelected: {
+    color: '#ea580c',
+    fontWeight: '800',
   },
   unreadBadge: {
-    backgroundColor: '#ea580c',
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
+    backgroundColor: '#ef4444',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
-  unreadText: {
+  unreadBadgeText: {
     color: '#ffffff',
     fontSize: 10,
-    fontWeight: '900',
+    fontWeight: '800',
   },
-  emptyText: {
+  roomSubText: {
+    fontSize: 12,
     color: '#64748b',
-    textAlign: 'center',
-    marginTop: 40,
+    marginTop: 2,
   },
-  messageList: {
+  messagesListContent: {
     padding: 16,
-    paddingBottom: 20,
+    gap: 12,
   },
-  messageContainer: {
-    marginBottom: 14,
-    maxWidth: '85%',
-  },
-  myMessageContainer: {
-    alignSelf: 'flex-end',
+  msgRow: {
+    flexDirection: 'row',
     alignItems: 'flex-end',
-  },
-  otherMessageContainer: {
-    alignSelf: 'flex-start',
-    alignItems: 'flex-start',
-  },
-  senderName: {
-    color: '#ea580c',
-    fontSize: 11,
-    fontWeight: '700',
     marginBottom: 4,
-    marginLeft: 4,
   },
-  messageBubble: {
+  msgRowMe: {
+    justifyContent: 'flex-end',
+  },
+  msgRowOther: {
+    justifyContent: 'flex-start',
+  },
+  msgBubble: {
+    maxWidth: '82%',
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 14,
+    borderRadius: 16,
   },
-  myBubble: {
+  msgBubbleMe: {
     backgroundColor: '#ea580c',
     borderBottomRightRadius: 2,
   },
-  otherBubble: {
-    backgroundColor: '#ffffff',
+  msgBubbleOther: {
+    backgroundColor: '#f1f5f9',
     borderBottomLeftRadius: 2,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 3,
-    elevation: 1,
   },
-  recalledBubble: {
-    backgroundColor: '#f1f5f9',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+  msgSenderName: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#ea580c',
+    marginBottom: 2,
   },
-  messageText: {
-    fontSize: 13,
-    lineHeight: 18,
+  msgContentText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
-  myMessageText: {
+  msgContentTextMe: {
     color: '#ffffff',
-    fontWeight: '500',
   },
-  otherMessageText: {
+  msgContentTextOther: {
     color: '#0f172a',
   },
-  recalledText: {
-    color: '#94a3b8',
-    fontStyle: 'italic',
-  },
-  messageTime: {
-    color: '#94a3b8',
-    fontSize: 9,
+  msgTimeText: {
+    fontSize: 9.5,
     marginTop: 4,
+    textAlign: 'right',
+  },
+  msgTimeTextMe: {
+    color: '#ffedd5',
+  },
+  msgTimeTextOther: {
+    color: '#94a3b8',
   },
   replyBox: {
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-    padding: 6,
-    borderRadius: 6,
-    borderLeftWidth: 3,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderLeftWidth: 2,
     borderLeftColor: '#ea580c',
-    marginBottom: 6,
+    padding: 6,
+    borderRadius: 4,
+    marginBottom: 4,
   },
   replySender: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#ea580c',
   },
   replyContent: {
     fontSize: 11,
     color: '#475569',
   },
-  inputArea: {
-    padding: 12,
-    backgroundColor: '#ffffff',
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
+  replyBtn: {
+    padding: 6,
   },
-  replyingArea: {
+  replyingBanner: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: '#fff7ed',
-    padding: 8,
-    borderRadius: 8,
-    marginBottom: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: '#ea580c',
+    borderTopWidth: 1,
+    borderTopColor: '#ffedd5',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
-  replyingTitle: {
-    color: '#ea580c',
-    fontSize: 10,
-    fontWeight: '800',
+  replyingBannerText: {
+    fontSize: 12,
+    color: '#9a3412',
+    flex: 1,
+    marginRight: 8,
   },
-  replyingText: {
-    color: '#64748b',
-    fontSize: 11,
-  },
-  inputRow: {
+  inputBar: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    backgroundColor: '#ffffff',
   },
-  input: {
+  textInput: {
     flex: 1,
     backgroundColor: '#f8fafc',
-    borderColor: '#cbd5e1',
     borderWidth: 1,
+    borderColor: '#cbd5e1',
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    paddingTop: 8,
-    color: '#0f172a',
-    maxHeight: 100,
     fontSize: 14,
+    color: '#0f172a',
   },
   sendBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#ea580c',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 8,
+    justifyContent: 'center',
   },
   sendBtnDisabled: {
     backgroundColor: '#cbd5e1',

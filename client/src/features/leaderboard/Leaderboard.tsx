@@ -26,6 +26,9 @@ export default function Leaderboard({
   // Detect user role
   const isSystemAdmin = user?.isSystemAdmin;
   const isSystemCoordinator = isSystemAdmin || roles.some((r: any) => r.role === "coordinator");
+  const isAssistant = !isSystemAdmin && (user?.isStudentAssistant || roles?.some((r: any) => r.role === "student_assistant"));
+  const assistantEventId = roles?.find((r: any) => r.role === 'student_assistant')?.eventId;
+  const assistantEventIdStr = assistantEventId?._id || assistantEventId;
 
   const [events, setEvents] = useState<any[]>([]);
   const [selectedEventId, setSelectedEventId] = useState("");
@@ -102,7 +105,13 @@ export default function Leaderboard({
         const allEvents = res.data;
         const activeEvents = allEvents.filter((e: any) => e.status !== "draft");
         
-        if (isSystemCoordinator) {
+        if (isAssistant && assistantEventIdStr) {
+          const assistantEvent = activeEvents.filter((e: any) => e._id === assistantEventIdStr);
+          setEvents(assistantEvent);
+          if (assistantEvent.length > 0) {
+            setSelectedEventId(assistantEvent[0]._id);
+          }
+        } else if (isSystemCoordinator) {
           // SystemAdmin/Coordinator: can see and choose all public events
           setEvents(activeEvents);
           if (queryEventId && activeEvents.some((e: any) => e._id === queryEventId)) {
@@ -137,7 +146,7 @@ export default function Leaderboard({
         }
       })
       .catch((err) => console.error(err));
-  }, [isSystemCoordinator, queryEventId]);
+  }, [isSystemCoordinator, queryEventId, isAssistant, assistantEventIdStr]);
 
   useEffect(() => {
     if (!selectedEventId) return;

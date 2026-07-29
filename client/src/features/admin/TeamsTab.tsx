@@ -67,9 +67,6 @@ export default function TeamsTab({
             <Users size={18} className="text-cyan-400" />
             <span>Đội thi & Thí sinh ({teamsList.length} đội)</span>
           </h3>
-          <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-            Danh sách các đội thi đã đăng ký và phân nhóm trong sự kiện này
-          </p>
         </div>
 
         {/* Action Buttons */}
@@ -92,12 +89,11 @@ export default function TeamsTab({
                   tracks.length === 0 ||
                   !teamsList.some((t) => t.status === "confirmed" && !t.trackId)
                 }
-                className={`text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 ${
-                  tracks.length > 0 &&
-                  teamsList.some((t) => t.status === "confirmed" && !t.trackId)
+                className={`text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 ${tracks.length > 0 &&
+                    teamsList.some((t) => t.status === "confirmed" && !t.trackId)
                     ? "bg-cyan-500 hover:bg-cyan-500 cursor-pointer shadow-lg shadow-cyan-500/25"
                     : "bg-slate-800/80 text-slate-500 cursor-not-allowed border border-slate-700/50"
-                }`}
+                  }`}
               >
                 Chia bảng ngẫu nhiên vào Track
               </button>
@@ -155,11 +151,10 @@ export default function TeamsTab({
                           </span>
                         )}
                       <span
-                        className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${
-                          team.trackId
+                        className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${team.trackId
                             ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                             : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                        }`}
+                          }`}
                       >
                         {team.trackId?.name
                           ? team.trackId.name.startsWith("Bảng")
@@ -173,7 +168,7 @@ export default function TeamsTab({
                   </div>
 
                   {/* Leader & Repo Info */}
-                  <div className="text-[11px] text-slate-400 space-y-1">
+                  <div className="text-xs text-slate-400 space-y-1.5">
                     <p>
                       Trưởng nhóm:{" "}
                       <strong className="text-slate-300">
@@ -208,11 +203,10 @@ export default function TeamsTab({
                               loading || syncingRepoId === team.repository._id
                             }
                             title="Đồng bộ commit và chạy AI đánh giá thủ công ngay lập tức"
-                            className={`text-[9px] font-mono px-1.5 py-0.5 rounded border transition-all inline-flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed ${
-                              syncingRepoId === team.repository._id
+                            className={`text-[9px] font-mono px-1.5 py-0.5 rounded border transition-all inline-flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed ${syncingRepoId === team.repository._id
                                 ? "bg-cyan-950/40 text-cyan-500 border-cyan-500/20"
                                 : "bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border-cyan-500/20 hover:border-cyan-500/40"
-                            }`}
+                              }`}
                           >
                             <RefreshCw
                               size={9}
@@ -239,14 +233,14 @@ export default function TeamsTab({
 
                   {/* Members */}
                   <div className="border-t border-slate-800/80 pt-2">
-                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
                       Thành viên ({team.members?.length || 0}):
                     </p>
                     <div className="space-y-1">
                       {team.members?.map((m: any) => (
                         <div
                           key={m.userId?._id}
-                          className="flex justify-between text-[10px] text-slate-400"
+                          className="flex justify-between text-xs text-slate-400"
                         >
                           <span>
                             • {m.userId?.fullName}{" "}
@@ -254,12 +248,12 @@ export default function TeamsTab({
                             {m.userId?.university &&
                               `- ${m.userId.university} `}
                             {m.role === "leader" && (
-                              <span className="text-[9px] text-cyan-400 font-mono font-bold">
+                              <span className="text-[10px] text-cyan-400 font-mono font-bold">
                                 (Trưởng nhóm)
                               </span>
                             )}
                           </span>
-                          <span className="text-slate-500 font-mono">
+                          <span className="text-slate-500 font-mono text-[11px]">
                             {m.userId?.githubUsername || "Chưa liên kết Git"}
                           </span>
                         </div>
@@ -363,7 +357,7 @@ export default function TeamsTab({
                   </div>
 
                   {/* Leader & Repo Info */}
-                  <div className="text-[11px] text-slate-400 space-y-1">
+                  <div className="text-xs text-slate-400 space-y-1.5">
                     <p>
                       Trưởng nhóm:{" "}
                       <strong className="text-slate-350 font-bold">
@@ -392,14 +386,14 @@ export default function TeamsTab({
 
                   {/* Members with status */}
                   <div className="border-t border-slate-800/80 pt-2">
-                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
                       Thành viên ({team.members?.length || 0}):
                     </p>
                     <div className="space-y-1">
                       {team.members?.map((m: any) => (
                         <div
                           key={m.userId?._id}
-                          className="flex justify-between items-center text-[10px]"
+                          className="flex justify-between items-center text-xs"
                         >
                           <span className="text-slate-400">
                             • {m.userId?.fullName}{" "}
@@ -410,11 +404,10 @@ export default function TeamsTab({
                             )}
                           </span>
                           <span
-                            className={`text-[9px] font-mono px-1 rounded border ${
-                              m.confirmStatus === "confirmed"
+                            className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${m.confirmStatus === "confirmed"
                                 ? "text-emerald-400 bg-emerald-500/5 border-emerald-500/10"
                                 : "text-amber-500 bg-amber-500/10 border-amber-500/20"
-                            }`}
+                              }`}
                           >
                             {m.confirmStatus === "confirmed"
                               ? "Đã nhận"
@@ -428,10 +421,10 @@ export default function TeamsTab({
               ))}
             {teamsList.filter((t) => t.status === "pending_confirm").length ===
               0 && (
-              <p className="col-span-2 text-xs text-slate-500 italic text-center py-2">
-                Không có nhóm nào ở trạng thái chờ xác nhận.
-              </p>
-            )}
+                <p className="col-span-2 text-xs text-slate-500 italic text-center py-2">
+                  Không có nhóm nào ở trạng thái chờ xác nhận.
+                </p>
+              )}
           </div>
         </div>
       </div>

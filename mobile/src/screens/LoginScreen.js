@@ -250,6 +250,11 @@ export default function LoginScreen({ navigation }) {
 
     try {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      try {
+        await GoogleSignin.signOut();
+      } catch (e) {
+        // Bỏ qua nếu người dùng chưa từng đăng nhập trước đó
+      }
       const signInResult = await GoogleSignin.signIn();
 
       if (isCancelledResponse(signInResult)) {

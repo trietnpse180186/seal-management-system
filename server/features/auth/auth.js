@@ -7,7 +7,7 @@ const crypto = require('crypto');
 
 const User = mongoose.model('User');
 const EventRole = mongoose.model('EventRole');
-const { authenticateToken, requireSystemAdmin } = require('./authMiddleware');
+const { authenticateToken, requireSystemAdmin, requireAdminOrAssistant } = require('./authMiddleware');
 const emailService = require('../notifications/emailService');
 const { addEmailJob, isQueueAvailable } = require('../notifications/notificationQueue');
 
@@ -426,6 +426,25 @@ router.post('/assign-role', authenticateToken, requireSystemAdmin, async (req, r
         }
       } else {
         return res.status(404).json({ message: 'Tài khoản người dùng này chưa tồn tại trong hệ thống. Vui lòng tạo tài khoản trước.' });
+      }
+    }
+
+    // Verify targetUser is not student assistant in registration-open event before assigning judge/mentor
+    if (role === 'judge' || role === 'mentor') {
+      const Event = mongoose.model('Event');
+      const registrationEvent = await Event.findOne({ status: 'registration' });
+      if (registrationEvent) {
+        const isStudentAssistant = await EventRole.findOne({
+          userId: targetUser._id,
+          eventId: registrationEvent._id,
+          role: 'student_assistant',
+          status: 'active'
+        });
+        if (isStudentAssistant) {
+          return res.status(400).json({
+            message: 'Tài khoản này đang là Cộng tác viên của sự kiện mở đăng ký, không thể phân công làm Giám khảo hoặc Mentor.'
+          });
+        }
       }
     }
 
@@ -1194,7 +1213,7 @@ router.post('/heartbeat', authenticateToken, async (req, res) => {
  * @desc    Get all users for Admin management
  * @access  Private (System Admin only)
  */
-router.get('/users', authenticateToken, requireSystemAdmin, async (req, res) => {
+router.get('/users', authenticateToken, requireAdminOrAssistant, async (req, res) => {
   try {
     const { search } = req.query;
     let query = { isSystemAdmin: { $ne: true } };
@@ -1205,17 +1224,65 @@ router.get('/users', authenticateToken, requireSystemAdmin, async (req, res) => 
         { studentId: { $regex: search, $options: 'i' } }
       ];
     }
+
+    const isAssistant = !req.user.isSystemAdmin && (req.user.isStudentAssistant || false);
+    
+    // Fetch team memberships for these users in active events (registration, ongoing)
+    const Event = mongoose.model('Event');
+    const TeamMember = mongoose.model('TeamMember');
+    const EventRole = mongoose.model('EventRole');
+
+    const activeEvents = await Event.find({ status: { $in: ['registration', 'ongoing'] } }).select('_id');
+    let targetEventIds = activeEvents.map(e => e._id);
+
+    // If CTV, find the specific event(s) assigned to this CTV
+    if (isAssistant) {
+      const assistantRoles = await EventRole.find({
+        userId: req.user._id,
+        role: 'student_assistant',
+        status: 'active'
+      }).select('eventId');
+      if (assistantRoles.length > 0) {
+        targetEventIds = assistantRoles.map(r => r.eventId);
+      }
+    }
+
+    // Find ALL memberships in target events (including both confirmed and pending team members)
+    const memberships = await TeamMember.find({
+      eventId: { $in: targetEventIds }
+    })
+    .populate({
+      path: 'teamId',
+      select: 'name trackId',
+      populate: {
+        path: 'trackId',
+        select: 'name'
+      }
+    })
+    .lean();
+
+    const teamUserIds = memberships.map(m => m.userId.toString());
+
+    // If CTV, filter query to ONLY include users who are team members in their assigned event
+    if (isAssistant) {
+      query._id = { $in: teamUserIds };
+    }
+
     const users = await User.find(query).select('-passwordHash -emailVerificationToken').sort({ createdAt: -1 }).lean();
-    
-    // Populate event roles for each user
     const userIds = users.map(u => u._id);
-    const roles = await EventRole.find({ userId: { $in: userIds }, status: 'active' }).populate('eventId', 'name semester year').lean();
-    
+
+    const roles = await EventRole.find({ userId: { $in: userIds }, status: 'active' }).populate('eventId', 'name semester year status').lean();
+
     const usersWithRoles = users.map(u => {
       const userRoles = roles.filter(r => r.userId.toString() === u._id.toString());
+      const membership = memberships.find(m => m.userId.toString() === u._id.toString());
       return {
         ...u,
-        roles: userRoles
+        roles: userRoles,
+        isTeamMember: !!membership,
+        teamName: membership?.teamId?.name || null,
+        teamRole: membership?.role || null,
+        trackName: membership?.teamId?.trackId?.name || null
       };
     });
 
@@ -1231,18 +1298,28 @@ router.get('/users', authenticateToken, requireSystemAdmin, async (req, res) => 
  * @desc    Admin create new user
  * @access  Private (System Admin only)
  */
-router.post('/users', authenticateToken, requireSystemAdmin, async (req, res) => {
-  const { email, password, fullName, studentId, university, isSystemAdmin, isActive } = req.body;
-  if (!email || !password || !fullName) {
-    return res.status(400).json({ message: 'Email, mật khẩu và họ tên là bắt buộc.' });
+router.post('/users', authenticateToken, requireAdminOrAssistant, async (req, res) => {
+  const { email, password, fullName, studentId, university, isSystemAdmin, isActive, isStudentAssistant } = req.body;
+  const effectivePassword = password || 'password123';
+  if (!email || !effectivePassword || !fullName) {
+    return res.status(400).json({ message: 'Email và họ tên là bắt buộc.' });
   }
   try {
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
       return res.status(400).json({ message: 'Tài khoản với email này đã tồn tại.' });
     }
+
+    if (isStudentAssistant) {
+      const Event = mongoose.model('Event');
+      const activeEvent = await Event.findOne({ status: { $in: ['registration', 'ongoing'] } });
+      if (!activeEvent) {
+        return res.status(400).json({ message: 'Chỉ được phép tạo Cộng tác viên khi có sự kiện đang diễn ra hoặc mở đăng ký.' });
+      }
+    }
+
     const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
+    const passwordHash = await bcrypt.hash(effectivePassword, salt);
     const newUser = new User({
       email: email.toLowerCase(),
       passwordHash,
@@ -1250,10 +1327,25 @@ router.post('/users', authenticateToken, requireSystemAdmin, async (req, res) =>
       studentId: studentId || '',
       university: normalizeUniversityName(university || 'FPT University'),
       isSystemAdmin: !!isSystemAdmin,
+      isStudentAssistant: !!isStudentAssistant,
       isApproved: true,
       isActive: isActive !== undefined ? !!isActive : true
     });
     await newUser.save();
+
+    if (isStudentAssistant) {
+      const Event = mongoose.model('Event');
+      const activeEvents = await Event.find({ status: { $in: ['registration', 'ongoing'] } });
+      if (activeEvents.length > 0) {
+        for (const ev of activeEvents) {
+          await EventRole.updateOne(
+            { userId: newUser._id, eventId: ev._id, role: 'student_assistant' },
+            { $set: { status: 'active', assignedBy: req.user._id } },
+            { upsert: true }
+          );
+        }
+      }
+    }
 
     res.status(201).json({ message: 'Tạo tài khoản người dùng thành công!', user: newUser });
   } catch (error) {
@@ -1267,7 +1359,7 @@ router.post('/users', authenticateToken, requireSystemAdmin, async (req, res) =>
  * @desc    Admin update user details, permissions, or active status
  * @access  Private (System Admin only)
  */
-router.put('/users/:id', authenticateToken, requireSystemAdmin, async (req, res) => {
+router.put('/users/:id', authenticateToken, requireAdminOrAssistant, async (req, res) => {
   const { fullName, studentId, university, isSystemAdmin, isActive, password } = req.body;
   try {
     const user = await User.findById(req.params.id);
@@ -1297,7 +1389,7 @@ router.put('/users/:id', authenticateToken, requireSystemAdmin, async (req, res)
  * @desc    Admin delete user
  * @access  Private (System Admin only)
  */
-router.delete('/users/:id', authenticateToken, requireSystemAdmin, async (req, res) => {
+router.delete('/users/:id', authenticateToken, requireAdminOrAssistant, async (req, res) => {
   try {
     if (req.params.id === req.user._id.toString()) {
       return res.status(400).json({ message: 'Không thể tự xóa tài khoản Admin đang đăng nhập!' });
@@ -1497,6 +1589,85 @@ router.post('/users/:id/toggle-mentor', authenticateToken, requireSystemAdmin, a
   } catch (error) {
     console.error('Toggle Mentor Error:', error.message);
     res.status(500).json({ message: 'Server error toggling mentor role.' });
+  }
+});
+
+router.post('/users/:id/toggle-student-assistant', authenticateToken, requireSystemAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'Không tìm thấy người dùng.' });
+    }
+
+    const nextVal = !user.isStudentAssistant;
+
+    if (nextVal) {
+      const Event = mongoose.model('Event');
+      const activeEvents = await Event.find({ status: { $in: ['registration', 'ongoing'] } });
+      if (!activeEvents || activeEvents.length === 0) {
+        return res.status(400).json({ message: 'Chỉ được phép cấp quyền Cộng tác viên khi có sự kiện đang diễn ra hoặc mở đăng ký.' });
+      }
+
+      const activeEventIds = activeEvents.map(e => e._id);
+
+      const hasOtherRole = await EventRole.findOne({
+        userId,
+        eventId: { $in: activeEventIds },
+        role: { $in: ['judge', 'mentor', 'coordinator'] },
+        status: 'active'
+      });
+      if (hasOtherRole) {
+        const roleNameMap = { judge: 'Giám khảo', mentor: 'Mentor', coordinator: 'Coordinator' };
+        const roleTitle = roleNameMap[hasOtherRole.role] || hasOtherRole.role;
+        return res.status(400).json({ message: `Tài khoản này đang có vai trò ${roleTitle} trong sự kiện, không thể cấp quyền Cộng tác viên.` });
+      }
+
+      // Check if they are a participant and are in a team (contestant)
+      const isParticipant = await EventRole.findOne({
+        userId,
+        eventId: { $in: activeEventIds },
+        role: 'participant',
+        status: 'active'
+      });
+      if (isParticipant) {
+        const TeamMember = mongoose.model('TeamMember');
+        const isTeamMember = await TeamMember.findOne({
+          userId,
+          eventId: { $in: activeEventIds },
+          confirmStatus: 'confirmed'
+        });
+        if (isTeamMember) {
+          return res.status(400).json({ message: 'Tài khoản này đang là Thí sinh chính thức trong sự kiện, không thể cấp quyền Cộng tác viên.' });
+        }
+      }
+    }
+
+    user.isStudentAssistant = nextVal;
+    await user.save();
+
+    if (!nextVal) {
+      await EventRole.deleteMany({ userId, role: 'student_assistant' });
+      return res.json({ message: 'Đã thu hồi quyền Cộng tác viên Sinh viên!', isStudentAssistant: false });
+    } else {
+      const Event = mongoose.model('Event');
+      const activeEvents = await Event.find({ status: { $in: ['registration', 'ongoing'] } });
+      if (activeEvents.length > 0) {
+        for (const ev of activeEvents) {
+          await EventRole.updateOne(
+            { userId, eventId: ev._id, role: 'student_assistant' },
+            { $set: { status: 'active', assignedBy: req.user._id } },
+            { upsert: true }
+          );
+        }
+        const eventNames = activeEvents.map(e => e.name || e.semester).filter(Boolean).join(', ');
+        return res.json({ message: `Đã cấp quyền Cộng tác viên cho sự kiện: ${eventNames}!`, isStudentAssistant: true });
+      }
+      return res.json({ message: 'Đã cấp quyền Cộng tác viên Sinh viên thành công!', isStudentAssistant: true });
+    }
+  } catch (error) {
+    console.error('Toggle Student Assistant Error:', error.message);
+    res.status(500).json({ message: 'Server error toggling student assistant role.' });
   }
 });
 

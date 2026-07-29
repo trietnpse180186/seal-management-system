@@ -155,7 +155,7 @@ export default function SeminarTab({
                 type="button"
                 onClick={handleSendEmailNow}
                 disabled={sendingMail}
-                className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold font-mono px-4 py-2.5 rounded-xl shadow-lg shadow-cyan-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                className="bg-[#F27024] hover:bg-[#e05f13] !text-white text-xs font-bold font-mono px-4 py-2.5 rounded-xl shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50"
               >
                 {sendingMail ? "Đang phát mail..." : "Gửi Mail Ngay"}
               </button>

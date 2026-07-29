@@ -1325,9 +1325,14 @@ router.get("/my-team", authenticateToken, async (req, res) => {
         )
         .populate("mentorId", "fullName email")
         .populate({
+          path: "originalTrackId",
+          select:
+            "name description startTime endTime roundId environmentId examDriveFileId examDriveFileName examDriveFileUrl isExamManualOpen topicName topicLink",
+        })
+        .populate({
           path: "trackId",
           select:
-            "name description startTime endTime roundId environmentId examDriveFileId examDriveFileName examDriveFileUrl isExamManualOpen",
+            "name description startTime endTime roundId environmentId examDriveFileId examDriveFileName examDriveFileUrl isExamManualOpen topicName topicLink",
           populate: {
             path: "roundId",
             model: "Round",
@@ -1390,17 +1395,28 @@ router.get("/my-team", authenticateToken, async (req, res) => {
     const teamPlain = team.toObject();
 
     const trackPlain = teamPlain.trackId;
+    const effectiveOriginalTrack = teamPlain.originalTrackId;
     if (trackPlain) {
       // Sanitize round for participant (strip raw drive url from round)
       const roundData = trackPlain.roundId;
       if (roundData) {
         trackPlain.roundId = sanitizeRoundForParticipant(roundData);
       }
-      // Attach per-track exam info — only expose link when exam is open
+      // Attach per-track exam info — if in final round or has original track, fallback to original track exam
+      const examTrackSource = effectiveOriginalTrack || trackPlain;
       trackPlain.examAccess = sanitizeTrackExamForParticipant(
-        trackPlain,
+        examTrackSource,
         roundData,
       );
+      if (effectiveOriginalTrack) {
+        trackPlain.originalTrackName = effectiveOriginalTrack.name;
+        if (effectiveOriginalTrack.topicName) {
+          trackPlain.topicName = effectiveOriginalTrack.topicName;
+        }
+        if (effectiveOriginalTrack.topicLink) {
+          trackPlain.topicLink = effectiveOriginalTrack.topicLink;
+        }
+      }
       // Remove raw exam fields so participant can't extract url directly from track object
       delete trackPlain.examDriveFileId;
       delete trackPlain.examDriveFileUrl;
@@ -1939,13 +1955,12 @@ router.post(
           .status(404)
           .json({ message: "Không tìm thấy thông tin cuộc thi." });
 
-      // Auth check: Is user admin or coordinator?
       let isCoordinator = req.user.isSystemAdmin;
       if (!isCoordinator) {
         const coordinatorRole = await EventRole.findOne({
           userId: req.user._id,
           eventId,
-          role: "coordinator",
+          role: { $in: ["coordinator", "student_assistant"] },
           status: "active",
         });
         isCoordinator = !!coordinatorRole;
@@ -2489,7 +2504,7 @@ router.get("/all/:eventId", authenticateToken, async (req, res) => {
         const coordRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: event._id,
-          role: { $in: ["coordinator", "admin_view"] },
+          role: { $in: ["coordinator", "admin_view", "student_assistant"] },
           status: "active",
         });
         authorized = !!coordRole;
@@ -2695,7 +2710,7 @@ router.get("/all/:eventId", authenticateToken, async (req, res) => {
       const coordRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: req.params.eventId,
-        role: { $in: ["coordinator", "admin_view"] },
+        role: { $in: ["coordinator", "admin_view", "student_assistant"] },
         status: "active",
       });
       isCoordinator = !!coordRole;
@@ -2753,7 +2768,8 @@ router.get("/all/:eventId", authenticateToken, async (req, res) => {
     }
 
     const teams = await Team.find(finalQuery)
-      .populate("trackId", "name")
+      .populate("trackId", "name topicName topicLink")
+      .populate("originalTrackId", "name topicName topicLink")
       .populate("currentRoundId", "name order status")
       .populate("leaderId", "fullName email")
       .populate("mentorId", "fullName email");
@@ -2766,8 +2782,12 @@ router.get("/all/:eventId", authenticateToken, async (req, res) => {
         );
         const repo = await GithubRepository.findOne({ teamId: t._id });
         const rankings = await Ranking.find({ teamId: t._id }).lean();
+        const obj = t.toObject();
+        if (t.originalTrackId) {
+          obj.originalTrackName = t.originalTrackId.name;
+        }
         return {
-          ...t.toObject(),
+          ...obj,
           members,
           repository: repo,
           rankings: rankings || [],
@@ -2814,7 +2834,7 @@ router.get("/:teamId", authenticateToken, async (req, res) => {
         const coordRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: team.eventId._id,
-          role: { $in: ["coordinator", "admin_view"] },
+          role: { $in: ["coordinator", "admin_view", "student_assistant"] },
           status: "active",
         });
         authorized = !!coordRole;
@@ -2852,7 +2872,7 @@ router.get("/:teamId", authenticateToken, async (req, res) => {
       let isAuthorized = false;
 
       for (const roleObj of userRoles) {
-        if (roleObj.role === "coordinator" || roleObj.role === "admin_view") {
+        if (roleObj.role === "coordinator" || roleObj.role === "admin_view" || roleObj.role === "student_assistant") {
           isAuthorized = true;
           break;
         }
@@ -3021,7 +3041,7 @@ router.put("/:teamId/assign-track", authenticateToken, async (req, res) => {
       const coordinatorRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: team.eventId,
-        role: "coordinator",
+        role: { $in: ["coordinator", "student_assistant"] },
         status: "active",
       });
       if (!coordinatorRole)
@@ -3227,7 +3247,7 @@ router.put("/:teamId/assign-mentor", authenticateToken, async (req, res) => {
       const coordinatorRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: team.eventId,
-        role: "coordinator",
+        role: { $in: ["coordinator", "student_assistant"] },
         status: "active",
       });
       if (!coordinatorRole) {
@@ -3342,7 +3362,7 @@ router.post("/:teamId/sync-mqtt", authenticateToken, async (req, res) => {
       const coordinatorRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: team.eventId,
-        role: "coordinator",
+        role: { $in: ["coordinator", "student_assistant"] },
         status: "active",
       });
       if (coordinatorRole) {

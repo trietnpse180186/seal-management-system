@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext, Navigate } from "react-router-dom";
 import axios from "axios";
 import { io, Socket } from "socket.io-client";
 import { FolderKanban, CalendarPlus, Info, X, Eye, User, Activity } from "lucide-react";
@@ -7,7 +7,12 @@ import { toast } from "sonner";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const { readOnly, roles } = useOutletContext<{ readOnly?: boolean; roles?: any[] }>();
+  const { readOnly, roles, user } = useOutletContext<{ readOnly?: boolean; roles?: any[]; user?: any }>();
+  const isAssistant = !user?.isSystemAdmin && (user?.isStudentAssistant || roles?.some((r: any) => r.role === 'student_assistant'));
+
+  if (isAssistant) {
+    return <Navigate to="/admin/events" replace />;
+  }
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [logs, setLogs] = useState<any[]>([]);
@@ -204,7 +209,7 @@ export default function AdminDashboard() {
           </h3>
           <div className="flex flex-wrap gap-3 items-center">
             {/* Filter buttons */}
-            <div className="flex bg-slate-900/60 p-0.5 rounded-lg border border-white/5 shadow-inner shrink-0">
+            <div className="flex bg-slate-100 dark:bg-slate-900/60 p-0.5 rounded-lg border border-slate-200 dark:border-white/5 shadow-inner shrink-0">
               {[
                 { value: 'all', label: 'Tất cả' },
                 { value: 'operation', label: 'Thao tác' },
@@ -217,11 +222,11 @@ export default function AdminDashboard() {
                   className={`px-3 py-1.5 text-[9px] font-bold rounded uppercase transition-all cursor-pointer ${
                     logFilter === btn.value
                       ? btn.value === 'error'
-                        ? 'bg-rose-500 text-white shadow-[0_0_10px_rgba(244,63,94,0.4)]'
+                        ? 'bg-rose-500 !text-white shadow-[0_0_10px_rgba(244,63,94,0.4)]'
                         : btn.value === 'grading'
-                        ? 'bg-amber-500 text-slate-900 shadow-[0_0_10px_rgba(245,158,11,0.4)]'
-                        : 'bg-cyan-500 text-white shadow-[0_0_10px_rgba(6,182,212,0.4)]'
-                      : 'text-slate-500 hover:text-slate-350'
+                        ? 'bg-amber-500 !text-white shadow-[0_0_10px_rgba(245,158,11,0.4)]'
+                        : 'bg-[#F27024] dark:bg-cyan-500 !text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
                   {btn.label}

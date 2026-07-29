@@ -13,6 +13,7 @@ const UserSchema = new Schema({
   githubAccessTokenEncrypted: { type: String },
   avatarUrl: { type: String },
   isSystemAdmin: { type: Boolean, default: false },
+  isStudentAssistant: { type: Boolean, default: false },
   isApproved: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true },
   emailVerificationToken: { type: String },

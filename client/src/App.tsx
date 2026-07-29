@@ -128,7 +128,16 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
     }
   };
 
-  const usesLightShell = location.pathname === '/' || location.pathname === '/team-area' || location.pathname === '/register-team' || location.pathname === '/login' || location.pathname === '/achievements' || location.pathname === '/guest-portal' || location.pathname.startsWith('/album') || location.pathname === '/confirm-survey';
+  const usesLightShell = 
+    location.pathname === '/' || 
+    location.pathname === '/team-area' || 
+    location.pathname === '/register-team' || 
+    location.pathname === '/login' || 
+    location.pathname === '/achievements' || 
+    location.pathname === '/my-achievements' || 
+    location.pathname === '/guest-portal' || 
+    location.pathname.startsWith('/album') || 
+    location.pathname === '/confirm-survey';
 
   const showChatWidget = user && (
     (!isJudgeRoute && (!isAdminRoute || isCoordinator)) ||
@@ -152,7 +161,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
         <Routes>
           <Route path="/" element={
             user ? (
-              (user.isSystemAdmin || roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view')) ? (
+              (user.isSystemAdmin || roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view' || r.role === 'student_assistant')) ? (
                 <Navigate to="/admin" />
               ) : (roles.some((r: any) => r.role === 'judge') || roles.some((r: any) => r.role === 'mentor')) ? (
                 <Navigate to="/expert/dashboard" />
@@ -189,7 +198,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
           
           {/* Admin Routes under AdminLayout */}
           <Route path="/admin" element={
-            <ProtectedRoute user={user} roles={roles} allowedRoles={['coordinator']}>
+            <ProtectedRoute user={user} roles={roles} allowedRoles={['coordinator', 'student_assistant']}>
               <AdminLayout user={user} roles={roles} onLogout={handleLogout} />
             </ProtectedRoute>
           }>
@@ -197,7 +206,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
             <Route path="events" element={<AdminEvents />} />
             <Route path="users" element={<AdminUsersView />} />
             <Route path="live" element={<AdminLiveInteraction />} />
-            <Route path="grades" element={<AdminGradesView />} />
+            <Route path="grades" element={<AdminGradesView user={user} roles={roles} />} />
             <Route path="leaderboard" element={<Leaderboard user={user} roles={roles} />} />
             <Route path="album" element={<Gallery user={user} roles={roles} />} />
           </Route>
@@ -797,7 +806,7 @@ export default function App() {
             handleLogout={handleLogout} 
             setUser={setUser}
           />
-          <Toaster position="top-right" theme="dark" closeButton richColors />
+          <Toaster position="top-right" theme="light" closeButton richColors />
         </ConfirmProvider>
       </ConformProvider>
     </BrowserRouter>

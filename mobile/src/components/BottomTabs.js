@@ -7,7 +7,12 @@ import api from '../api/api';
 
 export default function BottomTabs({ activeTab, navigation }) {
   const insets = useSafeAreaInsets();
-  const [role, setRole] = useState(null);
+  const [isStaff, setIsStaff] = useState(
+    activeTab === 'judge' ||
+    activeTab === 'JudgeDashboard' ||
+    activeTab === 'mentor' ||
+    activeTab === 'MentorDashboard'
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -15,19 +20,50 @@ export default function BottomTabs({ activeTab, navigation }) {
       try {
         const userStr = await AsyncStorage.getItem('user');
         const rolesStr = await AsyncStorage.getItem('roles');
-        if (userStr && rolesStr) {
+
+        let isStaffRole = false;
+
+        if (userStr) {
           const user = JSON.parse(userStr);
-          const roles = JSON.parse(rolesStr);
+          const roles = rolesStr ? JSON.parse(rolesStr) : [];
 
-          const isSystemAdmin = user.isSystemAdmin;
-          const isJudge = roles.some((r) => r.role === 'judge') || isSystemAdmin;
+          const isSystemAdmin = !!user?.isSystemAdmin;
+          const isJudge = roles.some((r) => r.role === 'judge');
+          const isMentor = roles.some((r) => r.role === 'mentor');
 
-          if (isJudge) {
-            setRole('judge');
-          } else {
-            setRole('participant');
+          isStaffRole = isJudge || isMentor || isSystemAdmin;
+        }
+
+        // Nếu đang ở các màn hình của Giám khảo / Mentor, ép buộc là Staff
+        if (
+          activeTab === 'judge' ||
+          activeTab === 'JudgeDashboard' ||
+          activeTab === 'mentor' ||
+          activeTab === 'MentorDashboard'
+        ) {
+          isStaffRole = true;
+        }
+
+        // Nếu chưa rõ, gọi API profile để chắc chắn
+        if (!isStaffRole) {
+          try {
+            const profileRes = await api.get('/users/profile');
+            if (profileRes.data) {
+              const u = profileRes.data.user;
+              const rList = profileRes.data.roles || [];
+              if (u?.isSystemAdmin || rList.some((r) => r.role === 'judge' || r.role === 'mentor')) {
+                isStaffRole = true;
+                if (rList.length > 0) {
+                  await AsyncStorage.setItem('roles', JSON.stringify(rList));
+                }
+              }
+            }
+          } catch (e) {
+            // ignore
           }
         }
+
+        setIsStaff(isStaffRole);
       } catch (err) {
         console.error('Lỗi khi tải vai trò người dùng:', err);
       } finally {
@@ -35,10 +71,16 @@ export default function BottomTabs({ activeTab, navigation }) {
       }
     };
     checkRole();
-  }, []);
+  }, [activeTab]);
 
   const handleTeamTabPress = async () => {
-    if (role === 'judge') {
+    if (
+      isStaff ||
+      activeTab === 'judge' ||
+      activeTab === 'JudgeDashboard' ||
+      activeTab === 'mentor' ||
+      activeTab === 'MentorDashboard'
+    ) {
       navigation.navigate('JudgeDashboard');
     } else {
       try {
@@ -54,13 +96,33 @@ export default function BottomTabs({ activeTab, navigation }) {
     }
   };
 
-  if (loading) {
+  const handleTab3Press = () => {
+    if (
+      isStaff ||
+      activeTab === 'judge' ||
+      activeTab === 'JudgeDashboard' ||
+      activeTab === 'mentor' ||
+      activeTab === 'MentorDashboard'
+    ) {
+      navigation.navigate('MentorDashboard');
+    } else {
+      navigation.navigate('MyAchievements');
+    }
+  };
+
+  if (loading && !isStaff) {
     return (
       <View style={[styles.container, { paddingBottom: insets.bottom || 4, height: 56 + (insets.bottom || 0) }]}>
         <ActivityIndicator color="#ea580c" size="small" />
       </View>
     );
   }
+
+  const isHomeActive = activeTab === 'home' || activeTab === 'Home';
+  const isJudgeActive = activeTab === 'judge' || activeTab === 'JudgeDashboard';
+  const isTeamActive = activeTab === 'team' || activeTab === 'Team' || activeTab === 'TeamArea';
+  const isMentorActive = activeTab === 'mentor' || activeTab === 'MentorDashboard';
+  const isAchievementsActive = activeTab === 'achievements' || activeTab === 'MyAchievements';
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom || 4, height: 56 + (insets.bottom || 0) }]}>
@@ -72,34 +134,34 @@ export default function BottomTabs({ activeTab, navigation }) {
       >
         <Home
           size={20}
-          color={activeTab === 'home' ? '#ea580c' : '#64748b'}
+          color={isHomeActive ? '#ea580c' : '#64748b'}
         />
         <Text
           style={[
             styles.label,
-            { color: activeTab === 'home' ? '#ea580c' : '#64748b' },
+            { color: isHomeActive ? '#ea580c' : '#64748b' },
           ]}
         >
           Trang chủ
         </Text>
       </TouchableOpacity>
 
-      {/* Tab 2: Đội thi (hoặc Chấm điểm nếu là Giám khảo) */}
+      {/* Tab 2: Đội thi (hoặc Chấm điểm nếu là Giám khảo/Mentor) */}
       <TouchableOpacity
         style={styles.tab}
         onPress={handleTeamTabPress}
         activeOpacity={0.7}
       >
-        {role === 'judge' ? (
+        {isStaff ? (
           <>
             <ClipboardList
               size={20}
-              color={activeTab === 'judge' ? '#ea580c' : '#64748b'}
+              color={isJudgeActive ? '#ea580c' : '#64748b'}
             />
             <Text
               style={[
                 styles.label,
-                { color: activeTab === 'judge' ? '#ea580c' : '#64748b' },
+                { color: isJudgeActive ? '#ea580c' : '#64748b' },
               ]}
             >
               Chấm điểm
@@ -109,12 +171,12 @@ export default function BottomTabs({ activeTab, navigation }) {
           <>
             <Users
               size={20}
-              color={activeTab === 'team' ? '#ea580c' : '#64748b'}
+              color={isTeamActive ? '#ea580c' : '#64748b'}
             />
             <Text
               style={[
                 styles.label,
-                { color: activeTab === 'team' ? '#ea580c' : '#64748b' },
+                { color: isTeamActive ? '#ea580c' : '#64748b' },
               ]}
             >
               Đội thi
@@ -123,24 +185,43 @@ export default function BottomTabs({ activeTab, navigation }) {
         )}
       </TouchableOpacity>
 
-      {/* Tab 3: Thành tích */}
+      {/* Tab 3: Thành tích (hoặc Hướng dẫn Đội nếu là Giám khảo/Mentor) */}
       <TouchableOpacity
         style={styles.tab}
-        onPress={() => navigation.navigate('MyAchievements')}
+        onPress={handleTab3Press}
         activeOpacity={0.7}
       >
-        <Award
-          size={20}
-          color={activeTab === 'achievements' ? '#ea580c' : '#64748b'}
-        />
-        <Text
-          style={[
-            styles.label,
-            { color: activeTab === 'achievements' ? '#ea580c' : '#64748b' },
-          ]}
-        >
-          Thành tích
-        </Text>
+        {isStaff ? (
+          <>
+            <Users
+              size={20}
+              color={isMentorActive ? '#ea580c' : '#64748b'}
+            />
+            <Text
+              style={[
+                styles.label,
+                { color: isMentorActive ? '#ea580c' : '#64748b' },
+              ]}
+            >
+              Hướng dẫn Đội
+            </Text>
+          </>
+        ) : (
+          <>
+            <Award
+              size={20}
+              color={isAchievementsActive ? '#ea580c' : '#64748b'}
+            />
+            <Text
+              style={[
+                styles.label,
+                { color: isAchievementsActive ? '#ea580c' : '#64748b' },
+              ]}
+            >
+              Thành tích
+            </Text>
+          </>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -149,28 +230,24 @@ export default function BottomTabs({ activeTab, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    height: 60,
     backgroundColor: '#ffffff',
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingBottom: 4,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
     elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
   tab: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    paddingVertical: 4,
+    paddingVertical: 6,
   },
   label: {
-    fontSize: 11,
-    marginTop: 3,
+    fontSize: 10,
+    marginTop: 2,
     fontWeight: '700',
   },
 });

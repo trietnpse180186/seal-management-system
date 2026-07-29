@@ -10,6 +10,7 @@ import {
   RefreshControl,
   Alert,
   Platform,
+  Clipboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -18,7 +19,7 @@ import api from '../api/api';
 import BottomTabs from '../components/BottomTabs';
 import HeaderAvatar from '../components/HeaderAvatar';
 import socketService from '../api/socketService';
-import { BookOpen, Users, Save, RefreshCw, CheckCircle, Clock, MessageSquare, Download, FileText, Video, ExternalLink, Crown, ArrowLeft } from 'lucide-react-native';
+import { BookOpen, Users, Save, RefreshCw, CheckCircle, Clock, MessageSquare, Download, FileText, Video, ExternalLink, Crown, ArrowLeft, Cpu, Copy } from 'lucide-react-native';
 
 export default function TeamAreaScreen({ navigation }) {
   const [data, setData] = useState(null);
@@ -37,12 +38,25 @@ export default function TeamAreaScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [syncingMqtt, setSyncingMqtt] = useState(false);
+  const [copiedField, setCopiedField] = useState(null);
 
   // Time state for exam countdown
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  const round = data?.team?.trackId?.roundId;
-  const isExamVisible = !!(round?.startTime || round?.isExamManualOpen || data?.team?.trackId?.examAccess?.examOpened);
+  const track = data?.team?.trackId;
+  const round = track?.roundId;
+  const isExamVisible = !!(
+    data?.team &&
+    data.team.eventId?.status === 'ongoing' &&
+    ((round?.startTime && new Date(round.startTime) <= currentTime) || round?.isExamManualOpen || track?.examAccess?.examOpened)
+  );
+  const showMqttCard = !!(
+    data?.team &&
+    data.team.eventId?.status === 'ongoing' &&
+    ((round?.startTime && new Date(round.startTime) <= currentTime) || round?.isExamManualOpen) &&
+    track?.environmentId
+  );
 
   const formatTimeStr = (date) => {
     if (!date) return '';
@@ -224,6 +238,29 @@ export default function TeamAreaScreen({ navigation }) {
     }
   };
 
+  const handleCopy = (text, fieldName) => {
+    if (!text) return;
+    Clipboard.setString(text);
+    setCopiedField(fieldName);
+    setTimeout(() => setCopiedField(null), 2000);
+    Alert.alert('Đã sao chép', `Đã sao chép ${fieldName} vào bộ nhớ tạm.`);
+  };
+
+  const handleSyncMqtt = async () => {
+    if (!data?.team?._id) return;
+    setSyncingMqtt(true);
+    try {
+      const res = await api.post(`/teams/${data.team._id}/sync-mqtt`);
+      Alert.alert('Thành công', res.data?.message || 'Đồng bộ kết nối MQTT thành công!');
+      await fetchTeamData();
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Thất bại', err.response?.data?.message || 'Không thể đồng bộ kết nối MQTT.');
+    } finally {
+      setSyncingMqtt(false);
+    }
+  };
+
   const getStatusLabel = (status) => {
     switch (status?.toLowerCase()) {
       case 'confirmed':
@@ -380,7 +417,7 @@ export default function TeamAreaScreen({ navigation }) {
               {isExamVisible && (
                 <View style={styles.examCard}>
                   <View style={styles.sectionTitleRow}>
-                    <BookOpen size={16} color="#00f0ff" />
+                    <BookOpen size={16} color="#ea580c" />
                     <Text style={styles.sectionTitle}>[ĐỀ_BÀI_&_TÀI_LIỆU_THI]</Text>
                   </View>
 
@@ -412,6 +449,195 @@ export default function TeamAreaScreen({ navigation }) {
                     </View>
                   ) : (
                     <Text style={styles.italicText}>Chưa có đề bài hoặc đề chưa được mở cho bảng đấu của bạn.</Text>
+                  )}
+                </View>
+              )}
+
+              {/* MQTT Credentials Card */}
+              {showMqttCard && (
+                <View style={styles.mqttCard}>
+                  <View style={styles.mqttHeaderRow}>
+                    <View style={styles.sectionTitleRowNoMargin}>
+                      <Cpu size={16} color="#10b981" />
+                      <Text style={styles.mqttSectionTitle}>[MQTT_CREDENTIALS]</Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={handleSyncMqtt}
+                      disabled={syncingMqtt}
+                      style={styles.mqttSyncIconBtn}
+                      activeOpacity={0.7}
+                    >
+                      {syncingMqtt ? (
+                        <ActivityIndicator size="small" color="#10b981" />
+                      ) : (
+                        <RefreshCw size={14} color="#10b981" />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
+                  {!team?.mqttUsername || !team?.testApiKey ? (
+                    <View style={styles.mqttEmptyContainer}>
+                      <Text style={styles.mqttEmptyText}>
+                        Khóa kết nối MQTT chưa được đồng bộ từ Simulator.
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.mqttSyncBtn}
+                        onPress={handleSyncMqtt}
+                        disabled={syncingMqtt}
+                        activeOpacity={0.8}
+                      >
+                        {syncingMqtt ? (
+                          <ActivityIndicator size="small" color="#ffffff" />
+                        ) : (
+                          <Text style={styles.mqttSyncBtnText}>ĐỒNG BỘ KẾT NỐI</Text>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <View style={styles.mqttFieldsContainer}>
+                      {team?.isJudgeActive && (
+                        <View style={styles.judgeBox}>
+                          <Text style={styles.judgeHeaderTag}>[MÔI TRƯỜNG CHẤM THI ĐANG BẬT]</Text>
+
+                          <View style={styles.credentialRow}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.judgeLabel}>JUDGE API KEY</Text>
+                              <Text style={styles.judgeValue} numberOfLines={1}>
+                                {team?.judgeApiKey || '---'}
+                              </Text>
+                            </View>
+                            <TouchableOpacity
+                              style={styles.copyBtn}
+                              onPress={() => handleCopy(team?.judgeApiKey, 'JUDGE API Key')}
+                            >
+                              {copiedField === 'JUDGE API Key' ? (
+                                <CheckCircle size={14} color="#10b981" />
+                              ) : (
+                                <Copy size={14} color="#64748b" />
+                              )}
+                            </TouchableOpacity>
+                          </View>
+
+                          <View style={styles.credentialRow}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.judgeLabel}>JUDGE TOPIC</Text>
+                              <Text style={styles.judgeValue} numberOfLines={1}>
+                                {team?.judgeTopic || '---'}
+                              </Text>
+                            </View>
+                            <TouchableOpacity
+                              style={styles.copyBtn}
+                              onPress={() => handleCopy(team?.judgeTopic, 'JUDGE Topic')}
+                            >
+                              {copiedField === 'JUDGE Topic' ? (
+                                <CheckCircle size={14} color="#10b981" />
+                              ) : (
+                                <Copy size={14} color="#64748b" />
+                              )}
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      )}
+
+                      <View style={styles.credentialRow}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.credentialLabel}>ACCESS CODE (SIMULATOR)</Text>
+                          <Text style={styles.credentialValueCyan} numberOfLines={1}>
+                            {team?.accessCode || '---'}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.copyBtn}
+                          onPress={() => handleCopy(team?.accessCode, 'Access Code')}
+                        >
+                          {copiedField === 'Access Code' ? (
+                            <CheckCircle size={14} color="#10b981" />
+                          ) : (
+                            <Copy size={14} color="#64748b" />
+                          )}
+                        </TouchableOpacity>
+                      </View>
+
+                      <View style={styles.highlightCredentialBox}>
+                        <View style={styles.credentialRowNoBorder}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.credentialLabelCyan}>TEST KEY</Text>
+                            <Text style={styles.credentialValueText} numberOfLines={1}>
+                              {team?.testApiKey || '---'}
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            style={styles.copyBtn}
+                            onPress={() => handleCopy(team?.testApiKey, 'Test Key')}
+                          >
+                            {copiedField === 'Test Key' ? (
+                              <CheckCircle size={14} color="#11966aff" />
+                            ) : (
+                              <Copy size={14} color="#11966aff" />
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+
+                      <View style={styles.highlightCredentialBox}>
+                        <View style={styles.credentialRowNoBorder}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.credentialLabelCyan}>TEST TOPIC</Text>
+                            <Text style={styles.credentialValueText} numberOfLines={1}>
+                              {team?.testTopic || '---'}
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            style={styles.copyBtn}
+                            onPress={() => handleCopy(team?.testTopic, 'TEST Topic')}
+                          >
+                            {copiedField === 'TEST Topic' ? (
+                              <CheckCircle size={14} color="#11966aff" />
+                            ) : (
+                              <Copy size={14} color="#11966aff" />
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+
+                      <View style={styles.credentialRow}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.credentialLabel}>USERNAME</Text>
+                          <Text style={styles.credentialValue} numberOfLines={1}>
+                            {team?.mqttUsername || '---'}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.copyBtn}
+                          onPress={() => handleCopy(team?.mqttUsername, 'Username')}
+                        >
+                          {copiedField === 'Username' ? (
+                            <CheckCircle size={14} color="#10b981" />
+                          ) : (
+                            <Copy size={14} color="#64748b" />
+                          )}
+                        </TouchableOpacity>
+                      </View>
+
+                      <View style={styles.credentialRow}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.credentialLabel}>PASSWORD</Text>
+                          <Text style={styles.credentialValue} numberOfLines={1}>
+                            ••••••••
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.copyBtn}
+                          onPress={() => handleCopy(team?.mqttPassword, 'Password')}
+                        >
+                          {copiedField === 'Password' ? (
+                            <CheckCircle size={14} color="#10b981" />
+                          ) : (
+                            <Copy size={14} color="#64748b" />
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    </View>
                   )}
                 </View>
               )}
@@ -539,7 +765,7 @@ export default function TeamAreaScreen({ navigation }) {
                     onPress={handleSyncRepo}
                     disabled={syncing}
                   >
-                    <RefreshCw size={14} color="#00f0ff" style={syncing && styles.spin} />
+                    <RefreshCw size={14} color="#ea580c" style={syncing && styles.spin} />
                     <Text style={styles.syncBtnText}>{syncing ? 'ĐANG ĐỒNG BỘ...' : 'ĐỒNG BỘ MÃ NGUỒN'}</Text>
                   </TouchableOpacity>
 
@@ -1280,5 +1506,159 @@ const styles = StyleSheet.create({
     color: '#849495',
     fontSize: 9,
     fontWeight: '700',
+  },
+  mqttCard: {
+    backgroundColor: '#ffffff',
+    borderColor: '#10b981',
+    borderWidth: 1,
+    padding: 16,
+    borderRadius: 14,
+    marginBottom: 16,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  mqttHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    paddingBottom: 10,
+    marginBottom: 12,
+  },
+  sectionTitleRowNoMargin: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  mqttSectionTitle: {
+    color: '#10b981',
+    fontSize: 12,
+    fontWeight: '800',
+    marginLeft: 8,
+    letterSpacing: 0.5,
+  },
+  mqttSyncIconBtn: {
+    padding: 4,
+  },
+  mqttEmptyContainer: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  mqttEmptyText: {
+    color: '#d97706',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  mqttSyncBtn: {
+    backgroundColor: '#10b981',
+    width: '100%',
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mqttSyncBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  mqttFieldsContainer: {
+    gap: 10,
+  },
+  judgeBox: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#bbf7d0',
+    borderWidth: 1,
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 4,
+    gap: 8,
+  },
+  judgeHeaderTag: {
+    color: '#166534',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  judgeLabel: {
+    color: '#15803d',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  judgeValue: {
+    color: '#166534',
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    marginTop: 1,
+  },
+  credentialRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f8fafc',
+    borderColor: '#e2e8f0',
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  credentialRowNoBorder: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  highlightCredentialBox: {
+    backgroundColor: '#d8efe8ff',
+    borderColor: '#11966aff',
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  credentialLabel: {
+    color: '#64748b',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  credentialLabelCyan: {
+    color: '#11966aff',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  credentialValue: {
+    color: '#334155',
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    marginTop: 1,
+  },
+  credentialValueCyan: {
+    color: '#11966aff',
+    fontSize: 13,
+    fontWeight: '800',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    marginTop: 1,
+  },
+  credentialValueText: {
+    color: '#0f172a',
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    marginTop: 1,
+  },
+  copyBtn: {
+    padding: 6,
+    marginLeft: 8,
   },
 });

@@ -376,7 +376,7 @@ export default function TeamArea() {
       round?.isExamManualOpen) &&
     track?.environmentId
   );
-  const isExamVisible = !!(round?.startTime || round?.isExamManualOpen);
+  const isExamVisible = hasContestStarted && !!(round?.startTime || round?.isExamManualOpen);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -812,42 +812,86 @@ export default function TeamArea() {
         </div>
 
         {/* Active Round Banner */}
-        {team?.currentEventRound &&
-          (() => {
-            const countdown = getRoundCountdown();
+        {(() => {
+          const countdown = getRoundCountdown();
+          const isRegistration =
+            !hasContestStarted ||
+            team?.eventId?.status === "registration" ||
+            team?.eventId?.status === "upcoming";
+
+          if (isRegistration) {
+            const hasContestStart = team?.eventId?.contestStart;
             return (
               <div className="bg-white p-5 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm text-slate-800">
                 <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-[#F27024]"></div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500"></div>
                   <div>
                     <span className="text-[10px] text-slate-400 block uppercase font-mono tracking-wider font-bold">
                       Trạng thái giải đấu
                     </span>
                     <p className="text-xs sm:text-sm font-bold text-slate-800">
-                      Vòng thi hiện tại:{" "}
+                      Chưa mở{" "}
                       <span className="text-[#F27024] font-extrabold uppercase font-mono">
-                        {team.currentEventRound}
+                        (Đang mở đăng ký đội thi)
                       </span>
                     </p>
                   </div>
                 </div>
-                {/* Timer section */}
-                {countdown && (
-                  <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 self-start sm:self-auto">
-                    <Clock size={14} className="text-[#F27024]" />
-                    <div className="text-xs font-mono">
-                      <span className="text-slate-400 uppercase tracking-wider text-[9px] block">
-                        Thời gian làm bài
-                      </span>
-                      <span className={`${countdown.color} font-bold`}>
-                        {countdown.text}
-                      </span>
-                    </div>
+                {/* Timer / Info section */}
+                <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 self-start sm:self-auto">
+                  <Clock size={14} className="text-[#F27024]" />
+                  <div className="text-xs font-mono">
+                    <span className="text-slate-400 uppercase tracking-wider text-[9px] block">
+                      Thời gian mở cuộc thi
+                    </span>
+                    <span className="text-amber-600 font-bold">
+                      {hasContestStart
+                        ? new Date(hasContestStart) > currentTime
+                          ? getRemainingTimeText(hasContestStart)
+                          : "Sắp diễn ra"
+                        : "Chưa công bố"}
+                    </span>
                   </div>
-                )}
+                </div>
               </div>
             );
-          })()}
+          }
+
+          if (!team?.currentEventRound) return null;
+
+          return (
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm text-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-[#F27024]"></div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block uppercase font-mono tracking-wider font-bold">
+                    Trạng thái giải đấu
+                  </span>
+                  <p className="text-xs sm:text-sm font-bold text-slate-800">
+                    Vòng thi hiện tại:{" "}
+                    <span className="text-[#F27024] font-extrabold uppercase font-mono">
+                      {team.currentEventRound}
+                    </span>
+                  </p>
+                </div>
+              </div>
+              {/* Timer section */}
+              {countdown && (
+                <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 self-start sm:self-auto">
+                  <Clock size={14} className="text-[#F27024]" />
+                  <div className="text-xs font-mono">
+                    <span className="text-slate-400 uppercase tracking-wider text-[9px] block">
+                      Thời gian làm bài
+                    </span>
+                    <span className={`${countdown.color} font-bold`}>
+                      {countdown.text}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Seminar Widget */}
         {team?.eventId?.seminar?.scheduledAt &&
@@ -1222,9 +1266,15 @@ export default function TeamArea() {
               </div>
             )}
 
-            {/* Right: Members Card (Col 4) */}
+            {/* Right: Members Card */}
             <div
-              className={`${isExamVisible ? "lg:col-span-4" : showMqttCard ? "lg:col-span-6" : "lg:col-span-6"} space-y-6`}
+              className={`${
+                isExamVisible && showMqttCard
+                  ? "lg:col-span-4"
+                  : isExamVisible || showMqttCard
+                  ? "lg:col-span-6"
+                  : "lg:col-span-12"
+              } space-y-6`}
             >
               <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-slate-800 text-left">
                 <div>
@@ -1252,7 +1302,13 @@ export default function TeamArea() {
                       </span>
                     </div>
                   )}
-                  <div className="space-y-3.5 max-h-[300px] overflow-y-auto pr-1">
+                  <div
+                    className={
+                      !isExamVisible && !showMqttCard
+                        ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5"
+                        : "space-y-3.5 max-h-[300px] overflow-y-auto pr-1"
+                    }
+                  >
                     {members?.map((m: any) => (
                       <div
                         key={m._id}

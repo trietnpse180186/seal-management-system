@@ -136,7 +136,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
 
   return (
     <div className={`min-h-screen ${location.pathname === '/login' ? 'bg-[#f5efe8]' : (isLightModePage ? 'bg-[#faf9f6]' : 'bg-gradient-dark')} flex flex-col`}>
-      {!isJudgeRoute && !isAdminRoute && (
+      {!isJudgeRoute && !isAdminRoute && location.pathname !== '/' && (
         <Navbar 
           user={user} 
           roles={roles} 

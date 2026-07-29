@@ -23,8 +23,9 @@ export default {
         "outline-variant": "#3b494b",
       },
       fontFamily: {
-        sans: ['Inter', 'Plus Jakarta Sans', 'Outfit', 'sans-serif'],
-        mono: ['Inter', 'Plus Jakarta Sans', 'Outfit', 'sans-serif'],
+        display: ['Archivo', 'sans-serif'],
+        sans: ['DM Sans', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
       }
     },
   },

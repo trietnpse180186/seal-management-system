@@ -98,10 +98,18 @@ router.get('/captcha', (req, res) => {
  * @access  Public
  */
 router.post('/register', async (req, res) => {
-  const { email, password, fullName, studentId, university, githubUsername, captchaId, captchaValue } = req.body;
+  const { email, password, fullName, studentId, university, githubUsername, height, weight, captchaId, captchaValue } = req.body;
 
   if (!email || !password || !fullName) {
     return res.status(400).json({ message: 'Email, mật khẩu và họ tên là bắt buộc.' });
+  }
+
+  if (!height || isNaN(Number(height))) {
+    return res.status(400).json({ message: 'Chiều cao hợp lệ là bắt buộc.' });
+  }
+
+  if (!weight || isNaN(Number(weight))) {
+    return res.status(400).json({ message: 'Cân nặng hợp lệ là bắt buộc.' });
   }
 
   // Verify CAPTCHA
@@ -134,6 +142,8 @@ router.post('/register', async (req, res) => {
       studentId,
       university: normalizeUniversityName(university),
       githubUsername,
+      height: Number(height),
+      weight: Number(weight),
       isSystemAdmin: isFirstUser,
       isApproved: isFirstUser, // Auto-approve only the first user (system admin)
       emailVerificationToken,
@@ -267,6 +277,8 @@ router.post('/login', async (req, res) => {
         fullName: user.fullName,
         isSystemAdmin: user.isSystemAdmin,
         githubUsername: user.githubUsername,
+        height: user.height,
+        weight: user.weight,
         avatarUrl: user.avatarUrl
       },
       roles: await mapUserRoles(roles)
@@ -302,6 +314,8 @@ router.get('/me', authenticateToken, async (req, res) => {
         studentId: req.user.studentId,
         university: req.user.university,
         githubUsername: req.user.githubUsername,
+        height: req.user.height,
+        weight: req.user.weight,
         isSystemAdmin: req.user.isSystemAdmin
       },
       roles: await mapUserRoles(roles)
@@ -318,10 +332,18 @@ router.get('/me', authenticateToken, async (req, res) => {
  * @access  Private
  */
 router.put('/profile', authenticateToken, async (req, res) => {
-  const { fullName, studentId, university, githubUsername } = req.body;
+  const { fullName, studentId, university, githubUsername, height, weight } = req.body;
 
   if (!fullName || !fullName.trim()) {
     return res.status(400).json({ message: 'Họ tên là bắt buộc.' });
+  }
+
+  if (!height || isNaN(Number(height))) {
+    return res.status(400).json({ message: 'Chiều cao hợp lệ là bắt buộc.' });
+  }
+
+  if (!weight || isNaN(Number(weight))) {
+    return res.status(400).json({ message: 'Cân nặng hợp lệ là bắt buộc.' });
   }
 
   try {
@@ -330,6 +352,8 @@ router.put('/profile', authenticateToken, async (req, res) => {
     user.studentId = studentId ? studentId.trim() : undefined;
     user.university = university ? normalizeUniversityName(university) : undefined;
     user.githubUsername = githubUsername ? githubUsername.trim() : undefined;
+    user.height = Number(height);
+    user.weight = Number(weight);
 
     await user.save();
 
@@ -352,6 +376,8 @@ router.put('/profile', authenticateToken, async (req, res) => {
         studentId: user.studentId,
         university: user.university,
         githubUsername: user.githubUsername,
+        height: user.height,
+        weight: user.weight,
         isSystemAdmin: user.isSystemAdmin,
         avatarUrl: user.avatarUrl
       },
@@ -1036,17 +1062,17 @@ router.get('/verify-email', async (req, res) => {
         </style>
       </head>
       <body class="min-h-screen text-slate-300 font-sans flex items-center justify-center p-4">
-        <div class="w-full max-w-md bg-[#0a141d]/90 border border-[#00f0ff]/30 backdrop-blur-md p-8 rounded-xl text-center shadow-2xl relative overflow-hidden">
-          <div class="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#00f0ff] to-transparent opacity-80 animate-pulse"></div>
-          <div class="inline-flex border border-[#00f0ff] px-3 py-1 text-xs font-mono text-[#00f0ff] mb-6 bg-[#00f0ff]/5 uppercase tracking-widest rounded">[PROTOCOL_ACTIVATION_SUCCESS]</div>
-          <div class="w-20 h-20 mx-auto mb-6 rounded-full border border-[#00f0ff] flex items-center justify-center bg-[#00f0ff]/10 shadow-[0_0_20px_rgba(0,240,255,0.2)]">
-            <svg class="w-10 h-10 text-[#00f0ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <div class="w-full max-w-md bg-[#0a141d]/90 border border-[#F27024]/30 backdrop-blur-md p-8 rounded-xl text-center shadow-2xl relative overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#F27024] to-transparent opacity-80 animate-pulse"></div>
+          <div class="inline-flex border border-[#F27024] px-3 py-1 text-xs font-mono text-[#F27024] mb-6 bg-[#F27024]/5 uppercase tracking-widest rounded">[PROTOCOL_ACTIVATION_SUCCESS]</div>
+          <div class="w-20 h-20 mx-auto mb-6 rounded-full border border-[#F27024] flex items-center justify-center bg-[#F27024]/10 shadow-[0_0_20px_rgba(242, 112, 36,0.2)]">
+            <svg class="w-10 h-10 text-[#F27024]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
             </svg>
           </div>
           <h1 class="text-2xl font-extrabold text-white mb-3 uppercase tracking-tight font-mono">NODE_ACTIVATED</h1>
           <p class="text-sm text-slate-400 mb-8 font-sans leading-relaxed">Xin chúc mừng! Tài khoản của bạn đã được kích hoạt thành công trên hệ thống SEAL Hackathon. Khóa bảo mật đã được đồng bộ.</p>
-          <a href="${clientUrl}/login" class="inline-block w-full py-3 border border-[#00f0ff] text-[#00f0ff] hover:bg-[#00f0ff] hover:text-[#0a141d] font-mono text-sm font-bold uppercase tracking-wider transition-all duration-300 shadow-[inset_0_0_10px_rgba(0,240,255,0.1)] hover:shadow-[0_0_20px_rgba(0,240,255,0.4)]">ĐĂNG NHẬP NGAY</a>
+          <a href="${clientUrl}/login" class="inline-block w-full py-3 border border-[#F27024] text-[#F27024] hover:bg-[#F27024] hover:text-[#ffffff] font-mono text-sm font-bold uppercase tracking-wider transition-all duration-300 shadow-[inset_0_0_10px_rgba(242, 112, 36,0.1)] hover:shadow-[0_0_20px_rgba(242, 112, 36,0.4)]">ĐĂNG NHẬP NGAY</a>
         </div>
       </body>
       </html>

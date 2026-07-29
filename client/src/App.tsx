@@ -65,6 +65,8 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
     studentId: "",
     university: "",
     githubUsername: "",
+    height: "",
+    weight: "",
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -75,6 +77,8 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
         studentId: user.studentId || "",
         university: user.university || "",
         githubUsername: user.githubUsername || "",
+        height: user.height !== undefined && user.height !== null ? String(user.height) : "",
+        weight: user.weight !== undefined && user.weight !== null ? String(user.weight) : "",
       });
     }
   }, [user, isProfileOpen]);
@@ -83,6 +87,14 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
     e.preventDefault();
     if (!formData.fullName.trim()) {
       toast.error("Họ và tên không được để trống");
+      return;
+    }
+    if (!formData.height || isNaN(Number(formData.height))) {
+      toast.error("Chiều cao hợp lệ là bắt buộc");
+      return;
+    }
+    if (!formData.weight || isNaN(Number(formData.weight))) {
+      toast.error("Cân nặng hợp lệ là bắt buộc");
       return;
     }
 
@@ -365,6 +377,58 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
                         : "bg-slate-900 border-slate-800 text-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
                   }`}
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5 text-left">
+                  <label className={`block text-xs font-semibold uppercase tracking-wider ${
+                    usesLightShell ? "text-slate-500" : "text-slate-400"
+                  }`}>
+                    Chiều cao (cm) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    disabled={!isEditing}
+                    value={formData.height}
+                    onChange={(e) => setFormData({ ...formData, height: e.target.value })}
+                    placeholder={isEditing ? "Ví dụ: 170" : "Chưa cập nhật"}
+                    className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none transition-all ${
+                      !isEditing 
+                        ? usesLightShell 
+                          ? "bg-slate-100/85 border-slate-250 text-slate-500 cursor-not-allowed" 
+                          : "bg-slate-900/50 border-slate-850 text-slate-500 cursor-not-allowed"
+                        : usesLightShell 
+                          ? "bg-white border-slate-300 text-slate-800 focus:border-[#F27024] focus:ring-2 focus:ring-[#F27024]/20" 
+                          : "bg-slate-900 border-slate-800 text-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+                    }`}
+                  />
+                </div>
+
+                <div className="space-y-1.5 text-left">
+                  <label className={`block text-xs font-semibold uppercase tracking-wider ${
+                    usesLightShell ? "text-slate-500" : "text-slate-400"
+                  }`}>
+                    Cân nặng (kg) <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    disabled={!isEditing}
+                    value={formData.weight}
+                    onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                    placeholder={isEditing ? "Ví dụ: 60" : "Chưa cập nhật"}
+                    className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none transition-all ${
+                      !isEditing 
+                        ? usesLightShell 
+                          ? "bg-slate-100/85 border-slate-250 text-slate-500 cursor-not-allowed" 
+                          : "bg-slate-900/50 border-slate-850 text-slate-500 cursor-not-allowed"
+                        : usesLightShell 
+                          ? "bg-white border-slate-300 text-slate-800 focus:border-[#F27024] focus:ring-2 focus:ring-[#F27024]/20" 
+                          : "bg-slate-900 border-slate-800 text-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+                    }`}
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-200/20">

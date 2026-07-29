@@ -28,7 +28,7 @@ export default function CustomSelect({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
-  const usesLightShell = location.pathname === '/' || location.pathname === '/team-area' || location.pathname === '/register-team' || location.pathname === '/login' || location.pathname === '/achievements' || location.pathname === '/guest-portal' || location.pathname.startsWith('/admin');
+  const usesLightShell = location.pathname === '/' || location.pathname === '/team-area' || location.pathname === '/register-team' || location.pathname === '/login' || location.pathname === '/achievements' || location.pathname === '/guest-portal' || location.pathname === '/confirm-survey' || location.pathname.startsWith('/admin');
 
   const selectedOption = options.find((opt) => String(opt.value) === String(value));
   const displayLabel = selectedOption ? selectedOption.label : placeholder;
@@ -62,9 +62,11 @@ export default function CustomSelect({
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
         title={displayLabel}
-        className={`w-full flex items-center justify-between gap-2 border rounded-lg text-xs px-3 py-2 focus:ring-2 focus:outline-none font-semibold transition-all text-left cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        className={`w-full min-h-11 flex items-center justify-between gap-2 border rounded-xl text-sm px-4 py-2.5 focus:ring-2 focus:outline-none font-semibold transition-all text-left cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
           usesLightShell
-            ? "bg-white border-slate-350 text-slate-800 hover:border-[#F27024] focus:ring-[#F27024]/20 focus:border-[#F27024]"
+            ? "bg-white border-slate-300 text-slate-800 shadow-sm hover:border-[#F27024] focus:ring-[#F27024]/20 focus:border-[#F27024]"
             : "bg-slate-950 border-slate-800 text-slate-200 hover:border-slate-700 focus:ring-cyan-500/20 focus:border-cyan-500"
         } ${isOpen ? (usesLightShell ? "ring-2 ring-[#F27024]/20 border-[#F27024]" : "ring-2 ring-cyan-500/20 border-cyan-500") : ""}`}
       >
@@ -81,13 +83,13 @@ export default function CustomSelect({
 
       {/* Dropdown Options List */}
       {isOpen && (
-        <div className={`absolute left-0 mt-1.5 w-full min-w-[200px] max-h-60 overflow-y-auto border rounded-lg shadow-xl z-[9999] p-1 space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-150 scrollbar-thin ${
+        <div role="listbox" className={`absolute left-0 mt-2 w-full min-w-[200px] max-h-60 overflow-y-auto border rounded-xl shadow-xl z-[9999] p-1.5 space-y-1 animate-in fade-in slide-in-from-top-1 duration-150 scrollbar-thin ${
           usesLightShell
-            ? "bg-white border-slate-200 shadow-[0_10px_25px_rgba(0,0,0,0.06)] text-slate-800 scrollbar-thumb-slate-200 scrollbar-track-transparent"
+            ? "bg-white border-orange-200 shadow-[0_16px_40px_rgba(15,23,42,0.12)] text-slate-800 scrollbar-thumb-orange-200 scrollbar-track-transparent"
             : "bg-slate-900/95 backdrop-blur-md border-slate-800 shadow-[0_4px_25px_rgba(0,0,0,0.5)] text-slate-200 scrollbar-thumb-slate-800 scrollbar-track-transparent"
         }`}>
           {options.length === 0 ? (
-            <div className="p-2 text-center text-xs text-slate-500 italic">
+            <div className={`px-4 py-5 text-center text-sm ${usesLightShell ? "rounded-lg bg-orange-50 text-slate-500" : "text-slate-500 italic"}`}>
               Không có tùy chọn
             </div>
           ) : (
@@ -100,6 +102,8 @@ export default function CustomSelect({
                   type="button"
                   disabled={isDisabled}
                   title={opt.label}
+                  role="option"
+                  aria-selected={isSelected}
                   onClick={() => !isDisabled && handleSelect(opt.value)}
                   className={`w-full text-left px-3 py-2 rounded-md text-xs font-medium transition-all cursor-pointer ${
                     isDisabled

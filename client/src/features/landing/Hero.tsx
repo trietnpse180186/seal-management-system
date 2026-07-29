@@ -76,7 +76,7 @@ export default function Hero({ user, roles }: HeroProps) {
 
   useGSAP(() => {
     gsap.fromTo(
-      [".hero-badge", ".hero-title", ".hero-desc", ".hero-btn"],
+      [".hero-badge", ".hero-title", ".hero-desc", ".hero-btn", ".hero-video"],
       { opacity: 0, y: 35 },
       {
         opacity: 1,
@@ -90,7 +90,7 @@ export default function Hero({ user, roles }: HeroProps) {
   }, { scope: containerRef });
 
   return (
-    <section ref={containerRef} className="relative min-h-screen bg-slate-50 flex items-start overflow-hidden pt-28 md:pt-32 pb-12">
+    <section ref={containerRef} style={{ backgroundColor: "#F9FBF8" }} className="relative min-h-screen flex items-center overflow-hidden pt-28 md:pt-32 pb-12">
       {/* Hero custom animations */}
       <style dangerouslySetInnerHTML={{
         __html: `
@@ -159,20 +159,6 @@ export default function Hero({ user, roles }: HeroProps) {
         }
       `}} />
 
-      {/* Background Video */}
-      <video
-        muted
-        autoPlay
-        loop
-        playsInline
-        className="absolute inset-0 w-full h-full object-cover"
-        style={{ objectPosition: "center 60%" }}
-        src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260328_115001_bcdaa3b4-03de-47e7-ad63-ae3e392c32d4.mp4"
-      />
-
-      {/* Light overlay to ensure text readability */}
-      <div className="absolute inset-0 bg-slate-50/80 z-[1]"></div>
-
       <div className="max-w-7xl mx-auto px-6 py-12 grid md:grid-cols-2 gap-12 items-center relative z-10 w-full">
         {/* Left Intro Text */}
         <div className="space-y-6 text-center md:text-left">
@@ -214,6 +200,18 @@ export default function Hero({ user, roles }: HeroProps) {
               Xem Lịch trình
             </a>
           </div>
+        </div>
+
+        {/* Right Video Block */}
+        <div className="hero-video relative h-72 sm:h-96 md:h-[420px] lg:h-[480px] aspect-video max-w-full flex items-center justify-center opacity-0">
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover"
+            src="/davinci_edit_the_existing_video_only__keep_the_exact_shiel.mp4"
+          />
         </div>
       </div>
     </section>

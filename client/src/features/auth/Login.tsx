@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
-import logo from "../../assets/logo.svg";
+import logo from "../../assets/logo.png";
 import UniversityCombobox from '../shared/UniversityCombobox';
 import CaptchaInput from '../shared/CaptchaInput';
 import GithubUserAutocomplete from '../shared/GithubUserAutocomplete';
@@ -171,6 +171,8 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const [studentId, setStudentId] = useState('');
   const [university, setUniversity] = useState('');
   const [githubUsername, setGithubUsername] = useState('');
+  const [height, setHeight] = useState('');
+  const [weight, setWeight] = useState('');
 
   const [captchaId, setCaptchaId] = useState('');
   const [captchaSvg, setCaptchaSvg] = useState('');
@@ -589,6 +591,16 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
     try {
       if (isRegister) {
+        if (!height || isNaN(Number(height))) {
+          setError('Chiều cao hợp lệ là bắt buộc.');
+          setLoading(false);
+          return;
+        }
+        if (!weight || isNaN(Number(weight))) {
+          setError('Cân nặng hợp lệ là bắt buộc.');
+          setLoading(false);
+          return;
+        }
         const response = await axios.post(`${baseUrl}/auth/register`, {
           email,
           password,
@@ -596,6 +608,8 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           studentId,
           university,
           githubUsername,
+          height: Number(height),
+          weight: Number(weight),
           captchaId,
           captchaValue
         });
@@ -971,6 +985,44 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                       placeholder="Nhập tên tài khoản github"
                     />
                     <div className="scanline"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-mono text-xs text-primary-container opacity-80 mb-1" htmlFor="height">Chiều cao (cm) <span className="text-rose-500">*</span></label>
+                  <div className="relative cyber-input-wrapper rounded overflow-hidden">
+                    <div className="relative terminal-prompt">
+                      <input
+                        type="number"
+                        id="height"
+                        required
+                        placeholder="Ví dụ: 170"
+                        value={height}
+                        onChange={e => setHeight(e.target.value)}
+                        className="cyber-input relative z-10 w-full rounded py-2 pl-11 pr-4 font-mono text-xs focus:ring-0"
+                      />
+                      <div className="scanline"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-mono text-xs text-primary-container opacity-80 mb-1" htmlFor="weight">Cân nặng (kg) <span className="text-rose-500">*</span></label>
+                  <div className="relative cyber-input-wrapper rounded overflow-hidden">
+                    <div className="relative terminal-prompt">
+                      <input
+                        type="number"
+                        id="weight"
+                        required
+                        placeholder="Ví dụ: 60"
+                        value={weight}
+                        onChange={e => setWeight(e.target.value)}
+                        className="cyber-input relative z-10 w-full rounded py-2 pl-11 pr-4 font-mono text-xs focus:ring-0"
+                      />
+                      <div className="scanline"></div>
+                    </div>
                   </div>
                 </div>
               </div>

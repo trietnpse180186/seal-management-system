@@ -240,16 +240,17 @@ async function sendTeamInvitation(email, teamName, inviteLink) {
     to: email,
     subject: `[SEAL Hackathon] Xác nhận tham gia đội thi "${teamName}"`,
     html: `
-      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #1e293b; border-radius: 12px; background-color: #0b1329; color: #f1f5f9; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-        <h2 style="color: #00f0ff; text-align: center; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 1.5px; text-shadow: 0 0 15px rgba(0, 240, 255, 0.4); margin-bottom: 25px; font-size: 20px;">LỜI MỜI THAM GIA ĐỘI THI</h2>
-        <p style="font-size: 15px; line-height: 1.6;">Xin chào,</p>
-        <p style="font-size: 15px; line-height: 1.6;">Bạn đã được mời tham gia đội thi <strong>"${teamName}"</strong> để tham dự sự kiện SEAL Hackathon sắp tới.</p>
-        <p style="font-size: 15px; line-height: 1.6;">Để hoàn tất đăng ký và tham gia cùng các đồng đội, vui lòng nhấn vào nút xác nhận dưới đây:</p>
-        <div style="text-align: center; margin: 35px 0;">
-          <a href="${inviteLink}" style="background-color: #00f0ff; color: #0b1329; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 0 20px rgba(0, 240, 255, 0.5); text-transform: uppercase; font-size: 13px; letter-spacing: 1px; transition: all 0.3s ease;">XÁC NHẬN THAM GIA</a>
+      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px; border: 1px solid #fed7aa; border-radius: 16px; background-color: #ffffff; color: #0f172a; box-shadow: 0 16px 40px rgba(15,23,42,0.10);">
+        <div style="width: 48px; height: 4px; margin: 0 auto 24px; border-radius: 999px; background-color: #F27024;"></div>
+        <h2 style="color: #0f172a; text-align: center; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 24px; font-size: 20px;">LỜI MỜI THAM GIA ĐỘI THI</h2>
+        <p style="font-size: 15px; line-height: 1.7; color: #334155;">Xin chào,</p>
+        <p style="font-size: 15px; line-height: 1.7; color: #334155;">Bạn đã được mời tham gia đội thi <strong style="color: #F27024;">"${teamName}"</strong> để tham dự sự kiện SEAL Hackathon sắp tới.</p>
+        <p style="font-size: 15px; line-height: 1.7; color: #334155;">Để hoàn tất đăng ký và tham gia cùng các đồng đội, vui lòng nhấn vào nút xác nhận dưới đây:</p>
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${inviteLink}" style="background-color: #F27024; color: #ffffff; padding: 14px 30px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 10px 24px rgba(242,112,36,0.24); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">XÁC NHẬN THAM GIA</a>
         </div>
-        <p style="margin-top: 30px; font-size: 13px; color: #94a3b8; line-height: 1.6; border-top: 1px solid #1e293b; padding-top: 20px;">* Lưu ý: Tất cả các thành viên được mời đều phải xác nhận tham gia trước khi hết hạn đăng ký hoặc khi số lượng đội đạt giới hạn tối đa để đội thi được công nhận chính thức.</p>
-        <hr style="border: 0; border-top: 1px solid #1e293b; margin-top: 30px; margin-bottom: 20px;">
+        <p style="margin-top: 24px; font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #fed7aa; padding: 16px; background-color: #fff7ed; border-radius: 10px;">Lưu ý: Tất cả các thành viên được mời đều phải xác nhận tham gia trước khi hết hạn đăng ký hoặc khi số lượng đội đạt giới hạn tối đa để đội thi được công nhận chính thức.</p>
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin-top: 28px; margin-bottom: 20px;">
         <p style="font-size: 12px; color: #64748b; text-align: center;">Hệ thống Quản lý SEAL Hackathon &copy; 2026</p>
       </div>
     `
@@ -292,21 +293,22 @@ async function sendEmailVerification(email, fullName, verifyLink) {
     to: email,
     subject: `[SEAL Hackathon] Kích hoạt tài khoản của bạn`,
     html: `
-      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #1e293b; border-radius: 12px; background-color: #0b1329; color: #f1f5f9; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-        <h2 style="color: #00f0ff; text-align: center; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 1.5px; text-shadow: 0 0 15px rgba(0, 240, 255, 0.4); margin-bottom: 25px; font-size: 20px;">KÍCH HOẠT TÀI KHOẢN</h2>
-        <p style="font-size: 15px; line-height: 1.6;">Xin chào <strong>${fullName}</strong>,</p>
-        <p style="font-size: 15px; line-height: 1.6;">Cảm ơn bạn đã đăng ký tài khoản trên hệ thống Quản lý SEAL Hackathon.</p>
-        <p style="font-size: 15px; line-height: 1.6;">Để kích hoạt tài khoản và bắt đầu tham gia cuộc thi, vui lòng nhấn vào nút xác thực dưới đây:</p>
-        <div style="text-align: center; margin: 35px 0;">
-          <a href="${verifyLink}" style="background-color: #00f0ff; color: #0b1329; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 0 20px rgba(0, 240, 255, 0.5); text-transform: uppercase; font-size: 13px; letter-spacing: 1px; transition: all 0.3s ease;">KÍCH HOẠT NGAY</a>
+      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px; border: 1px solid #fed7aa; border-radius: 16px; background-color: #ffffff; color: #0f172a; box-shadow: 0 16px 40px rgba(15,23,42,0.10);">
+        <div style="width: 48px; height: 4px; margin: 0 auto 24px; border-radius: 999px; background-color: #F27024;"></div>
+        <h2 style="color: #0f172a; text-align: center; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 24px; font-size: 20px;">KÍCH HOẠT TÀI KHOẢN</h2>
+        <p style="font-size: 15px; line-height: 1.7; color: #334155;">Xin chào <strong>${fullName}</strong>,</p>
+        <p style="font-size: 15px; line-height: 1.7; color: #334155;">Cảm ơn bạn đã đăng ký tài khoản trên hệ thống Quản lý SEAL Hackathon.</p>
+        <p style="font-size: 15px; line-height: 1.7; color: #334155;">Để kích hoạt tài khoản và bắt đầu tham gia cuộc thi, vui lòng nhấn vào nút xác thực dưới đây:</p>
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${verifyLink}" style="background-color: #F27024; color: #ffffff; padding: 14px 30px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 10px 24px rgba(242,112,36,0.24); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">KÍCH HOẠT NGAY</a>
         </div>
-        <p style="margin-top: 30px; font-size: 13px; color: #94a3b8; line-height: 1.6; border-top: 1px solid #1e293b; padding-top: 20px;">* Lưu ý: Đường link kích hoạt này có hiệu lực trong vòng 24 giờ. Sau thời gian này, tài khoản chưa được kích hoạt sẽ tự động bị hủy và cần đăng ký lại.</p>
-        <hr style="border: 0; border-top: 1px solid #1e293b; margin-top: 30px; margin-bottom: 20px;">
+        <p style="margin-top: 24px; font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #fed7aa; padding: 16px; background-color: #fff7ed; border-radius: 10px;">* Lưu ý: Đường link kích hoạt này có hiệu lực trong vòng 24 giờ. Sau thời gian này, tài khoản chưa được kích hoạt sẽ tự động bị hủy và cần đăng ký lại.</p>
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin-top: 28px; margin-bottom: 20px;">
         <p style="font-size: 12px; color: #64748b; text-align: center;">Hệ thống Quản lý SEAL Hackathon &copy; 2026</p>
       </div>
     `
   };
-
+  
   if (isMock) {
     console.log('\n--- [EMAIL MOCK SERVICE: VERIFICATION] ---');
     console.log(`To: ${email}`);

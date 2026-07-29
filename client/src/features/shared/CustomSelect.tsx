@@ -86,7 +86,7 @@ export default function CustomSelect({
         <div role="listbox" className={`absolute left-0 mt-2 w-full min-w-[200px] max-h-60 overflow-y-auto border rounded-xl shadow-xl z-[9999] p-1.5 space-y-1 animate-in fade-in slide-in-from-top-1 duration-150 scrollbar-thin ${
           usesLightShell
             ? "bg-white border-orange-200 shadow-[0_16px_40px_rgba(15,23,42,0.12)] text-slate-800 scrollbar-thumb-orange-200 scrollbar-track-transparent"
-            : "bg-slate-900/95 backdrop-blur-md border-slate-800 shadow-[0_4px_25px_rgba(0,0,0,0.5)] text-slate-200 scrollbar-thumb-slate-800 scrollbar-track-transparent"
+            : "bg-slate-900/95 border-slate-800 shadow-[0_4px_25px_rgba(0,0,0,0.5)] text-slate-200 scrollbar-thumb-slate-800 scrollbar-track-transparent"
         }`}>
           {options.length === 0 ? (
             <div className={`px-4 py-5 text-center text-sm ${usesLightShell ? "rounded-lg bg-orange-50 text-slate-500" : "text-slate-500 italic"}`}>

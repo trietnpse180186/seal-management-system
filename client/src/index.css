@@ -1,4 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import './styles/base.css';
+@import './styles/components.css';
+@import './styles/admin-theme.css';
+@import './styles/candidate-theme.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -27,23 +32,17 @@ body {
 
 /* Premium Visual Elements */
 .glass {
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(15, 23, 42, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .glass-light {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .glass-nav {
-  background: rgba(9, 13, 22, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(9, 13, 22, 0.95);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -171,11 +170,10 @@ input:focus, select:focus, textarea:focus {
 
 /* Glass Panel from mockup */
 .glass-panel {
-  background-color: rgba(10, 20, 29, 0.85);
+  background-color: rgba(10, 20, 29, 0.92);
   border: 1px solid rgba(0, 240, 255, 0.2);
-  backdrop-filter: blur(16px);
   box-shadow: 0 0 40px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(0, 240, 255, 0.05);
-  transition: all 0.3s ease;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .glass-panel:hover, .glass-panel:focus-within {
@@ -468,15 +466,53 @@ input:focus, select:focus, textarea:focus {
   color: #f27024 !important;
 }
 
-.team-area-light .bg-cyan-600 {
+.team-area-light .bg-cyan-600,
+.team-area-light .bg-cyan-600 *,
+.team-area-light .bg-\[\#F27024\],
+.team-area-light .bg-\[\#F27024\] *,
+.team-area-light .bg-\[\#e05e1b\],
+.team-area-light .bg-\[\#e05e1b\] *,
+.team-area-light .bg-orange-500,
+.team-area-light .bg-orange-500 *,
+.team-area-light .bg-orange-600,
+.team-area-light .bg-orange-600 *,
+.team-area-light .bg-gradient-to-r.from-cyan-600,
+.team-area-light .bg-gradient-to-r.from-cyan-600 *,
+.team-area-light .bg-gradient-to-r.from-cyan-600 svg,
+.team-area-light .bg-emerald-600,
+.team-area-light .bg-emerald-600 *,
+.team-area-light .bg-blue-600,
+.team-area-light .bg-blue-600 *,
+.team-area-light .bg-rose-600,
+.team-area-light .bg-rose-600 * {
   background-color: #f27024 !important;
   border-color: #f27024 !important;
-  color: white !important;
+  color: #ffffff !important;
 }
 
-.team-area-light .bg-cyan-600:hover {
+.team-area-light .bg-emerald-600,
+.team-area-light .bg-emerald-600 * {
+  background-color: #059669 !important;
+  border-color: #059669 !important;
+}
+
+.team-area-light .bg-blue-600,
+.team-area-light .bg-blue-600 * {
+  background-color: #2563eb !important;
+  border-color: #2563eb !important;
+}
+
+.team-area-light .bg-rose-600,
+.team-area-light .bg-rose-600 * {
+  background-color: #e11d48 !important;
+  border-color: #e11d48 !important;
+}
+
+.team-area-light .bg-cyan-600:hover,
+.team-area-light .bg-gradient-to-r.from-cyan-600:hover {
   background-color: #e05e1b !important;
   box-shadow: 0 0 15px rgba(242, 112, 36, 0.4) !important;
+  color: #ffffff !important;
 }
 
 .team-area-light .shadow-cyan-600\/25 {
@@ -484,25 +520,23 @@ input:focus, select:focus, textarea:focus {
 }
 
 .team-area-light .bg-slate-900\/10 {
-  background-color: rgba(255, 255, 255, 0.7) !important;
+  background-color: #ffffff !important;
 }
 
 .team-area-light .bg-slate-900\/30 {
-  background-color: rgba(255, 255, 255, 0.6) !important;
+  background-color: #ffffff !important;
 }
 
 .team-area-light .bg-slate-900\/40 {
-  background-color: rgba(255, 255, 255, 0.5) !important;
+  background-color: #ffffff !important;
 }
 
 .team-area-light .bg-slate-900\/60 {
-  background-color: rgba(255, 255, 255, 0.55) !important;
+  background-color: #ffffff !important;
 }
 
 .team-area-light .glass {
-  background: rgba(253, 251, 247, 0.95) !important; /* Warm milk white card background */
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
+  background: #ffffff !important; /* Pure solid white card background */
   border: 1px solid rgba(0, 0, 0, 0.08) !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02) !important;
 }
@@ -525,7 +559,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .team-area-light .bg-slate-950 {
-  background-color: #faf9f6 !important; /* Soft milk white background */
+  background-color: #ffffff !important;
 }
 
 .team-area-light .bg-slate-955 {
@@ -537,23 +571,23 @@ input:focus, select:focus, textarea:focus {
 }
 
 .team-area-light .bg-slate-950\/70 {
-  background-color: #faf9f6 !important;
+  background-color: #ffffff !important;
 }
 
 .team-area-light .bg-slate-955\/30 {
-  background-color: #faf9f6 !important;
+  background-color: #ffffff !important;
 }
 
 .team-area-light .bg-slate-950\/60 {
-  background-color: #faf9f6 !important;
+  background-color: #ffffff !important;
 }
 
 .team-area-light .bg-slate-950\/40 {
-  background-color: #faf9f6 !important;
+  background-color: #ffffff !important;
 }
 
 .team-area-light .bg-slate-950\/30 {
-  background-color: #faf9f6 !important;
+  background-color: #ffffff !important;
 }
 
 .team-area-light .bg-slate-900 {
@@ -589,11 +623,11 @@ input:focus, select:focus, textarea:focus {
 }
 
 .team-area-light .bg-gradient-to-r {
-  background: linear-gradient(to right, rgba(242, 112, 36, 0.04), rgba(255, 255, 255, 0.8), rgba(242, 112, 36, 0.04)) !important;
+  background: #ffffff !important;
 }
 
 .team-area-light .bg-gradient-to-br {
-  background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.9), rgba(242, 112, 36, 0.03)) !important;
+  background: #ffffff !important;
 }
 
 .team-area-light .shadow-cyan-900\/20 {
@@ -678,62 +712,7 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 10px 15px -3px rgba(242, 112, 36, 0.1), 0 4px 6px -4px rgba(242, 112, 36, 0.1) !important;
 }
 
-.team-area-light .bg-slate-900\/10 {
-  background-color: rgba(255, 255, 255, 0.7) !important;
-}
 
-.team-area-light .bg-slate-900\/30 {
-  background-color: rgba(255, 255, 255, 0.6) !important;
-}
-
-.team-area-light .bg-slate-900\/40 {
-  background-color: rgba(255, 255, 255, 0.5) !important;
-}
-
-.team-area-light .bg-slate-900\/60 {
-  background-color: rgba(255, 255, 255, 0.55) !important;
-}
-
-.team-area-light .glass {
-  background: rgba(253, 251, 247, 0.95) !important; /* Warm milk white card background */
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  border: 1px solid rgba(0, 0, 0, 0.08) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02) !important;
-}
-
-.team-area-light .glass:hover {
-  border-color: rgba(242, 112, 36, 0.3) !important;
-  box-shadow: 0 10px 30px rgba(242, 112, 36, 0.05) !important;
-}
-
-.team-area-light .border-slate-800 {
-  border-color: rgba(0, 0, 0, 0.08) !important;
-}
-
-.team-area-light .border-slate-850 {
-  border-color: rgba(0, 0, 0, 0.06) !important;
-}
-
-.team-area-light .border-slate-900 {
-  border-color: rgba(0, 0, 0, 0.1) !important;
-}
-
-.team-area-light .bg-slate-950 {
-  background-color: #faf9f6 !important; /* Soft milk white background */
-}
-
-.team-area-light .bg-slate-955 {
-  background-color: #ffffff !important;
-}
-
-.team-area-light .bg-slate-955\/80 {
-  background-color: rgba(15, 23, 42, 0.45) !important;
-}
-
-.team-area-light .bg-slate-950\/70 {
-  background-color: #faf9f6 !important;
-}
 
 .team-area-light .bg-slate-955\/30 {
   background-color: #faf9f6 !important;
@@ -1303,9 +1282,7 @@ body:has(.team-area-light) {
 
 /* Glass logs panel overrides */
 .coordinator-light-theme .glass {
-  background: rgba(255, 255, 255, 0.75) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
   border: 1px solid rgba(0, 0, 0, 0.08) !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02) !important;
 }
@@ -1835,8 +1812,7 @@ body:has(.team-area-light) {
 .coordinator-light-theme div.fixed.inset-0[class*="bg-slate-"],
 .coordinator-light-theme div.fixed.inset-0[class*="bg-black"],
 .coordinator-light-theme div.fixed.inset-0[class*="bg-opacity-"] {
-  background-color: rgba(15, 23, 42, 0.4) !important;
-  backdrop-filter: blur(4px) !important;
+  background-color: rgba(15, 23, 42, 0.55) !important;
 }
 
 /* UniversityCombobox Dropdown Strict Light Theme Styling */
@@ -1903,7 +1879,5 @@ body:has(.team-area-light) {
 .coordinator-light-theme div.fixed.inset-0.bg-black\/70,
 .coordinator-light-theme div.fixed.inset-0.bg-slate-955\/80,
 .coordinator-light-theme div.fixed.inset-0.bg-slate-950\/80 {
-  background-color: rgba(255, 255, 255, 0.45) !important;
-  backdrop-filter: blur(8px) !important;
-  -webkit-backdrop-filter: blur(8px) !important;
+  background-color: rgba(255, 255, 255, 0.65) !important;
 }

@@ -197,19 +197,108 @@ function SeminarWidget({ seminar }: SeminarWidgetProps) {
   );
 }
 
+function RemainingTimerWidget({ targetTime }: { targetTime: string }) {
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const diff = new Date(targetTime).getTime() - now.getTime();
+  if (diff <= 0) return <span>00:00:00</span>;
+
+  const seconds = Math.floor((diff / 1000) % 60);
+  const minutes = Math.floor((diff / 1000 / 60) % 60);
+  const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const pad = (num: number) => num.toString().padStart(2, "0");
+
+  if (days > 0) {
+    return <span>{days} ngày {pad(hours)}:{pad(minutes)}:{pad(seconds)}</span>;
+  }
+  return <span>{pad(hours)}:{pad(minutes)}:{pad(seconds)}</span>;
+}
+
+function RoundTimerWidget({ startVal, endVal }: { startVal?: string; endVal?: string }) {
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  if (!startVal || !endVal) {
+    return (
+      <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 self-start sm:self-auto">
+        <Clock size={14} className="text-cyan-400" />
+        <div className="text-xs font-mono">
+          <span className="text-slate-500 uppercase tracking-wider text-[9px] block">
+            Thời gian làm bài
+          </span>
+          <span className="text-slate-500 font-bold">Chưa cấu hình thời gian làm bài</span>
+        </div>
+      </div>
+    );
+  }
+
+  const start = new Date(startVal);
+  const end = new Date(endVal);
+
+  let text = "";
+  let color = "text-cyan-400 font-bold";
+
+  if (now < start) {
+    const diffMs = start.getTime() - now.getTime();
+    const seconds = Math.floor((diffMs / 1000) % 60);
+    const minutes = Math.floor((diffMs / 1000 / 60) % 60);
+    const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const pad = (num: number) => num.toString().padStart(2, "0");
+    const timeStr = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    text = days > 0 ? `Bắt đầu sau: ${days} ngày ${timeStr}` : `Bắt đầu sau: ${timeStr}`;
+    color = "text-amber-400 font-bold";
+  } else if (now >= start && now <= end) {
+    const diffMs = end.getTime() - now.getTime();
+    const seconds = Math.floor((diffMs / 1000) % 60);
+    const minutes = Math.floor((diffMs / 1000 / 60) % 60);
+    const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const pad = (num: number) => num.toString().padStart(2, "0");
+    const timeStr = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    text = days > 0 ? `Còn lại: ${days} ngày ${timeStr}` : `Còn lại: ${timeStr}`;
+    const isUrgent = diffMs < 1000 * 60 * 60;
+    color = isUrgent ? "text-rose-500 animate-pulse font-extrabold" : "text-cyan-400 font-bold";
+  } else {
+    text = "Đã hết thời gian làm bài";
+    color = "text-slate-500 font-semibold";
+  }
+
+  return (
+    <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 self-start sm:self-auto">
+      <Clock size={14} className="text-cyan-400" />
+      <div className="text-xs font-mono">
+        <span className="text-slate-500 uppercase tracking-wider text-[9px] block">
+          Thời gian làm bài
+        </span>
+        <span className={`${color}`}>{text}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function TeamArea() {
   const [searchParams] = useSearchParams();
   const eventIdParam = searchParams.get("eventId");
   const token = localStorage.getItem("token");
   const [data, setData] = useState<any>(null);
 
-  const [currentTime, setCurrentTime] = useState(new Date());
   const hasContestStarted = !!(
     data?.team?.eventId?.status === "ongoing" ||
     data?.team?.eventId?.status === "completed" ||
     data?.team?.eventId?.status === "cancelled" ||
     (data?.team?.eventId?.contestStart &&
-      new Date(data.team.eventId.contestStart) <= currentTime)
+      new Date(data.team.eventId.contestStart) <= new Date())
   );
   const [syncingMqtt, setSyncingMqtt] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -372,95 +461,13 @@ export default function TeamArea() {
   const showMqttCard = !!(
     data?.team &&
     data.team.eventId?.status === "ongoing" &&
-    ((round?.startTime && new Date(round.startTime) <= currentTime) ||
+    ((round?.startTime && new Date(round.startTime) <= new Date()) ||
       round?.isExamManualOpen) &&
     track?.environmentId
   );
   const isExamVisible = !!(round?.startTime || round?.isExamManualOpen);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
 
-    return () => clearInterval(timer);
-  }, []);
-
-  const getRemainingTimeText = (startTimeStr: string) => {
-    const diff = new Date(startTimeStr).getTime() - currentTime.getTime();
-    if (diff <= 0) return "00:00:00";
-
-    const seconds = Math.floor((diff / 1000) % 60);
-    const minutes = Math.floor((diff / 1000 / 60) % 60);
-    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-    const pad = (num: number) => num.toString().padStart(2, "0");
-
-    if (days > 0) {
-      return `${days} ngày ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-    }
-    return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-  };
-
-  const getRoundCountdown = () => {
-    const startVal = track?.startTime || round?.startTime;
-    const endVal = track?.endTime || round?.endTime;
-
-    if (!startVal || !endVal) {
-      return {
-        text: "Chưa cấu hình thời gian làm bài",
-        color: "text-slate-500",
-      };
-    }
-
-    const start = new Date(startVal);
-    const end = new Date(endVal);
-
-    if (currentTime < start) {
-      const diffMs = start.getTime() - currentTime.getTime();
-      const seconds = Math.floor((diffMs / 1000) % 60);
-      const minutes = Math.floor((diffMs / 1000 / 60) % 60);
-      const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
-      const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-      const pad = (num: number) => num.toString().padStart(2, "0");
-      const timeStr = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-      const text =
-        days > 0
-          ? `Bắt đầu sau: ${days} ngày ${timeStr}`
-          : `Bắt đầu sau: ${timeStr}`;
-
-      return {
-        text,
-        color: "text-amber-400 font-bold",
-      };
-    } else if (currentTime >= start && currentTime <= end) {
-      const diffMs = end.getTime() - currentTime.getTime();
-      const seconds = Math.floor((diffMs / 1000) % 60);
-      const minutes = Math.floor((diffMs / 1000 / 60) % 60);
-      const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
-      const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-      const pad = (num: number) => num.toString().padStart(2, "0");
-      const timeStr = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-      const text =
-        days > 0 ? `Còn lại: ${days} ngày ${timeStr}` : `Còn lại: ${timeStr}`;
-
-      const isUrgent = diffMs < 1000 * 60 * 60; // < 1 hour
-      return {
-        text,
-        color: isUrgent
-          ? "text-rose-500 animate-pulse font-extrabold"
-          : "text-cyan-400 font-bold",
-      };
-    } else {
-      return {
-        text: "Đã hết thời gian làm bài",
-        color: "text-slate-500 font-semibold",
-      };
-    }
-  };
 
   const getTeamStatusText = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -733,16 +740,13 @@ export default function TeamArea() {
   }
 
   return (
-    <div className="team-area-light relative overflow-hidden font-sans bg-slate-50 text-slate-900 min-h-screen">
+    <div className="team-area-light relative overflow-hidden font-sans bg-[#faf9f6] text-slate-900 min-h-screen">
       {/* Background Grid & Glow */}
-      <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle_at_15%_15%,rgba(242,112,36,0.08)_0%,transparent_40%),radial-gradient(circle_at_85%_85%,rgba(242,112,36,0.05)_0%,transparent_40%)]"></div>
+      <div className="absolute inset-0 pointer-events-none z-0 bg-[linear-gradient(rgba(0,0,0,0.012)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.012)_1px,transparent_1px)] [transform:translateZ(0)]"></div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 py-12 space-y-8 font-mono">
         {/* Top Banner team details */}
-        <div className="glass p-8 rounded-3xl relative overflow-hidden border border-slate-800 hover:border-cyan-500/30 transition-all">
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
-          <div className="absolute -left-10 -bottom-10 w-40 h-40 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none"></div>
+        <div className="glass p-8 rounded-3xl relative overflow-hidden border border-slate-800 hover:border-cyan-500/30 transition-colors duration-200 [transform:translateZ(0)]">
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
             {/* Main Info (Col 5): Team name & Status */}
@@ -816,42 +820,26 @@ export default function TeamArea() {
         </div>
 
         {/* Active Round Banner */}
-        {team?.currentEventRound &&
-          (() => {
-            const countdown = getRoundCountdown();
-            return (
-              <div className="glass p-5 rounded-2xl border border-cyan-500/20 bg-gradient-to-r from-cyan-950/40 via-slate-900/40 to-cyan-950/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-[0_0_15px_rgba(6,182,212,0.05)]">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></div>
-                  <div>
-                    <span className="text-[10px] text-slate-500 block uppercase font-mono tracking-wider font-bold">
-                      Trạng thái giải đấu
-                    </span>
-                    <p className="text-xs sm:text-sm font-bold text-slate-200">
-                      Vòng thi hiện tại:{" "}
-                      <span className="text-cyan-400 font-extrabold uppercase font-mono">
-                        {team.currentEventRound}
-                      </span>
-                    </p>
-                  </div>
-                </div>
-                {/* Timer section */}
-                {countdown && (
-                  <div className="flex items-center gap-2 bg-slate-950/60 px-4 py-2 rounded-xl border border-slate-800 self-start sm:self-auto">
-                    <Clock size={14} className="text-cyan-400" />
-                    <div className="text-xs font-mono">
-                      <span className="text-slate-500 uppercase tracking-wider text-[9px] block">
-                        Thời gian làm bài
-                      </span>
-                      <span className={`${countdown.color} font-bold`}>
-                        {countdown.text}
-                      </span>
-                    </div>
-                  </div>
-                )}
+        {team?.currentEventRound && (
+          <div className="glass p-5 rounded-2xl border border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-cyan-400"></div>
+              <div>
+                <span className="text-[10px] text-slate-500 block uppercase font-mono tracking-wider font-bold">
+                  Trạng thái giải đấu
+                </span>
+                <p className="text-xs sm:text-sm font-bold text-slate-200">
+                  Vòng thi hiện tại:{" "}
+                  <span className="text-cyan-400 font-extrabold uppercase font-mono">
+                    {team.currentEventRound}
+                  </span>
+                </p>
               </div>
-            );
-          })()}
+            </div>
+            {/* Timer section */}
+            <RoundTimerWidget startVal={track?.startTime || round?.startTime} endVal={track?.endTime || round?.endTime} />
+          </div>
+        )}
 
         {/* Seminar Widget */}
         {team?.eventId?.seminar?.scheduledAt &&
@@ -864,7 +852,7 @@ export default function TeamArea() {
 
         {/* Chat Section */}
         {team && team.eventId?.status === "ongoing" && !team.isEliminated && (
-          <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-colors duration-200 mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-cyan-950 text-cyan-400 rounded-xl">
                 <MessageSquare size={20} />
@@ -885,7 +873,7 @@ export default function TeamArea() {
                   }),
                 );
               }}
-              className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase rounded-xl transition-all shadow-lg shadow-cyan-600/25 whitespace-nowrap cursor-pointer font-sans"
+              className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 !text-white text-xs font-bold uppercase rounded-xl transition-all shadow-lg shadow-cyan-600/25 whitespace-nowrap cursor-pointer font-sans"
             >
               Nhắn tin ngay
             </button>
@@ -900,13 +888,13 @@ export default function TeamArea() {
               <div
                 className={`${
                   showMqttCard ? "lg:col-span-4" : "lg:col-span-8"
-                } glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all relative overflow-hidden`}
+                } glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-colors duration-200 relative overflow-hidden h-full flex flex-col justify-between`}
               >
                 {(round?.hasExamMaterial && round?.examOpened) ||
                 team?.trackId?.examAccess?.examOpened ? (
                   <div className="absolute inset-0 pointer-events-none laser-scan-effect opacity-10"></div>
                 ) : null}
-                <div>
+                <div className="flex-1 flex flex-col justify-between">
                   <div className="flex justify-between items-center border-b border-slate-800 pb-3 mb-5">
                     <h2 className="text-sm font-bold text-white flex items-center gap-2 font-mono-tech">
                       <BookOpen size={18} className="text-cyan-400" />
@@ -922,7 +910,7 @@ export default function TeamArea() {
                   </div>
 
                   {team?.eventId?.contestStart &&
-                  new Date(team.eventId.contestStart) > currentTime ? (
+                  new Date(team.eventId.contestStart) > new Date() ? (
                     <div className="flex flex-col items-center justify-center py-6 space-y-4">
                       <div className="space-y-1.5 text-center">
                         <p className="text-xs text-amber-500 font-sans font-semibold uppercase tracking-wider">
@@ -937,11 +925,11 @@ export default function TeamArea() {
                         </p>
                       </div>
                       <div className="text-2xl sm:text-3xl font-black text-cyan-400 font-mono bg-slate-950/70 px-6 py-3.5 rounded-xl border border-slate-900 tracking-widest text-cyan-glow">
-                        {getRemainingTimeText(team.eventId.contestStart)}
+                        <RemainingTimerWidget targetTime={team.eventId.contestStart} />
                       </div>
                     </div>
                   ) : round?.startTime &&
-                    new Date(round.startTime) > currentTime ? (
+                    new Date(round.startTime) > new Date() ? (
                     <div className="flex flex-col items-center justify-center py-6 space-y-4">
                       <div className="space-y-1.5 text-center">
                         <p className="text-xs text-amber-500 font-sans font-semibold uppercase tracking-wider">
@@ -954,11 +942,11 @@ export default function TeamArea() {
                         </p>
                       </div>
                       <div className="text-2xl sm:text-3xl font-black text-cyan-400 font-mono bg-slate-950/70 px-6 py-3.5 rounded-xl border border-slate-900 tracking-widest text-cyan-glow">
-                        {getRemainingTimeText(round.startTime)}
+                        <RemainingTimerWidget targetTime={round.startTime} />
                       </div>
                     </div>
                   ) : team?.trackId?.examAccess?.examOpened ? (
-                    <div className="space-y-6 py-2">
+                    <div className="space-y-6 py-2 flex-1 flex flex-col justify-between">
                       <div className="space-y-3">
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -994,7 +982,7 @@ export default function TeamArea() {
                           href={team.trackId.examAccess.examDriveFileUrl || "#"}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-bold uppercase py-2.5 px-4 rounded-xl transition-all shadow-md shadow-cyan-900/20 text-center cursor-pointer hover:-translate-y-0.5 duration-150 animate-pulse-subtle"
+                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 !text-white text-xs font-bold uppercase py-2.5 px-4 rounded-xl transition-all shadow-md shadow-cyan-900/20 text-center cursor-pointer hover:-translate-y-0.5 duration-150 animate-pulse-subtle"
                         >
                           <BookOpen size={14} />
                           Mở đề thi bảng {team.trackId.name}
@@ -1034,10 +1022,10 @@ export default function TeamArea() {
             {/* Middle: MQTT Connection Card (Col 4) */}
             {showMqttCard && (
               <div
-                className={`${isExamVisible ? "lg:col-span-4" : "lg:col-span-6"} glass p-6 rounded-2xl border border-cyan-500/40 glow-cyan transition-all relative overflow-hidden bg-slate-900/10 shadow-[inset_0_0_20px_rgba(0,240,255,0.02)]`}
+                className={`${isExamVisible ? "lg:col-span-4" : "lg:col-span-6"} glass p-6 rounded-2xl border border-cyan-500/40 glow-cyan transition-colors duration-200 relative overflow-hidden bg-slate-900/10 shadow-[inset_0_0_20px_rgba(0,240,255,0.02)] h-full flex flex-col justify-between`}
               >
                 <div className="absolute inset-0 pointer-events-none laser-scan-effect opacity-10"></div>
-                <div>
+                <div className="flex-1 flex flex-col justify-between">
                   <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
                     <h2 className="text-sm font-bold text-white flex items-center gap-2 font-mono-tech">
                       <Cpu size={16} className="text-cyan-400 animate-pulse" />
@@ -1275,10 +1263,10 @@ export default function TeamArea() {
 
             {/* Right: Members Card (Col 4) */}
             <div
-              className={`${isExamVisible ? "lg:col-span-4" : showMqttCard ? "lg:col-span-6" : "lg:col-span-6"} space-y-6`}
+              className={`${isExamVisible ? "lg:col-span-4" : showMqttCard ? "lg:col-span-6" : "lg:col-span-6"} h-full`}
             >
-              <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all text-left">
-                <div>
+              <div className="glass p-6 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-colors duration-200 text-left h-full flex flex-col">
+                <div className="flex-1 flex flex-col justify-start">
                   <h2 className="text-sm font-bold text-white mb-4 flex items-center justify-between font-mono-tech border-b border-slate-800 pb-3">
                     <div className="flex items-center gap-2">
                       <Users size={18} className="text-cyan-400" />
@@ -1366,8 +1354,7 @@ export default function TeamArea() {
 
               {/* Zalo Card */}
               {team.eventId?.zaloUrl && (
-                <div className="glass p-5 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-all relative overflow-hidden shadow-lg text-left">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl pointer-events-none"></div>
+                <div className="glass p-5 rounded-2xl border border-slate-800 hover:border-cyan-500/30 transition-colors duration-200 relative overflow-hidden shadow-lg text-left">
                   <div className="flex items-start gap-3.5">
                     <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-400 shrink-0">
                       <MessageSquare size={20} />
@@ -1429,7 +1416,7 @@ export default function TeamArea() {
                           href={repository.repoUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-bold uppercase py-2 px-4 rounded-xl transition-all shadow-md shadow-cyan-900/20 text-center cursor-pointer hover:-translate-y-0.5 duration-150"
+                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 !text-white text-xs font-bold uppercase py-2 px-4 rounded-xl transition-all shadow-md shadow-cyan-900/20 text-center cursor-pointer hover:-translate-y-0.5 duration-150"
                         >
                           <ExternalLink size={12} />
                           Mở GitHub Repo
@@ -1508,7 +1495,7 @@ export default function TeamArea() {
         )}
 
         {team?.isEliminated && (
-          <div className="glass p-8 rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-cyan-950/20 via-slate-900/60 to-slate-950/30 text-center space-y-6 max-w-2xl mx-auto shadow-[0_0_30px_rgba(6,182,212,0.05)] mt-4">
+          <div className="glass p-8 rounded-3xl border border-slate-200 bg-white text-center space-y-6 max-w-2xl mx-auto shadow-sm mt-4">
             <div className="w-16 h-16 rounded-full bg-cyan-950/80 border border-cyan-500/30 text-cyan-400 flex items-center justify-center mx-auto shadow-[0_0_15px_rgba(34,211,238,0.2)]">
               <Trophy size={28} />
             </div>
@@ -1567,7 +1554,7 @@ export default function TeamArea() {
 
         {/* Edit Basic Info Modal */}
         {showEditModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-fade-in animate-duration-150">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 p-4 animate-fade-in animate-duration-150">
             <div className="glass max-w-2xl w-full rounded-3xl border border-slate-800 p-6 md:p-8 space-y-6 relative overflow-hidden shadow-2xl">
               <form
                 onSubmit={handleSaveBasicInfo}
@@ -1892,7 +1879,7 @@ export default function TeamArea() {
 
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/80 backdrop-blur-sm p-4 animate-fade-in animate-duration-150">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/95 p-4 animate-fade-in animate-duration-150">
             <div className="bg-slate-900 max-w-md w-full rounded-3xl border border-rose-500/20 p-6 md:p-8 space-y-6 relative overflow-hidden shadow-2xl">
               <div className="space-y-2 text-left font-sans">
                 <h3 className="text-lg font-black text-rose-400 uppercase tracking-wider font-mono-tech">

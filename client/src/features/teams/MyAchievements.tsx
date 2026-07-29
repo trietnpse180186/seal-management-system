@@ -32,20 +32,24 @@ export default function MyAchievements() {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const res = await axios.get("/api/teams/history", {
+        const res = await axios.get("http://localhost:5000/api/teams/history", {
           headers: { Authorization: `Bearer ${token}` }
         });
-        const teamHistory: TeamHistory[] = res.data || [];
+        const rawData = res.data;
+        const teamHistory: TeamHistory[] = Array.isArray(rawData) 
+          ? rawData 
+          : (rawData && Array.isArray(rawData.teams) ? rawData.teams : []);
         setTeams(teamHistory);
 
         // Fetch achievements/rankings for each past team
         const achievementsMap: { [teamId: string]: any[] } = {};
         const requests = teamHistory.map(async (t: TeamHistory) => {
           try {
-            const achRes = await axios.get(`/api/grades/team/${t._id}/achievements`, {
+            const achRes = await axios.get(`http://localhost:5000/api/grades/team/${t._id}/achievements`, {
               headers: { Authorization: `Bearer ${token}` }
             });
-            return { id: t._id, data: achRes.data || [] };
+            const achData = Array.isArray(achRes.data) ? achRes.data : [];
+            return { id: t._id, data: achData };
           } catch (err: any) {
             console.warn(`Lỗi tải thành tích cho đội ${t.name}:`, err?.message || err);
             return { id: t._id, data: [] };
@@ -82,9 +86,9 @@ export default function MyAchievements() {
   }
 
   return (
-    <div className="team-area-light relative overflow-hidden font-sans bg-slate-50 text-slate-900 min-h-screen">
+    <div className="team-area-light relative overflow-hidden font-sans bg-[#faf9f6] text-slate-900 min-h-screen">
       {/* Background Grid & Glow */}
-      <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle_at_15%_15%,rgba(242,112,36,0.08)_0%,transparent_40%),radial-gradient(circle_at_85%_85%,rgba(242,112,36,0.05)_0%,transparent_40%)]"></div>
+      <div className="absolute inset-0 pointer-events-none z-0 bg-[linear-gradient(rgba(0,0,0,0.012)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.012)_1px,transparent_1px)] [transform:translateZ(0)]"></div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12 font-mono">
       {/* Header section */}
@@ -99,7 +103,7 @@ export default function MyAchievements() {
       </div>
 
       {teams.length === 0 ? (
-        <div className="glass p-12 rounded-3xl text-center max-w-xl mx-auto space-y-4 bg-white/70 backdrop-blur-md border border-slate-200">
+        <div className="glass p-12 rounded-3xl text-center max-w-xl mx-auto space-y-4 bg-white/95 border border-slate-200 shadow-sm">
           <Trophy size={48} className="mx-auto text-slate-400" />
           <p className="text-sm font-bold text-slate-700">Bạn chưa có thành tích nào</p>
           <div className="pt-2">
@@ -119,10 +123,8 @@ export default function MyAchievements() {
             return (
               <div
                 key={t._id}
-                className="glass p-6 md:p-8 rounded-3xl border border-slate-800 hover:border-cyan-500/20 transition-all space-y-6 relative overflow-hidden bg-slate-900/10"
+                className="glass p-6 md:p-8 rounded-3xl border border-slate-800 hover:border-cyan-500/20 transition-colors duration-200 space-y-6 relative overflow-hidden bg-slate-900/10"
               >
-                {/* Background glow decoration */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
                 {/* Team & Event Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
@@ -152,13 +154,13 @@ export default function MyAchievements() {
                       <span>Đồng đội của bạn</span>
                     </h4>
                     <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
-                      {t.members.map((m, idx) => (
+                      {(t.members || []).map((m, idx) => (
                         <div key={idx} className="p-3 bg-slate-900/40 border border-slate-850 rounded-xl space-y-0.5">
                           <p className="text-xs font-bold text-slate-200">{m.fullName}</p>
                           <p className="text-[9px] text-slate-500 font-mono">{m.email}</p>
                         </div>
                       ))}
-                      {t.members.length === 0 && (
+                      {(!t.members || t.members.length === 0) && (
                         <p className="text-xs text-slate-550 italic font-sans py-2">Không có thành viên nào khác.</p>
                       )}
                     </div>
@@ -190,7 +192,7 @@ export default function MyAchievements() {
                           return (
                             <div
                               key={ach._id}
-                              className="border border-slate-800/80 p-4 bg-slate-900/30 rounded-2xl flex flex-col justify-between gap-4 hover:border-cyan-500/30 transition-all group"
+                              className="border border-slate-800/80 p-4 bg-slate-900/30 rounded-2xl flex flex-col justify-between gap-4 hover:border-cyan-500/30 transition-colors duration-200 group"
                             >
                               <div className="space-y-2">
                                 <div className="flex justify-between items-start gap-2">

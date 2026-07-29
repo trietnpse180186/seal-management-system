@@ -204,7 +204,7 @@ export default function JudgeScoring() {
     };
 
     fetchLive();
-    const interval = setInterval(fetchLive, 1500);
+    const interval = setInterval(fetchLive, 10000);
     return () => clearInterval(interval);
   }, [liveDialogOpen, token]);
 
@@ -1606,7 +1606,7 @@ export default function JudgeScoring() {
 
       {/* Live Data Modal */}
       {liveDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fadeIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 p-4 animate-fadeIn">
           <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-5xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto flex flex-col space-y-4">
 
             {/* Modal Header */}

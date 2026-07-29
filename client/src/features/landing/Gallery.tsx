@@ -334,7 +334,7 @@ export default function Gallery({ user, roles }: GalleryProps) {
 
       {/* Lightbox / Details Modal */}
       {lightboxPhoto && createPortal(
-        <div className="fixed inset-0 bg-[linear-gradient(135deg,#fff7f2_0%,#f8fafc_48%,#eef4ff_100%)] backdrop-blur-sm flex flex-col justify-between p-4 sm:p-6 z-[9999] animate-fadeIn text-slate-900">
+        <div className="fixed inset-0 bg-[linear-gradient(135deg,#fff7f2_0%,#f8fafc_48%,#eef4ff_100%)] flex flex-col justify-between p-4 sm:p-6 z-[9999] animate-fadeIn text-slate-900">
           {/* Top Bar */}
           <div className="flex justify-between items-center w-full max-w-7xl mx-auto py-2 z-10">
             <div className="font-mono text-left min-w-0">

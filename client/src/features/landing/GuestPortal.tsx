@@ -245,7 +245,6 @@ export default function GuestPortal({ user }: GuestPortalProps) {
       descClass = "text-[11px] text-slate-700";
       renderDot = () => (
         <span className="absolute -left-[20px] top-1 flex h-2.5 w-2.5">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#F27024] opacity-75"></span>
           <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#F27024] shadow-[0_0_8px_rgba(242,112,36,0.6)]"></span>
         </span>
       );
@@ -283,18 +282,17 @@ export default function GuestPortal({ user }: GuestPortalProps) {
   const phase3 = getPhaseStyles(3);
 
   return (
-    <div className="relative overflow-hidden font-sans bg-slate-50 text-slate-900 min-h-screen">
+    <div className="relative overflow-hidden font-sans bg-[#faf9f6] text-slate-900 min-h-screen">
       {/* Background Grid & Glow */}
-      <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle_at_15%_15%,rgba(242,112,36,0.08)_0%,transparent_40%),radial-gradient(circle_at_85%_85%,rgba(242,112,36,0.05)_0%,transparent_40%)]"></div>
+      <div className="absolute inset-0 pointer-events-none z-0 bg-[linear-gradient(rgba(0,0,0,0.012)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.012)_1px,transparent_1px)]"></div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12 font-mono">
         {/* Hero Section */}
-        <section className="relative overflow-hidden border border-slate-200 bg-white/70 backdrop-blur-md p-8 flex flex-col md:flex-row items-center justify-between gap-8 rounded-2xl transition-all hover:border-[#F27024]/40 hover:shadow-[0_0_20px_rgba(242,112,36,0.06)]">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-[#F27024]/5 rounded-full blur-3xl"></div>
+        <section className="relative overflow-hidden border border-slate-200 bg-white/95 p-8 flex flex-col md:flex-row items-center justify-between gap-8 rounded-2xl transition-all hover:border-[#F27024]/40 hover:shadow-[0_0_20px_rgba(242,112,36,0.06)] [transform:translateZ(0)] shadow-sm">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#F27024]/5 rounded-full blur-xl pointer-events-none [transform:translateZ(0)]"></div>
           <div className="flex-1 space-y-6 z-10 text-left">
             <div className="flex items-center space-x-2">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#F27024] opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[#F27024]"></span>
               </span>
               <span className="text-xs text-[#F27024] tracking-widest uppercase font-bold">
@@ -343,7 +341,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
               loop
               muted
               playsInline
-              className="w-full h-full object-cover opacity-80 mix-blend-screen"
+              className="w-full h-full object-cover opacity-85 [transform:translateZ(0)]"
               src="/davinci_edit_the_existing_video_only__keep_the_exact_shiel.mp4"
             />
             <div className="absolute inset-0 border border-[#F27024]/20 pointer-events-none rounded-xl"></div>
@@ -422,7 +420,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                   return (
                     <div
                       key={e._id}
-                      className="border border-slate-200 bg-white/70 backdrop-blur-md p-6 md:p-8 rounded-2xl hover:border-[#F27024]/40 hover:shadow-[0_0_30px_rgba(242,112,36,0.08)] transition-all flex flex-col md:flex-row justify-between items-center gap-8 relative overflow-hidden group w-full text-left"
+                      className="border border-slate-200 bg-white/95 [transform:translateZ(0)] shadow-sm p-6 md:p-8 rounded-2xl hover:border-[#F27024]/40 hover:shadow-[0_0_30px_rgba(242,112,36,0.08)] transition-all flex flex-col md:flex-row justify-between items-center gap-8 relative overflow-hidden group w-full text-left"
                     >
                       <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#F27024]/40 to-transparent group-hover:via-[#F27024]/60 transition-all duration-500"></div>
 
@@ -571,7 +569,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
                   return (
                     <div
                       key={e._id}
-                      className="border border-slate-200 bg-white/70 backdrop-blur-md p-6 rounded-2xl hover:border-[#F27024]/40 hover:shadow-[0_0_25px_rgba(242,112,36,0.06)] transition-all flex flex-col justify-between gap-6 relative overflow-hidden group text-left"
+                      className="border border-slate-200 bg-white/95 [transform:translateZ(0)] shadow-sm p-6 rounded-2xl hover:border-[#F27024]/40 hover:shadow-[0_0_25px_rgba(242,112,36,0.06)] transition-all flex flex-col justify-between gap-6 relative overflow-hidden group text-left"
                     >
                       <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#F27024]/0 to-transparent group-hover:via-[#F27024]/60 transition-all duration-500"></div>
 
@@ -677,7 +675,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
         {/* Intelligence & Roadmap Grid */}
         <section className="grid grid-cols-1 md:grid-cols-12 gap-6 text-left">
           {/* Event Intelligence Panel */}
-          <div className="col-span-1 md:col-span-5 bg-white/70 backdrop-blur-md p-6 rounded-2xl flex flex-col justify-between border border-slate-200 hover:border-[#F27024]/30 transition-all">
+          <div className="col-span-1 md:col-span-5 bg-white/95 [transform:translateZ(0)] shadow-sm p-6 rounded-2xl flex flex-col justify-between border border-slate-200 hover:border-[#F27024]/30 transition-all">
             <div>
               <div className="border-b border-slate-100 pb-3 mb-6 flex justify-between items-center">
                 <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -732,7 +730,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
           </div>
 
           {/* Mission Roadmap Panel */}
-          <div className="col-span-1 md:col-span-7 bg-white/70 backdrop-blur-md p-6 rounded-2xl flex flex-col justify-between border border-slate-200 hover:border-[#F27024]/30 transition-all">
+          <div className="col-span-1 md:col-span-7 bg-white/95 [transform:translateZ(0)] shadow-sm p-6 rounded-2xl flex flex-col justify-between border border-slate-200 hover:border-[#F27024]/30 transition-all">
             <div>
               <div className="border-b border-slate-100 pb-3 mb-6 flex justify-between items-center">
                 <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -881,7 +879,7 @@ export default function GuestPortal({ user }: GuestPortalProps) {
             activeEvent?.rules?.length > 0 ? activeEvent.rules : defaultRules;
 
           return (
-            <section className="bg-white/70 backdrop-blur-md p-6 sm:p-8 rounded-2xl border border-slate-200 space-y-8 text-left">
+            <section className="bg-white/95 [transform:translateZ(0)] shadow-sm p-6 sm:p-8 rounded-2xl border border-slate-200 space-y-8 text-left">
               <div className="border-b border-slate-100 pb-4 flex justify-between items-center flex-wrap gap-4">
                 <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-3">
                   <Scale size={24} className="text-[#F27024]" />

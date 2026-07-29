@@ -2517,7 +2517,6 @@ export default function AdminEvents({
       {/* EVENT HEADER PANEL (if selected) */}
       {selectedEvent && (
         <div className="glass p-6 rounded-2xl relative bg-gradient-to-r from-cyan-950/20 to-slate-900/20 z-30">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full blur-2xl pointer-events-none"></div>
           <div className="flex justify-between items-start flex-col md:flex-row gap-4">
             <div className="relative" ref={eventTitleRef}>
               <span className="text-[10px] bg-orange-500/10 text-orange-500 border border-orange-500/20 px-2 py-0.5 rounded font-mono font-bold uppercase tracking-wider">
@@ -2893,7 +2892,6 @@ export default function AdminEvents({
         <div className="w-full">
           {/* Main settings form */}
           <div className="glass p-6 rounded-2xl relative">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
             {selectedEvent ? (
               // EDIT SELECTED EVENT FORM
@@ -3501,7 +3499,6 @@ export default function AdminEvents({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fadeIn">
             {/* Event Schedule Card */}
             <div className="glass p-6 rounded-2xl relative flex flex-col justify-between">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-3xl"></div>
               <div>
                 <h3 className="text-md font-bold text-white mb-4 flex items-center gap-1.5 font-mono">
                   <Calendar size={16} className="text-cyan-400" />
@@ -3576,7 +3573,6 @@ export default function AdminEvents({
 
             {/* Round Schedule Card */}
             <div className="glass p-6 rounded-2xl relative flex flex-col justify-between">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none"></div>
               <div>
                 <h3 className="text-md font-bold text-white mb-4 flex items-center justify-between font-mono">
                   <div className="flex items-center gap-1.5">
@@ -3711,7 +3707,6 @@ export default function AdminEvents({
       {activeTab === "portal" &&
         (selectedEvent ? (
           <div className="glass p-6 rounded-2xl relative animate-fadeIn">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-3xl"></div>
             <div>
               {/* Sub-tab navigation bar when inside a sub-tab */}
               {portalSubTab !== null && (
@@ -4546,7 +4541,7 @@ export default function AdminEvents({
 
       {/* DETAIL EVENT LOG MODAL */}
       {selectedLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm transition-all duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 transition-all duration-300">
           <div className="relative w-full max-w-lg border border-slate-800/80 bg-slate-950 p-6 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] space-y-6 font-sans text-slate-200 animate-in fade-in zoom-in-95 duration-200">
             {/* Top decorative line */}
             <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>

@@ -248,7 +248,6 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
                 <Bell size={18} />
                 {unreadCount > 0 && (
                   <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
                   </span>
                 )}
@@ -257,7 +256,7 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
               {/* Notifications Dropdown */}
               {showNotifications && (
                 <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-xl z-50">
-                  <div className="flex justify-between items-center p-3 border-b border-slate-100 sticky top-0 bg-white/95 backdrop-blur z-10">
+                  <div className="flex justify-between items-center p-3 border-b border-slate-100 sticky top-0 bg-white z-10">
                     <h4 className="text-sm font-semibold text-slate-800">
                       Thông báo
                     </h4>

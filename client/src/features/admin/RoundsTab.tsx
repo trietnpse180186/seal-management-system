@@ -1681,7 +1681,7 @@ export default function RoundsTab({
 
       {/* Edit Round Modal */}
       {editingRound && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-md p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200 font-sans">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-base font-bold text-white font-mono flex items-center gap-2">
@@ -1735,7 +1735,7 @@ export default function RoundsTab({
                 <button
                   type="button"
                   onClick={() => setEditingRound(null)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-mono text-xs cursor-pointer"
+                  className="btn-cancel px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-mono text-xs cursor-pointer"
                 >
                   Hủy Bỏ
                 </button>

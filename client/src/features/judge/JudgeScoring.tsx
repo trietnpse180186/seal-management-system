@@ -1606,7 +1606,7 @@ export default function JudgeScoring() {
 
       {/* Live Data Modal */}
       {liveDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/95 p-4 animate-fadeIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-md p-4 animate-fadeIn">
           <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-5xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto flex flex-col space-y-4">
 
             {/* Modal Header */}

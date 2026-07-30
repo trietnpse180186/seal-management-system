@@ -249,7 +249,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
       )}
 
       {isProfileOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-955/95 p-4 animate-fade-in animate-duration-150">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/65 backdrop-blur-md p-4 animate-fade-in animate-duration-150">
           <div className={`relative w-full max-w-md p-6 rounded-2xl shadow-2xl transition-all duration-300 font-sans ${
             usesLightShell 
               ? "bg-[#faf9f6] border border-slate-200 text-slate-800 profile-modal-light" 
@@ -492,11 +492,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
                         }
                       }}
                       disabled={isSaving}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer ${
-                        usesLightShell 
-                          ? "bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200" 
-                          : "bg-slate-800/40 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800"
-                      }`}
+                      className="btn-cancel px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 rounded-xl text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer"
                     >
                       Hủy
                     </button>

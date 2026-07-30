@@ -3019,7 +3019,7 @@ export default function AdminEvents({
                             setIsWizardMode(true);
                             setWizardStep(1);
                           }}
-                          className="bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white px-5 py-2.5 rounded-xl text-sm border border-slate-800 font-mono flex items-center gap-1.5 cursor-pointer"
+                          className="btn-cancel bg-slate-800 hover:bg-slate-700 text-white px-5 py-2.5 rounded-xl text-sm border border-slate-700 font-mono flex items-center gap-1.5 cursor-pointer"
                         >
                           Hủy & Tạo mới
                         </button>
@@ -4546,7 +4546,7 @@ export default function AdminEvents({
 
       {/* DETAIL EVENT LOG MODAL */}
       {selectedLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/95 transition-all duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-md transition-all duration-300">
           <div className="relative w-full max-w-lg border border-slate-800/80 bg-slate-950 p-6 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] space-y-6 font-sans text-slate-200 animate-in fade-in zoom-in-95 duration-200">
             {/* Top decorative line */}
             <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>

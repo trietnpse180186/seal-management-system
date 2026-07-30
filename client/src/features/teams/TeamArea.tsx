@@ -105,11 +105,10 @@ function SeminarWidget({ seminar }: SeminarWidgetProps) {
 
   return (
     <div
-      className={`glass p-6 rounded-3xl border transition-all relative overflow-hidden flex flex-col md:flex-row items-stretch md:items-center justify-between gap-6 ${
-        isOngoing
-          ? "border-cyan-500/40 glow-cyan bg-slate-900/10 shadow-[inset_0_0_20px_rgba(0,240,255,0.02)] animate-pulse"
-          : "border-slate-800 hover:border-cyan-500/30"
-      }`}
+      className={`glass p-6 rounded-3xl border transition-all relative overflow-hidden flex flex-col md:flex-row items-stretch md:items-center justify-between gap-6 ${isOngoing
+        ? "border-cyan-500/40 glow-cyan bg-slate-900/10 shadow-[inset_0_0_20px_rgba(0,240,255,0.02)] animate-pulse"
+        : "border-slate-800 hover:border-cyan-500/30"
+        }`}
     >
       {isOngoing && (
         <div className="absolute inset-0 pointer-events-none laser-scan-effect opacity-10"></div>
@@ -649,7 +648,7 @@ export default function TeamArea() {
     const socketUrl =
       import.meta.env.VITE_API_URL ||
       (window.location.hostname !== "localhost" &&
-      window.location.hostname !== "127.0.0.1"
+        window.location.hostname !== "127.0.0.1"
         ? window.location.origin
         : "http://localhost:5000");
     const socket = io(socketUrl, { auth: { token } });
@@ -745,11 +744,10 @@ export default function TeamArea() {
             <div className="lg:col-span-5 space-y-4">
               <div className="flex items-center gap-2.5">
                 <span
-                  className={`text-[10px] px-2.5 py-0.5 rounded font-extrabold tracking-wider ${
-                    team?.status?.toLowerCase() === "confirmed"
-                      ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
-                      : "bg-amber-500/10 text-amber-600 border border-amber-500/20"
-                  }`}
+                  className={`text-[10px] px-2.5 py-0.5 rounded font-extrabold tracking-wider ${team?.status?.toLowerCase() === "confirmed"
+                    ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
+                    : "bg-amber-500/10 text-amber-600 border border-amber-500/20"
+                    }`}
                 >
                   {getTeamStatusText(team?.status)}
                 </span>
@@ -938,9 +936,8 @@ export default function TeamArea() {
             {/* Left: Exam & Materials Card */}
             {isExamVisible && (
               <div
-                className={`${
-                  showMqttCard ? "lg:col-span-4" : "lg:col-span-8"
-                } bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-slate-800 relative overflow-hidden`}
+                className={`${showMqttCard ? "lg:col-span-4" : "lg:col-span-8"
+                  } bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-slate-800 relative overflow-hidden`}
               >
                 <div>
                   <div className="flex justify-between items-center border-b border-slate-100 pb-3 mb-5">
@@ -958,7 +955,7 @@ export default function TeamArea() {
                   </div>
 
                   {team?.eventId?.contestStart &&
-                  new Date(team.eventId.contestStart) > currentTime ? (
+                    new Date(team.eventId.contestStart) > currentTime ? (
                     <div className="flex flex-col items-center justify-center py-6 space-y-4">
                       <div className="space-y-1.5 text-center">
                         <p className="text-xs text-amber-600 font-sans font-semibold uppercase tracking-wider">
@@ -1268,13 +1265,12 @@ export default function TeamArea() {
 
             {/* Right: Members Card */}
             <div
-              className={`${
-                isExamVisible && showMqttCard
-                  ? "lg:col-span-4"
-                  : isExamVisible || showMqttCard
+              className={`${isExamVisible && showMqttCard
+                ? "lg:col-span-4"
+                : isExamVisible || showMqttCard
                   ? "lg:col-span-6"
                   : "lg:col-span-12"
-              } space-y-6`}
+                } space-y-6`}
             >
               <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-slate-800 text-left">
                 <div>
@@ -1312,11 +1308,10 @@ export default function TeamArea() {
                     {members?.map((m: any) => (
                       <div
                         key={m._id}
-                        className={`flex items-center justify-between p-3 bg-slate-50 rounded-xl border text-xs ${
-                          m.role === "leader"
-                            ? "border-amber-500/30"
-                            : "border-slate-200"
-                        }`}
+                        className={`flex items-center justify-between p-3 bg-slate-50 rounded-xl border text-xs ${m.role === "leader"
+                          ? "border-amber-500/30"
+                          : "border-slate-200"
+                          }`}
                       >
                         <div className="min-w-0 flex-1 pr-2">
                           <div className="flex items-center gap-1.5">
@@ -1571,7 +1566,7 @@ export default function TeamArea() {
 
         {/* Edit Basic Info Modal */}
         {showEditModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 p-4 animate-fade-in animate-duration-150">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-md p-4 animate-fade-in animate-duration-150">
             <div className="glass max-w-2xl w-full rounded-3xl border border-slate-800 p-6 md:p-8 space-y-6 relative overflow-hidden shadow-2xl">
               <form
                 onSubmit={handleSaveBasicInfo}
@@ -1704,13 +1699,12 @@ export default function TeamArea() {
                             </div>
                             {member.checkingMessage && (
                               <p
-                                className={`text-[9px] font-mono italic mt-1 ${
-                                  member.checkingStatus === "eligible"
-                                    ? "text-emerald-400"
-                                    : member.checkingStatus === "conflict"
-                                      ? "text-rose-400"
-                                      : "text-slate-400"
-                                }`}
+                                className={`text-[9px] font-mono italic mt-1 ${member.checkingStatus === "eligible"
+                                  ? "text-emerald-400"
+                                  : member.checkingStatus === "conflict"
+                                    ? "text-rose-400"
+                                    : "text-slate-400"
+                                  }`}
                               >
                                 {member.checkingMessage}
                               </p>
@@ -1876,7 +1870,7 @@ export default function TeamArea() {
                     <button
                       type="button"
                       onClick={() => setShowEditModal(false)}
-                      className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-350 text-xs font-bold uppercase rounded-xl transition-all cursor-pointer font-sans"
+                      className="btn-cancel px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold uppercase rounded-xl transition-all cursor-pointer font-sans"
                     >
                       Hủy
                     </button>
@@ -1896,7 +1890,7 @@ export default function TeamArea() {
 
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-955/95 p-4 animate-fade-in animate-duration-150">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-md p-4 animate-fade-in animate-duration-150">
             <div className="bg-slate-900 max-w-md w-full rounded-3xl border border-rose-500/20 p-6 md:p-8 space-y-6 relative overflow-hidden shadow-2xl">
               <div className="space-y-2 text-left font-sans">
                 <h3 className="text-lg font-black text-rose-400 uppercase tracking-wider font-mono-tech">
@@ -1923,13 +1917,12 @@ export default function TeamArea() {
                   value={deleteConfirmTeamName}
                   onChange={(e) => setDeleteConfirmTeamName(e.target.value)}
                   placeholder={team?.name}
-                  className={`w-full bg-slate-955 border px-3.5 py-2.5 rounded-xl focus:outline-none transition-all font-mono text-xs ${
-                    deleteConfirmTeamName &&
+                  className={`w-full bg-slate-955 border px-3.5 py-2.5 rounded-xl focus:outline-none transition-all font-mono text-xs ${deleteConfirmTeamName &&
                     deleteConfirmTeamName.trim().toLowerCase() !==
-                      team?.name?.toLowerCase()
-                      ? "border-rose-500/40 text-rose-400 focus:border-rose-500/70"
-                      : "border-slate-800 text-slate-200 focus:border-cyan-500/50"
-                  }`}
+                    team?.name?.toLowerCase()
+                    ? "border-rose-500/40 text-rose-400 focus:border-rose-500/70"
+                    : "border-slate-800 text-slate-200 focus:border-cyan-500/50"
+                    }`}
                 />
               </div>
 
@@ -1940,7 +1933,7 @@ export default function TeamArea() {
                     setShowDeleteConfirm(false);
                     setDeleteConfirmTeamName("");
                   }}
-                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-350 text-xs font-bold uppercase rounded-xl transition-all cursor-pointer font-sans"
+                  className="btn-cancel px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold uppercase rounded-xl transition-all cursor-pointer font-sans"
                 >
                   Hủy bỏ
                 </button>
@@ -1948,7 +1941,7 @@ export default function TeamArea() {
                   type="button"
                   disabled={
                     deleteConfirmTeamName.trim().toLowerCase() !==
-                      team?.name?.toLowerCase() || deletingTeam
+                    team?.name?.toLowerCase() || deletingTeam
                   }
                   onClick={handleDeleteTeam}
                   className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:border-transparent disabled:shadow-none disabled:cursor-not-allowed text-white text-xs font-bold uppercase rounded-xl transition-all shadow-lg shadow-rose-600/25 cursor-pointer font-sans"

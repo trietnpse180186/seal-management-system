@@ -46,7 +46,7 @@ async function downgradeEventRolesToParticipant(eventId) {
 
   const User = mongoose.model('User');
   for (const roleRecord of targetRoles) {
-    // If it was a student assistant, also revoke their global CTV flag
+    // If it was a student assistant, also revoke their global CTSV flag
     if (roleRecord.role === 'student_assistant') {
       await User.updateOne({ _id: roleRecord.userId }, { $set: { isStudentAssistant: false } });
     }

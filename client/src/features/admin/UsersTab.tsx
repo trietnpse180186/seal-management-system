@@ -279,7 +279,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                 <th className="p-4">Người Dùng</th>
                 <th className="p-4">MSSV / Trường</th>
                 <th className="p-4">Vai Trò</th>
-                {!isAssistant && <th className="p-4 text-center">CTV</th>}
+                {!isAssistant && <th className="p-4 text-center">CTSV</th>}
                 {!isAssistant && <th className="p-4">Trạng Thái Tài Khoản</th>}
                 <th className="p-4 text-right">Thao Tác</th>
               </tr>
@@ -452,7 +452,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                                   } ${
                                     hasStudentAssistant ? "bg-orange-500" : "bg-slate-200 hover:bg-slate-300"
                                   }`}
-                                  title={hasStudentAssistant ? "Thu hồi quyền CTV" : "Cấp quyền CTV"}
+                                  title={hasStudentAssistant ? "Thu hồi quyền CTSV" : "Cấp quyền CTSV"}
                                 >
                                   <span
                                     className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform shadow-sm ${

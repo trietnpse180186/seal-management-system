@@ -1235,7 +1235,7 @@ router.get('/users', authenticateToken, requireAdminOrAssistant, async (req, res
     const activeEvents = await Event.find({ status: { $in: ['registration', 'ongoing'] } }).select('_id');
     let targetEventIds = activeEvents.map(e => e._id);
 
-    // If CTV, find the specific event(s) assigned to this CTV
+    // If CTSV, find the specific event(s) assigned to this CTSV
     if (isAssistant) {
       const assistantRoles = await EventRole.find({
         userId: req.user._id,
@@ -1263,7 +1263,7 @@ router.get('/users', authenticateToken, requireAdminOrAssistant, async (req, res
 
     const teamUserIds = memberships.map(m => m.userId.toString());
 
-    // If CTV, filter query to ONLY include users who are team members in their assigned event
+    // If CTSV, filter query to ONLY include users who are team members in their assigned event
     if (isAssistant) {
       query._id = { $in: teamUserIds };
     }

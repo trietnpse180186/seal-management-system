@@ -64,7 +64,7 @@ function requireSystemAdmin(req, res, next) {
 }
 
 /**
- * Middleware to verify the user is a system admin or a student assistant (CTV).
+ * Middleware to verify the user is a system admin or a student assistant (CTSV).
  */
 function requireAdminOrAssistant(req, res, next) {
   if (!req.user || (!req.user.isSystemAdmin && !req.user.isStudentAssistant)) {

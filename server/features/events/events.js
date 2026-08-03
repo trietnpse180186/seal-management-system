@@ -46,7 +46,7 @@ async function downgradeEventRolesToParticipant(eventId) {
 
   const User = mongoose.model('User');
   for (const roleRecord of targetRoles) {
-    // If it was a student assistant, also revoke their global CTV flag
+    // If it was a student assistant, also revoke their global CTSV flag
     if (roleRecord.role === 'student_assistant') {
       await User.updateOne({ _id: roleRecord.userId }, { $set: { isStudentAssistant: false } });
     }
@@ -1001,8 +1001,14 @@ router.put('/:eventId/rounds/:roundId', authenticateToken, async (req, res) => {
     if (startTime !== undefined) round.startTime = startTime ? new Date(startTime) : null;
     if (endTime !== undefined) round.endTime = endTime ? new Date(endTime) : null;
     if (gradingEndTime !== undefined) round.gradingEndTime = gradingEndTime ? new Date(gradingEndTime) : null;
+
+    const wasManualOpen = round.isExamManualOpen;
+    const wasActive = round.status === 'active';
+
     if (isExamManualOpen !== undefined) round.isExamManualOpen = !!isExamManualOpen;
     if (status !== undefined) round.status = status;
+
+    const isNewlyOpened = (round.isExamManualOpen && !wasManualOpen) || (round.status === 'active' && !wasActive);
 
     if (status === 'active') {
       // Deactivate all other active rounds in the same event
@@ -1010,6 +1016,13 @@ router.put('/:eventId/rounds/:roundId', authenticateToken, async (req, res) => {
         { eventId, _id: { $ne: roundId }, status: 'active' },
         { status: 'pending' }
       );
+    }
+
+    if (isNewlyOpened) {
+      console.log(`[DRIVE] Round "${round.name}" is opened. Auto-syncing Drive access in background...`);
+      syncDriveAccessForRound(round._id).catch(err => {
+        console.error(`[DRIVE ERROR] Auto-sync failed on manual open for round ${round.name}:`, err.message);
+      });
     }
 
     // Mirror schedule to tracks in this round for backward compatibility
@@ -1123,8 +1136,16 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
       });
       await newLog.save();
 
+      // Auto-sync Drive access in background on upload
+      if (track.roundId && driveFileId) {
+        console.log(`[DRIVE] Auto-syncing Drive access for track upload in background...`);
+        syncDriveAccessForRound(track.roundId).catch(err => {
+          console.error(`[DRIVE ERROR] Auto-sync failed on track exam upload:`, err.message);
+        });
+      }
+
       return res.json({
-        message: `Đã lưu link Drive riêng cho bảng "${track.name}". Thí sinh bảng này sẽ thấy link khi đến giờ mở đề.`,
+        message: `Đã lưu và đồng bộ link Drive riêng cho bảng "${track.name}".`,
         track: {
           _id: track._id,
           name: track.name,
@@ -1157,8 +1178,16 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
       });
       await newLog.save();
 
+      // Auto-sync Drive access in background on upload
+      if (driveFileId) {
+        console.log(`[DRIVE] Auto-syncing Drive access for round upload in background...`);
+        syncDriveAccessForRound(roundId).catch(err => {
+          console.error(`[DRIVE ERROR] Auto-sync failed on round exam upload:`, err.message);
+        });
+      }
+
       return res.json({
-        message: 'Đã lưu link Drive cho vòng thi. Thí sinh sẽ click vào link này trực tiếp khi đến giờ mở đề.',
+        message: 'Đã lưu và đồng bộ link Drive cho vòng thi.',
         round: sanitizeRoundForAdmin(round)
       });
     }
@@ -1394,6 +1423,15 @@ router.post('/:eventId/distribute-teams', authenticateToken, async (req, res) =>
         teamName: team.name,
         trackId: track._id,
         trackName: track.name
+      });
+    }
+
+    // Auto-sync Google Drive access for the active round if it exists
+    const activeRound = await Round.findOne({ eventId, status: 'active' });
+    if (activeRound) {
+      console.log(`[DISTRIBUTION] Auto-syncing Drive access for active round "${activeRound.name}" after team distribution...`);
+      syncDriveAccessForRound(activeRound._id).catch(err => {
+        console.error(`[DISTRIBUTION ERROR] Auto-sync Drive failed:`, err.message);
       });
     }
 

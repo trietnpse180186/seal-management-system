@@ -99,6 +99,58 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function restrictDriveFileAccess(fileId, accessToken) {
+  if (!fileId) return { success: false, error: 'missing_file_id' };
+  try {
+    const listRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}/permissions?supportsAllDrives=true&fields=permissions(id,type,role)`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      }
+    );
+
+    if (!listRes.ok) {
+      const errText = await listRes.text();
+      console.error(`[DRIVE] List permissions failed for file ${fileId}: ${errText}`);
+      return { success: false, error: errText };
+    }
+
+    const data = await listRes.json();
+    const permissions = data.permissions || [];
+    let restrictedCount = 0;
+
+    for (const perm of permissions) {
+      if (perm.type === 'anyone') {
+        const delRes = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${fileId}/permissions/${perm.id}?supportsAllDrives=true`,
+          {
+            method: 'DELETE',
+            headers: {
+              Authorization: `Bearer ${accessToken}`
+            }
+          }
+        );
+
+        if (delRes.ok) {
+          restrictedCount++;
+          console.log(`[DRIVE] Restricted public access for file ${fileId} (removed permission ID: ${perm.id})`);
+        } else {
+          const errText = await delRes.text();
+          console.error(`[DRIVE] Failed to delete public permission ${perm.id}: ${errText}`);
+        }
+      }
+    }
+
+    return { success: true, restrictedCount };
+  } catch (err) {
+    console.error(`[DRIVE] restrictDriveFileAccess error for file ${fileId}:`, err.message);
+    return { success: false, error: err.message };
+  }
+}
+
 async function shareFileWithEmail(fileId, email, accessToken) {
   const res = await fetch(
     `https://www.googleapis.com/drive/v3/files/${fileId}/permissions?sendNotificationEmail=false&supportsAllDrives=true`,
@@ -140,38 +192,121 @@ async function ensureUserDriveAccess(fileId, email) {
   }
 }
 
+async function syncDriveAccessForTrack(trackId, accessToken) {
+  const Track = mongoose.model('Track');
+  const Team = mongoose.model('Team');
+  const TeamMember = mongoose.model('TeamMember');
+
+  const track = await Track.findById(trackId);
+  if (!track?.examDriveFileId) {
+    return { synced: 0, failed: [], total: 0 };
+  }
+
+  try {
+    await restrictDriveFileAccess(track.examDriveFileId, accessToken);
+  } catch (err) {
+    console.error(`[DRIVE] Failed to restrict file access for track ${track.name}:`, err.message);
+  }
+
+  const teams = await Team.find({ trackId, status: 'confirmed' }).select('_id');
+  if (!teams.length) return { synced: 0, failed: [], total: 0 };
+
+  const teamIds = teams.map((t) => t._id);
+  const members = await TeamMember.find({
+    teamId: { $in: teamIds },
+    confirmStatus: 'confirmed'
+  }).populate('userId', 'email isActive');
+
+  const emails = new Set();
+  for (const member of members) {
+    if (member.userId?.isActive && member.userId.email) {
+      emails.add(member.userId.email.toLowerCase().trim());
+    }
+  }
+  const emailList = Array.from(emails);
+  const failed = [];
+  let synced = 0;
+
+  for (let i = 0; i < emailList.length; i += BATCH_SIZE) {
+    const batch = emailList.slice(i, i + BATCH_SIZE);
+    for (const email of batch) {
+      const result = await shareFileWithEmail(track.examDriveFileId, email, accessToken);
+      if (result.success) synced += 1;
+      else failed.push({ email, error: result.error });
+    }
+    if (i + BATCH_SIZE < emailList.length) await sleep(BATCH_DELAY_MS);
+  }
+
+  console.log(`[DRIVE] Track "${track.name}": synced ${synced}/${emailList.length}, failed ${failed.length}`);
+  return { synced, failed, total: emailList.length };
+}
+
 async function syncDriveAccessForRound(roundId) {
   assertDriveConfigured();
 
   const round = await Round.findById(roundId);
-  if (!round?.driveFileId) {
+  if (!round) {
     return { synced: 0, failed: [], total: 0 };
   }
 
-  const emails = await getEligibleEmailsForRound(roundId);
+  const accessToken = await getAccessToken();
   const failed = [];
   let synced = 0;
+  let total = 0;
+  
+  // Set to prevent duplicate operations on the same Drive File ID
+  const processedFileIds = new Set();
 
-  const accessToken = await getAccessToken();
-
-  for (let i = 0; i < emails.length; i += BATCH_SIZE) {
-    const batch = emails.slice(i, i + BATCH_SIZE);
-    for (const email of batch) {
-      const result = await shareFileWithEmail(round.driveFileId, email, accessToken);
-      if (result.success) synced += 1;
-      else failed.push({ email, error: result.error });
+  // 1. Sync Round-level drive access
+  if (round.driveFileId) {
+    processedFileIds.add(round.driveFileId);
+    try {
+      await restrictDriveFileAccess(round.driveFileId, accessToken);
+    } catch (err) {
+      console.error(`[DRIVE] Failed to restrict file access for round ${round.name}:`, err.message);
     }
-    if (i + BATCH_SIZE < emails.length) await sleep(BATCH_DELAY_MS);
+
+    const emails = await getEligibleEmailsForRound(roundId);
+    total += emails.length;
+
+    for (let i = 0; i < emails.length; i += BATCH_SIZE) {
+      const batch = emails.slice(i, i + BATCH_SIZE);
+      for (const email of batch) {
+        const result = await shareFileWithEmail(round.driveFileId, email, accessToken);
+        if (result.success) synced += 1;
+        else failed.push({ email, error: result.error });
+      }
+      if (i + BATCH_SIZE < emails.length) await sleep(BATCH_DELAY_MS);
+    }
   }
 
-  round.isDriveAccessSynced = failed.length === 0;
+  // 2. Sync Track-level drive access for all tracks in this round
+  const Track = mongoose.model('Track');
+  const tracks = await Track.find({ roundId: round._id });
+  for (const track of tracks) {
+    if (track.examDriveFileId) {
+      // If this file ID was already processed (e.g. same link as Round or other Track), skip to avoid duplicate API calls
+      if (processedFileIds.has(track.examDriveFileId)) {
+        console.log(`[DRIVE] Skipping duplicate file ID ${track.examDriveFileId} for track "${track.name}"`);
+        continue;
+      }
+      processedFileIds.add(track.examDriveFileId);
+
+      const trackResult = await syncDriveAccessForTrack(track._id, accessToken);
+      synced += trackResult.synced;
+      failed.push(...trackResult.failed);
+      total += trackResult.total;
+    }
+  }
+
+  round.isDriveAccessSynced = (total > 0 && failed.length === 0);
   round.driveSyncedAt = new Date();
   round.driveSyncedEmailCount = synced;
   round.driveSyncErrors = failed.slice(0, 100);
   await round.save();
 
-  console.log(`[DRIVE] Round "${round.name}": synced ${synced}/${emails.length}, failed ${failed.length}`);
-  return { synced, failed, total: emails.length };
+  console.log(`[DRIVE] Round "${round.name}": synced ${synced}/${total}, failed ${failed.length}`);
+  return { synced, failed, total };
 }
 
 function getDriveStatus() {

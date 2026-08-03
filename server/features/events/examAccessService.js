@@ -14,6 +14,7 @@ function extractDriveFileId(url) {
   const patterns = [
     /\/folders\/([a-zA-Z0-9_-]+)/,
     /\/file\/d\/([a-zA-Z0-9_-]+)/,
+    /\/d\/([a-zA-Z0-9_-]+)/, // Generically matches document/d, spreadsheets/d, etc.
     /[?&]id=([a-zA-Z0-9_-]+)/
   ];
   for (const pattern of patterns) {

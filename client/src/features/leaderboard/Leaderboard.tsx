@@ -10,6 +10,7 @@ import {
   Download,
 } from "lucide-react";
 import CustomSelect from "../shared/CustomSelect";
+import TeamDetailDrawer from "./TeamDetailDrawer";
 
 export default function Leaderboard({
   user,
@@ -43,6 +44,7 @@ export default function Leaderboard({
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [activeTrackId, setActiveTrackId] = useState<string>("");
+  const [selectedTeamForDrawer, setSelectedTeamForDrawer] = useState<any>(null);
 
   const assignRanksWithTies = (list: any[]) => {
     if (!list || list.length === 0) return [];
@@ -480,7 +482,13 @@ export default function Leaderboard({
                     return (
                       <tr
                         key={row._id || row.teamId?._id || idx}
-                        className="border-b border-slate-800/60 hover:bg-white/2 transition-colors"
+                        onClick={() =>
+                          setSelectedTeamForDrawer({
+                            ...row,
+                            trackName: "Chung Kết",
+                          })
+                        }
+                        className="border-b border-slate-800/60 hover:bg-cyan-500/10 transition-colors cursor-pointer"
                       >
                         <td className="py-4 px-4 text-center font-black">
                           <span
@@ -571,7 +579,13 @@ export default function Leaderboard({
                           return (
                             <tr
                               key={row._id || row.teamId?._id || idx}
-                              className="border-b border-slate-850 hover:bg-white/2 transition-colors"
+                              onClick={() =>
+                                setSelectedTeamForDrawer({
+                                  ...row,
+                                  trackName: group.trackName,
+                                })
+                              }
+                              className="border-b border-slate-850 hover:bg-cyan-500/10 transition-colors cursor-pointer"
                             >
                               <td className="py-4 px-4 text-center font-black">
                                 <span
@@ -620,6 +634,27 @@ export default function Leaderboard({
               : "Bảng xếp hạng sẽ tự động hiển thị tại đây sau khi ban tổ chức tiến hành chốt khoá điểm thi và xếp hạng cuối cùng."}
           </p>
         </div>
+      )}
+
+      {/* Team Detail Slide-over Drawer */}
+      {selectedTeamForDrawer && (
+        <TeamDetailDrawer
+          teamId={selectedTeamForDrawer.teamId?._id || selectedTeamForDrawer.teamId}
+          roundId={selectedRoundId}
+          roundName={selectedRound?.name}
+          roundStatus={selectedRound?.status}
+          rankData={{
+            rank: selectedTeamForDrawer.rank,
+            displayRank: selectedTeamForDrawer.displayRank,
+            averageScore: selectedTeamForDrawer.averageScore,
+            trackName: selectedTeamForDrawer.trackName,
+            isAdvanced: selectedTeamForDrawer.isAdvanced,
+            judgeCount: selectedTeamForDrawer.judgeCount,
+          }}
+          isCoordinator={isCoordinator}
+          isJudge={isJudge}
+          onClose={() => setSelectedTeamForDrawer(null)}
+        />
       )}
     </div>
   );

@@ -1285,6 +1285,9 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
     let title = '';
     let subtitle = '';
     let metadataRow = '';
+    let headerRowCount = 1;
+    let extraMerges = [];
+    let totalDataRows = 0;
 
     // Check if we are exporting for a specific judge or summary
     if (targetJudgeId) {
@@ -1297,13 +1300,14 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
       metadataRow = `Vòng thi: ${round.name} | Bảng đấu: ${track ? track.name : 'Tất cả'} | Giám khảo: ${judge.fullName}`;
 
       // Build table headers
-      // STT | Tên Đội | Tên Đề Tài | Criteria 1 | ... | Criteria N | Tổng Điểm | Nhận Xét
-      const headers = ["STT", "Tên Đội Thi", "Tên Đề Tài / Dự Án"];
+      // Build table headers
+      // STT | Tên Đội | Criteria 1 | ... | Criteria N | Tổng Điểm | Nhận Xét
+      const headers = ["STT", "Tên Đội Thi"];
       criteria.forEach(c => {
         const weightPercent = c.weight > 1 ? c.weight : c.weight * 100;
         headers.push(`${c.code}\n(${weightPercent}%)`);
       });
-      headers.push("Tổng Điểm\n(Hệ 10)", "Ý Kiến / Nhận Xét");
+      headers.push("Tổng Điểm\n", "Ý Kiến / Nhận Xét");
 
       wsData.push([title], [subtitle], [metadataRow], [], headers);
 
@@ -1319,8 +1323,7 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
       teams.forEach((team, idx) => {
         const row = [
           idx + 1,
-          team.name,
-          team.topicSubmission?.title || 'Chưa đăng ký đề tài'
+          team.name
         ];
 
         const teamScore = scores.find(s => s.teamId.toString() === team._id.toString());
@@ -1342,20 +1345,22 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
         wsData.push(row);
       });
 
+      totalDataRows = teams.length;
+
       // Signature section
       const signRowStart = wsData.length + 2;
       wsData.push([]); // blank row
       wsData.push([]); // blank row
 
-      // We will place signatures on columns: Column B (index 1) and Column G/H (index 4+N)
+      // We will place signatures on columns: Column B (index 1) and Column G/H (index 2+N)
       const sigRow = [];
       sigRow[1] = "TRƯỞNG BAN TỔ CHỨC";
-      sigRow[3 + criteria.length] = "GIÁM KHẢO XÁC NHẬN";
+      sigRow[2 + criteria.length] = "GIÁM KHẢO XÁC NHẬN";
       wsData.push(sigRow);
 
       const subSigRow = [];
       subSigRow[1] = "(Ký và ghi rõ họ tên)";
-      subSigRow[3 + criteria.length] = "(Ký và ghi rõ họ tên)";
+      subSigRow[2 + criteria.length] = "(Ký và ghi rõ họ tên)";
       wsData.push(subSigRow);
 
       // Add 4 empty rows for space to sign
@@ -1363,7 +1368,7 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
 
       const nameSigRow = [];
       nameSigRow[1] = ".......................................";
-      nameSigRow[3 + criteria.length] = judge.fullName;
+      nameSigRow[2 + criteria.length] = judge.fullName;
       wsData.push(nameSigRow);
 
     } else {
@@ -1392,25 +1397,18 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
       });
       const judges = Object.values(uniqueJudgesMap);
 
-      // Table Headers:
-      // STT | Tên Đội | Tên Đề Tài | Criteria 1 (TB) | ... | Criteria N (TB) | Judge 1 Total | ... | Judge M Total | Điểm Trung Bình | Thứ Hạng | Nhận Xét Tổng Hợp
-      const headers = ["STT", "Tên Đội Thi", "Tên Đề Tài / Dự Án"];
-
-      // Add criteria headers
+      // Table Headers (single row, vertical layout):
+      // STT | Tên Đội Thi | Giám Khảo | C1 (w%) | ... | CN (w%) | Tổng Điểm | Điểm TB | Thứ Hạng
+      const headers = ["STT", "Tên Đội Thi", "Giám Khảo"];
       criteria.forEach(c => {
         const weightPercent = c.weight > 1 ? c.weight : c.weight * 100;
-        headers.push(`${c.code} (TB)\n(${weightPercent}%)`);
+        headers.push(`${c.code}\n(${weightPercent}%)`);
       });
-
-      // Add judge total headers
-      judges.forEach(j => {
-        headers.push(j.fullName);
-      });
-      headers.push("Điểm Trung Bình", "Thứ Hạng", "Nhận Xét Tổng Hợp");
+      headers.push("Tổng Điểm", "Điểm Trung Bình", "Thứ Hạng");
       wsData.push([title], [subtitle], [metadataRow], [], headers);
 
-      // Build row data for each team
-      const rowsWithAverages = teams.map((team, idx) => {
+      // Build row data for each team (vertical: each judge = one row)
+      const teamDataForSort = teams.map((team) => {
         const teamScores = scores.filter(s => s.teamId.toString() === team._id.toString());
         const judgeCount = teamScores.length;
 
@@ -1420,72 +1418,78 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
           averageScore = Math.round((sum / judgeCount) * 100) / 100;
         }
 
-        // Calculate average score for each criterion
-        const criteriaAverages = criteria.map(c => {
-          if (judgeCount === 0) return 0;
-          let criterionSum = 0;
-          let count = 0;
-          teamScores.forEach(ts => {
+        return { team, teamScores, averageScore };
+      });
+
+      // Sort by averageScore descending to calculate rankings
+      teamDataForSort.sort((a, b) => b.averageScore - a.averageScore);
+
+      // Track data row start for merge calculations
+      const dataRowStart = wsData.length; // row index where data begins (should be 5)
+      let currentRow = dataRowStart;
+
+      teamDataForSort.forEach((item, idx) => {
+        const { team, teamScores, averageScore } = item;
+        const judgeCount = judges.length;
+        const rowsForTeam = judgeCount + 1; // N judge rows + 1 summary row
+
+        // Judge rows: one row per judge
+        judges.forEach(j => {
+          const ts = teamScores.find(s => s.judgeId._id.toString() === j._id.toString());
+          const row = ['', '', j.fullName];
+          criteria.forEach(c => {
+            if (!ts) { row.push('-'); return; }
             const detail = scoreDetails.find(d =>
               d.scoreId.toString() === ts._id.toString() &&
               d.criterionId.toString() === c._id.toString()
             );
-            if (detail) {
-              criterionSum += detail.scoreValue;
-              count++;
-            }
+            row.push(detail ? detail.scoreValue : '-');
           });
-          return count > 0 ? Math.round((criterionSum / count) * 100) / 100 : 0;
+          row.push(ts ? ts.totalWeightedScore : '-'); // Tổng Điểm
+          row.push(''); // Điểm TB (empty for judge rows)
+          row.push(''); // Thứ Hạng (empty for judge rows)
+          wsData.push(row);
         });
 
-        const judgeScoresList = judges.map(j => {
-          const s = teamScores.find(ts => ts.judgeId._id.toString() === j._id.toString());
-          return s ? s.totalWeightedScore : '-';
-        });
+        // Summary row for this team
+        const summaryRow = ['', '', ''];
+        // Empty criteria cells for summary row
+        criteria.forEach(() => summaryRow.push(''));
+        summaryRow.push(''); // Tổng Điểm (empty)
+        summaryRow.push(averageScore); // Điểm TB
+        summaryRow.push(idx + 1); // Thứ Hạng
+        wsData.push(summaryRow);
 
-        const comments = teamScores
-          .map(s => s.overallComment ? `${s.judgeId.fullName}: ${s.overallComment}` : '')
-          .filter(Boolean)
-          .join('\n');
+        // Set STT and Team Name in the first row of this team block
+        const firstRowIdx = currentRow;
+        wsData[firstRowIdx][0] = idx + 1; // STT
+        wsData[firstRowIdx][1] = team.name; // Tên Đội
 
-        return {
-          teamName: team.name,
-          topic: team.topicSubmission?.title || 'Chưa đăng ký đề tài',
-          criteriaAverages,
-          judgeScoresList,
-          averageScore,
-          comments
-        };
+        // Merge STT, Tên Đội vertically across all rows for this team
+        if (rowsForTeam > 1) {
+          extraMerges.push({ s: { r: firstRowIdx, c: 0 }, e: { r: firstRowIdx + rowsForTeam - 1, c: 0 } });
+          extraMerges.push({ s: { r: firstRowIdx, c: 1 }, e: { r: firstRowIdx + rowsForTeam - 1, c: 1 } });
+        }
+
+        currentRow += rowsForTeam;
       });
 
-      // Sort by averageScore descending to calculate rankings
-      rowsWithAverages.sort((a, b) => b.averageScore - a.averageScore);
-
-      rowsWithAverages.forEach((item, idx) => {
-        wsData.push([
-          idx + 1,
-          item.teamName,
-          item.topic,
-          ...item.criteriaAverages,
-          ...item.judgeScoresList,
-          item.averageScore,
-          idx + 1, // Rank
-          item.comments
-        ]);
-      });
+      totalDataRows = currentRow - dataRowStart;
 
       // Signature section
       wsData.push([]); // blank row
       wsData.push([]); // blank row
 
+      const maxColCount = headers.length;
+      const sigColRight = Math.min(Math.floor(maxColCount / 2) + 1, maxColCount - 1);
       const sigRow = [];
-      sigRow[1] = "ĐẠI DIỆN BAN THƯ KÝ";
-      sigRow[2 + criteria.length + judges.length] = "TRƯỞNG BAN TỔ CHỨC";
+      sigRow[1] = "GIÁM KHẢO";
+      sigRow[sigColRight] = "TRƯỞNG BAN TỔ CHỨC";
       wsData.push(sigRow);
 
       const subSigRow = [];
       subSigRow[1] = "(Ký và ghi rõ họ tên)";
-      subSigRow[2 + criteria.length + judges.length] = "(Ký và ghi rõ họ tên)";
+      subSigRow[sigColRight] = "(Ký và ghi rõ họ tên)";
       wsData.push(subSigRow);
 
       // Add 4 empty rows for space to sign
@@ -1493,38 +1497,41 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
 
       const nameSigRow = [];
       nameSigRow[1] = ".......................................";
-      nameSigRow[2 + criteria.length + judges.length] = ".......................................";
+      nameSigRow[sigColRight] = ".......................................";
+      nameSigRow[sigColRight] = ".......................................";
       wsData.push(nameSigRow);
     }
 
     const ws = XLSX.utils.aoa_to_sheet(wsData);
 
     // Merge title cells
-    const maxCols = wsData[4] ? wsData[4].length : 8;
+    const maxCols = Math.max(...wsData.map(r => r.length || 0), 7);
     ws['!merges'] = [
       { s: { r: 0, c: 0 }, e: { r: 0, c: maxCols - 1 } },
       { s: { r: 1, c: 0 }, e: { r: 1, c: maxCols - 1 } },
-      { s: { r: 2, c: 0 }, e: { r: 2, c: maxCols - 1 } }
+      { s: { r: 2, c: 0 }, e: { r: 2, c: maxCols - 1 } },
+      ...extraMerges
     ];
 
     // Set column widths
     ws['!cols'] = [
       { wch: 6 },  // STT
-      { wch: 25 }, // Tên Đội Thi
-      { wch: 30 }  // Tên Đề Tài
+      { wch: 28 }  // Tên Đội Thi
     ];
-    for (let c = 3; c < maxCols; c++) {
+    for (let c = 2; c < maxCols; c++) {
       ws['!cols'].push({ wch: 18 });
     }
-    // Make comment/remark column wider
-    ws['!cols'][maxCols - 1] = { wch: 40 };
+    if (targetJudgeId) {
+      // Make comment/remark column wider for individual judge sheets
+      ws['!cols'][maxCols - 1] = { wch: 40 };
+    }
 
     // Apply beautiful styling
     const range = XLSX.utils.decode_range(ws['!ref']);
-    const numDataRows = teams.length;
+    const numDataRows = totalDataRows || teams.length;
     const headerRowIdx = 4;
-    const dataStartRowIdx = 5;
-    const dataEndRowIdx = 5 + numDataRows - 1;
+    const dataStartRowIdx = headerRowIdx + headerRowCount;
+    const dataEndRowIdx = dataStartRowIdx + numDataRows - 1;
 
     for (let r = range.s.r; r <= range.e.r; ++r) {
       for (let c = range.s.c; c <= range.e.c; ++c) {
@@ -1546,7 +1553,7 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
           // Metadata
           cell.s.font = { italic: true, size: 10, name: 'Calibri', color: { rgb: '475569' } };
           cell.s.alignment = { horizontal: 'center', vertical: 'center' };
-        } else if (r === headerRowIdx) {
+        } else if (r >= headerRowIdx && r < dataStartRowIdx) {
           // Table Header
           cell.s.font = { bold: true, name: 'Calibri', color: { rgb: 'FFFFFF' }, size: 10 };
           cell.s.fill = { patternType: 'solid', fgColor: { rgb: '1E293B' } }; // Dark blue slate
@@ -1562,7 +1569,7 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
           cell.s.font = { name: 'Calibri', size: 10 };
           cell.s.alignment = {
             vertical: 'center',
-            horizontal: c === 0 || (c >= 3 && c < maxCols - 1) ? 'center' : 'left',
+            horizontal: c === 0 || c >= 3 ? 'center' : 'left',
             wrapText: true
           };
           cell.s.border = {
@@ -1598,7 +1605,9 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
     ws['!rows'][0] = { hpx: 30 }; // Title
     ws['!rows'][1] = { hpx: 20 }; // Subtitle
     ws['!rows'][2] = { hpx: 20 }; // Metadata
-    ws['!rows'][headerRowIdx] = { hpx: 28 }; // Table header
+    for (let hr = headerRowIdx; hr < dataStartRowIdx; hr++) {
+      ws['!rows'][hr] = { hpx: 28 }; // Table header(s)
+    }
     for (let r = dataStartRowIdx; r <= dataEndRowIdx; r++) {
       ws['!rows'][r] = { hpx: 24 }; // Data rows
     }

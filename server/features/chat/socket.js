@@ -95,13 +95,18 @@ module.exports = {
           const ChatRoom = mongoose.model('ChatRoom');
           const Notification = mongoose.model('Notification');
           const User = mongoose.model('User');
-          const { roomId, content, replyTo } = data;
+          const { roomId, content, replyTo, fileAttachment } = data;
+
+          let finalContent = content;
+          if ((!finalContent || String(finalContent).trim().length === 0) && fileAttachment && fileAttachment.fileUrl) {
+            finalContent = `[Tệp đính kèm: ${fileAttachment.fileName || 'Tài liệu'}]`;
+          }
 
           // [CRITICAL-2 FIX] Validate input trước khi thực hiện bất kỳ thác tác nào
-          if (!content || typeof content !== 'string' || content.trim().length === 0) {
+          if (!finalContent || typeof finalContent !== 'string' || finalContent.trim().length === 0) {
             return socket.emit('error', { message: 'Nội dung tin nhắn không được để trống.' });
           }
-          if (content.length > 2000) {
+          if (finalContent.length > 2000) {
             return socket.emit('error', { message: 'Tin nhắn quá dài (tối đa 2000 ký tự).' });
           }
           if (!mongoose.Types.ObjectId.isValid(roomId)) {
@@ -136,7 +141,7 @@ module.exports = {
           }
 
           // [CRITICAL] XSS Mitigation: Escape input message content
-          const cleanContent = escapeHTML(content.trim());
+          const cleanContent = escapeHTML(finalContent.trim());
           const cleanReplyToContent = replyTo ? escapeHTML(replyTo.content) : undefined;
 
           const newMessage = new ChatMessage({
@@ -144,6 +149,10 @@ module.exports = {
             senderId: user._id,
             senderName: user.fullName || user.email,
             content: cleanContent,
+            fileUrl: fileAttachment ? fileAttachment.fileUrl : undefined,
+            fileName: fileAttachment ? fileAttachment.fileName : undefined,
+            fileSize: fileAttachment ? fileAttachment.fileSize : undefined,
+            fileType: fileAttachment ? fileAttachment.fileType : undefined,
             replyTo: replyTo ? {
               messageId: replyTo.messageId,
               senderName: replyTo.senderName,

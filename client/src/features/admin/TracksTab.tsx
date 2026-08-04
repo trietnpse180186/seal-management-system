@@ -10,6 +10,7 @@ import {
   Edit,
   Trash2,
   ExternalLink,
+  Crown,
 } from "lucide-react";
 import { useConform } from "../shared/ModalConform";
 import CustomSelect from "../shared/CustomSelect";
@@ -50,6 +51,7 @@ interface TracksTabProps {
     trackId: string,
     role?: "judge" | "mentor",
     teamId?: string,
+    isChiefJudge?: boolean,
   ) => Promise<void>;
   handleRemoveRole?: (roleId: string) => Promise<void>;
 
@@ -120,9 +122,39 @@ export default function TracksTab({
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [memberRole, setMemberRole] = useState<"judge" | "mentor">("judge");
   const [selectedTeamId, setSelectedTeamId] = useState("");
+  const [isChiefJudge, setIsChiefJudge] = useState(false);
   const [isCreateTrackOpen, setIsCreateTrackOpen] = useState(false);
   const isFormVisible = editingTrack ? true : isCreateTrackOpen;
   const conform = useConform();
+
+  // Import judges via Excel
+  const handleImportJudges = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedEvent) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("eventId", selectedEvent._id);
+
+    try {
+      const res = await axios.post("http://localhost:5000/api/auth/import-judges", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      toast.success(res.data.message || "Import Giám khảo thành công!");
+      if (fetchEventDetails) await fetchEventDetails();
+    } catch (err: any) {
+      const errMsg = err.response?.data?.message || "Lỗi import Giám khảo.";
+      const detailedErrors = err.response?.data?.errors;
+      if (detailedErrors && detailedErrors.length > 0) {
+        toast.error(`${errMsg} Chi tiết: ${detailedErrors.join(", ")}`);
+      } else {
+        toast.error(errMsg);
+      }
+    }
+  };
 
   // Drive upload state
   const [driveFileName, setDriveFileName] = useState("");
@@ -612,16 +644,29 @@ export default function TracksTab({
         {/* Judge Assignment Card */}
         {selectedTrack ? (
           <div className="glass p-6 rounded-2xl space-y-4">
-            <h3 className="text-md font-bold text-white flex items-center gap-1.5 font-mono border-b border-slate-800/80 pb-3">
-              <Users size={16} className="text-cyan-400" />
-              <span>
-                Ban chuyên môn (
-                <span className="text-cyan-400 drop-shadow-[0_0_4px_rgba(34,211,238,0.35)]">
-                  {formatTrackName(selectedTrack.name)}
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+              <h3 className="text-md font-bold text-white flex items-center gap-1.5 font-mono">
+                <Users size={16} className="text-cyan-400" />
+                <span>
+                  Ban chuyên môn (
+                  <span className="text-cyan-400 drop-shadow-[0_0_4px_rgba(34,211,238,0.35)]">
+                    {formatTrackName(selectedTrack.name)}
+                  </span>
+                  )
                 </span>
-                )
-              </span>
-            </h3>
+              </h3>
+              {!readOnly && (
+                <label className="flex items-center gap-1 bg-slate-900 border border-slate-800 hover:border-slate-700 text-[10px] font-mono font-bold text-slate-300 px-2.5 py-1.5 rounded-lg cursor-pointer transition-all hover:bg-slate-800">
+                  <span>Import Giám khảo</span>
+                  <input
+                    type="file"
+                    accept=".xlsx, .xls"
+                    className="hidden"
+                    onChange={handleImportJudges}
+                  />
+                </label>
+              )}
+            </div>
 
             {/* List of judges and mentors */}
             <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
@@ -651,6 +696,12 @@ export default function TracksTab({
                         >
                           {role.role === "judge" ? "Giám khảo" : "Mentor"}
                         </span>
+                        {role.role === "judge" && role.isChiefJudge && (
+                          <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                            <Crown className="w-3 h-3 text-amber-400" />
+                            Chủ tịch
+                          </span>
+                        )}
                         {role.role === "mentor" && mentoredTeam && (
                           <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
                             Đội: {mentoredTeam.name}
@@ -687,9 +738,11 @@ export default function TracksTab({
                     selectedTrack._id,
                     memberRole,
                     selectedTeamId || undefined,
+                    memberRole === "judge" ? isChiefJudge : false,
                   );
                   setJudgeEmail("");
                   setSelectedTeamId("");
+                  setIsChiefJudge(false);
                 }}
                 className="space-y-3.5 pt-3 border-t border-slate-800/80"
               >
@@ -719,6 +772,17 @@ export default function TracksTab({
                     />
                     Mentor
                   </label>
+                  {memberRole === "judge" && (
+                    <label className="flex items-center gap-1.5 cursor-pointer text-xs text-slate-300 ml-auto">
+                      <input
+                        type="checkbox"
+                        checked={isChiefJudge}
+                        onChange={(e) => setIsChiefJudge(e.target.checked)}
+                        className="accent-cyan-500 rounded border-slate-800"
+                      />
+                      Chủ tịch Hội đồng
+                    </label>
+                  )}
                 </div>
 
                 <div className="flex gap-2 relative">

@@ -2434,6 +2434,7 @@ export default function AdminEvents({
     trackId: string,
     role: "judge" | "mentor" = "judge",
     teamId?: string,
+    isChiefJudge?: boolean,
   ) => {
     if (!selectedEvent) return;
     setMessage({ type: "", text: "" });
@@ -2448,6 +2449,7 @@ export default function AdminEvents({
           trackId: trackId,
           role: role,
           teamId: teamId || undefined,
+          isChiefJudge: isChiefJudge || false,
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );

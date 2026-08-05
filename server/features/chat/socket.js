@@ -302,12 +302,7 @@ module.exports = {
           const User = mongoose.model('User');
           const userObj = await User.findById(userId).select('isSystemAdmin').lean();
 
-          const isAllowed = (userObj && userObj.isSystemAdmin) || await EventRole.findOne({
-            userId,
-            eventId,
-            role: 'coordinator',
-            status: 'active'
-          });
+          const isAllowed = userObj && userObj.isSystemAdmin;
 
           if (isAllowed) {
             console.log(`Coordinator ${userId} highlighted team ${teamId} in event ${eventId}`);

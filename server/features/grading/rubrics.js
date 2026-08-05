@@ -906,13 +906,7 @@ router.post('/import', authenticateToken, async (req, res) => {
   try {
     // Auth Check
     if (!req.user.isSystemAdmin) {
-      const coordinatorRole = await EventRole.findOne({
-        userId: req.user._id,
-        eventId,
-        role: 'coordinator',
-        status: 'active'
-      });
-      if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
+      return res.status(403).json({ message: 'Quyền truy cập bị từ chối. Chỉ quản trị viên mới được quyền tạo Rubric.' });
     }
 
     // Check if rubric already exists for this target round
@@ -1008,15 +1002,7 @@ router.post('/:rubricId/import-criteria', authenticateToken, upload.single('file
 
     // Check permissions
     if (!req.user.isSystemAdmin) {
-      const role = await EventRole.findOne({
-        userId: req.user._id,
-        eventId: rubric.eventId,
-        role: 'coordinator',
-        status: 'active',
-      });
-      if (!role) {
-        return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
-      }
+      return res.status(403).json({ message: 'Quyền truy cập bị từ chối. Chỉ quản trị viên mới được quyền import Rubric.' });
     }
 
     // 2. Check file
@@ -1319,7 +1305,7 @@ router.get('/:rubricId/export-criteria', authenticateToken, async (req, res) => 
       const role = await EventRole.findOne({
         userId: req.user._id,
         eventId: rubric.eventId,
-        role: { $in: ['coordinator', 'admin_view'] },
+        role: 'admin_view',
         status: 'active',
       });
       if (!role) {

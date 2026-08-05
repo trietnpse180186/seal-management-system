@@ -396,7 +396,7 @@ export default function JudgeScoring() {
       console.log("Team highlighted event received on scoring board:", data);
       if (data.teamId === teamId) {
         setIsHighlighted(true);
-        toast.info("Đội thi này đang được chọn để trình bày / chấm điểm bởi Coordinator!", {
+        toast.info("Đội thi này đang được chọn để trình bày / chấm điểm bởi Admin!", {
           position: "top-center",
           duration: 5000
         });

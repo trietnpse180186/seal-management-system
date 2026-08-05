@@ -79,7 +79,7 @@ async function assignStudentAssistantsToEvent(eventId, actorId) {
       const hasOtherStaffRole = await EventRole.findOne({
         userId: assistant._id,
         eventId,
-        role: { $in: ['judge', 'mentor', 'coordinator'] },
+        role: { $in: ['judge', 'mentor'] },
         status: 'active'
       });
 
@@ -211,7 +211,7 @@ router.get('/', async (req, res) => {
         } else {
           const coordinatorRole = await EventRole.findOne({
             userId: user._id,
-            role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
+            role: { $in: ['admin_view', 'student_assistant'] },
             status: 'active'
           });
           if (coordinatorRole) {
@@ -317,14 +317,7 @@ router.post('/', authenticateToken, requireSystemAdmin, async (req, res) => {
     });
     await rubricObj.save();
 
-    // Create a default coordinator EventRole for the creator
-    const creatorRole = new EventRole({
-      userId: req.user._id,
-      eventId: newEvent._id,
-      role: 'coordinator',
-      assignedBy: req.user._id
-    });
-    await creatorRole.save();
+
 
     if (newEvent.status === 'registration' || newEvent.status === 'ongoing') {
       await assignStudentAssistantsToEvent(newEvent._id, req.user._id);
@@ -421,11 +414,11 @@ router.get('/all/logs', authenticateToken, async (req, res) => {
     if (!req.user.isSystemAdmin) {
       const coordinatorRole = await EventRole.findOne({
         userId: req.user._id,
-        role: { $in: ['coordinator', 'admin_view'] },
+        role: 'admin_view',
         status: 'active'
       });
       if (!coordinatorRole) {
-        return res.status(403).json({ message: 'Không có quyền truy cập. Chỉ có coordinator hoặc quản trị viên hệ thống mới có thể xem nhật ký sự kiện.' });
+        return res.status(403).json({ message: 'Không có quyền truy cập. Chỉ có quản trị viên hệ thống mới có thể xem nhật ký sự kiện.' });
       }
     }
 
@@ -477,7 +470,7 @@ router.get('/:id', async (req, res) => {
               const coordinatorRole = await EventRole.findOne({
                 userId: user._id,
                 eventId: event._id,
-                role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
+                role: { $in: ['admin_view', 'student_assistant'] },
                 status: 'active'
               });
               authorized = !!coordinatorRole;
@@ -588,17 +581,9 @@ router.post('/:eventId/tracks', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'Không thể tạo bảng đấu mới cho vòng thi đã kết thúc.' });
     }
 
-    // Auth check: System Admin or has coordinator role
+    // Auth check: System Admin only
     if (!req.user.isSystemAdmin) {
-      const coordinatorRole = await EventRole.findOne({
-        userId: req.user._id,
-        eventId,
-        role: 'coordinator',
-        status: 'active'
-      });
-      if (!coordinatorRole) {
-        return res.status(403).json({ message: 'Chỉ có coordinator hoặc quản trị viên hệ thống mới có thể tạo bảng đấu.' });
-      }
+      return res.status(403).json({ message: 'Quyền truy cập bị từ chối. Chỉ có quản trị viên hệ thống mới có thể tạo bảng đấu.' });
     }
 
     // Check maxTeams limits (excluding final round tracks)
@@ -686,17 +671,9 @@ router.put('/:eventId/tracks/:trackId', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'Không thể chỉnh sửa bảng đấu của vòng thi đã kết thúc.' });
     }
 
-    // Auth check: System Admin or has coordinator role
+    // Auth check: System Admin only
     if (!req.user.isSystemAdmin) {
-      const coordinatorRole = await EventRole.findOne({
-        userId: req.user._id,
-        eventId,
-        role: 'coordinator',
-        status: 'active'
-      });
-      if (!coordinatorRole) {
-        return res.status(403).json({ message: 'Chỉ có coordinator hoặc quản trị viên hệ thống mới có thể cập nhật bảng đấu.' });
-      }
+      return res.status(403).json({ message: 'Quyền truy cập bị từ chối. Chỉ có quản trị viên hệ thống mới có thể cập nhật bảng đấu.' });
     }
 
     // Check maxTeams limits
@@ -844,17 +821,9 @@ router.delete('/:eventId/tracks/:trackId', authenticateToken, async (req, res) =
       return res.status(400).json({ message: 'Không thể xóa bảng đấu của vòng thi đã kết thúc.' });
     }
 
-    // Auth check: System Admin or has coordinator role
+    // Auth check: System Admin only
     if (!req.user.isSystemAdmin) {
-      const coordinatorRole = await EventRole.findOne({
-        userId: req.user._id,
-        eventId,
-        role: 'coordinator',
-        status: 'active'
-      });
-      if (!coordinatorRole) {
-        return res.status(403).json({ message: 'Chỉ có coordinator hoặc quản trị viên hệ thống mới có thể xóa bảng đấu.' });
-      }
+      return res.status(403).json({ message: 'Quyền truy cập bị từ chối. Chỉ có quản trị viên hệ thống mới có thể xóa bảng đấu.' });
     }
 
     // Check if any teams are assigned to this track
@@ -899,15 +868,7 @@ router.post('/:eventId/rounds', authenticateToken, async (req, res) => {
   try {
     // Auth Check
     if (!req.user.isSystemAdmin) {
-      const coordinatorRole = await EventRole.findOne({
-        userId: req.user._id,
-        eventId,
-        role: 'coordinator',
-        status: 'active'
-      });
-      if (!coordinatorRole) {
-        return res.status(403).json({ message: 'Không có quyền truy cập.' });
-      }
+      return res.status(403).json({ message: 'Quyền truy cập bị từ chối. Chỉ có quản trị viên hệ thống mới có thể tạo vòng thi.' });
     }
 
     // Find the round with the highest order (the Final Round)
@@ -963,8 +924,7 @@ router.put('/:eventId/rounds/:roundId', authenticateToken, async (req, res) => {
 
   try {
     if (!req.user.isSystemAdmin) {
-      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: 'coordinator', status: 'active' });
-      if (!isCoord) return res.status(403).json({ message: 'Không có quyền chỉnh sửa vòng thi.' });
+      return res.status(403).json({ message: 'Quyền truy cập bị từ chối. Chỉ có quản trị viên hệ thống mới có thể chỉnh sửa vòng thi.' });
     }
 
     const round = await Round.findById(roundId);
@@ -1063,7 +1023,7 @@ router.post('/:eventId/rounds/:roundId/sync-drive-access', authenticateToken, as
 
   try {
     if (!req.user.isSystemAdmin) {
-      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: { $in: ['coordinator', 'admin_view', 'student_assistant'] }, status: 'active' });
+      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: { $in: ['admin_view', 'student_assistant'] }, status: 'active' });
       if (!isCoord) return res.status(403).json({ message: 'Không có quyền truy cập.' });
     }
 
@@ -1110,7 +1070,7 @@ router.post('/:eventId/upload-exam', authenticateToken, async (req, res) => {
     if (!event) return res.status(404).json({ message: 'Không tìm thấy sự kiện.' });
 
     if (!req.user.isSystemAdmin) {
-      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: { $in: ['coordinator', 'student_assistant'] } });
+      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId, role: 'student_assistant' });
       if (!isCoord) return res.status(403).json({ message: 'Không có quyền truy cập.' });
     }
 
@@ -1230,10 +1190,10 @@ router.get('/:eventId/roles', authenticateToken, async (req, res) => {
       const coordinatorRole = await EventRole.findOne({
         userId: req.user._id,
         eventId,
-        role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
+        role: { $in: ['admin_view', 'student_assistant'] },
         status: 'active'
       });
-      if (!coordinatorRole) return res.status(403).json({ message: 'Không có quyền truy cập. Yêu cầu quyền Coordinator.' });
+      if (!coordinatorRole) return res.status(403).json({ message: 'Không có quyền truy cập.' });
     }
 
     const roles = await EventRole.find({ eventId, status: 'active' })
@@ -1261,7 +1221,7 @@ router.delete('/:eventId/roles/:roleId', authenticateToken, async (req, res) => 
       const coordinatorRole = await EventRole.findOne({
         userId: req.user._id,
         eventId,
-        role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
+        role: { $in: ['admin_view', 'student_assistant'] },
         status: 'active'
       });
       if (!coordinatorRole) return res.status(403).json({ message: 'Không có quyền truy cập.' });
@@ -1324,10 +1284,10 @@ router.post('/:eventId/distribute-teams', authenticateToken, async (req, res) =>
       const coordinatorRole = await EventRole.findOne({
         userId: req.user._id,
         eventId,
-        role: { $in: ['coordinator', 'student_assistant'] },
+        role: 'student_assistant',
         status: 'active'
       });
-      if (!coordinatorRole) return res.status(403).json({ message: 'Không có quyền truy cập. Yêu cầu quyền Coordinator hoặc Admin.' });
+      if (!coordinatorRole) return res.status(403).json({ message: 'Không có quyền truy cập. Yêu cầu quyền Admin hoặc CTSV.' });
     }
 
     // Fetch Event to get org name
@@ -1471,17 +1431,9 @@ router.put('/:id', authenticateToken, async (req, res) => {
     let logDetails = [];
     let isTimeUpdated = false;
 
-    // Auth check
+    // Auth check: System Admin only
     if (!req.user.isSystemAdmin) {
-      const coordinatorRole = await EventRole.findOne({
-        userId: req.user._id,
-        eventId: event._id,
-        role: 'coordinator',
-        status: 'active'
-      });
-      if (!coordinatorRole) {
-        return res.status(403).json({ message: 'Chỉ có coordinator hoặc quản trị viên hệ thống mới có thể cập nhật sự kiện.' });
-      }
+      return res.status(403).json({ message: 'Quyền truy cập bị từ chối. Chỉ có quản trị viên hệ thống mới có thể cập nhật sự kiện.' });
     }
 
     // Validation for event status change
@@ -1764,15 +1716,7 @@ router.get('/:eventId/logs', authenticateToken, async (req, res) => {
   try {
     // Auth Check
     if (!req.user.isSystemAdmin) {
-      const coordinatorRole = await EventRole.findOne({
-        userId: req.user._id,
-        eventId,
-        role: 'coordinator',
-        status: 'active'
-      });
-      if (!coordinatorRole) {
-        return res.status(403).json({ message: 'Không có quyền truy cập. Chỉ có coordinator hoặc quản trị viên hệ thống mới có thể xem nhật ký sự kiện.' });
-      }
+      return res.status(403).json({ message: 'Quyền truy cập bị từ chối. Chỉ có quản trị viên hệ thống mới có thể xem nhật ký sự kiện.' });
     }
 
     const logs = await EventLog.find({ eventId, type: { $ne: 'login' } })
@@ -2040,11 +1984,11 @@ router.get('/:eventId/export-teams', authenticateToken, async (req, res) => {
       const role = await EventRole.findOne({
         userId: req.user._id,
         eventId,
-        role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
+        role: { $in: ['admin_view', 'student_assistant'] },
         status: 'active'
       });
       if (!role) {
-        return res.status(403).json({ message: 'Không có quyền truy cập. Yêu cầu quyền Coordinator.' });
+        return res.status(403).json({ message: 'Không có quyền truy cập.' });
       }
     }
 

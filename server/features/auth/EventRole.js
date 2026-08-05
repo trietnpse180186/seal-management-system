@@ -13,7 +13,6 @@ const EventRoleSchema = new Schema(
         "participant",
         "mentor",
         "judge",
-        "coordinator",
         "admin_view",
         "student_assistant",
       ],

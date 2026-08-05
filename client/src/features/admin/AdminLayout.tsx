@@ -31,6 +31,7 @@ export default function AdminLayout({
   const isAdminView =
     !user?.isSystemAdmin && roles?.some((r) => r.role === "admin_view");
   const isAssistant = roles?.some((r) => r.role === "student_assistant");
+  const isCoordinator = !!user?.isSystemAdmin;
 
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -155,6 +156,10 @@ export default function AdminLayout({
     if (isAssistant) {
       return ['/admin/users', '/admin/events', '/admin/grades', '/admin/leaderboard'].includes(item.path);
     }
+    // If not a system admin (and not assistant), hide the global user accounts management tab
+    if (item.path === '/admin/users' && !user?.isSystemAdmin) {
+      return false;
+    }
     return true;
   }).map(item => {
     if (isAssistant) {
@@ -197,6 +202,8 @@ export default function AdminLayout({
               </h4>
               <p className="text-[9px] text-cyan-400 font-mono uppercase tracking-wider">
                 {user?.isSystemAdmin
+                  ? "Admin"
+                  : isCoordinator
                   ? "Admin"
                   : isAssistant
                   ? "Cộng tác viên"

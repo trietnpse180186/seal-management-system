@@ -346,7 +346,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           if (handleMobileRedirect(token, user, roles || [])) {
             return;
           }
-          if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view'))) {
+          if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'admin_view'))) {
             navigate('/admin');
           } else if (roles && roles.some((r: any) => r.role === 'judge')) {
             navigate('/grading');
@@ -377,7 +377,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 if (handleMobileRedirect(token, user, roles || [])) {
                   return;
                 }
-                if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view'))) {
+                if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'admin_view'))) {
                   navigate('/admin');
                 } else if (roles && roles.some((r: any) => r.role === 'judge')) {
                   navigate('/grading');
@@ -437,7 +437,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             if (handleMobileRedirect(token, user, roles || [])) {
               return;
             }
-            if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view'))) {
+            if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'admin_view'))) {
               navigate('/admin');
             } else if (roles && roles.some((r: any) => r.role === 'judge')) {
               navigate('/grading');
@@ -467,7 +467,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                   if (handleMobileRedirect(token, user, roles || [])) {
                     return;
                   }
-                  if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view'))) {
+                  if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'admin_view'))) {
                     navigate('/admin');
                   } else if (roles && roles.some((r: any) => r.role === 'judge')) {
                     navigate('/grading');
@@ -566,7 +566,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       if (handleMobileRedirect(token, user, roles || [])) {
         return;
       }
-      if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator'))) {
+      if (user.isSystemAdmin) {
         navigate('/admin');
       } else if (roles && roles.some((r: any) => r.role === 'judge')) {
         navigate('/grading');
@@ -620,7 +620,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           if (handleMobileRedirect(token, user, roles || [])) {
             return;
           }
-          if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view'))) {
+          if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'admin_view'))) {
             navigate('/admin');
           } else {
             handleSuccessRedirect(redirectTarget);
@@ -640,7 +640,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           return;
         }
         // Redirect based on role
-        if (user.isSystemAdmin || roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view')) {
+        if (user.isSystemAdmin || roles.some((r: any) => r.role === 'admin_view')) {
           navigate('/admin');
         } else if (roles.some((r: any) => r.role === 'judge')) {
           navigate('/grading');
@@ -674,7 +674,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
             if (handleMobileRedirect(token, user, roles || [])) {
               return;
             }
-            if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view'))) {
+            if (user.isSystemAdmin || (roles && roles.some((r: any) => r.role === 'admin_view'))) {
               navigate('/admin');
             } else if (roles && roles.some((r: any) => r.role === 'judge')) {
               navigate('/grading');
@@ -776,7 +776,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               <div className="border border-gray-200 rounded-2xl overflow-hidden mb-6">
                 {[
                   { email: 'admin@gmail.com', name: 'System Admin', role: 'Hệ thống' },
-                  { email: 'coordinator@gmail.com', name: 'Event Coordinator', role: 'Ban tổ chức' },
+                  { email: 'coordinator@gmail.com', name: 'Event Admin', role: 'Admin' },
                   { email: 'judge@gmail.com', name: 'Event Judge', role: 'Giám khảo' },
                   { email: 'student@gmail.com', name: 'Student Contestant', role: 'Thí sinh' },
                 ].map((acc, index) => (

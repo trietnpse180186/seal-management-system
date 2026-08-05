@@ -13,13 +13,20 @@ import {
   Download,
   History,
   Undo2,
-  RefreshCw
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useConfirm } from "../shared/ConfirmDialog";
 import UniversityCombobox from "../shared/UniversityCombobox";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend } from "recharts";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 
 interface UsersTabProps {
   token: string | null;
@@ -28,7 +35,12 @@ interface UsersTabProps {
   user?: any;
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.origin : 'http://localhost:5000');
+const API_BASE =
+  import.meta.env.VITE_API_URL ||
+  (window.location.hostname !== "localhost" &&
+  window.location.hostname !== "127.0.0.1"
+    ? window.location.origin
+    : "http://localhost:5000");
 
 export const UsersTab: React.FC<UsersTabProps> = ({
   token,
@@ -37,7 +49,10 @@ export const UsersTab: React.FC<UsersTabProps> = ({
   user,
 }) => {
   const confirm = useConfirm();
-  const isAssistant = !user?.isSystemAdmin && (user?.isStudentAssistant || roles?.some((r: any) => r.role === 'student_assistant'));
+  const isAssistant =
+    !user?.isSystemAdmin &&
+    (user?.isStudentAssistant ||
+      roles?.some((r: any) => r.role === "student_assistant"));
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
@@ -52,14 +67,20 @@ export const UsersTab: React.FC<UsersTabProps> = ({
   const merchReasonRef = useRef<HTMLTextAreaElement>(null);
   const [merchActionLoading, setMerchActionLoading] = useState(false);
   const [merchHistory, setMerchHistory] = useState<any[]>([]);
-  const [selectedSizes, setSelectedSizes] = useState<Record<string, string>>({});
+  const [selectedSizes, setSelectedSizes] = useState<Record<string, string>>(
+    {},
+  );
 
   const displayedUsers = (() => {
     let list = isAssistant ? users.filter((u: any) => u.isTeamMember) : users;
     return [...list].sort((a, b) => {
       if (isAssistant) {
-        const aMerch = merchandise.find((m: any) => m.userId.toString() === a._id.toString());
-        const bMerch = merchandise.find((m: any) => m.userId.toString() === b._id.toString());
+        const aMerch = merchandise.find(
+          (m: any) => m.userId.toString() === a._id.toString(),
+        );
+        const bMerch = merchandise.find(
+          (m: any) => m.userId.toString() === b._id.toString(),
+        );
         const aDist = aMerch?.merchandiseRecord?.isDistributed ? 1 : 0;
         const bDist = bMerch?.merchandiseRecord?.isDistributed ? 1 : 0;
         if (aDist !== bDist) {
@@ -71,14 +92,14 @@ export const UsersTab: React.FC<UsersTabProps> = ({
   })();
 
   const handleSizeSelectChange = (userId: string, size: string) => {
-    setSelectedSizes(prev => ({ ...prev, [userId]: size }));
+    setSelectedSizes((prev) => ({ ...prev, [userId]: size }));
   };
 
   const handleDirectDistributeMerch = async (u: any, size: string) => {
     if (!eventId) return;
     const confirmed = await confirm({
       title: "Xác nhận phát áo",
-      message: `Bạn có chắc chắn muốn phát áo size ${size} cho thí sinh ${u.fullName}?`
+      message: `Bạn có chắc chắn muốn phát áo size ${size} cho thí sinh ${u.fullName}?`,
     });
     if (!confirmed) return;
 
@@ -86,45 +107,22 @@ export const UsersTab: React.FC<UsersTabProps> = ({
       await axios.put(
         `${API_BASE}/api/ctsv/events/${eventId}/merchandise/${u._id}/distribute`,
         { size },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
-      toast.success(`Đã ghi nhận phát áo size ${size} cho ${u.fullName} thành công!`);
+      toast.success(
+        `Đã ghi nhận phát áo size ${size} cho ${u.fullName} thành công!`,
+      );
       fetchMerchandiseData(eventId);
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Lỗi khi phát áo.");
     }
   };
 
-  const handleDirectExchangeMerch = async (u: any, size: string) => {
-    if (!eventId) return;
-    const merchInfo = merchandise.find((m: any) => m.userId.toString() === u._id.toString());
-    const oldSize = merchInfo?.merchandiseRecord?.size || "M";
-    const confirmed = await confirm({
-      title: "Xác nhận đổi size áo",
-      message: `Bạn có chắc chắn muốn đổi size áo của thí sinh ${u.fullName} từ ${oldSize} sang ${size}?`
-    });
-    if (!confirmed) return;
-
-    try {
-      await axios.put(
-        `${API_BASE}/api/ctsv/events/${eventId}/merchandise/${u._id}/exchange`,
-        { size, reason: `Đổi size trực tiếp tại bảng từ ${oldSize} sang ${size}` },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      toast.success(`Đã đổi size áo sang ${size} thành công!`);
-      setSelectedSizes(prev => {
-        const copy = { ...prev };
-        delete copy[u._id];
-        return copy;
-      });
-      fetchMerchandiseData(eventId);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Lỗi khi đổi size áo.");
-    }
-  };
-
   // Logic gợi ý size áo dựa trên chiều cao/cân nặng
-  const suggestShirtSize = (height: number | null, weight: number | null): string => {
+  const suggestShirtSize = (
+    height: number | null,
+    weight: number | null,
+  ): string => {
     if (!height || !weight) return "N/A";
     if (height <= 155 && weight <= 50) return "S";
     if (height <= 165 && weight <= 60) return "M";
@@ -138,11 +136,11 @@ export const UsersTab: React.FC<UsersTabProps> = ({
     try {
       const [listRes, statsRes] = await Promise.all([
         axios.get(`${API_BASE}/api/ctsv/events/${evtId}/merchandise/list`, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         }),
         axios.get(`${API_BASE}/api/ctsv/events/${evtId}/merchandise/stats`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ]);
       setMerchandise(listRes.data);
       setMerchStats(statsRes.data);
@@ -189,25 +187,37 @@ export const UsersTab: React.FC<UsersTabProps> = ({
   useEffect(() => {
     if (token) {
       fetchUsers();
-      
-      const savedId = sessionStorage.getItem("lastSelectedEventId") || localStorage.getItem("lastSelectedEventId");
+
+      const savedId =
+        sessionStorage.getItem("lastSelectedEventId") ||
+        localStorage.getItem("lastSelectedEventId");
       if (savedId) {
         setEventId(savedId);
       }
-      
-      axios.get(`${API_BASE}/api/events`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+
+      axios
+        .get(`${API_BASE}/api/events`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
         .then((res) => {
-          setHasRegistrationEvent(res.data.some((e: any) => ['registration', 'ongoing'].includes(e.status)));
+          setHasRegistrationEvent(
+            res.data.some((e: any) =>
+              ["registration", "ongoing"].includes(e.status),
+            ),
+          );
           if (!savedId) {
-            const activeEvent = res.data.find((e: any) => ['registration', 'ongoing'].includes(e.status)) || res.data[0];
+            const activeEvent =
+              res.data.find((e: any) =>
+                ["registration", "ongoing"].includes(e.status),
+              ) || res.data[0];
             if (activeEvent) {
               setEventId(activeEvent._id);
             }
           }
         })
-        .catch((err) => console.error("Failed to fetch events for active check", err));
+        .catch((err) =>
+          console.error("Failed to fetch events for active check", err),
+        );
     }
   }, [token, search]);
 
@@ -249,7 +259,9 @@ export const UsersTab: React.FC<UsersTabProps> = ({
     e.preventDefault();
     try {
       if (!editingUser) {
-        const emailExists = users.some(u => u.email.toLowerCase() === formData.email.trim().toLowerCase());
+        const emailExists = users.some(
+          (u) => u.email.toLowerCase() === formData.email.trim().toLowerCase(),
+        );
         if (emailExists) {
           toast.error("Tài khoản với email này đã tồn tại trong hệ thống.");
           return;
@@ -339,8 +351,6 @@ export const UsersTab: React.FC<UsersTabProps> = ({
     }
   };
 
-
-
   const handleDeleteUser = async (userId: string) => {
     const confirmed = await confirm({
       title: "Xác nhận xóa tài khoản",
@@ -349,12 +359,9 @@ export const UsersTab: React.FC<UsersTabProps> = ({
     });
     if (!confirmed) return;
     try {
-      const res = await axios.delete(
-        `${API_BASE}/api/auth/users/${userId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
+      const res = await axios.delete(`${API_BASE}/api/auth/users/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       toast.success(res.data.message || "Đã xóa người dùng.");
       fetchUsers();
     } catch (err: any) {
@@ -369,14 +376,17 @@ export const UsersTab: React.FC<UsersTabProps> = ({
     }
     try {
       toast.info("Đang tạo file Excel...");
-      const res = await axios.get(`${API_BASE}/api/ctsv/events/${eventId}/merchandise/export`, {
-        headers: { Authorization: `Bearer ${token}` },
-        responseType: 'blob'
-      });
+      const res = await axios.get(
+        `${API_BASE}/api/ctsv/events/${eventId}/merchandise/export`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: "blob",
+        },
+      );
       const url = window.URL.createObjectURL(new Blob([res.data]));
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.setAttribute('download', `Danh_Sach_Size_Ao_Event.xlsx`);
+      link.setAttribute("download", `Danh_Sach_Size_Ao_Event.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -387,36 +397,43 @@ export const UsersTab: React.FC<UsersTabProps> = ({
   };
 
   const handleOpenMerchModal = async (u: any) => {
-    const merchUser = merchandise.find((m: any) => m.userId.toString() === u._id.toString()) || {
+    const merchUser = merchandise.find(
+      (m: any) => m.userId.toString() === u._id.toString(),
+    ) || {
       userId: u._id,
       fullName: u.fullName,
-      studentId: u.studentId || 'N/A',
+      studentId: u.studentId || "N/A",
       email: u.email,
-      gender: u.gender || 'N/A',
+      gender: u.gender || "N/A",
       height: u.height || null,
       weight: u.weight || null,
-      university: u.university || 'N/A',
-      teamName: u.teamName || 'N/A',
+      university: u.university || "N/A",
+      teamName: u.teamName || "N/A",
       suggestedSize: suggestShirtSize(u.height, u.weight),
       merchandiseRecord: {
         isDistributed: false,
         size: null,
         distributedAt: null,
         distributedBy: null,
-        distributionHistory: []
-      }
+        distributionHistory: [],
+      },
     };
 
     setSelectedMerchUser(merchUser);
-    setSelectedMerchSize(merchUser.merchandiseRecord?.size || merchUser.suggestedSize || "M");
+    setSelectedMerchSize(
+      merchUser.merchandiseRecord?.size || merchUser.suggestedSize || "M",
+    );
     if (merchReasonRef.current) merchReasonRef.current.value = "";
     setIsMerchModalOpen(true);
     setMerchHistory([]);
 
     try {
-      const res = await axios.get(`${API_BASE}/api/ctsv/events/${eventId}/merchandise/${u._id}/history`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await axios.get(
+        `${API_BASE}/api/ctsv/events/${eventId}/merchandise/${u._id}/history`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
       setMerchHistory(res.data.history || []);
     } catch (err) {
       console.error("Error loading merchandise history:", err);
@@ -430,7 +447,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
       await axios.put(
         `${API_BASE}/api/ctsv/events/${eventId}/merchandise/${selectedMerchUser.userId}/distribute`,
         { size: selectedMerchSize },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       toast.success("Đã ghi nhận phát áo thành công!");
       setIsMerchModalOpen(false);
@@ -451,7 +468,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
     }
     const confirmed = await confirm({
       title: "Xác nhận thu hồi áo",
-      message: "Bạn có chắc chắn muốn thu hồi áo đã phát cho thí sinh này?"
+      message: "Bạn có chắc chắn muốn thu hồi áo đã phát cho thí sinh này?",
     });
     if (!confirmed) return;
     setMerchActionLoading(true);
@@ -459,7 +476,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
       await axios.put(
         `${API_BASE}/api/ctsv/events/${eventId}/merchandise/${selectedMerchUser.userId}/revoke`,
         { reason: reason },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       toast.success("Đã thu hồi áo thành công!");
       if (merchReasonRef.current) merchReasonRef.current.value = "";
@@ -484,7 +501,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
       await axios.put(
         `${API_BASE}/api/ctsv/events/${eventId}/merchandise/${selectedMerchUser.userId}/exchange`,
         { size: selectedMerchSize, reason: reason },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       toast.success("Đổi size áo thành công!");
       if (merchReasonRef.current) merchReasonRef.current.value = "";
@@ -504,7 +521,9 @@ export const UsersTab: React.FC<UsersTabProps> = ({
         <div>
           <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 font-mono">
             <Users className="text-[#F27024]" size={24} />
-            <span>{isAssistant ? "Danh sách Thí sinh" : "Quản lý Tài khoản"}</span>
+            <span>
+              {isAssistant ? "Danh sách Thí sinh" : "Quản lý Tài khoản"}
+            </span>
           </h2>
           <p className="text-xs text-slate-500 mt-1">
             {isAssistant
@@ -561,29 +580,44 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                 <span>Thống Kê Size Áo</span>
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                Tự động tính toán dựa trên số liệu Chiều cao & Cân nặng của thí sinh.
+                Tự động tính toán dựa trên số liệu Chiều cao & Cân nặng của thí
+                sinh.
               </p>
             </div>
-            
+
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-white border border-slate-200 p-3 rounded-xl text-center shadow-sm">
-                <span className="text-[10px] text-slate-500 block font-mono">TỔNG YÊU CẦU</span>
-                <span className="text-xl font-bold text-slate-800 font-mono">{merchStats.totalRequired}</span>
+                <span className="text-[10px] text-slate-500 block font-mono">
+                  TỔNG YÊU CẦU
+                </span>
+                <span className="text-xl font-bold text-slate-800 font-mono">
+                  {merchStats.totalRequired}
+                </span>
               </div>
               <div className="bg-emerald-50/40 border border-emerald-200 p-3 rounded-xl text-center">
-                <span className="text-[10px] text-emerald-600 block font-mono">ĐÃ PHÁT</span>
-                <span className="text-xl font-bold text-emerald-600 font-mono">{merchStats.totalDistributed}</span>
+                <span className="text-[10px] text-emerald-600 block font-mono">
+                  ĐÃ PHÁT
+                </span>
+                <span className="text-xl font-bold text-emerald-600 font-mono">
+                  {merchStats.totalDistributed}
+                </span>
               </div>
               <div className="bg-amber-50/40 border border-amber-200 p-3 rounded-xl text-center">
-                <span className="text-[10px] text-amber-600 block font-mono">CHƯA PHÁT</span>
-                <span className="text-xl font-bold text-amber-600 font-mono">{merchStats.totalPending}</span>
+                <span className="text-[10px] text-amber-600 block font-mono">
+                  CHƯA PHÁT
+                </span>
+                <span className="text-xl font-bold text-amber-600 font-mono">
+                  {merchStats.totalPending}
+                </span>
               </div>
             </div>
 
             <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-              <div 
-                className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
-                style={{ width: `${merchStats.totalRequired > 0 ? (merchStats.totalDistributed / merchStats.totalRequired) * 100 : 0}%` }}
+              <div
+                className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${merchStats.totalRequired > 0 ? (merchStats.totalDistributed / merchStats.totalRequired) * 100 : 0}%`,
+                }}
               />
             </div>
           </div>
@@ -592,21 +626,34 @@ export const UsersTab: React.FC<UsersTabProps> = ({
           <div className="lg:col-span-2 h-44 w-full bg-white border border-slate-200 p-4 rounded-xl shadow-sm">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={Object.keys(merchStats.stats).map(size => ({
+                data={Object.keys(merchStats.stats).map((size) => ({
                   name: size,
-                  'Yêu cầu': merchStats.stats[size].required,
-                  'Đã phát': merchStats.stats[size].distributed
+                  "Yêu cầu": merchStats.stats[size].required,
+                  "Đã phát": merchStats.stats[size].distributed,
                 }))}
                 margin={{ top: 10, right: 10, left: -25, bottom: 0 }}
               >
-                <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} />
-                <YAxis stroke="#64748b" fontSize={10} tickLine={false} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  labelStyle={{ color: '#1e293b', fontWeight: 'bold' }}
-                  itemStyle={{ color: '#475569' }}
+                <XAxis
+                  dataKey="name"
+                  stroke="#64748b"
+                  fontSize={10}
+                  tickLine={false}
                 />
-                <Legend iconSize={8} wrapperStyle={{ fontSize: 10, marginTop: 5 }} />
+                <YAxis stroke="#64748b" fontSize={10} tickLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#ffffff",
+                    borderColor: "#e2e8f0",
+                    borderRadius: "12px",
+                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                  }}
+                  labelStyle={{ color: "#1e293b", fontWeight: "bold" }}
+                  itemStyle={{ color: "#475569" }}
+                />
+                <Legend
+                  iconSize={8}
+                  wrapperStyle={{ fontSize: 10, marginTop: 5 }}
+                />
                 <Bar dataKey="Yêu cầu" fill="#f27024" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="Đã phát" fill="#10b981" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -635,7 +682,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
               {loading ? (
                 <tr>
                   <td
-                    colSpan={isAssistant ? (eventId ? 6 : 4) : (eventId ? 8 : 6)}
+                    colSpan={isAssistant ? (eventId ? 6 : 4) : eventId ? 8 : 6}
                     className="p-8 text-center text-slate-500 font-mono"
                   >
                     Đang tải danh sách người dùng...
@@ -684,83 +731,125 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                       </td>
                       <td className="p-4">
                         {(() => {
-                          const openEventRoles = u.roles ? u.roles.filter((r: any) => r.eventId && ['registration', 'ongoing'].includes(r.eventId.status)) : [];
-                          
-                          const renderedBadges = openEventRoles.map((roleRecord: any) => {
-                            const role = roleRecord.role;
-                            const eventName = roleRecord.eventId?.name || roleRecord.eventId?.semester;
-                            if (role === 'student_assistant') {
-                              return (
-                                <div key={roleRecord._id} className="flex flex-col gap-0.5 items-start">
-                                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 select-none whitespace-nowrap">
-                                    Cộng tác viên
-                                  </span>
-                                  {eventName && (
-                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium font-sans truncate max-w-[160px]" title={eventName}>
-                                      {eventName}
+                          const openEventRoles = u.roles
+                            ? u.roles.filter(
+                                (r: any) =>
+                                  r.eventId &&
+                                  ["registration", "ongoing"].includes(
+                                    r.eventId.status,
+                                  ),
+                              )
+                            : [];
+
+                          const renderedBadges = openEventRoles
+                            .map((roleRecord: any) => {
+                              const role = roleRecord.role;
+                              const eventName =
+                                roleRecord.eventId?.name ||
+                                roleRecord.eventId?.semester;
+                              if (role === "student_assistant") {
+                                return (
+                                  <div
+                                    key={roleRecord._id}
+                                    className="flex flex-col gap-0.5 items-start"
+                                  >
+                                    <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 select-none whitespace-nowrap">
+                                      Cộng tác viên
                                     </span>
-                                  )}
-                                </div>
-                              );
-                            }
-                            if (role === 'judge') {
-                              return (
-                                <div key={roleRecord._id} className="flex flex-col gap-0.5 items-start">
-                                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 select-none whitespace-nowrap">
-                                    Giám khảo
-                                  </span>
-                                  {eventName && (
-                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium font-sans truncate max-w-[160px]" title={eventName}>
-                                      {eventName}
+                                    {eventName && (
+                                      <span
+                                        className="text-[10px] text-slate-500 dark:text-slate-400 font-medium font-sans truncate max-w-[160px]"
+                                        title={eventName}
+                                      >
+                                        {eventName}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              if (role === "judge") {
+                                return (
+                                  <div
+                                    key={roleRecord._id}
+                                    className="flex flex-col gap-0.5 items-start"
+                                  >
+                                    <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 select-none whitespace-nowrap">
+                                      Giám khảo
                                     </span>
-                                  )}
-                                </div>
-                              );
-                            }
-                            if (role === 'mentor') {
-                              return (
-                                <div key={roleRecord._id} className="flex flex-col gap-0.5 items-start">
-                                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20 select-none whitespace-nowrap">
-                                    Mentor
-                                  </span>
-                                  {eventName && (
-                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium font-sans truncate max-w-[160px]" title={eventName}>
-                                      {eventName}
+                                    {eventName && (
+                                      <span
+                                        className="text-[10px] text-slate-500 dark:text-slate-400 font-medium font-sans truncate max-w-[160px]"
+                                        title={eventName}
+                                      >
+                                        {eventName}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              if (role === "mentor") {
+                                return (
+                                  <div
+                                    key={roleRecord._id}
+                                    className="flex flex-col gap-0.5 items-start"
+                                  >
+                                    <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20 select-none whitespace-nowrap">
+                                      Mentor
                                     </span>
-                                  )}
-                                </div>
-                              );
-                            }
-                            if (role === 'coordinator') {
-                              return (
-                                <div key={roleRecord._id} className="flex flex-col gap-0.5 items-start">
-                                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 select-none whitespace-nowrap">
-                                    Admin
-                                  </span>
-                                  {eventName && (
-                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium font-sans truncate max-w-[160px]" title={eventName}>
-                                      {eventName}
+                                    {eventName && (
+                                      <span
+                                        className="text-[10px] text-slate-500 dark:text-slate-400 font-medium font-sans truncate max-w-[160px]"
+                                        title={eventName}
+                                      >
+                                        {eventName}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              if (role === "coordinator") {
+                                return (
+                                  <div
+                                    key={roleRecord._id}
+                                    className="flex flex-col gap-0.5 items-start"
+                                  >
+                                    <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 select-none whitespace-nowrap">
+                                      Admin
                                     </span>
-                                  )}
-                                </div>
-                              );
-                            }
-                            if (role === 'participant' && u.isTeamMember) {
-                              return (
-                                <div key={roleRecord._id} className="flex flex-col gap-0.5 items-start">
-                                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-blue-500/10 text-blue-500 border border-blue-500/30 select-none whitespace-nowrap">
-                                    Thí sinh
-                                  </span>
-                                  {eventName && (
-                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium font-sans truncate max-w-[160px]" title={eventName}>
-                                      {eventName}
+                                    {eventName && (
+                                      <span
+                                        className="text-[10px] text-slate-500 dark:text-slate-400 font-medium font-sans truncate max-w-[160px]"
+                                        title={eventName}
+                                      >
+                                        {eventName}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              if (role === "participant" && u.isTeamMember) {
+                                return (
+                                  <div
+                                    key={roleRecord._id}
+                                    className="flex flex-col gap-0.5 items-start"
+                                  >
+                                    <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-blue-500/10 text-blue-500 border border-blue-500/30 select-none whitespace-nowrap">
+                                      Thí sinh
                                     </span>
-                                  )}
-                                </div>
-                              );
-                            }
-                            return null;
-                          }).filter(Boolean);
+                                    {eventName && (
+                                      <span
+                                        className="text-[10px] text-slate-500 dark:text-slate-400 font-medium font-sans truncate max-w-[160px]"
+                                        title={eventName}
+                                      >
+                                        {eventName}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })
+                            .filter(Boolean);
 
                           return (
                             <div className="flex flex-wrap items-center gap-2">
@@ -780,28 +869,53 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                       {eventId && isAssistant && (
                         <td className="p-4">
                           {(() => {
-                            const merchInfo = merchandise.find((m: any) => m.userId.toString() === u._id.toString());
+                            const merchInfo = merchandise.find(
+                              (m: any) =>
+                                m.userId.toString() === u._id.toString(),
+                            );
                             if (!merchInfo) {
-                              return <span className="text-slate-500 italic text-[11px]">N/A</span>;
+                              return (
+                                <span className="text-slate-500 italic text-[11px]">
+                                  N/A
+                                </span>
+                              );
                             }
 
-                            const isDistributed = merchInfo.merchandiseRecord?.isDistributed;
-                            const defaultSize = merchInfo.merchandiseRecord?.size || (merchInfo.suggestedSize !== "N/A" ? merchInfo.suggestedSize : "M") || "M";
-                            const currentSelectedSize = selectedSizes[u._id] || defaultSize;
+                            const isDistributed =
+                              merchInfo.merchandiseRecord?.isDistributed;
+                            const defaultSize =
+                              merchInfo.merchandiseRecord?.size ||
+                              (merchInfo.suggestedSize !== "N/A"
+                                ? merchInfo.suggestedSize
+                                : "M") ||
+                              "M";
+                            const currentSelectedSize =
+                              selectedSizes[u._id] || defaultSize;
 
                             return (
                               <div className="flex items-center">
                                 <select
                                   value={currentSelectedSize}
                                   disabled={isDistributed}
-                                  onChange={(e) => handleSizeSelectChange(u._id, e.target.value)}
+                                  onChange={(e) =>
+                                    handleSizeSelectChange(
+                                      u._id,
+                                      e.target.value,
+                                    )
+                                  }
                                   className={`bg-slate-950 border border-slate-800 text-white rounded-lg px-2.5 py-0.5 focus:outline-none focus:border-[#F27024] font-mono text-[11px] ${
-                                    isDistributed ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
+                                    isDistributed
+                                      ? "opacity-60 cursor-not-allowed"
+                                      : "cursor-pointer"
                                   }`}
                                 >
-                                  {['S', 'M', 'L', 'XL', 'XXL', '3XL'].map(sz => (
-                                    <option key={sz} value={sz}>{sz}</option>
-                                  ))}
+                                  {["S", "M", "L", "XL", "XXL", "3XL"].map(
+                                    (sz) => (
+                                      <option key={sz} value={sz}>
+                                        {sz}
+                                      </option>
+                                    ),
+                                  )}
                                 </select>
                               </div>
                             );
@@ -811,16 +925,34 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                       {eventId && isAssistant && (
                         <td className="p-4">
                           {(() => {
-                            const merchInfo = merchandise.find((m: any) => m.userId.toString() === u._id.toString());
+                            const merchInfo = merchandise.find(
+                              (m: any) =>
+                                m.userId.toString() === u._id.toString(),
+                            );
                             if (!merchInfo) {
-                              return <span className="text-slate-500 italic text-[11px]">-</span>;
+                              return (
+                                <span className="text-slate-500 italic text-[11px]">
+                                  -
+                                </span>
+                              );
                             }
 
-                            const isDistributed = merchInfo.merchandiseRecord?.isDistributed;
-                            const wasRevoked = !isDistributed && merchInfo.merchandiseRecord?.distributionHistory?.some((h: any) => h.action === 'revoked');
-                            
-                            const defaultSize = merchInfo.merchandiseRecord?.size || (merchInfo.suggestedSize !== "N/A" ? merchInfo.suggestedSize : "M") || "M";
-                            const currentSelectedSize = selectedSizes[u._id] || defaultSize;
+                            const isDistributed =
+                              merchInfo.merchandiseRecord?.isDistributed;
+                            const wasRevoked =
+                              !isDistributed &&
+                              merchInfo.merchandiseRecord?.distributionHistory?.some(
+                                (h: any) => h.action === "revoked",
+                              );
+
+                            const defaultSize =
+                              merchInfo.merchandiseRecord?.size ||
+                              (merchInfo.suggestedSize !== "N/A"
+                                ? merchInfo.suggestedSize
+                                : "M") ||
+                              "M";
+                            const currentSelectedSize =
+                              selectedSizes[u._id] || defaultSize;
 
                             return (
                               <div className="flex items-center gap-2">
@@ -834,14 +966,23 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                                   </button>
                                 ) : (
                                   <button
-                                    onClick={() => handleDirectDistributeMerch(u, currentSelectedSize)}
+                                    onClick={() =>
+                                      handleDirectDistributeMerch(
+                                        u,
+                                        currentSelectedSize,
+                                      )
+                                    }
                                     className={`px-3 py-1 rounded-lg text-[10px] font-mono font-bold border flex items-center gap-1 cursor-pointer transition-all ${
                                       wasRevoked
                                         ? "bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
                                         : "bg-[#F27024]/10 border-[#F27024]/30 text-[#F27024] hover:bg-[#F27024]/20"
                                     }`}
                                   >
-                                    <span>{wasRevoked ? "Đã thu hồi (Phát lại)" : "Phát áo"}</span>
+                                    <span>
+                                      {wasRevoked
+                                        ? "Đã thu hồi (Phát lại)"
+                                        : "Phát áo"}
+                                    </span>
                                   </button>
                                 )}
                               </div>
@@ -852,11 +993,22 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                       {!isAssistant && (
                         <td className="p-4 text-center">
                           {(() => {
-                            const openEventRoles = u.roles ? u.roles.filter((r: any) => r.eventId && ['registration', 'ongoing'].includes(r.eventId.status)) : [];
-                            const hasStudentAssistant = openEventRoles.some((r: any) => r.role === 'student_assistant');
-                            const hasOtherRole = openEventRoles.some((r: any) => 
-                              ['judge', 'mentor'].includes(r.role) || 
-                              (r.role === 'participant' && u.isTeamMember)
+                            const openEventRoles = u.roles
+                              ? u.roles.filter(
+                                  (r: any) =>
+                                    r.eventId &&
+                                    ["registration", "ongoing"].includes(
+                                      r.eventId.status,
+                                    ),
+                                )
+                              : [];
+                            const hasStudentAssistant = openEventRoles.some(
+                              (r: any) => r.role === "student_assistant",
+                            );
+                            const hasOtherRole = openEventRoles.some(
+                              (r: any) =>
+                                ["judge", "mentor"].includes(r.role) ||
+                                (r.role === "participant" && u.isTeamMember),
                             );
 
                             if (hasOtherRole) return null;
@@ -864,18 +1016,30 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                             return (
                               <div className="flex items-center justify-center">
                                 <button
-                                  onClick={() => handleToggleStudentAssistant(u)}
+                                  onClick={() =>
+                                    handleToggleStudentAssistant(u)
+                                  }
                                   disabled={readOnly}
                                   className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
-                                    readOnly ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+                                    readOnly
+                                      ? "cursor-not-allowed opacity-50"
+                                      : "cursor-pointer"
                                   } ${
-                                    hasStudentAssistant ? "bg-orange-500" : "bg-slate-200 hover:bg-slate-300"
+                                    hasStudentAssistant
+                                      ? "bg-orange-500"
+                                      : "bg-slate-200 hover:bg-slate-300"
                                   }`}
-                                  title={hasStudentAssistant ? "Thu hồi quyền CTSV" : "Cấp quyền CTSV"}
+                                  title={
+                                    hasStudentAssistant
+                                      ? "Thu hồi quyền CTSV"
+                                      : "Cấp quyền CTSV"
+                                  }
                                 >
                                   <span
                                     className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform shadow-sm ${
-                                      hasStudentAssistant ? "translate-x-5" : "translate-x-1"
+                                      hasStudentAssistant
+                                        ? "translate-x-5"
+                                        : "translate-x-1"
                                     }`}
                                   />
                                 </button>
@@ -895,8 +1059,14 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                                 : "cursor-pointer"
                             } ${
                               u.isActive
-                                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" + (readOnly || isAssistant ? "" : " hover:bg-emerald-500/20")
-                                : "bg-rose-500/10 border-rose-500/30 text-rose-400" + (readOnly || isAssistant ? "" : " hover:bg-rose-500/20")
+                                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" +
+                                  (readOnly || isAssistant
+                                    ? ""
+                                    : " hover:bg-emerald-500/20")
+                                : "bg-rose-500/10 border-rose-500/30 text-rose-400" +
+                                  (readOnly || isAssistant
+                                    ? ""
+                                    : " hover:bg-rose-500/20")
                             }`}
                           >
                             {u.isActive ? (
@@ -1010,31 +1180,45 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                   </h4>
                   <div className="grid grid-cols-2 gap-4 text-xs">
                     <div>
-                      <span className="text-slate-500 block mb-0.5">Mã số sinh viên (MSSV)</span>
+                      <span className="text-slate-500 block mb-0.5">
+                        Mã số sinh viên (MSSV)
+                      </span>
                       <span className="text-slate-200 font-mono font-bold">
                         {editingUser?.studentId || "Chưa cập nhật"}
                       </span>
                     </div>
                     <div>
-                      <span className="text-slate-500 block mb-0.5">Trường đại học</span>
+                      <span className="text-slate-500 block mb-0.5">
+                        Trường đại học
+                      </span>
                       <span className="text-slate-200 font-bold">
                         {editingUser?.university || "Chưa cập nhật"}
                       </span>
                     </div>
                     <div>
-                      <span className="text-slate-500 block mb-0.5">Chiều cao</span>
+                      <span className="text-slate-500 block mb-0.5">
+                        Chiều cao
+                      </span>
                       <span className="text-slate-200 font-mono font-bold">
-                        {editingUser?.height ? `${editingUser.height} cm` : "Chưa cập nhật"}
+                        {editingUser?.height
+                          ? `${editingUser.height} cm`
+                          : "Chưa cập nhật"}
                       </span>
                     </div>
                     <div>
-                      <span className="text-slate-500 block mb-0.5">Cân nặng</span>
+                      <span className="text-slate-500 block mb-0.5">
+                        Cân nặng
+                      </span>
                       <span className="text-slate-200 font-mono font-bold">
-                        {editingUser?.weight ? `${editingUser.weight} kg` : "Chưa cập nhật"}
+                        {editingUser?.weight
+                          ? `${editingUser.weight} kg`
+                          : "Chưa cập nhật"}
                       </span>
                     </div>
                     <div>
-                      <span className="text-slate-500 block mb-0.5">Trạng thái tài khoản</span>
+                      <span className="text-slate-500 block mb-0.5">
+                        Trạng thái tài khoản
+                      </span>
                       <span
                         className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold font-mono border ${
                           editingUser?.isActive
@@ -1055,13 +1239,17 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                   </h4>
                   <div className="grid grid-cols-2 gap-4 text-xs">
                     <div>
-                      <span className="text-slate-500 block mb-0.5">Đội thi tham gia</span>
+                      <span className="text-slate-500 block mb-0.5">
+                        Đội thi tham gia
+                      </span>
                       <span className="text-slate-200 font-bold">
                         {editingUser?.teamName || "Chưa tham gia đội"}
                       </span>
                     </div>
                     <div>
-                      <span className="text-slate-500 block mb-0.5">Vai trò đội thi</span>
+                      <span className="text-slate-500 block mb-0.5">
+                        Vai trò đội thi
+                      </span>
                       <span className="text-slate-200 font-bold">
                         {editingUser?.teamRole === "leader"
                           ? "Trưởng nhóm (Leader)"
@@ -1085,7 +1273,10 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4 text-xs font-sans">
+              <form
+                onSubmit={handleSubmit}
+                className="space-y-4 text-xs font-sans"
+              >
                 <div>
                   <label className="block font-bold text-slate-300 mb-1">
                     Email <span className="text-rose-500">*</span>
@@ -1194,7 +1385,10 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                         type="checkbox"
                         checked={formData.isStudentAssistant || false}
                         onChange={(e) =>
-                          setFormData({ ...formData, isStudentAssistant: e.target.checked })
+                          setFormData({
+                            ...formData,
+                            isStudentAssistant: e.target.checked,
+                          })
                         }
                         className="rounded bg-slate-950 border-slate-800 text-cyan-500 focus:ring-0"
                       />
@@ -1237,12 +1431,16 @@ export const UsersTab: React.FC<UsersTabProps> = ({
               <h3 className="text-sm font-bold text-slate-800 font-mono flex flex-wrap items-center gap-2">
                 <Shirt className="text-[#F27024]" size={18} />
                 <span>Phát áo: {selectedMerchUser.fullName}</span>
-                <span className={`px-1.5 py-0.5 rounded-lg text-[9px] font-mono font-bold select-none whitespace-nowrap border ${
-                  selectedMerchUser.merchandiseRecord?.isDistributed
-                    ? "bg-emerald-50 text-emerald-600 border-emerald-200"
-                    : "bg-slate-100 text-slate-600 border-slate-200"
-                }`}>
-                  {selectedMerchUser.merchandiseRecord?.isDistributed ? "Đã phát" : "Chưa phát"}
+                <span
+                  className={`px-1.5 py-0.5 rounded-lg text-[9px] font-mono font-bold select-none whitespace-nowrap border ${
+                    selectedMerchUser.merchandiseRecord?.isDistributed
+                      ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                      : "bg-slate-100 text-slate-600 border-slate-200"
+                  }`}
+                >
+                  {selectedMerchUser.merchandiseRecord?.isDistributed
+                    ? "Đã phát"
+                    : "Chưa phát"}
                 </span>
               </h3>
               <button
@@ -1264,14 +1462,18 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                   // Distribute Form
                   <div className="space-y-3">
                     <div className="flex items-center gap-4">
-                      <label className="text-slate-700 font-medium">Chọn size phát thực tế:</label>
+                      <label className="text-slate-700 font-medium">
+                        Chọn size phát thực tế:
+                      </label>
                       <select
                         value={selectedMerchSize}
                         onChange={(e) => setSelectedMerchSize(e.target.value)}
                         className="bg-white border border-slate-200 text-slate-800 rounded-lg px-2.5 py-1 focus:outline-none focus:border-[#F27024] font-mono text-xs cursor-pointer"
                       >
-                        {['S', 'M', 'L', 'XL', 'XXL', '3XL'].map(sz => (
-                          <option key={sz} value={sz}>{sz}</option>
+                        {["S", "M", "L", "XL", "XXL", "3XL"].map((sz) => (
+                          <option key={sz} value={sz}>
+                            {sz}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -1290,20 +1492,27 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                   <div className="space-y-3">
                     <div className="space-y-3 pt-2">
                       <div className="space-y-1">
-                        <label className="text-slate-500 font-mono text-[10px] block">CHỌN SIZE ĐỂ ĐỔI</label>
+                        <label className="text-slate-500 font-mono text-[10px] block">
+                          CHỌN SIZE ĐỂ ĐỔI
+                        </label>
                         <select
                           value={selectedMerchSize}
                           onChange={(e) => setSelectedMerchSize(e.target.value)}
                           className="w-full bg-white border border-slate-200 text-slate-800 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#F27024] font-mono text-xs cursor-pointer"
                         >
-                          {['S', 'M', 'L', 'XL', 'XXL', '3XL'].map(sz => (
-                            <option key={sz} value={sz}>{sz}</option>
+                          {["S", "M", "L", "XL", "XXL", "3XL"].map((sz) => (
+                            <option key={sz} value={sz}>
+                              {sz}
+                            </option>
                           ))}
                         </select>
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-slate-500 font-mono text-[10px] block">LÝ DO THAO TÁC <span className="text-rose-500">*</span></label>
+                        <label className="text-slate-500 font-mono text-[10px] block">
+                          LÝ DO THAO TÁC{" "}
+                          <span className="text-rose-500">*</span>
+                        </label>
                         <textarea
                           ref={merchReasonRef}
                           placeholder="Nhập lý do đổi size hoặc thu hồi áo..."
@@ -1350,19 +1559,30 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                   <div className="space-y-3 pr-1 font-sans border-l border-slate-200 pl-3.5 ml-2.5">
                     {merchHistory.map((item, idx) => {
                       const getIcon = () => {
-                        if (item.action === 'distributed') return <Shirt size={10} className="text-emerald-600" />;
-                        if (item.action === 'revoked') return <Undo2 size={10} className="text-rose-600" />;
-                        return <RefreshCw size={10} className="text-cyan-600" />;
+                        if (item.action === "distributed")
+                          return (
+                            <Shirt size={10} className="text-emerald-600" />
+                          );
+                        if (item.action === "revoked")
+                          return <Undo2 size={10} className="text-rose-600" />;
+                        return (
+                          <RefreshCw size={10} className="text-cyan-600" />
+                        );
                       };
 
                       const getActionText = () => {
-                        if (item.action === 'distributed') return `Phát áo size ${item.size}`;
-                        if (item.action === 'revoked') return `Thu hồi áo (size cũ ${item.size})`;
+                        if (item.action === "distributed")
+                          return `Phát áo size ${item.size}`;
+                        if (item.action === "revoked")
+                          return `Thu hồi áo (size cũ ${item.size})`;
                         return `Đổi sang size ${item.size}`;
                       };
 
                       return (
-                        <div key={idx} className="relative text-[10.5px] leading-relaxed">
+                        <div
+                          key={idx}
+                          className="relative text-[10.5px] leading-relaxed"
+                        >
                           {/* Timeline dot */}
                           <div className="absolute -left-[20.5px] top-3 w-3.5 h-3.5 rounded-full bg-white border border-slate-200 flex items-center justify-center shadow-sm">
                             {getIcon()}
@@ -1372,7 +1592,10 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                               {getActionText()}
                             </div>
                             <div className="text-[9.5px] text-slate-500 font-mono mt-0.5">
-                              Tác nhân: {item.performedBy?.fullName || "CTSV"} | {new Date(item.performedAt).toLocaleString('vi-VN')}
+                              Tác nhân: {item.performedBy?.fullName || "CTSV"} |{" "}
+                              {new Date(item.performedAt).toLocaleString(
+                                "vi-VN",
+                              )}
                             </div>
                             {item.reason && (
                               <div className="text-[9.5px] text-amber-600 font-medium italic mt-0.5">

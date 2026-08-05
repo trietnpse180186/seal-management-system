@@ -734,7 +734,7 @@ export default function AdminLiveInteraction() {
                       </label>
                       <textarea
                         rows={3}
-                        placeholder="Coordinator nhập phản hồi bổ sung hoặc nhận xét của giám khảo..."
+                        placeholder="Admin nhập phản hồi bổ sung hoặc nhận xét của giám khảo..."
                         value={overrideComment}
                         onChange={(e) => setOverrideComment(e.target.value)}
                         className="bg-slate-950 border border-slate-800 text-slate-350 text-xs px-3 py-2 w-full rounded-xl focus:outline-none focus:ring-1 focus:ring-cyan-500 placeholder-slate-650"

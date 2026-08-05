@@ -1422,47 +1422,6 @@ router.delete('/users/:id', authenticateToken, requireAdminOrAssistant, async (r
   }
 });
 
-/**
- * @route   POST /api/auth/users/:id/toggle-coordinator
- * @desc    Toggle global coordinator role for user
- * @access  Private (System Admin only)
- */
-router.post('/users/:id/toggle-coordinator', authenticateToken, requireSystemAdmin, async (req, res) => {
-  try {
-    const userId = req.params.id;
-    const existingRoles = await EventRole.find({ userId, role: 'coordinator', status: 'active' });
-    const isCurrentlyCoordinator = existingRoles.length > 0;
-
-    if (isCurrentlyCoordinator) {
-      await EventRole.deleteMany({ userId, role: 'coordinator' });
-      return res.json({ message: 'Đã thu hồi quyền Ban tổ chức (Coordinator)!', isCoordinator: false });
-    } else {
-      const Event = mongoose.model('Event');
-      const events = await Event.find({});
-      if (events.length > 0) {
-        for (const ev of events) {
-          await EventRole.updateOne(
-            { userId, eventId: ev._id, role: 'coordinator' },
-            { $set: { status: 'active', assignedBy: req.user._id } },
-            { upsert: true }
-          );
-        }
-      } else {
-        // Dummy placeholder eventRole if no events exist yet
-        await EventRole.create({
-          userId,
-          role: 'coordinator',
-          assignedBy: req.user._id,
-          status: 'active'
-        });
-      }
-      return res.json({ message: 'Đã cấp quyền Ban tổ chức (Coordinator) thành công!', isCoordinator: true });
-    }
-  } catch (error) {
-    console.error('Toggle Coordinator Error:', error.message);
-    res.status(500).json({ message: 'Server error toggling coordinator role.' });
-  }
-});
 
 router.post('/users/auto-provision', authenticateToken, requireSystemAdmin, async (req, res) => {
   try {
@@ -1633,11 +1592,11 @@ router.post('/users/:id/toggle-student-assistant', authenticateToken, requireSys
       const hasOtherRole = await EventRole.findOne({
         userId,
         eventId: { $in: activeEventIds },
-        role: { $in: ['judge', 'mentor', 'coordinator'] },
+        role: { $in: ['judge', 'mentor'] },
         status: 'active'
       });
       if (hasOtherRole) {
-        const roleNameMap = { judge: 'Giám khảo', mentor: 'Mentor', coordinator: 'Coordinator' };
+        const roleNameMap = { judge: 'Giám khảo', mentor: 'Mentor' };
         const roleTitle = roleNameMap[hasOtherRole.role] || hasOtherRole.role;
         return res.status(400).json({ message: `Tài khoản này đang có vai trò ${roleTitle} trong sự kiện, không thể cấp quyền Cộng tác viên.` });
       }

@@ -75,7 +75,7 @@ router.get('/rooms', authenticateToken, async (req, res) => {
 
     const uniqueEventIds = Array.from(new Set(associatedEventIds));
     const coordinatorEventIds = myRoles
-      .filter(r => r.role === 'coordinator')
+      .filter(r => r.role === 'admin_view')
       .map(r => r.eventId.toString());
 
     // 3. Tự động tạo phòng chat tổng cho các event của thí sinh nếu chưa có

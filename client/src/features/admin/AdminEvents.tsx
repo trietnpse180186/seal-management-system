@@ -739,7 +739,7 @@ export default function AdminEvents({
 
   useEffect(() => {
     const createParam = searchParams.get("create");
-    if (createParam === "true") {
+    if (createParam === "true" && currentUser?.isSystemAdmin) {
       sessionStorage.removeItem("creatingEventId");
       setSelectedEvent(null);
       setIsWizardMode(true);
@@ -749,7 +749,7 @@ export default function AdminEvents({
       newParams.delete("create");
       setSearchParams(newParams, { replace: true });
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, currentUser]);
 
   const fetchEvents = async () => {
     try {
@@ -2625,7 +2625,7 @@ export default function AdminEvents({
                   />
                 </div>
               )}
-              {!readOnly && !isAssistant && (
+              {!readOnly && currentUser?.isSystemAdmin && (
                 <button
                   onClick={() => {
                     sessionStorage.removeItem("creatingEventId");

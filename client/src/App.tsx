@@ -161,7 +161,7 @@ function AppContent({ user, roles, handleLoginSuccess, handleLogout, setUser }: 
         <Routes>
           <Route path="/" element={
             user ? (
-              (user.isSystemAdmin || roles.some((r: any) => r.role === 'coordinator' || r.role === 'admin_view' || r.role === 'student_assistant')) ? (
+              (user.isSystemAdmin || roles.some((r: any) => r.role === 'admin_view' || r.role === 'student_assistant')) ? (
                 <Navigate to="/admin" />
               ) : (roles.some((r: any) => r.role === 'judge') || roles.some((r: any) => r.role === 'mentor')) ? (
                 <Navigate to="/expert/dashboard" />

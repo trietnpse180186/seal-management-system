@@ -58,7 +58,7 @@ export default function Gallery({ user, roles }: GalleryProps) {
   const [visibleCount, setVisibleCount] = useState<number>(16);
 
   const isSystemAdmin = user?.isSystemAdmin;
-  const isCoordinator = !!isSystemAdmin || roles?.some((r) => r.role === "coordinator") || roles?.some((r) => r.role === "admin_view");
+  const isCoordinator = !!isSystemAdmin || roles?.some((r) => r.role === "admin_view");
 
   const loadGalleryData = (showToast = false) => {
     const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000';

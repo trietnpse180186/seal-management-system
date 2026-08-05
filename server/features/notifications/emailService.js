@@ -632,6 +632,56 @@ async function sendPasswordResetEmail(email, fullName, resetLink) {
   }
 }
 
+/**
+ * Sends a certificate PDF email to the participant.
+ */
+async function sendCertificateEmail(email, fullName, certificatePdfBuffer, prizeTitle, eventName) {
+  const mailOptions = {
+    from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
+    to: email,
+    subject: `[SEAL Hackathon] Giấy chứng nhận/Bằng khen - ${eventName}`,
+    html: `
+      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #1e293b; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+        <div style="text-align: center; margin-bottom: 25px;">
+          <h2 style="color: #f27024; font-family: 'Inter', sans-serif; text-transform: uppercase; margin: 0; font-size: 22px;">CHÚC MỪNG BẠN ĐÃ ĐẠT GIẢI!</h2>
+          <p style="font-size: 13px; color: #64748b; margin-top: 5px;">Mùa giải: ${eventName}</p>
+        </div>
+        <p style="font-size: 15px; line-height: 1.6;">Xin chào <strong>${fullName}</strong>,</p>
+        <p style="font-size: 15px; line-height: 1.6;">Ban Tổ Chức cuộc thi SEAL xin trân trọng chúc mừng bạn và đội thi của bạn đã xuất sắc đạt thành tích: <strong style="color: #f27024;">${prizeTitle}</strong>.</p>
+        <p style="font-size: 15px; line-height: 1.6;">Chúng tôi xin gửi kèm file Bằng khen / Giấy chứng nhận điện tử (định dạng PDF) ở phần đính kèm dưới email này để ghi nhận nỗ lực vượt bậc của bạn.</p>
+        <p style="font-size: 15px; line-height: 1.6;">Chúc bạn luôn giữ vững ngọn lửa nhiệt huyết và gặt hái thêm nhiều thành công trên con đường học tập và sự nghiệp sắp tới!</p>
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin-top: 30px; margin-bottom: 20px;">
+        <p style="font-size: 12px; color: #94a3b8; text-align: center;">Powered by FPT University &copy; 2026</p>
+      </div>
+    `,
+    attachments: [
+      {
+        filename: `Bang_Khen_${fullName.replace(/\s+/g, '_')}.pdf`,
+        content: certificatePdfBuffer,
+        contentType: 'application/pdf'
+      }
+    ]
+  };
+
+  if (isMock) {
+    console.log('\n--- [EMAIL MOCK SERVICE: CERTIFICATE PDF] ---');
+    console.log(`To: ${email}`);
+    console.log(`Subject: ${mailOptions.subject}`);
+    console.log(`Recipient: ${fullName} - Prize: ${prizeTitle}`);
+    console.log('--------------------------------------------\n');
+    return true;
+  }
+
+  try {
+    const info = await sendMailHelper(mailOptions);
+    console.log(`Certificate email successfully sent to ${email}: ${info.messageId}`);
+    return true;
+  } catch (error) {
+    console.error('Error sending certificate email:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   sendTeamInvitation,
   sendEmailVerification,
@@ -640,5 +690,6 @@ module.exports = {
   sendRoundExamOpened,
   sendSeminarInvitation,
   sendAccountProvisionEmail,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  sendCertificateEmail
 };

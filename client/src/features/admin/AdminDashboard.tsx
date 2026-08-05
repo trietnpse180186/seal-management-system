@@ -141,7 +141,7 @@ export default function AdminDashboard() {
             Danh sách các cuộc thi hackathon đang diễn ra và đã kết thúc. Chọn cuộc thi để xem cấu hình chi tiết.
           </p>
         </div>
-        {!readOnly && (
+        {user?.isSystemAdmin && (
           <button
             onClick={() => navigate("/admin/events?create=true")}
             className="bg-cyan-500 hover:bg-cyan-400 text-white px-4 py-2.5 rounded-xl border border-cyan-500/20 text-xs font-mono font-semibold flex items-center gap-1.5 cursor-pointer shadow-lg shadow-cyan-500/25 transition-all"

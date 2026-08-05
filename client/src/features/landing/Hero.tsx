@@ -10,8 +10,7 @@ interface HeroProps {
 
 export default function Hero({ user, roles }: HeroProps) {
   const isSystemAdmin = user?.isSystemAdmin;
-  const isCoordinator =
-    roles?.some((r) => r.role === "coordinator") || isSystemAdmin;
+  const isCoordinator = !!isSystemAdmin;
   const dashboardLink = user
     ? isSystemAdmin || isCoordinator
       ? "/admin"

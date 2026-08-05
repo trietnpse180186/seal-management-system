@@ -59,7 +59,7 @@ router.get('/', authenticateToken, async (req, res) => {
     if (!req.user.isSystemAdmin) {
       // Check roles
       const roles = await EventRole.find({ userId: req.user._id, status: 'active' });
-      const isStaff = roles.some(r => ['coordinator', 'judge', 'mentor'].includes(r.role));
+      const isStaff = roles.some(r => ['judge', 'mentor'].includes(r.role));
       
       if (!isStaff) {
         // Participant -> find their team repo
@@ -117,8 +117,7 @@ router.post('/create', authenticateToken, async (req, res) => {
 
     // Auth check
     if (!req.user.isSystemAdmin) {
-      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId: team.eventId, role: 'coordinator', status: 'active' });
-      if (!isCoord) return res.status(403).json({ message: 'Chỉ điều phối viên hoặc quản trị viên mới được quyền tạo repository.' });
+      return res.status(403).json({ message: 'Quyền truy cập bị từ chối. Chỉ quản trị viên mới được quyền tạo repository.' });
     }
 
     // Check if repository already exists
@@ -188,8 +187,7 @@ router.post('/link', authenticateToken, async (req, res) => {
 
     // Auth check
     if (!req.user.isSystemAdmin) {
-      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId: team.eventId, role: 'coordinator', status: 'active' });
-      if (!isCoord) return res.status(403).json({ message: 'Chỉ điều phối viên hoặc quản trị viên mới được quyền liên kết repository.' });
+      return res.status(403).json({ message: 'Quyền truy cập bị từ chối. Chỉ quản trị viên mới được quyền liên kết repository.' });
     }
 
     // Check existing repo
@@ -327,8 +325,7 @@ router.post('/:id/kick-all', authenticateToken, async (req, res) => {
 
     // Auth check
     if (!req.user.isSystemAdmin) {
-      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId: repo.eventId, role: 'coordinator', status: 'active' });
-      if (!isCoord) return res.status(403).json({ message: 'Chỉ điều phối viên hoặc quản trị viên mới được quyền thu hồi quyền truy cập.' });
+      return res.status(403).json({ message: 'Quyền truy cập bị từ chối. Chỉ quản trị viên mới được quyền thu hồi quyền truy cập.' });
     }
 
     // 1. Get all confirmed team members

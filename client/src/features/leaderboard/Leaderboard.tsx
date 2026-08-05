@@ -8,9 +8,16 @@ import {
   RefreshCw,
   Radio,
   Download,
+  Trophy,
+  Award,
+  ShieldCheck,
+  Check,
+  X
 } from "lucide-react";
 import CustomSelect from "../shared/CustomSelect";
 import TeamDetailDrawer from "./TeamDetailDrawer";
+import { toast } from "sonner";
+import { useConfirm } from "../shared/ConfirmDialog";
 
 export default function Leaderboard({
   user,
@@ -20,13 +27,14 @@ export default function Leaderboard({
   roles?: any[];
 }) {
   const token = localStorage.getItem("token");
+  const confirm = useConfirm();
   const [searchParams] = useSearchParams();
   const queryEventId = searchParams.get("eventId");
   const queryRoundId = searchParams.get("roundId");
 
   // Detect user role
   const isSystemAdmin = user?.isSystemAdmin;
-  const isSystemCoordinator = isSystemAdmin || roles.some((r: any) => r.role === "coordinator");
+  const isSystemCoordinator = isSystemAdmin;
   const isAssistant = !isSystemAdmin && (user?.isStudentAssistant || roles?.some((r: any) => r.role === "student_assistant"));
   const assistantEventId = roles?.find((r: any) => r.role === 'student_assistant')?.eventId;
   const assistantEventIdStr = assistantEventId?._id || assistantEventId;
@@ -45,6 +53,106 @@ export default function Leaderboard({
   const [exporting, setExporting] = useState(false);
   const [activeTrackId, setActiveTrackId] = useState<string>("");
   const [selectedTeamForDrawer, setSelectedTeamForDrawer] = useState<any>(null);
+
+  // Awards/Prizes states
+  const [awards, setAwards] = useState<any[]>([]);
+  const [awardActionLoading, setAwardActionLoading] = useState(false);
+
+  const fetchAwards = useCallback(async () => {
+    if (!selectedEventId) return;
+    try {
+      const res = await axios.get(`http://localhost:5000/api/ctsv/events/${selectedEventId}/awards`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setAwards(res.data || []);
+    } catch (err) {
+      console.error("Failed to fetch awards:", err);
+    }
+  }, [selectedEventId, token]);
+
+  const handleConfirmAward = async (prizeId: string, notes?: string) => {
+    setAwardActionLoading(true);
+    try {
+      await axios.put(`http://localhost:5000/api/ctsv/events/${selectedEventId}/awards/${prizeId}/confirm`, {
+        notes
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success("Xác nhận đã trao giải thưởng thành công!");
+      fetchAwards();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Không thể xác nhận trao giải.");
+    } finally {
+      setAwardActionLoading(false);
+    }
+  };
+
+  const handleRevokeAward = async (prizeId: string) => {
+    const confirmed = await confirm({
+      title: "Hủy xác nhận trao giải",
+      message: "Bạn có chắc chắn muốn hủy trạng thái đã trao của giải thưởng này?"
+    });
+    if (!confirmed) return;
+    setAwardActionLoading(true);
+    try {
+      await axios.put(`http://localhost:5000/api/ctsv/events/${selectedEventId}/awards/${prizeId}/revoke`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("Đã hủy trạng thái trao giải.");
+      fetchAwards();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Lỗi khi hủy xác nhận trao giải.");
+    } finally {
+      setAwardActionLoading(false);
+    }
+  };
+
+  const [exportingCert, setExportingCert] = useState(false);
+  const [sendingEmailCert, setSendingEmailCert] = useState(false);
+
+  const handleExportCertZip = async () => {
+    if (!selectedEventId) return;
+    setExportingCert(true);
+    try {
+      toast.info("Đang khởi tạo tệp ZIP chứa bằng khen...");
+      const res = await axios.get(`http://localhost:5000/api/ctsv/events/${selectedEventId}/awards/export`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Bang_Khen_Event.zip`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success("Xuất danh sách bằng khen thành công!");
+    } catch (err: any) {
+      toast.error("Không thể xuất bằng khen dưới dạng ZIP.");
+    } finally {
+      setExportingCert(false);
+    }
+  };
+
+  const handleSendCertEmails = async () => {
+    if (!selectedEventId) return;
+    const confirmed = await confirm({
+      title: "Gửi Email Bằng Khen Hàng Loạt",
+      message: "Hệ thống sẽ tiến hành gửi email đính kèm bằng khen PDF cho tất cả thành viên của các đội đạt giải. Bạn chắc chắn muốn thực hiện?"
+    });
+    if (!confirmed) return;
+    
+    setSendingEmailCert(true);
+    try {
+      toast.info("Đang gửi email bằng khen...");
+      const res = await axios.post(`http://localhost:5000/api/ctsv/events/${selectedEventId}/awards/email`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success(res.data.message || "Gửi email bằng khen thành công!");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Lỗi khi gửi email bằng khen.");
+    } finally {
+      setSendingEmailCert(false);
+    }
+  };
 
   const assignRanksWithTies = (list: any[]) => {
     if (!list || list.length === 0) return [];
@@ -66,11 +174,7 @@ export default function Leaderboard({
   };
 
   // Detect if coordinator for selectedEvent
-  const isCoordinator =
-    isSystemAdmin ||
-    roles.some(
-      (r: any) => r.eventId === selectedEventId && r.role === "coordinator",
-    );
+  const isCoordinator = isSystemAdmin;
 
   const isJudge = roles.some(
     (r: any) => r.eventId === selectedEventId && r.role === "judge",
@@ -233,6 +337,12 @@ export default function Leaderboard({
   }, [fetchRankings]);
 
   useEffect(() => {
+    if (selectedEventId) {
+      fetchAwards();
+    }
+  }, [selectedEventId, fetchAwards]);
+
+  useEffect(() => {
     if (standingsByTrack && standingsByTrack.length > 0) {
       const exists = standingsByTrack.some((g: any) => g.trackId === activeTrackId);
       if (!exists || !activeTrackId) {
@@ -343,6 +453,27 @@ export default function Leaderboard({
                   <Download size={12} className="text-cyan-400" />
                   <span>{exporting ? "Đang xuất..." : "Xuất Điểm Tổng Hợp"}</span>
                 </button>
+              )}
+              {isFinalRound && standings.length > 0 && isAssistant && (
+                <>
+                  <button
+                    onClick={handleExportCertZip}
+                    disabled={exportingCert}
+                    className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer disabled:opacity-50 shrink-0"
+                  >
+                    <Download size={12} className="text-white" />
+                    <span>{exportingCert ? "Đang xuất ZIP..." : "Xuất ZIP Bằng Khen"}</span>
+                  </button>
+
+                  <button
+                    onClick={handleSendCertEmails}
+                    disabled={sendingEmailCert}
+                    className="flex items-center gap-1.5 bg-[#F27024] hover:bg-[#d95f1f] text-white border border-[#F27024]/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer disabled:opacity-50 shrink-0"
+                  >
+                    <Check size={12} className="text-white" />
+                    <span>{sendingEmailCert ? "Đang gửi..." : "Gửi Email Bằng Khen"}</span>
+                  </button>
+                </>
               )}
             </>
           )}
@@ -462,9 +593,11 @@ export default function Leaderboard({
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px] font-bold">
-                    <th className="py-4 px-4 w-[12%] text-center">Thứ Hạng</th>
-                    <th className="py-4 px-4 w-[73%]">Tên Đội Thi</th>
+                    <th className="py-4 px-4 w-[10%] text-center">Thứ Hạng</th>
+                    <th className="py-4 px-4 w-[45%]">Tên Đội Thi</th>
                     <th className="py-4 px-4 w-[15%] text-center">Điểm Trung Bình</th>
+                    <th className="py-4 px-4 w-[15%]">Giải Thưởng</th>
+                    {isAssistant && <th className="py-4 px-4 w-[15%] text-center">Đã Trao?</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -478,6 +611,9 @@ export default function Leaderboard({
                           : rank === 3
                             ? "text-amber-600 bg-amber-700/10"
                             : "text-slate-400 bg-slate-800/40";
+
+                    const teamId = row.teamId?._id || row.teamId;
+                    const teamAward = awards.find((a: any) => (a.teamId?._id || a.teamId)?.toString() === teamId?.toString());
 
                     return (
                       <tr
@@ -505,6 +641,45 @@ export default function Leaderboard({
                             ? row.averageScore.toFixed(2)
                             : "—"}
                         </td>
+                        <td className="py-4 px-4">
+                          {teamAward ? (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-xs font-bold text-amber-400 flex items-center gap-1">
+                                <Trophy size={12} className="text-[#F27024] shrink-0" />
+                                {teamAward.title}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-mono">{teamAward.value}</span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-500">—</span>
+                          )}
+                        </td>
+                        {isAssistant && (
+                          <td className="py-4 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                            {teamAward ? (
+                              teamAward.disbursementStatus === 'delivered' ? (
+                                <button
+                                  onClick={() => handleRevokeAward(teamAward._id)}
+                                  disabled={awardActionLoading}
+                                  className="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400 text-[10px] font-mono font-bold rounded-lg cursor-pointer transition-all shrink-0"
+                                  title={`Đã trao bởi ${teamAward.disbursedBy?.fullName || "CTSV"} lúc ${new Date(teamAward.disbursedAt).toLocaleString('vi-VN')}. Click để hủy.`}
+                                >
+                                  Đã trao ✓
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleConfirmAward(teamAward._id)}
+                                  disabled={awardActionLoading}
+                                  className="px-2.5 py-1 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 text-[10px] font-mono font-bold rounded-lg cursor-pointer transition-all shrink-0"
+                                >
+                                  Chưa trao
+                                </button>
+                              )
+                            ) : (
+                              <span className="text-slate-600">-</span>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     );
                   })}

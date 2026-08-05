@@ -245,7 +245,7 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
   };
 
   const isSystemAdmin = user?.isSystemAdmin;
-  const isCoordinator = !!isSystemAdmin || roles?.some((r) => r.role === "coordinator") || roles?.some((r) => r.role === "admin_view");
+  const isCoordinator = !!isSystemAdmin || roles?.some((r) => r.role === "admin_view");
   const isJudge = roles?.some((r) => r.role === "judge") || isSystemAdmin;
   const isMentor = roles?.some((r) => r.role === "mentor");
   const isParticipant =
@@ -515,7 +515,7 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
                     {(() => {
                       if (isSystemAdmin) return "Quản trị viên Hệ thống";
                       const rolesList = [];
-                      if (roles?.some((r: any) => r.role === "coordinator" || r.role === "admin_view")) rolesList.push("Ban tổ chức");
+                      if (roles?.some((r: any) => r.role === "coordinator" || r.role === "admin_view")) rolesList.push("Admin");
                       if (roles?.some((r: any) => r.role === "judge")) rolesList.push("Giám khảo");
                       if (roles?.some((r: any) => r.role === "mentor")) rolesList.push("Mentor");
                       if (roles?.some((r: any) => r.role === "participant")) rolesList.push("Thí sinh");

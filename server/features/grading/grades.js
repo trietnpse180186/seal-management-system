@@ -42,7 +42,7 @@ router.get('/suggestion', authenticateToken, async (req, res) => {
         userId: req.user._id,
         eventId: team.eventId,
         roundId: roundId,
-        role: { $in: ['judge', 'coordinator', 'admin_view', 'student_assistant'] },
+        role: { $in: ['judge', 'admin_view', 'student_assistant'] },
         status: 'active'
       });
 
@@ -50,7 +50,7 @@ router.get('/suggestion', authenticateToken, async (req, res) => {
         userRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: team.eventId,
-          role: { $in: ['judge', 'coordinator', 'admin_view', 'student_assistant'] },
+          role: { $in: ['judge', 'admin_view', 'student_assistant'] },
           $or: [{ roundId: null }, { roundId: { $exists: false } }],
           status: 'active'
         });
@@ -133,7 +133,7 @@ router.get('/team/:teamId/achievements', authenticateToken, async (req, res) => 
         const coordRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: team.eventId,
-          role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
+          role: { $in: ['admin_view', 'student_assistant'] },
           status: 'active'
         });
         isCoordinatorOrAdmin = !!coordRole;
@@ -151,7 +151,7 @@ router.get('/team/:teamId/achievements', authenticateToken, async (req, res) => 
       const coordRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: team.eventId,
-        role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
+        role: { $in: ['admin_view', 'student_assistant'] },
         status: 'active'
       });
       authorized = !!coordRole;
@@ -217,7 +217,7 @@ router.get('/team/:teamId/round/:roundId', authenticateToken, async (req, res) =
         const coordRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: team.eventId,
-          role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
+          role: { $in: ['admin_view', 'student_assistant'] },
           status: 'active'
         });
         isCoordinatorOrAdmin = !!coordRole;
@@ -231,7 +231,7 @@ router.get('/team/:teamId/round/:roundId', authenticateToken, async (req, res) =
     const coordinatorRole = await EventRole.findOne({
       userId: req.user._id,
       eventId: team.eventId,
-      role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
+      role: { $in: ['admin_view', 'student_assistant'] },
       status: 'active'
     });
     const isCoordinator = req.user.isSystemAdmin || !!coordinatorRole;
@@ -242,7 +242,7 @@ router.get('/team/:teamId/round/:roundId', authenticateToken, async (req, res) =
         userId: req.user._id,
         eventId: team.eventId,
         roundId: req.params.roundId,
-        role: { $in: ['judge', 'coordinator', 'admin_view', 'student_assistant'] },
+        role: { $in: ['judge', 'admin_view', 'student_assistant'] },
         status: 'active'
       });
 
@@ -250,7 +250,7 @@ router.get('/team/:teamId/round/:roundId', authenticateToken, async (req, res) =
         userRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: team.eventId,
-          role: { $in: ['judge', 'coordinator', 'admin_view', 'student_assistant'] },
+          role: { $in: ['judge', 'admin_view', 'student_assistant'] },
           $or: [{ roundId: null }, { roundId: { $exists: false } }],
           status: 'active'
         });
@@ -343,7 +343,7 @@ router.post('/submit', authenticateToken, async (req, res) => {
       userId: req.user._id,
       eventId: team.eventId,
       roundId: roundId,
-      role: { $in: ['judge', 'coordinator', 'admin_view', 'student_assistant'] },
+      role: { $in: ['judge', 'admin_view', 'student_assistant'] },
       status: 'active'
     });
 
@@ -351,7 +351,7 @@ router.post('/submit', authenticateToken, async (req, res) => {
       userRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: team.eventId,
-        role: { $in: ['judge', 'coordinator', 'admin_view', 'student_assistant'] },
+        role: { $in: ['judge', 'admin_view', 'student_assistant'] },
         $or: [{ roundId: null }, { roundId: { $exists: false } }],
         status: 'active'
       });
@@ -408,14 +408,14 @@ router.post('/submit', authenticateToken, async (req, res) => {
 
     // Decide who is the judge
     let targetJudgeId = req.user._id;
-    if (req.body.judgeId && (req.user.isSystemAdmin || (userRole && ['coordinator', 'student_assistant'].includes(userRole.role)))) {
+    if (req.body.judgeId && (req.user.isSystemAdmin || (userRole && userRole.role === 'student_assistant'))) {
       targetJudgeId = req.body.judgeId;
     }
 
     // Create or update Score
     let score = await Score.findOne({ teamId, roundId, judgeId: targetJudgeId });
     if (score) {
-      if (score.status === 'locked' && !req.user.isSystemAdmin && !(userRole && ['coordinator', 'student_assistant'].includes(userRole.role))) {
+      if (score.status === 'locked' && !req.user.isSystemAdmin && !(userRole && userRole.role === 'student_assistant')) {
         return res.status(400).json({ message: 'Điểm số của bạn cho đội thi này trong vòng đấu này đã bị khoá.' });
       }
       score.totalRawScore = totalRawScore;
@@ -508,7 +508,7 @@ router.post('/lock-round', authenticateToken, async (req, res) => {
   try {
     // Auth Check
     if (!req.user.isSystemAdmin) {
-      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: { $in: ['coordinator', 'student_assistant'] } });
+      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: 'student_assistant' });
       if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
     }
 
@@ -619,6 +619,61 @@ router.post('/lock-round', authenticateToken, async (req, res) => {
     round.status = 'completed';
     await round.save();
 
+    // ----------------------------------------------------
+    // TỰ ĐỘNG GÁN GIẢI THƯỞNG CHO VÒNG CHUNG KẾT (Pha 2)
+    // ----------------------------------------------------
+    try {
+      const allRounds = await Round.find({ eventId });
+      const maxOrder = Math.max(...allRounds.map(r => r.order || 0));
+      if (round.order === maxOrder) {
+        const Prize = mongoose.model('Prize');
+        const Event = mongoose.model('Event');
+        
+        // Safety Check: Xóa giải thưởng cũ của vòng thi này để tránh trùng lặp
+        await Prize.deleteMany({ eventId, roundId });
+        
+        const event = await Event.findById(eventId);
+        if (event) {
+          const defaultPrizes = [
+            { title: '01 GIẢI NHẤT', amount: '7.000.000 đồng', benefits: 'Giấy chứng nhận + hoa' },
+            { title: '01 GIẢI NHÌ', amount: '5.000.000 đồng', benefits: 'Giấy chứng nhận + hoa' },
+            { title: '01 GIẢI BA', amount: '3.000.000 đồng', benefits: 'Giấy chứng nhận + hoa' },
+            { title: '01 GIẢI KHUYẾN KHÍCH', amount: '1.500.000 đồng', benefits: 'Giấy chứng nhận' }
+          ];
+          const eventPrizes = event.prizes && event.prizes.length > 0 ? event.prizes : defaultPrizes;
+          
+          // Lấy top các đội xếp hạng cao nhất
+          const savedRankings = await Ranking.find({ roundId }).sort({ rank: 1 }).limit(eventPrizes.length);
+          
+          const prizesToSave = [];
+          savedRankings.forEach(ranking => {
+            const prizeConfig = eventPrizes[ranking.rank - 1];
+            if (prizeConfig) {
+              prizesToSave.push({
+                eventId,
+                trackId: ranking.trackId,
+                roundId,
+                teamId: ranking.teamId,
+                rank: ranking.rank,
+                title: prizeConfig.title,
+                value: prizeConfig.amount,
+                description: prizeConfig.benefits,
+                announcedAt: new Date(),
+                disbursementStatus: 'pending'
+              });
+            }
+          });
+          
+          if (prizesToSave.length > 0) {
+            await Prize.insertMany(prizesToSave);
+          }
+        }
+      }
+    } catch (prizeErr) {
+      console.error('Error auto-assigning prizes:', prizeErr.message);
+    }
+    // ----------------------------------------------------
+
     // Gửi thông báo in-app tới toàn bộ thành viên trong bảng đấu
     const TeamMember = mongoose.model('TeamMember');
 
@@ -686,7 +741,7 @@ router.post('/unlock-round', authenticateToken, async (req, res) => {
   try {
     // Auth Check
     if (!req.user.isSystemAdmin) {
-      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: { $in: ['coordinator', 'student_assistant'] } });
+      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: 'student_assistant' });
       if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
     }
 
@@ -703,8 +758,10 @@ router.post('/unlock-round', authenticateToken, async (req, res) => {
       });
     }
 
-    // 1. Delete generated rankings for this round
+    // 1. Delete generated rankings and prizes for this round
     await Ranking.deleteMany({ roundId });
+    const Prize = mongoose.model('Prize');
+    await Prize.deleteMany({ eventId, roundId });
 
     // 2. Unlock all scores (set status back to 'submitted')
     await Score.updateMany({ roundId }, { status: 'submitted', $unset: { lockedAt: 1 } });
@@ -753,7 +810,7 @@ router.get('/leaderboard/:roundId', authenticateToken, async (req, res) => {
       const coordRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: round.eventId,
-        role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
+        role: { $in: ['admin_view', 'student_assistant'] },
         status: 'active'
       });
       isCoordinator = !!coordRole;
@@ -800,7 +857,7 @@ router.get('/live-ranking/:roundId', authenticateToken, async (req, res) => {
       const coordRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: round.eventId,
-        role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
+        role: { $in: ['admin_view', 'student_assistant'] },
         status: 'active'
       });
       isCoordinator = !!coordRole;
@@ -909,7 +966,7 @@ router.get('/judge-ranking/:roundId', authenticateToken, async (req, res) => {
       const roleRecord = await EventRole.findOne({
         userId: req.user._id,
         eventId: round.eventId,
-        role: { $in: ['judge', 'coordinator', 'student_assistant'] },
+        role: { $in: ['judge', 'student_assistant'] },
         status: 'active'
       });
       hasAccess = !!roleRecord;
@@ -1024,7 +1081,7 @@ router.post('/advance-round', authenticateToken, async (req, res) => {
   try {
     // Auth Check
     if (!req.user.isSystemAdmin) {
-      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: { $in: ['coordinator', 'student_assistant'] } });
+      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: 'student_assistant' });
       if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
     }
 
@@ -1144,7 +1201,7 @@ router.post('/rollback-round', authenticateToken, async (req, res) => {
   try {
     // Auth Check
     if (!req.user.isSystemAdmin) {
-      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: { $in: ['coordinator', 'student_assistant'] }, status: 'active' });
+      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: 'student_assistant', status: 'active' });
       if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
     }
 
@@ -1246,13 +1303,7 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
         status: 'active'
       });
       if (roleRecord) {
-        const isCoord = await EventRole.findOne({
-          userId: req.user._id,
-          eventId: round.eventId,
-          role: 'coordinator',
-          status: 'active'
-        });
-        if (!isCoord && !req.user.isSystemAdmin) {
+        if (!req.user.isSystemAdmin) {
           targetJudgeId = req.user._id.toString();
         }
       }

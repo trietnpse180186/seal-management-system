@@ -227,14 +227,20 @@ export default function TracksTab({
     }
   }, [displayableTracks, selectedTrack, setSelectedTrack]);
 
-  const trackMembers = eventRoles.filter(
-    (role: any) =>
-      (role.role === "judge" || role.role === "mentor") &&
-      (
-        String(role.trackId?._id || role.trackId) === String(selectedTrack?._id) ||
-        (selectedTrack?.roundId && String(role.roundId?._id || role.roundId) === String(selectedTrack.roundId?._id || selectedTrack.roundId))
-      ),
-  );
+  const trackMembers = eventRoles.filter((role: any) => {
+    if (role.role !== "judge" && role.role !== "mentor") return false;
+    const roleTrackId = role.trackId?._id || role.trackId;
+    const roleRoundId = role.roundId?._id || role.roundId;
+    const selectedTrackRoundId = selectedTrack?.roundId?._id || selectedTrack?.roundId;
+
+    if (roleTrackId) {
+      return String(roleTrackId) === String(selectedTrack?._id);
+    }
+    if (roleRoundId && selectedTrackRoundId) {
+      return String(roleRoundId) === String(selectedTrackRoundId);
+    }
+    return false;
+  });
 
   useEffect(() => {
     if (editingTrack || !trackRoundId) return;

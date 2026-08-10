@@ -5,6 +5,9 @@ const XLSX = require('xlsx-js-style');
 
 const Score = mongoose.model('Score');
 const ScoreDetail = mongoose.model('ScoreDetail');
+const ScoreAudit = mongoose.model('ScoreAudit');
+const GradingAssistRequest = mongoose.model('GradingAssistRequest');
+const Notification = mongoose.model('Notification');
 const Rubric = mongoose.model('Rubric');
 const Criterion = mongoose.model('Criterion');
 const Team = mongoose.model('Team');
@@ -19,6 +22,47 @@ const Track = mongoose.model('Track');
 const aiService = require('../github-ai/aiService');
 const { authenticateToken } = require('../auth/authMiddleware');
 const { addInAppJob, isQueueAvailable } = require('../notifications/notificationQueue');
+const { validateScoreSubmissionPolicy, buildScoreChangeSummary } = require('./scorePolicy');
+
+const AUTO_GRANT_WINDOW_MS = 5 * 60 * 1000;
+
+function isAutoAssistWindow(round) {
+  if (!round?.gradingEndTime) return false;
+  return new Date(round.gradingEndTime).getTime() - Date.now() <= AUTO_GRANT_WINDOW_MS;
+}
+
+async function findCoordinatorRole(userId, eventId) {
+  return EventRole.findOne({
+    userId,
+    eventId,
+    role: { $in: ['admin_view', 'student_assistant'] },
+    status: 'active',
+  });
+}
+
+async function resolveAssistAccess({ team, round, judgeId, coordinatorId }) {
+  let request = await GradingAssistRequest.findOne({
+    teamId: team._id,
+    roundId: round._id,
+    judgeId,
+    coordinatorId,
+  });
+
+  if (isAutoAssistWindow(round) && !['approved', 'auto_granted'].includes(request?.status)) {
+    request = await GradingAssistRequest.findOneAndUpdate(
+      { teamId: team._id, roundId: round._id, judgeId, coordinatorId },
+      { $set: { status: 'auto_granted', autoGrantedAt: new Date() } },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
+  }
+
+  return {
+    allowed: ['approved', 'auto_granted'].includes(request?.status),
+    request,
+    autoGrantAvailable: isAutoAssistWindow(round),
+    gradingEndTime: round.gradingEndTime,
+  };
+}
 
 /**
  * @route   GET /api/grades/suggestion
@@ -311,6 +355,210 @@ router.get('/team/:teamId/round/:roundId', authenticateToken, async (req, res) =
 });
 
 /**
+ * @route   GET /api/grades/team/:teamId/round/:roundId/history
+ * @desc    Fetch score audit history for a team in a round
+ * @access  Private (Judges / Coords)
+ */
+router.get('/team/:teamId/round/:roundId/history', authenticateToken, async (req, res) => {
+  try {
+    const team = await Team.findById(req.params.teamId);
+    if (!team) return res.status(404).json({ message: 'Team not found.' });
+
+    const Event = mongoose.model('Event');
+    const parentEvent = await Event.findById(team.eventId);
+    if (parentEvent && parentEvent.isArchived) {
+      let isCoordinatorOrAdmin = req.user.isSystemAdmin;
+      if (!isCoordinatorOrAdmin) {
+        const coordRole = await EventRole.findOne({
+          userId: req.user._id,
+          eventId: team.eventId,
+          role: { $in: ['admin_view', 'student_assistant'] },
+          status: 'active'
+        });
+        isCoordinatorOrAdmin = !!coordRole;
+      }
+      if (!isCoordinatorOrAdmin) {
+        return res.status(403).json({ message: 'Sự kiện của đội thi này đã bị ẩn. Bạn không có quyền truy cập lịch sử điểm.' });
+      }
+    }
+
+    const history = await ScoreAudit.find({
+      teamId: req.params.teamId,
+      roundId: req.params.roundId,
+    }).sort({ createdAt: -1 }).populate('actorId', 'fullName email').lean();
+
+    res.json({ history });
+  } catch (error) {
+    console.error('Fetch Score History Error:', error.message);
+    res.status(500).json({ message: 'Server error retrieving score history.' });
+  }
+});
+
+router.get('/assist/status', authenticateToken, async (req, res) => {
+  try {
+    const { teamId, roundId, judgeId } = req.query;
+    if (!teamId || !roundId || !judgeId) {
+      return res.status(400).json({ message: 'Thiếu thông tin đội, vòng thi hoặc giám khảo.' });
+    }
+
+    const [team, round, existingScore] = await Promise.all([
+      Team.findById(teamId),
+      Round.findById(roundId),
+      Score.findOne({ teamId, roundId, judgeId }),
+    ]);
+    if (!team || !round) return res.status(404).json({ message: 'Không tìm thấy đội hoặc vòng thi.' });
+
+    const coordinatorRole = await findCoordinatorRole(req.user._id, team.eventId);
+    if (!req.user.isSystemAdmin && !coordinatorRole) {
+      return res.status(403).json({ message: 'Bạn không có quyền quản lý hoạt động chấm điểm.' });
+    }
+
+    const access = await resolveAssistAccess({
+      team,
+      round,
+      judgeId,
+      coordinatorId: req.user._id,
+    });
+    res.json({
+      hasScore: Boolean(existingScore),
+      allowed: !existingScore && access.allowed,
+      status: access.request?.status || 'not_requested',
+      autoGrantAvailable: access.autoGrantAvailable,
+      gradingEndTime: access.gradingEndTime,
+    });
+  } catch (error) {
+    console.error('Fetch Assist Status Error:', error.message);
+    res.status(500).json({ message: 'Không thể kiểm tra quyền hỗ trợ chấm điểm.' });
+  }
+});
+
+router.post('/assist/remind', authenticateToken, async (req, res) => {
+  try {
+    const { teamId, roundId, judgeId } = req.body;
+    const [team, round] = await Promise.all([Team.findById(teamId), Round.findById(roundId)]);
+    if (!team || !round || !judgeId) return res.status(400).json({ message: 'Thông tin nhắc chấm điểm không hợp lệ.' });
+
+    const coordinatorRole = await findCoordinatorRole(req.user._id, team.eventId);
+    if (!req.user.isSystemAdmin && !coordinatorRole) {
+      return res.status(403).json({ message: 'Bạn không có quyền gửi nhắc nhở.' });
+    }
+    const existingScore = await Score.exists({ teamId, roundId, judgeId });
+    if (existingScore) return res.status(409).json({ message: 'Giám khảo đã hoàn tất chấm điểm cho đội này.' });
+
+    const recentReminder = await Notification.exists({
+      userId: judgeId,
+      type: 'grading_reminder',
+      'metadata.teamId': teamId,
+      'metadata.roundId': roundId,
+      createdAt: { $gte: new Date(Date.now() - AUTO_GRANT_WINDOW_MS) },
+    });
+    if (recentReminder) return res.status(429).json({ message: 'Đã gửi nhắc nhở trong 5 phút gần đây.' });
+
+    await Notification.create({
+      userId: judgeId,
+      type: 'grading_reminder',
+      title: 'Nhắc hoàn tất chấm điểm',
+      body: `Điều phối viên nhắc bạn hoàn tất chấm điểm cho đội ${team.name}.`,
+      metadata: { teamId, roundId },
+      channel: 'in_app',
+      status: 'sent',
+      sentAt: new Date(),
+    });
+    res.json({ message: 'Đã gửi nhắc nhở đến giám khảo.' });
+  } catch (error) {
+    console.error('Send Grading Reminder Error:', error.message);
+    res.status(500).json({ message: 'Không thể gửi nhắc nhở chấm điểm.' });
+  }
+});
+
+router.post('/assist/request', authenticateToken, async (req, res) => {
+  try {
+    const { teamId, roundId, judgeId } = req.body;
+    const [team, round] = await Promise.all([Team.findById(teamId), Round.findById(roundId)]);
+    if (!team || !round || !judgeId) return res.status(400).json({ message: 'Thông tin đề nghị hỗ trợ không hợp lệ.' });
+
+    const coordinatorRole = await findCoordinatorRole(req.user._id, team.eventId);
+    if (!req.user.isSystemAdmin && !coordinatorRole) {
+      return res.status(403).json({ message: 'Bạn không có quyền gửi đề nghị hỗ trợ.' });
+    }
+    if (await Score.exists({ teamId, roundId, judgeId })) {
+      return res.status(409).json({ message: 'Giám khảo đã hoàn tất chấm điểm cho đội này.' });
+    }
+
+    const access = await resolveAssistAccess({ team, round, judgeId, coordinatorId: req.user._id });
+    if (access.allowed) {
+      return res.json({ message: 'Quyền hỗ trợ chấm điểm đã được mở.', status: access.request.status });
+    }
+
+    const request = await GradingAssistRequest.findOneAndUpdate(
+      { teamId, roundId, judgeId, coordinatorId: req.user._id },
+      { $set: { status: 'pending' }, $unset: { respondedAt: 1, autoGrantedAt: 1 } },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
+    await Notification.create({
+      userId: judgeId,
+      type: 'grading_assist_request',
+      title: 'Đề nghị hỗ trợ chấm điểm',
+      body: `Điều phối viên đề nghị được hỗ trợ hoàn tất bài chấm cho đội ${team.name}.`,
+      metadata: { requestId: request._id, teamId, roundId },
+      channel: 'in_app',
+      status: 'sent',
+      sentAt: new Date(),
+    });
+    res.json({ message: 'Đã gửi đề nghị đến giám khảo.', status: request.status });
+  } catch (error) {
+    console.error('Create Assist Request Error:', error.message);
+    res.status(500).json({ message: 'Không thể gửi đề nghị hỗ trợ chấm điểm.' });
+  }
+});
+
+router.patch('/assist/:requestId/respond', authenticateToken, async (req, res) => {
+  try {
+    const { decision } = req.body;
+    if (!['approved', 'rejected'].includes(decision)) {
+      return res.status(400).json({ message: 'Phản hồi không hợp lệ.' });
+    }
+    const request = await GradingAssistRequest.findOne({
+      _id: req.params.requestId,
+      judgeId: req.user._id,
+      status: 'pending',
+    }).populate('teamId', 'name');
+    if (!request) return res.status(404).json({ message: 'Đề nghị không còn hiệu lực.' });
+
+    request.status = decision;
+    request.respondedAt = new Date();
+    await request.save();
+    await Notification.updateMany(
+      {
+        userId: req.user._id,
+        type: 'grading_assist_request',
+        'metadata.requestId': request._id,
+      },
+      {
+        $set: {
+          isRead: true,
+          'metadata.requestStatus': decision,
+        },
+      },
+    );
+    await Notification.create({
+      userId: request.coordinatorId,
+      type: 'grading_assist_response',
+      title: decision === 'approved' ? 'Đã chấp thuận hỗ trợ chấm điểm' : 'Đã từ chối hỗ trợ chấm điểm',
+      body: `Giám khảo đã ${decision === 'approved' ? 'chấp thuận' : 'từ chối'} đề nghị hỗ trợ cho đội ${request.teamId?.name || ''}.`,
+      metadata: { requestId: request._id, status: decision },
+      channel: 'in_app',
+      status: 'sent',
+      sentAt: new Date(),
+    });
+    res.json({ message: decision === 'approved' ? 'Đã chấp thuận đề nghị.' : 'Đã từ chối đề nghị.', status: decision });
+  } catch (error) {
+    console.error('Respond Assist Request Error:', error.message);
+    res.status(500).json({ message: 'Không thể cập nhật phản hồi.' });
+  }
+});
+
+/**
  * @route   POST /api/grades/submit
  * @desc    Submit score for a team by a judge
  * @access  Private (Judges / Coords)
@@ -371,6 +619,46 @@ router.post('/submit', authenticateToken, async (req, res) => {
     const repo = await GithubRepository.findOne({ teamId });
     const snapshot = await RepositorySnapshot.findOne({ teamId, roundId });
 
+    const existingScores = await Score.find({ teamId, roundId }).sort({ createdAt: 1 });
+    let targetJudgeId = req.user._id;
+    if (req.body.judgeId && (
+      req.user.isSystemAdmin
+      || (userRole && ['admin_view', 'student_assistant'].includes(userRole.role))
+    )) {
+      targetJudgeId = req.body.judgeId;
+    }
+
+    if (targetJudgeId.toString() !== req.user._id.toString()) {
+      const assistAccess = await resolveAssistAccess({
+        team,
+        round,
+        judgeId: targetJudgeId,
+        coordinatorId: req.user._id,
+      });
+      if (!assistAccess.allowed) {
+        return res.status(403).json({
+          message: assistAccess.request?.status === 'pending'
+            ? 'Đang chờ giám khảo chấp thuận đề nghị hỗ trợ chấm điểm.'
+            : 'Bạn chưa được giám khảo cấp quyền hỗ trợ chấm điểm cho đội này.',
+        });
+      }
+    }
+
+    const policy = validateScoreSubmissionPolicy(existingScores, userRole?.role || 'judge', targetJudgeId);
+    if (!policy.allowed) {
+      await ScoreAudit.create({
+        teamId,
+        roundId,
+        judgeId: targetJudgeId,
+        actorId: req.user._id,
+        actorRole: userRole?.role || 'judge',
+        action: 'blocked_regrade',
+        summary: policy.reason,
+        reason: policy.reason,
+      });
+      return res.status(409).json({ message: policy.reason });
+    }
+
     // Calculate score totals
     let totalRawScore = 0;
     let totalWeightedScore = 0;
@@ -406,15 +694,13 @@ router.post('/submit', authenticateToken, async (req, res) => {
       });
     }
 
-    // Decide who is the judge
-    let targetJudgeId = req.user._id;
-    if (req.body.judgeId && (req.user.isSystemAdmin || (userRole && userRole.role === 'student_assistant'))) {
-      targetJudgeId = req.body.judgeId;
-    }
-
-    // Create or update Score
+    let previousScore = null;
     let score = await Score.findOne({ teamId, roundId, judgeId: targetJudgeId });
     if (score) {
+      previousScore = {
+        overallComment: score.overallComment,
+        details: await ScoreDetail.find({ scoreId: score._id }).lean(),
+      };
       if (score.status === 'locked' && !req.user.isSystemAdmin && !(userRole && userRole.role === 'student_assistant')) {
         return res.status(400).json({ message: 'Điểm số của bạn cho đội thi này trong vòng đấu này đã bị khoá.' });
       }
@@ -451,6 +737,31 @@ router.post('/submit', authenticateToken, async (req, res) => {
       ...d
     }));
     await ScoreDetail.insertMany(preparedDetails);
+
+    const auditAction = previousScore ? 'regrade_score' : 'submit_score';
+    const changeDetails = buildScoreChangeSummary(previousScore, {
+      overallComment,
+      details: preparedDetails,
+    }, criteriaList);
+
+    await ScoreAudit.create({
+      scoreId: score._id,
+      teamId,
+      roundId,
+      judgeId: targetJudgeId,
+      actorId: req.user._id,
+      actorRole: userRole?.role || 'judge',
+      action: auditAction,
+      summary: previousScore ? 'Kết quả chấm điểm đã được điều chỉnh theo quy trình kiểm soát.' : 'Giám khảo đã chấm điểm cho đội thi.',
+      changeDetails,
+      before: previousScore,
+      after: {
+        overallComment,
+        details: preparedDetails,
+        totalRawScore,
+        totalWeightedScore: score.totalWeightedScore,
+      },
+    });
 
     // Create EventLog
     const EventLog = mongoose.model('EventLog');
@@ -896,7 +1207,11 @@ router.get('/live-ranking/:roundId', authenticateToken, async (req, res) => {
         trackId: team.trackId,
         averageScore,
         judgeCount,
-        judges: teamScores.map(s => ({ fullName: s.judgeId?.fullName, score: s.totalWeightedScore })),
+        judges: teamScores.map(s => ({
+          _id: s.judgeId?._id,
+          fullName: s.judgeId?.fullName,
+          score: s.totalWeightedScore
+        })),
         isLive: true
       };
     });

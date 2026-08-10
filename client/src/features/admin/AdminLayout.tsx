@@ -13,6 +13,7 @@ import {
   Camera,
   PanelLeftClose,
   PanelLeftOpen,
+  BriefcaseBusiness,
 } from "lucide-react";
 
 interface AdminLayoutProps {
@@ -129,6 +130,11 @@ export default function AdminLayout({
       path: "/admin/users",
       label: "Quản lý tài khoản",
       icon: Users,
+    },
+    {
+      path: "/admin/personnel",
+      label: "Quản lý nhân sự",
+      icon: BriefcaseBusiness,
     },
     {
       path: "/admin/grades",

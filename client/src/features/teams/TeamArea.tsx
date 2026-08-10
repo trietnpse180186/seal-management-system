@@ -584,7 +584,10 @@ export default function TeamArea() {
         `http://localhost:5000/api/teams/${data.team._id}/basic-info`,
         {
           members: editMembers.map((m) => ({
-            userId: m.userId,
+            userId:
+              m.userId && typeof m.userId === "object"
+                ? m.userId._id || m.userId
+                : m.userId,
             fullName: m.fullName,
             githubUsername: m.githubUsername,
             studentId: m.studentId || "",

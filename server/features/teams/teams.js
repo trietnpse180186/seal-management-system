@@ -1388,7 +1388,7 @@ router.get("/my-team", authenticateToken, async (req, res) => {
 
     const members = await TeamMember.find({ teamId: team._id }).populate(
       "userId",
-      "fullName email studentId githubUsername avatarUrl university",
+      "fullName email studentId githubUsername avatarUrl university height weight",
     );
 
     const repo = await GithubRepository.findOne({ teamId: team._id });
@@ -1672,7 +1672,13 @@ router.put("/:teamId/basic-info", authenticateToken, async (req, res) => {
           weight
         });
       } else {
-        const { userId, fullName, githubUsername, studentId, university, height, weight } = m;
+        const rawUserId = m.userId;
+        const userId = rawUserId
+          ? typeof rawUserId === "object"
+            ? String(rawUserId._id || rawUserId)
+            : String(rawUserId)
+          : null;
+        const { fullName, githubUsername, studentId, university, height, weight } = m;
 
         if (!userId) {
           errors.push(
@@ -1863,6 +1869,8 @@ router.get("/import-template", authenticateToken, (req, res) => {
       "GitHub Username *",
       "MSSV",
       "Trường Đại Học",
+      "Chiều Cao (cm) *",
+      "Cân Nặng (kg) *",
     ];
 
     const sampleRows = [
@@ -1874,6 +1882,8 @@ router.get("/import-template", authenticateToken, (req, res) => {
         req.user.githubUsername || "nguyenvana-dev",
         req.user.studentId || "SE123456",
         req.user.university || "Đại học FPT",
+        req.user.height || 170,
+        req.user.weight || 65,
       ],
       [
         "",
@@ -1883,6 +1893,8 @@ router.get("/import-template", authenticateToken, (req, res) => {
         "tranthib-dev",
         "SE123457",
         "Đại học FPT",
+        165,
+        52,
       ],
     ];
 
@@ -2046,6 +2058,10 @@ router.post(
         const github = String(row[4] || "").trim();
         const studentId = String(row[5] || "").trim();
         const university = normalizeUniversityName(String(row[6] || "").trim());
+        const heightValue = String(row[7] ?? "").trim();
+        const weightValue = String(row[8] ?? "").trim();
+        const height = Number(heightValue);
+        const weight = Number(weightValue);
 
         if (!teamName) {
           errors.push(`Dòng ${rowNum}: Tên Đội Ngũ là bắt buộc.`);
@@ -2067,6 +2083,22 @@ router.post(
         }
         if (!github) {
           errors.push(`Dòng ${rowNum}: GitHub Username là bắt buộc.`);
+          continue;
+        }
+        if (!heightValue) {
+          errors.push(`Dòng ${rowNum}: Chiều Cao là bắt buộc.`);
+          continue;
+        }
+        if (!Number.isFinite(height) || height <= 0) {
+          errors.push(`Dòng ${rowNum}: Chiều Cao phải là một số dương.`);
+          continue;
+        }
+        if (!weightValue) {
+          errors.push(`Dòng ${rowNum}: Cân Nặng là bắt buộc.`);
+          continue;
+        }
+        if (!Number.isFinite(weight) || weight <= 0) {
+          errors.push(`Dòng ${rowNum}: Cân Nặng phải là một số dương.`);
           continue;
         }
 
@@ -2111,6 +2143,8 @@ router.post(
           githubUsername: github,
           studentId,
           university,
+          height,
+          weight,
           rowNum,
         };
 
@@ -2218,6 +2252,8 @@ router.post(
             studentId: leader.studentId,
             githubUsername: leader.githubUsername,
             university: leader.university,
+            height: leader.height,
+            weight: leader.weight,
             isApproved: true,
           });
           await leaderUser.save();
@@ -2227,6 +2263,8 @@ router.post(
           if (leader.githubUsername)
             leaderUser.githubUsername = leader.githubUsername;
           if (leader.university) leaderUser.university = leader.university;
+          leaderUser.height = leader.height;
+          leaderUser.weight = leader.weight;
           await leaderUser.save();
         }
 
@@ -2273,6 +2311,8 @@ router.post(
               studentId: mData.studentId,
               githubUsername: mData.githubUsername,
               university: mData.university,
+              height: mData.height,
+              weight: mData.weight,
               isApproved: true,
             });
             await memberUser.save();
@@ -2282,6 +2322,8 @@ router.post(
             if (mData.githubUsername)
               memberUser.githubUsername = mData.githubUsername;
             if (mData.university) memberUser.university = mData.university;
+            memberUser.height = mData.height;
+            memberUser.weight = mData.weight;
             await memberUser.save();
           }
 

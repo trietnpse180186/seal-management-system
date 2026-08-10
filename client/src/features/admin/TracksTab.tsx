@@ -81,6 +81,10 @@ const isFinalRound = (round: any) => {
     name === "final"
   );
 };
+
+// Personnel assignment is temporarily centralized in Admin > Quản lý nhân sự.
+const SHOW_TRACK_PERSONNEL_ACTIONS = false;
+
 export default function TracksTab({
   selectedEvent,
   tracks,
@@ -655,7 +659,7 @@ export default function TracksTab({
                   )
                 </span>
               </h3>
-              {!readOnly && (
+              {SHOW_TRACK_PERSONNEL_ACTIONS && !readOnly && (
                 <label className="flex items-center gap-1 bg-slate-900 border border-slate-800 hover:border-slate-700 text-[10px] font-mono font-bold text-slate-300 px-2.5 py-1.5 rounded-lg cursor-pointer transition-all hover:bg-slate-800">
                   <span>Import Giám khảo</span>
                   <input
@@ -709,7 +713,7 @@ export default function TracksTab({
                         )}
                       </div>
                     </div>
-                    {handleRemoveRole && !readOnly && (
+                    {SHOW_TRACK_PERSONNEL_ACTIONS && handleRemoveRole && !readOnly && (
                       <button
                         onClick={() => handleRemoveRole(role._id)}
                         className="text-rose-500 hover:text-rose-400 font-bold text-[9px] uppercase font-mono border border-rose-500/10 hover:border-rose-500/30 px-2 py-0.5 rounded bg-rose-500/5 cursor-pointer animate-all"
@@ -728,7 +732,7 @@ export default function TracksTab({
             </div>
 
             {/* Form to add member */}
-            {handleAssignRoleForTrack && !readOnly && (
+            {SHOW_TRACK_PERSONNEL_ACTIONS && handleAssignRoleForTrack && !readOnly && (
               <form
                 onSubmit={async (e) => {
                   e.preventDefault();

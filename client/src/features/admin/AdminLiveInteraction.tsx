@@ -11,6 +11,10 @@ import {
   Save,
   Activity,
   ChevronRight,
+  History,
+  ShieldCheck,
+  BellRing,
+  UserRoundCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import CustomSelect from "../shared/CustomSelect";
@@ -25,6 +29,7 @@ export default function AdminLiveInteraction() {
   const [selectedEventId, setSelectedEventId] = useState("");
   const [rounds, setRounds] = useState<any[]>([]);
   const [selectedRoundId, setSelectedRoundId] = useState("");
+  const [selectedRankingTrackId, setSelectedRankingTrackId] = useState("");
 
   // Data states
   const [teams, setTeams] = useState<any[]>([]);
@@ -46,6 +51,24 @@ export default function AdminLiveInteraction() {
   }>({});
   const [overrideComment, setOverrideComment] = useState("");
   const [isSubmittingOverride, setIsSubmittingOverride] = useState(false);
+  const [isAssistActionLoading, setIsAssistActionLoading] = useState(false);
+  const [assistAccess, setAssistAccess] = useState({
+    allowed: false,
+    status: "not_requested",
+    autoGrantAvailable: false,
+    gradingEndTime: null as string | null,
+  });
+  const [scoreAccessState, setScoreAccessState] = useState<{
+    canSubmit: boolean;
+    reason: string;
+    existingScores: any[];
+    history: any[];
+  }>({
+    canSubmit: true,
+    reason: "",
+    existingScores: [],
+    history: [],
+  });
 
   // Initial fetch
   useEffect(() => {
@@ -157,10 +180,26 @@ export default function AdminLiveInteraction() {
       const res = await axios.get("http://localhost:5000/api/events", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setEvents(res.data);
-      if (res.data.length > 0) {
-        setSelectedEventId(res.data[0]._id);
-      }
+      const eventPriority: Record<string, number> = {
+        ongoing: 0,
+        prepare: 1,
+        registration: 2,
+        draft: 3,
+        completed: 4,
+        cancelled: 5,
+      };
+      const sortedEvents = [...res.data].sort(
+        (a: any, b: any) => (eventPriority[a.status] ?? 99) - (eventPriority[b.status] ?? 99),
+      );
+      setEvents(sortedEvents);
+
+      const activeEvent = sortedEvents.find(
+        (event: any) => event.status === "ongoing" && !event.isArchived,
+      );
+      const upcomingEvent = sortedEvents.find(
+        (event: any) => ["prepare", "registration"].includes(event.status) && !event.isArchived,
+      );
+      setSelectedEventId(activeEvent?._id || upcomingEvent?._id || "");
     } catch (err) {
       toast.error("Không thể tải danh sách cuộc thi");
     }
@@ -176,7 +215,15 @@ export default function AdminLiveInteraction() {
       );
       setRounds(res.data.rounds || []);
       if (res.data.rounds && res.data.rounds.length > 0) {
-        setSelectedRoundId(res.data.rounds[0]._id);
+        const currentRound = res.data.rounds.find(
+          (round: any) => ["active", "scoring"].includes(round.status),
+        );
+        const upcomingRound = res.data.rounds.find(
+          (round: any) => round.status === "pending",
+        );
+        setSelectedRoundId(currentRound?._id || upcomingRound?._id || "");
+      } else {
+        setSelectedRoundId("");
       }
     } catch (err) {
       toast.error("Không thể tải chi tiết cuộc thi");
@@ -241,6 +288,12 @@ export default function AdminLiveInteraction() {
   };
 
   const fetchJudgeScoresForTeam = async () => {
+    if (!selectedTeam || !selectedRoundId) {
+      setScoreAccessState({ canSubmit: true, reason: "", existingScores: [], history: [] });
+      setAssistAccess({ allowed: false, status: "not_requested", autoGrantAvailable: false, gradingEndTime: null });
+      return;
+    }
+
     try {
       const res = await axios.get(
         `http://localhost:5000/api/grades/team/${selectedTeam.teamId._id}/round/${selectedRoundId}`,
@@ -248,23 +301,111 @@ export default function AdminLiveInteraction() {
           headers: { Authorization: `Bearer ${token}` },
         },
       );
-      const judgeScore = res.data.scores?.find(
-        (s: any) => s.judgeId?._id === selectedJudgeId,
-      );
-      if (judgeScore) {
-        const scoresMap: { [criterionId: string]: number } = {};
-        judgeScore.details?.forEach((d: any) => {
-          scoresMap[d.criterionId?._id || d.criterionId] = d.scoreValue;
-        });
-        setOverrideScores(scoresMap);
-        setOverrideComment(judgeScore.overallComment || "");
+
+      const normalizedScores = Array.isArray(res.data.scores)
+        ? res.data.scores
+        : Array.isArray(res.data.judgesScores)
+          ? res.data.judgesScores
+          : [];
+
+      const selectedJudgeHasScore = selectedJudgeId
+        ? normalizedScores.some((entry: any) => {
+            const judge = entry.judge || entry.judgeId || entry.judgeId?._id || entry.judge?._id;
+            const judgeId = judge?._id ? judge._id.toString() : judge?._id?.toString() || judge?.toString();
+            return judgeId === selectedJudgeId;
+          })
+        : false;
+      const selectedJudgeScore = selectedJudgeId
+        ? normalizedScores.find((entry: any) => {
+            const judge = entry.judge || entry.judgeId;
+            const judgeId = judge?._id?.toString() || judge?.toString();
+            return judgeId === selectedJudgeId;
+          })
+        : null;
+      const hasExistingScore = Boolean(res.data.score || selectedJudgeHasScore);
+
+      if (selectedJudgeScore) {
+        const scoresByCriterion = (selectedJudgeScore.details || []).reduce(
+          (scores: Record<string, number>, detail: any) => {
+            const criterionId = detail.criterionId?._id?.toString()
+              || detail.criterionId?.toString();
+            if (criterionId) scores[criterionId] = detail.scoreValue;
+            return scores;
+          },
+          {},
+        );
+        setOverrideScores(scoresByCriterion);
+        setOverrideComment(selectedJudgeScore.score?.overallComment || "");
       } else {
-        // Reset scores
         setOverrideScores({});
         setOverrideComment("");
       }
+      setScoreAccessState((prev) => ({
+        ...prev,
+        canSubmit: !hasExistingScore,
+        reason: hasExistingScore
+          ? ""
+          : "",
+        existingScores: normalizedScores,
+      }));
+
+      if (selectedJudgeId) {
+        const assistRes = await axios.get(
+          "http://localhost:5000/api/grades/assist/status",
+          {
+            params: {
+              teamId: selectedTeam.teamId._id,
+              roundId: selectedRoundId,
+              judgeId: selectedJudgeId,
+            },
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+        setAssistAccess({
+          allowed: Boolean(assistRes.data.allowed),
+          status: assistRes.data.status || "not_requested",
+          autoGrantAvailable: Boolean(assistRes.data.autoGrantAvailable),
+          gradingEndTime: assistRes.data.gradingEndTime || null,
+        });
+      }
+
+      const historyRes = await axios.get(
+        `http://localhost:5000/api/grades/team/${selectedTeam.teamId._id}/round/${selectedRoundId}/history`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      setScoreAccessState((prev) => ({
+        ...prev,
+        history: historyRes.data.history || [],
+      }));
     } catch (err) {
       console.error("Error fetching judge scores for team", err);
+    }
+  };
+
+  const handleAssistAction = async (action: "remind" | "request") => {
+    if (!selectedTeam || !selectedRoundId || !selectedJudgeId) {
+      toast.error("Vui lòng chọn đội thi và giám khảo.");
+      return;
+    }
+    try {
+      setIsAssistActionLoading(true);
+      const response = await axios.post(
+        `http://localhost:5000/api/grades/assist/${action}`,
+        {
+          teamId: selectedTeam.teamId._id,
+          roundId: selectedRoundId,
+          judgeId: selectedJudgeId,
+        },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      toast.success(response.data.message);
+      await fetchJudgeScoresForTeam();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Không thể gửi yêu cầu đến giám khảo.");
+    } finally {
+      setIsAssistActionLoading(false);
     }
   };
 
@@ -304,6 +445,18 @@ export default function AdminLiveInteraction() {
   const handleSaveOverride = async () => {
     if (!selectedTeam || !rubric || !selectedJudgeId) {
       toast.error("Vui lòng chọn đầy đủ Đội thi, Giám khảo và Rubric.");
+      return;
+    }
+
+    if (!scoreAccessState.canSubmit) {
+      toast.error(
+        scoreAccessState.reason || "Kết quả chấm điểm đã được gửi.",
+      );
+      return;
+    }
+
+    if (!assistAccess.allowed) {
+      toast.error("Bạn cần được giám khảo chấp thuận trước khi hỗ trợ chấm điểm.");
       return;
     }
 
@@ -364,6 +517,19 @@ export default function AdminLiveInteraction() {
     }
     groupedTeams[trackId].items.push(item);
   });
+
+  const rankingTrackEntries = Object.entries(groupedTeams);
+  const activeRankingTrack = groupedTeams[selectedRankingTrackId]
+    || rankingTrackEntries[0]?.[1];
+
+  useEffect(() => {
+    const availableTrackIds = teams.map(
+      (item) => item.trackId?._id?.toString() || "unassigned",
+    );
+    if (!availableTrackIds.includes(selectedRankingTrackId)) {
+      setSelectedRankingTrackId(availableTrackIds[0] || "");
+    }
+  }, [teams, selectedRankingTrackId]);
 
   const eventOptions = events.map((ev) => ({
     value: ev._id,
@@ -446,34 +612,66 @@ export default function AdminLiveInteraction() {
               </button>
             </div>
 
-            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
-              {Object.keys(groupedTeams).length > 0 ? (
-                Object.entries(groupedTeams).map(([trackId, group]) => (
-                  <div key={trackId} className="space-y-2">
-                    {/* Track Header Divider */}
-                    <div className="flex items-center gap-2 pt-2 pb-1 sticky top-0 dark:bg-slate-950 z-10">
-                      <span className="text-[16px] uppercase font-bold text-cyan-600 dark:text-cyan-400 bg-white font-mono tracking-wider dark:bg-cyan-950/40 px-2 py-0.5 rounded border border-orange-400 dark:border-cyan-800/30">
-                        Bảng đấu: {group.trackName}
-                      </span>
-                      <div className="h-px bg-slate-200 dark:bg-slate-800/60 flex-1"></div>
-                    </div>
+            <div className="space-y-4">
+              {rankingTrackEntries.length > 0 ? (
+                <>
+                  <div
+                    role="tablist"
+                    aria-label="Chọn bảng đấu"
+                    className="grid grid-cols-1 gap-2 border-b border-slate-200 pb-3 sm:grid-cols-2"
+                  >
+                    {rankingTrackEntries.map(([trackId, group]) => {
+                      const isActive = trackId === selectedRankingTrackId
+                        || (!selectedRankingTrackId && trackId === rankingTrackEntries[0]?.[0]);
+                      return (
+                        <button
+                          key={trackId}
+                          type="button"
+                          role="tab"
+                          aria-selected={isActive}
+                          onClick={() => {
+                            setSelectedRankingTrackId(trackId);
+                            setSelectedTeam(group.items[0] || null);
+                          }}
+                          className={`min-w-0 rounded-lg border px-3 py-2 text-xs font-bold font-mono transition-all focus:outline-none focus:ring-2 focus:ring-[#F27024]/30 ${isActive
+                            ? "border-[#F27024]/50 bg-[#F27024]/10 text-[#F27024]"
+                            : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                            }`}
+                        >
+                          {group.trackName}
+                          <span className={`ml-2 rounded px-1.5 py-0.5 text-[9px] ${isActive
+                            ? "bg-[#F27024]/15 text-[#F27024]"
+                            : "bg-slate-100 text-slate-500"
+                            }`}
+                          >
+                            {group.items.length}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
 
-                    <div className="space-y-2">
-                      {group.items.map((item, idx) => {
+                  <div
+                    role="tabpanel"
+                    className="space-y-2 max-h-[440px] overflow-y-auto pr-1"
+                  >
+                    {activeRankingTrack?.items.map((item, idx) => {
                         const isHighlighted =
                           highlightedTeamId === item.teamId._id;
                         const isSelected =
                           selectedTeam?.teamId._id === item.teamId._id;
                         const rank = item.trackRank || idx + 1;
                         return (
-                          <div
+                          <button
                             key={item.teamId._id}
+                            type="button"
                             onClick={() => setSelectedTeam(item)}
-                            className={`relative flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer group ${isSelected
-                              ? "bg-orange-500/10 dark:bg-slate-900/60 border-orange-500/50 dark:border-cyan-500/50 shadow-sm"
+                            aria-pressed={isSelected}
+                            className={`relative flex w-full items-center justify-between p-3.5 rounded-xl border text-left transition-all cursor-pointer group focus:outline-none focus:ring-2 focus:ring-[#F27024]/30 focus:border-[#F27024] ${isSelected
+                              ? "bg-[#F27024]/10 border-[#F27024]/50 shadow-sm"
                               : isHighlighted
                                 ? "bg-amber-500/10 border-amber-500/40"
-                                : "bg-white dark:bg-slate-950/40 border-slate-200 dark:border-slate-850 hover:bg-slate-50 dark:hover:bg-slate-900/30"
+                                : "bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300 active:bg-slate-100"
                               }`}
                           >
                             {/* Left glowing marker */}
@@ -485,12 +683,12 @@ export default function AdminLiveInteraction() {
                               {/* Rank Badge */}
                               <div
                                 className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold font-mono text-[10px] ${rank === 1
-                                  ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                                  ? "bg-amber-500/15 text-amber-700 border border-amber-500/30"
                                   : rank === 2
-                                    ? "bg-slate-200 dark:bg-slate-300/20 !text-slate-800 dark:text-slate-300 border border-slate-300/30"
+                                    ? "bg-slate-200 text-slate-700 border border-slate-300"
                                     : rank === 3
-                                      ? "bg-amber-700/20 text-amber-700 dark:text-amber-600 border border-amber-700/30"
-                                      : "bg-slate-100 dark:bg-slate-900 !text-slate-800 dark:text-slate-500 border border-slate-200 dark:border-slate-800"
+                                      ? "bg-orange-900/10 text-orange-800 border border-orange-900/20"
+                                      : "bg-slate-100 text-slate-600 border border-slate-200"
                                   }`}
                               >
                                 {rank}
@@ -498,7 +696,7 @@ export default function AdminLiveInteraction() {
 
                               <div>
                                 <div className="flex items-center gap-1.5">
-                                  <span className="font-extrabold text-xs tracking-wide !text-slate-950 dark:!text-white">
+                                  <span className="font-extrabold text-xs tracking-wide text-slate-800">
                                     {item.teamId.name}
                                   </span>
                                   {isHighlighted && (
@@ -507,7 +705,7 @@ export default function AdminLiveInteraction() {
                                     </span>
                                   )}
                                 </div>
-                                <span className="text-[10px] !text-slate-700 dark:!text-slate-400 block truncate max-w-[200px] mt-0.5 font-sans">
+                                <span className="text-[10px] text-slate-500 block truncate max-w-[200px] mt-0.5 font-sans">
                                   {item.teamId.topicSubmission?.title ||
                                     "Chưa nộp đề tài"}
                                 </span>
@@ -517,26 +715,25 @@ export default function AdminLiveInteraction() {
                             {/* Right: Scores */}
                             <div className="text-right flex items-center gap-4">
                               <div>
-                                <span className="text-xs font-mono font-bold text-cyan-600 dark:text-cyan-400 block">
+                                <span className="text-xs font-mono font-bold text-[#F27024] block">
                                   {item.averageScore > 0
                                     ? `${item.averageScore}đ`
                                     : "--"}
                                 </span>
-                                <span className="text-[9px] text-slate-500 dark:text-slate-400 block font-mono">
+                                <span className="text-[9px] text-slate-500 block font-mono">
                                   {item.judgeCount} Giám khảo
                                 </span>
                               </div>
                               <ChevronRight
                                 size={14}
-                                className="text-slate-400 group-hover:text-cyan-500 dark:group-hover:text-cyan-400 transition-colors"
+                                className="text-slate-400 group-hover:text-[#F27024] transition-colors"
                               />
                             </div>
-                          </div>
+                          </button>
                         );
                       })}
-                    </div>
                   </div>
-                ))
+                </>
               ) : (
                 <p className="text-center py-8 text-slate-500 font-mono text-xs">
                   Không có đội thi nào được ghi nhận trong bảng này.
@@ -624,13 +821,22 @@ export default function AdminLiveInteraction() {
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {selectedTeam.judges && selectedTeam.judges.length > 0 ? (
-                    selectedTeam.judges.map((j: any, jIdx: number) => (
-                      <div
-                        key={jIdx}
-                        className="bg-slate-900/30 p-3 rounded-xl border border-slate-850 flex justify-between items-center text-xs"
+                    selectedTeam.judges.map((j: any, jIdx: number) => {
+                      const judgeId = (j._id || j.judgeId?._id || j.judgeId)?.toString();
+                      const isSelected = judgeId === selectedJudgeId;
+                      return (
+                      <button
+                        key={judgeId || jIdx}
+                        type="button"
+                        onClick={() => judgeId && setSelectedJudgeId(judgeId)}
+                        aria-pressed={isSelected}
+                        className={`p-3 rounded-xl border flex justify-between items-center text-xs text-left transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500/70 ${isSelected
+                          ? "bg-cyan-500/10 border-cyan-500/60 shadow-[0_0_16px_rgba(6,182,212,0.12)]"
+                          : "bg-slate-900/30 border-slate-850 hover:border-slate-700 hover:bg-slate-900/60"
+                          }`}
                       >
                         <div className="flex items-center gap-2">
-                          <UserCheck size={14} className="text-slate-500" />
+                          <UserCheck size={14} className={isSelected ? "text-cyan-400" : "text-slate-500"} />
                           <span className="font-bold text-slate-200">
                             {j.fullName}
                           </span>
@@ -638,8 +844,9 @@ export default function AdminLiveInteraction() {
                         <span className="font-mono font-bold text-cyan-400 bg-cyan-900/10 border border-cyan-900/20 px-2 py-0.5 rounded">
                           {j.score}đ
                         </span>
-                      </div>
-                    ))
+                      </button>
+                      );
+                    })
                   ) : (
                     <p className="col-span-2 text-xs text-slate-500 font-mono italic">
                       Chưa có giám khảo nào hoàn tất và nộp điểm.
@@ -654,7 +861,7 @@ export default function AdminLiveInteraction() {
                   <div className="flex items-center gap-2">
                     <Edit3 size={16} className="text-cyan-400" />
                     <h4 className="text-xs font-extrabold uppercase text-white tracking-widest font-mono">
-                      CẬP NHẬT/GHI ĐÈ ĐIỂM SỐ THAY GIÁM KHẢO
+                      THEO DÕI & HỖ TRỢ HOÀN TẤT CHẤM ĐIỂM
                     </h4>
                   </div>
 
@@ -672,88 +879,200 @@ export default function AdminLiveInteraction() {
                   </select>
                 </div>
 
-                {readOnly ? (
-                  <p className="text-center py-4 text-xs text-slate-500 font-mono italic">
-                    Bạn đang ở chế độ xem. Không có quyền sửa đổi hay ghi đè
-                    điểm số.
-                  </p>
-                ) : rubric ? (
+                {rubric ? (
                   <div className="space-y-4">
-                    {/* CRITERIA SCORES OVERRIDE INPUTS */}
-                    <div className="space-y-3.5">
-                      {criteria.map((c) => {
-                        const val = overrideScores[c._id];
-                        return (
-                          <div
-                            key={c._id}
-                            className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-slate-950/40 p-3 rounded-xl border border-white/5"
+                    {readOnly ? (
+                      <p className="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2 text-xs text-slate-400 font-mono">
+                        Chế độ xem: chọn giám khảo để xem chi tiết điểm đã chấm.
+                      </p>
+                    ) : null}
+                    {scoreAccessState.reason ? (
+                      <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-3 text-xs text-amber-200">
+                        <ShieldCheck size={16} className="mt-0.5 shrink-0" />
+                        <div>
+                          <p className="font-bold uppercase tracking-[0.2em] text-amber-300">
+                            Kết quả chấm điểm
+                          </p>
+                          <p>{scoreAccessState.reason}</p>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {scoreAccessState.canSubmit && !readOnly && !assistAccess.allowed ? (
+                      <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4 space-y-3">
+                        <div>
+                          <p className="text-xs font-bold text-slate-200">
+                            Giám khảo chưa gửi kết quả chấm
+                          </p>
+                          <p className="mt-1 text-[11px] text-slate-400">
+                            Bạn có thể gửi nhắc nhở hoặc đề nghị giám khảo cho phép hỗ trợ hoàn tất bài chấm.
+                          </p>
+                        </div>
+                        {assistAccess.status === "pending" ? (
+                          <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-[11px] text-amber-300">
+                            Đề nghị đã được gửi và đang chờ giám khảo phản hồi.
+                          </p>
+                        ) : null}
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          <button
+                            type="button"
+                            disabled={isAssistActionLoading}
+                            onClick={() => handleAssistAction("remind")}
+                            className="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-xs font-bold text-slate-200 transition-colors hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-600 disabled:opacity-50"
                           >
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-extrabold font-mono text-[10px] text-cyan-400 bg-cyan-900/10 px-1.5 py-0.5 rounded border border-cyan-900/25">
-                                  {c.code}
-                                </span>
-                                <span className="text-xs font-bold text-slate-200">
-                                  {c.name}
+                            <BellRing size={14} />
+                            Nhắc hoàn tất chấm điểm
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isAssistActionLoading || assistAccess.status === "pending"}
+                            onClick={() => handleAssistAction("request")}
+                            className="flex items-center justify-center gap-2 rounded-xl bg-cyan-500 px-3 py-2.5 text-xs font-bold text-slate-950 transition-colors hover:bg-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 disabled:opacity-50"
+                          >
+                            <UserRoundCheck size={14} />
+                            Đề nghị hỗ trợ chấm điểm
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {scoreAccessState.canSubmit && assistAccess.allowed ? (
+                      <div className="flex items-start gap-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-3 text-xs text-cyan-200">
+                        <UserRoundCheck size={16} className="mt-0.5 shrink-0" />
+                        <p>
+                          {assistAccess.status === "auto_granted"
+                            ? "Thời gian chấm còn không quá 5 phút. Quyền hỗ trợ hoàn tất bài chấm đã được mở tự động."
+                            : "Giám khảo đã chấp thuận. Bạn có thể hỗ trợ hoàn tất bài chấm này."}
+                        </p>
+                      </div>
+                    ) : null}
+
+                    {(!scoreAccessState.canSubmit || assistAccess.allowed) && <div className="space-y-4">
+                      {/* CRITERIA SCORES OVERRIDE INPUTS */}
+                      <div className="space-y-3.5">
+                        {criteria.map((c) => {
+                          const val = overrideScores[c._id];
+                          return (
+                            <div
+                              key={c._id}
+                              className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-slate-950/40 p-3 rounded-xl border border-white/5"
+                            >
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-extrabold font-mono text-[10px] text-cyan-400 bg-cyan-900/10 px-1.5 py-0.5 rounded border border-cyan-900/25">
+                                    {c.code}
+                                  </span>
+                                  <span className="text-xs font-bold text-slate-200">
+                                    {c.name}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-slate-500 truncate max-w-sm">
+                                  Trọng số: {c.weight}% | Tối đa: {c.maxScore}đ
+                                </p>
+                              </div>
+
+                              <div className="flex items-center gap-2 self-end sm:self-auto">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={c.maxScore}
+                                  step={0.5}
+                                  value={val !== undefined ? val : ""}
+                                  disabled={readOnly || !scoreAccessState.canSubmit || !assistAccess.allowed}
+                                  onChange={(e) =>
+                                    handleScoreChange(
+                                      c._id,
+                                      parseFloat(e.target.value) || 0,
+                                    )
+                                  }
+                                  className="bg-slate-900 border border-slate-750 text-slate-200 text-xs px-2 py-1 w-16 text-center rounded-lg font-bold font-mono focus:outline-none focus:ring-1 focus:ring-cyan-500 disabled:cursor-default disabled:opacity-80"
+                                />
+                                <span className="text-xs text-slate-500 font-mono">
+                                  / {c.maxScore}đ
                                 </span>
                               </div>
-                              <p className="text-[10px] text-slate-500 truncate max-w-sm">
-                                Trọng số: {c.weight}% | Tối đa: {c.maxScore}đ
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest font-mono">
+                          Ý kiến nhận xét tổng quan của giám khảo
+                        </label>
+                        <textarea
+                          rows={3}
+                          placeholder="Admin nhập phản hồi bổ sung hoặc nhận xét của giám khảo..."
+                          value={overrideComment}
+                          disabled={readOnly || !scoreAccessState.canSubmit || !assistAccess.allowed}
+                          onChange={(e) => setOverrideComment(e.target.value)}
+                          className="bg-slate-950 border border-slate-800 text-slate-350 text-xs px-3 py-2 w-full rounded-xl focus:outline-none focus:ring-1 focus:ring-cyan-500 placeholder-slate-650"
+                        />
+                      </div>
+
+                      {!readOnly && scoreAccessState.canSubmit && assistAccess.allowed && <button
+                        onClick={handleSaveOverride}
+                        disabled={isSubmittingOverride}
+                        className="w-full bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 font-black text-xs uppercase py-2.5 rounded-xl tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_0_20px_rgba(6,182,212,0.3)]"
+                      >
+                        <Save size={14} />
+                        <span>
+                          {isSubmittingOverride ? "Đang xử lý..." : "Hoàn tất hỗ trợ chấm điểm"}
+                        </span>
+                      </button>}
+                    </div>}
+
+                    <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <History size={16} className="text-cyan-400" />
+                        <h5 className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-slate-200">
+                          Lịch sử chấm điểm
+                        </h5>
+                      </div>
+
+                      {scoreAccessState.history.length > 0 ? (
+                        <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                          {scoreAccessState.history.map((item: any) => (
+                            <div
+                              key={item._id}
+                              className="rounded-xl border border-slate-800 bg-slate-900/50 p-3 text-xs text-slate-300"
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="font-bold text-slate-100">
+                                  {item.action === "submit_score"
+                                    ? "Chấm điểm"
+                                    : item.action === "regrade_score"
+                                      ? "Điều chỉnh kết quả có kiểm soát"
+                                      : "Hành động bị chặn"}
+                                </span>
+                                <span className="text-[10px] text-slate-500">
+                                  {new Date(item.createdAt).toLocaleString("vi-VN")}
+                                </span>
+                              </div>
+                              <p className="mt-1 text-[11px] text-slate-400">
+                                {item.summary}
                               </p>
+                              <p className="mt-1 text-[10px] text-cyan-300">
+                                Người thực hiện: {item.actorId?.fullName || item.actorId?.email || "Hệ thống"}
+                              </p>
+                              {item.changeDetails?.length > 0 ? (
+                                <ul className="mt-2 space-y-1 text-[10px] text-slate-400">
+                                  {item.changeDetails.map((detail: any, idx: number) => (
+                                    <li key={`${item._id}-${idx}`}>
+                                      • {detail.criterionName}: {detail.change?.from ?? "-"} → {detail.change?.to ?? "-"}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : null}
                             </div>
-
-                            {/* Score Input Slider/Spinner combo */}
-                            <div className="flex items-center gap-2 self-end sm:self-auto">
-                              <input
-                                type="number"
-                                min={0}
-                                max={c.maxScore}
-                                step={0.5}
-                                value={val !== undefined ? val : ""}
-                                onChange={(e) =>
-                                  handleScoreChange(
-                                    c._id,
-                                    parseFloat(e.target.value) || 0,
-                                  )
-                                }
-                                className="bg-slate-900 border border-slate-750 text-slate-200 text-xs px-2 py-1 w-16 text-center rounded-lg font-bold font-mono focus:outline-none focus:ring-1 focus:ring-cyan-500"
-                              />
-                              <span className="text-xs text-slate-500 font-mono">
-                                / {c.maxScore}đ
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-center py-4 text-xs text-slate-500 font-mono italic">
+                          Chưa có lịch sử chấm điểm cho đội này.
+                        </p>
+                      )}
                     </div>
-
-                    {/* OVERALL COMMENT */}
-                    <div className="space-y-1.5">
-                      <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest font-mono">
-                        Ý kiến nhận xét tổng quan của giám khảo
-                      </label>
-                      <textarea
-                        rows={3}
-                        placeholder="Admin nhập phản hồi bổ sung hoặc nhận xét của giám khảo..."
-                        value={overrideComment}
-                        onChange={(e) => setOverrideComment(e.target.value)}
-                        className="bg-slate-950 border border-slate-800 text-slate-350 text-xs px-3 py-2 w-full rounded-xl focus:outline-none focus:ring-1 focus:ring-cyan-500 placeholder-slate-650"
-                      />
-                    </div>
-
-                    {/* SUBMIT BUTTON */}
-                    <button
-                      onClick={handleSaveOverride}
-                      disabled={isSubmittingOverride}
-                      className="w-full bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 font-black text-xs uppercase py-2.5 rounded-xl tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_0_20px_rgba(6,182,212,0.3)]"
-                    >
-                      <Save size={14} />
-                      <span>
-                        {isSubmittingOverride
-                          ? "Đang xử lý..."
-                          : "Cập nhật & Chốt điểm"}
-                      </span>
-                    </button>
                   </div>
                 ) : (
                   <p className="text-center py-4 text-xs text-slate-500 font-mono italic">

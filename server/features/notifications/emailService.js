@@ -280,6 +280,62 @@ async function sendTeamInvitation(email, teamName, inviteLink) {
   }
 }
 
+async function sendPersonnelInvitation(email, fullName, eventName, roles, responseLink) {
+  const roleLabel = roles.map((role) => role === 'judge' ? 'Giám khảo' : 'Mentor').join(' & ');
+  const mailOptions = {
+    from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
+    to: email,
+    subject: `[SEAL Hackathon] Lời mời tham gia nhân sự ${eventName}`,
+    html: `
+      <div style="font-family: Inter,Arial,sans-serif;max-width:600px;margin:auto;padding:32px;border:1px solid #fed7aa;border-radius:16px;color:#0f172a">
+        <div style="height:4px;background:#F27024;border-radius:999px;margin-bottom:24px"></div>
+        <h2 style="margin:0 0 20px">LỜI MỜI THAM GIA NHÂN SỰ</h2>
+        <p>Xin chào <strong>${fullName}</strong>,</p>
+        <p>Bạn được mời tham gia sự kiện <strong>${eventName}</strong> với vai trò <strong style="color:#F27024">${roleLabel}</strong>.</p>
+        <p>Vui lòng mở trang phản hồi để chấp thuận hoặc từ chối lời mời.</p>
+        <div style="text-align:center;margin:30px 0"><a href="${responseLink}" style="display:inline-block;background:#F27024;color:white;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:700">PHẢN HỒI LỜI MỜI</a></div>
+        <p style="font-size:12px;color:#64748b">Liên kết có hiệu lực trong 7 ngày và chỉ dành cho địa chỉ email này.</p>
+      </div>`,
+  };
+  if (isMock) {
+    console.log(`[EMAIL MOCK] Personnel invitation to ${email}: ${responseLink}`);
+    return true;
+  }
+  await sendMailHelper(mailOptions);
+  return true;
+}
+
+async function sendPersonnelAccountGranted(email, fullName, roleLabel, loginMethod, temporaryPassword = null) {
+  const loginUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const loginInstruction = loginMethod === 'google_and_password'
+    ? `<p>Bạn có thể đăng nhập theo một trong hai cách:</p><ol><li>Chọn <strong>Đăng nhập bằng Google</strong> với địa chỉ <strong>${email}</strong>.</li><li>Đăng nhập bằng email <strong>${email}</strong> và mật khẩu tạm <strong>${temporaryPassword}</strong>.</li></ol><p>Vui lòng đổi mật khẩu tạm sau lần đăng nhập đầu tiên.</p>`
+    : loginMethod === 'google_and_existing_password'
+      ? `<p>Bạn có thể chọn <strong>Đăng nhập bằng Google</strong> với địa chỉ <strong>${email}</strong>, hoặc đăng nhập bằng email và mật khẩu hiện tại.</p>`
+    : temporaryPassword
+      ? `<p>Tài khoản: <strong>${email}</strong><br>Mật khẩu tạm: <strong>${temporaryPassword}</strong></p><p>Vui lòng đổi mật khẩu sau lần đăng nhập đầu tiên.</p>`
+      : `<p>Hãy đăng nhập bằng địa chỉ <strong>${email}</strong> và mật khẩu hiện tại của bạn.</p>`;
+  const mailOptions = {
+    from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
+    to: email,
+    subject: '[SEAL Hackathon] Tài khoản nhân sự đã được cấp quyền',
+    html: `
+      <div style="font-family:Inter,Arial,sans-serif;max-width:600px;margin:auto;padding:32px;border:1px solid #fed7aa;border-radius:16px;color:#0f172a">
+        <div style="height:4px;background:#F27024;border-radius:999px;margin-bottom:24px"></div>
+        <h2>ĐÃ CẤP QUYỀN NHÂN SỰ</h2>
+        <p>Xin chào <strong>${fullName}</strong>,</p>
+        <p>Tài khoản của bạn đã được cấp quyền <strong style="color:#F27024">${roleLabel}</strong> trên hệ thống SEAL Hackathon.</p>
+        ${loginInstruction}
+        <div style="text-align:center;margin:30px 0"><a href="${loginUrl}/login" style="display:inline-block;background:#F27024;color:white;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:700">ĐĂNG NHẬP HỆ THỐNG</a></div>
+      </div>`,
+  };
+  if (isMock) {
+    console.log(`[EMAIL MOCK] Personnel account granted to ${email} via ${loginMethod}`);
+    return true;
+  }
+  await sendMailHelper(mailOptions);
+  return true;
+}
+
 /**
  * Sends an email verification link to a newly registered user.
  * @param {string} email - Recipient email
@@ -684,6 +740,8 @@ async function sendCertificateEmail(email, fullName, certificatePdfBuffer, prize
 
 module.exports = {
   sendTeamInvitation,
+  sendPersonnelInvitation,
+  sendPersonnelAccountGranted,
   sendEmailVerification,
   sendEventCreationNotification,
   sendTrackTopicDistribution,

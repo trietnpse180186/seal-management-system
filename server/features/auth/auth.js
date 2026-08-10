@@ -92,6 +92,7 @@ async function mapUserRoles(roles) {
       id: roleObj._id,
       eventId: roleObj.eventId ? (roleObj.eventId._id || roleObj.eventId) : null,
       eventName: roleObj.eventId ? `${roleObj.eventId.name || 'System'} (${roleObj.eventId.semester || ''} ${roleObj.eventId.year || ''})` : 'System',
+      eventStatus: roleObj.eventId?.status || null,
       role: roleName,
       trackId: roleObj.trackId ? (roleObj.trackId._id || roleObj.trackId) : null
     });
@@ -623,12 +624,14 @@ router.post('/google', async (req, res) => {
         passwordHash,
         fullName: userName,
         avatarUrl: userAvatar,
+        authProviders: ['google'],
         isSystemAdmin: isFirstUser,
         isApproved: true
       });
       await user.save();
-    } else if (userAvatar && !user.avatarUrl) {
-      user.avatarUrl = userAvatar;
+    } else {
+      if (userAvatar && !user.avatarUrl) user.avatarUrl = userAvatar;
+      if (!user.authProviders?.includes('google')) user.authProviders = [...(user.authProviders || []), 'google'];
       await user.save();
     }
 
@@ -806,6 +809,7 @@ router.post('/github', async (req, res) => {
         fullName: userName,
         githubUsername: userGithub,
         avatarUrl: userAvatar,
+        authProviders: ['github'],
         isSystemAdmin: isFirstUser,
         isApproved: true
       });
@@ -818,6 +822,10 @@ router.post('/github', async (req, res) => {
       }
       if (userAvatar && !user.avatarUrl) {
         user.avatarUrl = userAvatar;
+        updated = true;
+      }
+      if (!user.authProviders?.includes('github')) {
+        user.authProviders = [...(user.authProviders || []), 'github'];
         updated = true;
       }
       if (updated) {
@@ -925,12 +933,14 @@ router.post('/firebase-google', async (req, res) => {
         passwordHash,
         fullName: userName,
         avatarUrl: userAvatar,
+        authProviders: ['google'],
         isSystemAdmin: isFirstUser,
         isApproved: true,
       });
       await user.save();
-    } else if (userAvatar && !user.avatarUrl) {
-      user.avatarUrl = userAvatar;
+    } else {
+      if (userAvatar && !user.avatarUrl) user.avatarUrl = userAvatar;
+      if (!user.authProviders?.includes('google')) user.authProviders = [...(user.authProviders || []), 'google'];
       await user.save();
     }
 

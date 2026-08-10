@@ -23,6 +23,7 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
 
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [respondingRequestId, setRespondingRequestId] = useState('');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     return localStorage.getItem("judge_sidebar_collapsed") === "true";
   });
@@ -57,9 +58,7 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
     }
   }, [user]);
 
-  const unreadCount = notifications.filter(
-    (n) => n.status === "pending"
-  ).length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const markAsRead = async (id: string) => {
     try {
@@ -72,7 +71,7 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
         }
       );
       setNotifications(
-        notifications.map((n) => (n._id === id ? { ...n, status: "sent" } : n))
+        notifications.map((n) => (n._id === id ? { ...n, isRead: true } : n))
       );
     } catch (err) {
       console.error("Failed to mark notification as read", err);
@@ -89,9 +88,32 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      setNotifications(notifications.map((n) => ({ ...n, status: "sent" })));
+      setNotifications(notifications.map((n) => ({ ...n, isRead: true })));
     } catch (err) {
       console.error("Failed to mark all as read", err);
+    }
+  };
+
+  const respondToAssistRequest = async (notification: any, decision: 'approved' | 'rejected') => {
+    const requestId = notification.metadata?.requestId;
+    if (!requestId) return;
+    try {
+      setRespondingRequestId(requestId);
+      const token = localStorage.getItem('token');
+      await axios.patch(
+        `http://localhost:5000/api/grades/assist/${requestId}/respond`,
+        { decision },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      setNotifications((current) => current.map((item) =>
+        item._id === notification._id
+          ? { ...item, isRead: true, metadata: { ...item.metadata, requestStatus: decision } }
+          : item,
+      ));
+    } catch (err) {
+      console.error('Failed to respond to grading assist request', err);
+    } finally {
+      setRespondingRequestId('');
     }
   };
 
@@ -280,18 +302,18 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
                         <div
                           key={notif._id}
                           onClick={() => {
-                            if (notif.status === "pending")
+                            if (!notif.isRead)
                               markAsRead(notif._id);
                           }}
                           className={`p-3 border-b border-slate-50 cursor-pointer transition-colors ${
-                            notif.status === "pending"
+                            !notif.isRead
                               ? "bg-[#F27024]/5 hover:bg-[#F27024]/10"
                               : "hover:bg-slate-50"
                           }`}
                         >
                           <p
                             className={`text-xs font-semibold ${
-                              notif.status === "pending"
+                              !notif.isRead
                                 ? "text-[#F27024]"
                                 : "text-slate-700"
                             }`}
@@ -301,6 +323,37 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
                           <p className="text-xs text-slate-500 mt-1">
                             {notif.body}
                           </p>
+                          {notif.type === 'grading_assist_request' && !notif.metadata?.requestStatus && (
+                            <div className="mt-3 grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                disabled={respondingRequestId === notif.metadata?.requestId}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  respondToAssistRequest(notif, 'approved');
+                                }}
+                                className="rounded-lg bg-[#F27024] px-2 py-1.5 text-[10px] font-bold text-white transition-colors hover:bg-[#d95f1f] focus:outline-none focus:ring-2 focus:ring-[#F27024]/30 disabled:opacity-50"
+                              >
+                                Chấp thuận
+                              </button>
+                              <button
+                                type="button"
+                                disabled={respondingRequestId === notif.metadata?.requestId}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  respondToAssistRequest(notif, 'rejected');
+                                }}
+                                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-bold text-slate-600 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300 disabled:opacity-50"
+                              >
+                                Từ chối
+                              </button>
+                            </div>
+                          )}
+                          {notif.metadata?.requestStatus && (
+                            <p className="mt-2 text-[10px] font-semibold text-slate-500">
+                              Đã {notif.metadata.requestStatus === 'approved' ? 'chấp thuận' : 'từ chối'}
+                            </p>
+                          )}
                           <p className="text-[10px] text-slate-400 mt-2">
                             {new Date(notif.createdAt).toLocaleString()}
                           </p>

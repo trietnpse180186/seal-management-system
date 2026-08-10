@@ -14,10 +14,12 @@ import Footer from "./features/landing/Footer";
 import Login from "./features/auth/Login";
 import ForgotPassword from "./features/auth/ForgotPassword";
 import ResetPassword from "./features/auth/ResetPassword";
+import PersonnelInvitationResponse from "./features/auth/PersonnelInvitationResponse";
 import LandingPage from "./features/landing/LandingPage";
 import AdminDashboard from "./features/admin/AdminDashboard";
 import AdminEvents from "./features/admin/AdminEvents";
 import AdminLiveInteraction from "./features/admin/AdminLiveInteraction";
+import PersonnelManagement from "./features/admin/PersonnelManagement";
 import TeamArea from "./features/teams/TeamArea";
 import MyAchievements from "./features/teams/MyAchievements";
 import ConfirmSurvey from "./features/teams/ConfirmSurvey";
@@ -168,6 +170,7 @@ function AppContent({
     location.pathname === "/guest-portal" ||
     location.pathname.startsWith("/album") ||
     location.pathname === "/confirm-survey";
+  const isPersonnelInvitationPage = location.pathname === "/personnel-invitation";
 
   const showChatWidget =
     user &&
@@ -180,7 +183,7 @@ function AppContent({
     <div
       className={`min-h-screen ${location.pathname === "/login" ? "bg-[#f5efe8]" : isLightModePage ? "bg-[#faf9f6]" : "bg-gradient-dark"} flex flex-col`}
     >
-      {!isJudgeRoute && !isAdminRoute && location.pathname !== "/" && (
+      {!isJudgeRoute && !isAdminRoute && !isPersonnelInvitationPage && location.pathname !== "/" && (
         <Navbar
           user={user}
           roles={roles}
@@ -191,6 +194,10 @@ function AppContent({
 
       <main className="flex-1">
         <Routes>
+          <Route
+            path="/personnel-invitation"
+            element={<PersonnelInvitationResponse />}
+          />
           <Route
             path="/"
             element={
@@ -290,6 +297,7 @@ function AppContent({
             <Route path="events" element={<AdminEvents />} />
             <Route path="users" element={<AdminUsersView />} />
             <Route path="live" element={<AdminLiveInteraction />} />
+            <Route path="personnel" element={<PersonnelManagement />} />
             <Route
               path="grades"
               element={<AdminGradesView user={user} roles={roles} />}

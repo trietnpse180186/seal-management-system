@@ -11,7 +11,9 @@ import {
   Trash2,
   ExternalLink,
   Crown,
+  BriefcaseBusiness,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useConform } from "../shared/ModalConform";
 import CustomSelect from "../shared/CustomSelect";
 
@@ -228,7 +230,10 @@ export default function TracksTab({
   const trackMembers = eventRoles.filter(
     (role: any) =>
       (role.role === "judge" || role.role === "mentor") &&
-      (role.trackId?._id || role.trackId) === selectedTrack?._id,
+      (
+        String(role.trackId?._id || role.trackId) === String(selectedTrack?._id) ||
+        (selectedTrack?.roundId && String(role.roundId?._id || role.roundId) === String(selectedTrack.roundId?._id || selectedTrack.roundId))
+      ),
   );
 
   useEffect(() => {
@@ -659,17 +664,26 @@ export default function TracksTab({
                   )
                 </span>
               </h3>
-              {SHOW_TRACK_PERSONNEL_ACTIONS && !readOnly && (
-                <label className="flex items-center gap-1 bg-slate-900 border border-slate-800 hover:border-slate-700 text-[10px] font-mono font-bold text-slate-300 px-2.5 py-1.5 rounded-lg cursor-pointer transition-all hover:bg-slate-800">
-                  <span>Import Giám khảo</span>
-                  <input
-                    type="file"
-                    accept=".xlsx, .xls"
-                    className="hidden"
-                    onChange={handleImportJudges}
-                  />
-                </label>
-              )}
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/admin/personnel"
+                  className="flex items-center gap-1.5 bg-slate-900 border border-cyan-500/30 hover:border-cyan-400/50 text-[10px] font-mono font-bold text-cyan-400 px-3 py-1.5 rounded-lg transition-all hover:bg-cyan-500/10 hover:shadow-[0_0_10px_rgba(34,211,238,0.1)]"
+                >
+                  <BriefcaseBusiness size={12} />
+                  <span>Quản lý nhân sự</span>
+                </Link>
+                {SHOW_TRACK_PERSONNEL_ACTIONS && !readOnly && (
+                  <label className="flex items-center gap-1 bg-slate-900 border border-slate-800 hover:border-slate-700 text-[10px] font-mono font-bold text-slate-300 px-2.5 py-1.5 rounded-lg cursor-pointer transition-all hover:bg-slate-800">
+                    <span>Import Giám khảo</span>
+                    <input
+                      type="file"
+                      accept=".xlsx, .xls"
+                      className="hidden"
+                      onChange={handleImportJudges}
+                    />
+                  </label>
+                )}
+              </div>
             </div>
 
             {/* List of judges and mentors */}

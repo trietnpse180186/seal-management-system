@@ -1196,6 +1196,21 @@ router.get('/:eventId/roles', authenticateToken, async (req, res) => {
       if (!coordinatorRole) return res.status(403).json({ message: 'Không có quyền truy cập.' });
     }
 
+    // Auto-heal missing trackId for roles with roundId (such as Final Round)
+    const unassignedRoles = await EventRole.find({ eventId, status: 'active', trackId: null, roundId: { $ne: null } });
+    if (unassignedRoles.length > 0) {
+      for (const roleObj of unassignedRoles) {
+        const roundTracks = await Track.find({ roundId: roleObj.roundId });
+        if (roundTracks.length >= 1) {
+          const matchedTrack = roundTracks.find(t => t.name.toLowerCase().includes('chung kết')) || (roundTracks.length === 1 ? roundTracks[0] : null);
+          if (matchedTrack) {
+            roleObj.trackId = matchedTrack._id;
+            await roleObj.save();
+          }
+        }
+      }
+    }
+
     const roles = await EventRole.find({ eventId, status: 'active' })
       .populate('userId', 'email fullName studentId university githubUsername')
       .populate('trackId', 'name');
@@ -1669,34 +1684,6 @@ router.put('/:id', authenticateToken, async (req, res) => {
       details
     });
     await newLog.save();
-
-    // Enqueue email notifications to all members when status shifts to 'registration'
-    if (status === 'registration' && oldStatus !== 'registration') {
-      console.log(`[EVENT] Event "${event.name}" status updated to registration. Enqueueing email notifications...`);
-      User.find({ isSystemAdmin: false }).then(users => {
-        users.forEach(user => {
-          if (isQueueAvailable()) {
-            addEmailJob({
-              type: 'event_open',
-              email: user.email,
-              fullName: user.fullName,
-              eventName: event.name,
-              semester: event.semester,
-              year: event.year,
-            }).catch(err => console.error(`[QUEUE] Failed to enqueue event notification for ${user.email}:`, err.message));
-          } else {
-            // Fallback: synchronous
-            emailService.sendEventCreationNotification(
-              user.email,
-              user.fullName,
-              event.name,
-              event.semester,
-              event.year
-            ).catch(err => console.error(`[FALLBACK] Failed to send event notification to ${user.email}:`, err.message));
-          }
-        });
-      }).catch(err => console.error('Error fetching users for event registration notification:', err.message));
-    }
 
     res.json({ message: 'Cập nhật sự kiện thành công!', event });
   } catch (error) {

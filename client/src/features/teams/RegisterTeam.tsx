@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Users, UserPlus, Trash2, Calendar, FolderGit2, CheckCircle, Download, Upload, FileSpreadsheet, AlertTriangle } from 'lucide-react';
+import { Users, UserPlus, Trash2, Calendar, FolderGit2, CheckCircle, Download, Upload, FileSpreadsheet, AlertTriangle, Mail, ExternalLink } from 'lucide-react';
 import UniversityCombobox from '../shared/UniversityCombobox';
 import CustomSelect from '../shared/CustomSelect';
 import CaptchaInput from '../shared/CaptchaInput';
@@ -94,6 +94,7 @@ export default function RegisterTeam() {
   // History reuse states
   const [pastTeams, setPastTeams] = useState<any[]>([]);
   const [selectedPastTeamId, setSelectedPastTeamId] = useState('');
+  const [pendingInvitations, setPendingInvitations] = useState<any[]>([]);
   const [infoMessage, setInfoMessage] = useState('');
 
   const [loading, setLoading] = useState(false);
@@ -203,7 +204,9 @@ export default function RegisterTeam() {
         fullName: m.fullName || '',
         githubUsername: m.githubUsername || '',
         studentId: m.studentId || '',
-        university: m.university || ''
+        university: m.university || '',
+        height: m.height ? String(m.height) : '',
+        weight: m.weight ? String(m.weight) : ''
       })));
     }
 
@@ -233,6 +236,32 @@ export default function RegisterTeam() {
       })
       .catch(err => console.error('Error fetching user profile:', err));
   }, [token]);
+
+  useEffect(() => {
+    if (!token || !selectedEventId) return;
+    axios.get(`http://localhost:5000/api/teams/my-pending-invitations?eventId=${selectedEventId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => {
+        setPendingInvitations(res.data.invitations || []);
+      })
+      .catch(err => console.error('Error fetching pending invitations:', err));
+  }, [token, selectedEventId]);
+
+  const handleOpenEmail = (leaderEmail?: string) => {
+    if (leaderEmail) {
+      const domain = leaderEmail.split('@')[1]?.toLowerCase();
+      if (domain === 'gmail.com' || domain === 'fpt.edu.vn') {
+        window.open('https://mail.google.com', '_blank');
+        return;
+      }
+      if (domain === 'outlook.com' || domain === 'hotmail.com') {
+        window.open('https://outlook.live.com', '_blank');
+        return;
+      }
+    }
+    window.open('https://mail.google.com', '_blank');
+  };
 
   const leaderEmailTimeout = useRef<any>(null);
 
@@ -670,6 +699,42 @@ export default function RegisterTeam() {
           <p className="text-slate-500 text-sm mt-1 font-sans">Thành lập nhóm và mời các thành viên tham gia (yêu cầu tối thiểu 3 thành viên bao gồm cả Trưởng nhóm)</p>
         </div>
       </div>
+
+      {pendingInvitations.length > 0 && (
+        <div className="mb-8 p-6 rounded-3xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border-2 border-[#F27024]/40 shadow-lg text-slate-800 relative overflow-hidden">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="p-3 bg-[#F27024] text-white rounded-2xl shadow-md shrink-0 mt-0.5">
+                <Mail size={24} />
+              </div>
+              <div>
+                <span className="inline-block px-2.5 py-0.5 rounded-md bg-[#F27024]/20 text-[#F27024] text-[10px] font-black uppercase tracking-wider mb-1">
+                  LỜI MỜI THAM GIA ĐỘI THI
+                </span>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  Bạn đang có lời mời vào đội{' '}
+                  <span className="text-[#F27024] font-black">
+                    "{pendingInvitations[0].teamName}"
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-600 mt-0.5 font-sans">
+                  Mời bởi Trưởng nhóm:{' '}
+                  <strong>{pendingInvitations[0].leaderName}</strong> ({pendingInvitations[0].leaderEmail}). Vui lòng kiểm tra email để xác nhận tham gia.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleOpenEmail(pendingInvitations[0].leaderEmail)}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-[#F27024] text-white font-extrabold text-xs uppercase tracking-wider shadow-md hover:bg-[#d95f1f] hover:shadow-lg transition-all cursor-pointer whitespace-nowrap"
+            >
+              <Mail size={16} />
+              <span>Mở Email xác nhận</span>
+              <ExternalLink size={14} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {success ? (
         <div className="glass glow-blue p-8 rounded-3xl text-center mb-8 border-emerald-500/30 font-mono">

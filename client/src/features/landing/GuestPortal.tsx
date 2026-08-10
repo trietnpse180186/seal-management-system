@@ -302,12 +302,11 @@ export default function GuestPortal({ user }: GuestPortalProps) {
               </span>
             </div>
 
-            <h1 className="text-3xl md:text-5xl text-slate-900 font-extrabold tracking-tight">
-              Chào mừng{" "}
-              <span className="text-[#F27024] text-orange-glow font-sans">
-                {displayName}
+            <h1 className="text-3xl md:text-5xl text-slate-900 font-extrabold tracking-tight leading-tight">
+              Chào mừng,
+              <span className="block mt-1 text-[#F27024] text-orange-glow font-sans">
+                {displayName}.
               </span>
-              .
             </h1>
 
             <p className="text-slate-600 text-sm sm:text-base leading-relaxed max-w-2xl font-sans">
@@ -337,13 +336,13 @@ export default function GuestPortal({ user }: GuestPortalProps) {
             </div>
           </div>
 
-          <div className="flex-1 relative h-64 md:h-80 w-full rounded-xl border border-slate-200 overflow-hidden bg-slate-100">
+          <div className="flex-1 relative h-64 md:h-80 w-full rounded-xl border border-slate-200 overflow-hidden bg-slate-900 shadow-inner">
             <video
               autoPlay
               loop
               muted
               playsInline
-              className="w-full h-full object-cover opacity-80 mix-blend-screen"
+              className="w-full h-full object-cover"
               src="/davinci_edit_the_existing_video_only__keep_the_exact_shiel.mp4"
             />
             <div className="absolute inset-0 border border-[#F27024]/20 pointer-events-none rounded-xl"></div>

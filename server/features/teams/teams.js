@@ -299,6 +299,8 @@ router.get("/check-eligibility", authenticateToken, async (req, res) => {
         studentId: existingUser.studentId,
         githubUsername: existingUser.githubUsername,
         university: existingUser.university,
+        height: existingUser.height,
+        weight: existingUser.weight,
       },
     });
   } catch (err) {
@@ -607,11 +609,11 @@ router.post("/register", authenticateToken, async (req, res) => {
           memberUser.university = university;
           changed = true;
         }
-        if (height && !memberUser.height) {
+        if (height) {
           memberUser.height = Number(height);
           changed = true;
         }
-        if (weight && !memberUser.weight) {
+        if (weight) {
           memberUser.weight = Number(weight);
           changed = true;
         }
@@ -1718,8 +1720,8 @@ router.put("/:teamId/basic-info", authenticateToken, async (req, res) => {
             u.githubUsername = githubUsername;
             u.studentId = studentId || "";
             u.university = university || "";
-            u.height = Number(height);
-            u.weight = Number(weight);
+            u.height = height != null && height !== "" ? Number(height) : u.height;
+            u.weight = weight != null && weight !== "" ? Number(weight) : u.weight;
             await u.save();
           }
         });
@@ -1838,7 +1840,7 @@ router.get("/user-lookup", authenticateToken, async (req, res) => {
   try {
     const user = await User.findOne({
       email: email.toLowerCase().trim(),
-    }).select("fullName studentId githubUsername university");
+    }).select("fullName studentId githubUsername university height weight");
 
     if (!user) {
       return res.status(404).json({ message: "Không tìm thấy người dùng." });
@@ -1848,6 +1850,42 @@ router.get("/user-lookup", authenticateToken, async (req, res) => {
   } catch (error) {
     console.error("User lookup error:", error.message);
     res.status(500).json({ message: "Lỗi hệ thống khi tìm kiếm người dùng." });
+  }
+});
+
+/**
+ * @route   GET /api/teams/my-pending-invitations
+ * @desc    Get pending invitations for the current user in a specific event
+ * @access  Private (Authenticated Users)
+ */
+router.get("/my-pending-invitations", authenticateToken, async (req, res) => {
+  const { eventId } = req.query;
+  if (!eventId) {
+    return res.status(400).json({ message: "eventId là bắt buộc." });
+  }
+
+  try {
+    const pendingMembers = await TeamMember.find({
+      userId: req.user._id,
+      eventId,
+      confirmStatus: "pending",
+    }).populate({
+      path: "teamId",
+      select: "name leaderId",
+      populate: { path: "leaderId", select: "fullName email" },
+    });
+
+    const invitations = pendingMembers.map((m) => ({
+      teamName: m.teamId?.name || "Đội thi",
+      leaderName: m.teamId?.leaderId?.fullName || m.teamId?.leaderId?.email || "Trưởng nhóm",
+      leaderEmail: m.teamId?.leaderId?.email || "",
+      invitedAt: m.createdAt,
+    }));
+
+    res.json({ invitations });
+  } catch (error) {
+    console.error("My pending invitations error:", error.message);
+    res.status(500).json({ message: "Lỗi khi lấy danh sách lời mời." });
   }
 });
 

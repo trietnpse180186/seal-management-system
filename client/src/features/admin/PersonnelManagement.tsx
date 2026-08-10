@@ -549,24 +549,6 @@ export default function PersonnelManagement() {
     return Array.from(map.values());
   }, [roles]);
 
-  const updateInvitationMentorTrack = async (invitationId: string, trackId: string) => {
-    if (!trackId) return;
-    try {
-      setIsAccountActionLoading(true);
-      const response = await axios.put(
-        `http://localhost:5000/api/personnel-invitations/${invitationId}/mentor-track`,
-        { trackId },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      toast.success(response.data.message || "Đã cập nhật track cho Mentor.");
-      await loadPersonnel();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Không thể cập nhật track cho Mentor.");
-    } finally {
-      setIsAccountActionLoading(false);
-    }
-  };
-
   const updateInvitationAssignmentTrack = async (invitationId: string, assignmentIndex: number, trackId: string) => {
     if (!trackId) return;
     try {

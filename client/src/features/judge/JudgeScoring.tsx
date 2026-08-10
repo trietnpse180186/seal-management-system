@@ -433,11 +433,26 @@ export default function JudgeScoring() {
   }, [selectedEventId, teamId, selectedRoundId, token, fetchExistingScore]);
 
   const handleScoreChange = (critId: string, field: string, val: any) => {
+    let finalVal = val;
+
+    if (field === 'scoreValue' && val !== '' && val !== null && val !== undefined) {
+      const num = parseFloat(val);
+      if (!isNaN(num)) {
+        const currentCrit = criteria?.find((item: any) => item._id === critId);
+        const maxLimit = currentCrit?.maxScore ?? 5;
+        if (num < 0) {
+          finalVal = 0;
+        } else if (num > maxLimit) {
+          finalVal = maxLimit;
+        }
+      }
+    }
+
     setScores((prev: any) => ({
       ...prev,
       [critId]: {
         ...prev[critId],
-        [field]: val
+        [field]: finalVal
       }
     }));
   };
@@ -936,7 +951,8 @@ export default function JudgeScoring() {
                                   value={scoreVal}
                                   onChange={e => handleScoreChange(c._id, 'scoreValue', e.target.value)}
                                   disabled={isRoundLocked}
-                                  className="bg-white border-2 border-[#F27024]/40 rounded-xl text-slate-800 text-center text-lg px-4 py-2 w-32 focus:ring-4 focus:ring-[#F27024]/20 focus:border-[#F27024] focus:outline-none disabled:opacity-50 font-black placeholder-slate-300 font-mono"
+                                  style={{ backgroundColor: '#ffffff', color: '#0f172a' }}
+                                  className="!bg-white bg-white border-2 border-[#F27024]/40 rounded-xl !text-slate-900 text-slate-900 text-center text-lg px-4 py-2 w-32 focus:ring-4 focus:ring-[#F27024]/20 focus:border-[#F27024] focus:outline-none disabled:opacity-50 font-black placeholder-slate-400 font-mono shadow-sm"
                                 />
                                 <span className="text-lg text-[#F27024] font-black font-mono">/ {c.maxScore}đ</span>
                               </div>

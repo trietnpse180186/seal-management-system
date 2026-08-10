@@ -935,14 +935,14 @@ export default function TeamArea() {
 
         {/* Row 1: Exam, MQTT Connection & Members */}
         {team && !team.isEliminated && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8 items-stretch">
             {/* Left: Exam & Materials Card */}
             {isExamVisible && (
               <div
                 className={`${showMqttCard ? "lg:col-span-4" : "lg:col-span-8"
-                  } bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-slate-800 relative overflow-hidden`}
+                  } bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-slate-800 relative overflow-hidden flex flex-col justify-between`}
               >
-                <div>
+                <div className="flex flex-col justify-between h-full">
                   <div className="flex justify-between items-center border-b border-slate-100 pb-3 mb-5">
                     <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2 font-mono-tech">
                       <BookOpen size={18} className="text-[#F27024]" />
@@ -996,7 +996,7 @@ export default function TeamArea() {
                   ) : team?.trackId?.examAccess?.examOpened ? (() => {
                     const effectiveTrackName = team.trackId.originalTrackName || team.trackId.name || "";
                     return (
-                      <div className="space-y-6 py-2">
+                      <div className="flex flex-col justify-between h-full space-y-4 py-1">
                         <div className="space-y-3">
                           <div className="flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
@@ -1027,7 +1027,7 @@ export default function TeamArea() {
                           </p>
                         </div>
 
-                        <div className="pt-2">
+                        <div className="pt-2 mt-auto">
                           <a
                             href={team.trackId.examAccess.examDriveFileUrl || "#"}
                             target="_blank"
@@ -1035,7 +1035,7 @@ export default function TeamArea() {
                             className="w-full flex items-center justify-center gap-2 bg-[#F27024] hover:bg-[#d95f1f] !text-white text-xs font-bold uppercase py-2.5 px-4 rounded-xl transition-all shadow-md shadow-orange-500/20 text-center cursor-pointer"
                           >
                             <BookOpen size={14} />
-                            Mở đề thi bảng {effectiveTrackName}
+                            Mở đề thi
                           </a>
                         </div>
                       </div>
@@ -1073,9 +1073,9 @@ export default function TeamArea() {
             {/* Middle: MQTT Connection Card (Col 4) */}
             {showMqttCard && (
               <div
-                className={`${isExamVisible ? "lg:col-span-4" : "lg:col-span-6"} bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-slate-800 relative overflow-hidden`}
+                className={`${isExamVisible ? "lg:col-span-4" : "lg:col-span-6"} bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-slate-800 relative overflow-hidden flex flex-col justify-between h-full`}
               >
-                <div>
+                <div className="flex flex-col justify-between h-full">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
                     <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2 font-mono-tech">
                       <Cpu size={16} className="text-[#F27024]" />
@@ -1273,9 +1273,9 @@ export default function TeamArea() {
                 : isExamVisible || showMqttCard
                   ? "lg:col-span-6"
                   : "lg:col-span-12"
-                } space-y-6`}
+                } flex flex-col h-full`}
             >
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-slate-800 text-left">
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-slate-800 text-left h-full flex flex-col justify-between flex-1">
                 <div>
                   <h2 className="text-sm font-bold text-slate-800 mb-4 flex items-center justify-between font-mono-tech border-b border-slate-100 pb-3">
                     <div className="flex items-center gap-2">

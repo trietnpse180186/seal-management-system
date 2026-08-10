@@ -94,16 +94,30 @@ async function provisionInvitation(invitation, actorId) {
       });
       roundId = round?._id || null;
     }
-    if (assignment.trackName && assignment.trackName !== 'Chung kết') {
-      const track = await Track.findOne({
+    if (assignment.trackName) {
+      let track = await Track.findOne({
         eventId: invitation.eventId,
         name: new RegExp(`^${escapeRegex(assignment.trackName)}$`, 'i'),
       });
-      if (!track) {
+      if (!track && (assignment.trackName.toLowerCase().includes('chung kết') || (roundId && assignment.roundName?.toLowerCase().includes('chung kết')))) {
+        track = await Track.findOne({
+          eventId: invitation.eventId,
+          name: new RegExp(`Bảng Chung Kết|Chung kết`, 'i'),
+        });
+      }
+      if (!track && assignment.trackName !== 'Chung kết' && !assignment.trackName.toLowerCase().includes('chung kết')) {
         throw new Error(`Track "${assignment.trackName}" không còn tồn tại trong sự kiện.`);
       }
       trackId = track?._id || null;
       if (track?.roundId && !roundId) roundId = track.roundId;
+    }
+
+    if (!trackId && roundId) {
+      const roundTracks = await Track.find({ roundId });
+      if (roundTracks.length >= 1) {
+        const finalTrack = roundTracks.find((t) => t.name.toLowerCase().includes('chung kết')) || (roundTracks.length === 1 ? roundTracks[0] : null);
+        if (finalTrack) trackId = finalTrack._id;
+      }
     }
 
     const roleQuery = {
@@ -221,9 +235,9 @@ router.post('/:invitationId/resend', authenticateToken, async (req, res) => {
     if (!['pending', 'rejected'].includes(invitation.status)) {
       return res.status(409).json({ message: 'Chỉ gửi lại lời mời đang chờ hoặc đã bị từ chối.' });
     }
-    const event = await Event.findById(invitation.eventId);
-    if (!event || event.status !== 'ongoing' || event.isArchived) {
-      return res.status(409).json({ message: 'Chỉ gửi lại lời mời cho sự kiện đang hoạt động.' });
+    const PERSONNEL_ALLOWED = ['draft', 'registration', 'prepare', 'ongoing'];
+    if (!event || !PERSONNEL_ALLOWED.includes(event.status) || event.isArchived) {
+      return res.status(409).json({ message: 'Chỉ gửi lại lời mời cho sự kiện đang trong giai đoạn hoạt động.' });
     }
 
     const rawToken = crypto.randomBytes(32).toString('hex');
@@ -265,8 +279,9 @@ router.post('/event/:eventId/send', authenticateToken, async (req, res) => {
   try {
     const event = await Event.findById(req.params.eventId);
     if (!event) return res.status(404).json({ message: 'Không tìm thấy sự kiện.' });
-    if (event.status !== 'ongoing' || event.isArchived) {
-      return res.status(409).json({ message: 'Chỉ gửi lời mời cho sự kiện đang hoạt động.' });
+    const PERSONNEL_ALLOWED = ['draft', 'registration', 'prepare', 'ongoing'];
+    if (!PERSONNEL_ALLOWED.includes(event.status) || event.isArchived) {
+      return res.status(409).json({ message: 'Chỉ gửi lời mời cho sự kiện đang trong giai đoạn hoạt động.' });
     }
     if (!await canManagePersonnel(req.user, event._id)) {
       return res.status(403).json({ message: 'Bạn không có quyền gửi lời mời nhân sự.' });
@@ -460,6 +475,84 @@ router.put('/:invitationId/mentor-track', authenticateToken, async (req, res) =>
   } catch (error) {
     console.error('Update Mentor Track Error:', error.message);
     res.status(500).json({ message: 'Không thể cập nhật track cho Mentor.' });
+  }
+});
+
+router.put('/:invitationId/assignment-track', authenticateToken, async (req, res) => {
+  try {
+    const { assignmentIndex, trackId } = req.body;
+    const invitation = await PersonnelInvitation.findById(req.params.invitationId);
+    if (!invitation) return res.status(404).json({ message: 'Không tìm thấy lời mời.' });
+    if (!await canManagePersonnel(req.user, invitation.eventId)) {
+      return res.status(403).json({ message: 'Bạn không có quyền cập nhật phân công nhân sự.' });
+    }
+    if (typeof assignmentIndex !== 'number' || assignmentIndex < 0 || assignmentIndex >= invitation.assignments.length) {
+      return res.status(400).json({ message: 'Vị trí phân công không hợp lệ.' });
+    }
+
+    const track = await Track.findOne({
+      _id: trackId,
+      eventId: invitation.eventId,
+    }).populate('roundId', 'name status');
+    if (!track) return res.status(404).json({ message: 'Track không thuộc sự kiện đang quản lý.' });
+
+    const targetAssignment = invitation.assignments[assignmentIndex];
+    const oldTrackName = targetAssignment.trackName;
+    targetAssignment.trackName = track.name;
+    if (track.roundId) {
+      targetAssignment.roundName = track.roundId.name;
+    }
+    invitation.markModified('assignments');
+    await invitation.save();
+
+    if (invitation.accountStatus === 'provisioned' && invitation.userId) {
+      const oldTrack = await Track.findOne({ name: oldTrackName, eventId: invitation.eventId });
+      if (oldTrack) {
+        await EventRole.findOneAndUpdate(
+          {
+            userId: invitation.userId,
+            eventId: invitation.eventId,
+            role: targetAssignment.role,
+            trackId: oldTrack._id,
+          },
+          {
+            $set: {
+              trackId: track._id,
+              roundId: track.roundId?._id || track.roundId,
+              status: 'active',
+              assignedBy: req.user._id,
+              assignedAt: new Date(),
+            },
+          },
+        );
+      } else {
+        await EventRole.findOneAndUpdate(
+          {
+            userId: invitation.userId,
+            eventId: invitation.eventId,
+            role: targetAssignment.role,
+            roundId: track.roundId?._id || track.roundId,
+          },
+          {
+            $set: {
+              trackId: track._id,
+              status: 'active',
+              assignedBy: req.user._id,
+              assignedAt: new Date(),
+            },
+          },
+          { upsert: true, new: true, setDefaultsOnInsert: true },
+        );
+      }
+    }
+
+    res.json({
+      message: `Đã cập nhật track cho ${targetAssignment.role === 'judge' ? 'Giám khảo' : 'Mentor'} (${track.name}).`,
+      trackName: track.name,
+    });
+  } catch (error) {
+    console.error('Update assignment track error:', error.message);
+    res.status(500).json({ message: 'Không thể cập nhật track cho phân công.' });
   }
 });
 

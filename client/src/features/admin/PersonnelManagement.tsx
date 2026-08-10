@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import axios from "axios";
 import * as XLSX from "xlsx";
+import XLSXStyle from "xlsx-js-style";
 import { BriefcaseBusiness, CheckCircle2, Download, FileSpreadsheet, RefreshCw, ShieldCheck, Trash2, Upload, UserRoundCheck } from "lucide-react";
 import { toast } from "sonner";
+import { useConform } from "../shared/ModalConform";
 
 type PersonnelRow = {
   fullName: string;
@@ -19,10 +21,12 @@ type PersonnelRow = {
 };
 
 export default function PersonnelManagement() {
+  const conform = useConform();
   const { readOnly = false } = useOutletContext<{ readOnly?: boolean }>();
   const token = localStorage.getItem("token");
   const [event, setEvent] = useState<any>(null);
   const [roles, setRoles] = useState<any[]>([]);
+  const [rounds, setRounds] = useState<any[]>([]);
   const [tracks, setTracks] = useState<any[]>([]);
   const [invitations, setInvitations] = useState<any[]>([]);
   const [preview, setPreview] = useState<PersonnelRow[]>([]);
@@ -38,28 +42,31 @@ export default function PersonnelManagement() {
       const eventsRes = await axios.get("http://localhost:5000/api/events", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const ongoingEvent = eventsRes.data.find(
-        (item: any) => item.status === "ongoing" && !item.isArchived,
+      const PERSONNEL_ALLOWED_STATUSES = ["draft", "registration", "prepare", "ongoing"];
+      const activeEvent = eventsRes.data.find(
+        (item: any) => PERSONNEL_ALLOWED_STATUSES.includes(item.status) && !item.isArchived,
       );
-      setEvent(ongoingEvent || null);
-      if (!ongoingEvent) {
+      setEvent(activeEvent || null);
+      if (!activeEvent) {
         setRoles([]);
+        setRounds([]);
         return;
       }
       const [rolesRes, invitationsRes, eventDetailsRes] = await Promise.all([
-        axios.get(`http://localhost:5000/api/events/${ongoingEvent._id}/roles`, {
+        axios.get(`http://localhost:5000/api/events/${activeEvent._id}/roles`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        axios.get(`http://localhost:5000/api/personnel-invitations/event/${ongoingEvent._id}`, {
+        axios.get(`http://localhost:5000/api/personnel-invitations/event/${activeEvent._id}`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        axios.get(`http://localhost:5000/api/events/${ongoingEvent._id}`, {
+        axios.get(`http://localhost:5000/api/events/${activeEvent._id}`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
       setRoles(rolesRes.data.filter((item: any) => ["judge", "mentor"].includes(item.role)));
       setInvitations(invitationsRes.data);
       const activeRound = eventDetailsRes.data.rounds?.find((round: any) => round.status === "active");
+      setRounds(eventDetailsRes.data.rounds || []);
       setTracks((eventDetailsRes.data.tracks || []).filter((track: any) => !activeRound || String(track.roundId) === String(activeRound._id)));
     } catch (error) {
       console.error("Load personnel error", error);
@@ -72,6 +79,190 @@ export default function PersonnelManagement() {
   useEffect(() => {
     loadPersonnel();
   }, []);
+
+  const downloadTemplate = () => {
+    if (!event) {
+      toast.error("Không có sự kiện đang hoạt động để tạo form mẫu.");
+      return;
+    }
+
+    const borderStyle = {
+      top: { style: "thin", color: { rgb: "D9D9D9" } },
+      bottom: { style: "thin", color: { rgb: "D9D9D9" } },
+      left: { style: "thin", color: { rgb: "D9D9D9" } },
+      right: { style: "thin", color: { rgb: "D9D9D9" } },
+    };
+
+    const headerStyle = {
+      font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: "FFFFFF" } },
+      fill: { fgColor: { rgb: "1F497D" } }, // Dark Navy Blue
+      alignment: { horizontal: "center", vertical: "center" },
+      border: borderStyle,
+    };
+
+    const mainBannerStyle = {
+      font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: "FFFFFF" } },
+      fill: { fgColor: { rgb: "E36C09" } }, // Vibrant Orange
+      alignment: { horizontal: "left", vertical: "center" },
+      border: borderStyle,
+    };
+
+    const subBannerStyle = {
+      font: { name: "Segoe UI", sz: 11, bold: true, color: { rgb: "9C0006" } },
+      fill: { fgColor: { rgb: "FDE9D9" } }, // Soft Peach
+      alignment: { horizontal: "left", vertical: "center" },
+      border: borderStyle,
+    };
+
+    const dataStyleLeft = {
+      font: { name: "Segoe UI", sz: 10 },
+      alignment: { horizontal: "left", vertical: "center" },
+      border: borderStyle,
+    };
+
+    const dataStyleCenter = {
+      font: { name: "Segoe UI", sz: 10 },
+      alignment: { horizontal: "center", vertical: "center" },
+      border: borderStyle,
+    };
+
+    const dataStyleEmail = {
+      font: { name: "Segoe UI", sz: 10, color: { rgb: "0000FF" }, underline: true },
+      alignment: { horizontal: "left", vertical: "center" },
+      border: borderStyle,
+    };
+
+    const makeCell = (val: any, style: any) => ({
+      v: val,
+      t: typeof val === "number" ? "n" : "s",
+      s: style,
+    });
+
+    const makeBannerRow = (title: string, style: any) => [
+      makeCell(title, style),
+      makeCell("", style),
+      makeCell("", style),
+      makeCell("", style),
+      makeCell("", style),
+    ];
+
+    const wsData: any[][] = [];
+
+    // Row 1: Header
+    wsData.push([
+      makeCell("#", headerStyle),
+      makeCell("HỌ TÊN", headerStyle),
+      makeCell("EMAIL", headerStyle),
+      makeCell("KHOA/PHÒNG BAN", headerStyle),
+      makeCell("NHIỆM VỤ", headerStyle),
+    ]);
+
+    // Section 1: MENTOR
+    wsData.push(makeBannerRow("MENTOR", mainBannerStyle));
+    for (let i = 1; i <= 5; i++) {
+      wsData.push([
+        makeCell(i, dataStyleCenter),
+        makeCell("", dataStyleLeft),
+        makeCell("", dataStyleEmail),
+        makeCell("", dataStyleLeft),
+        makeCell("Mentor", dataStyleLeft),
+      ]);
+    }
+
+    // Section 2: BAN GIÁM KHẢO
+    wsData.push(makeBannerRow("BAN GIÁM KHẢO", mainBannerStyle));
+
+    // Dynamic Round Sections
+    const nonFinalRounds = rounds.filter((r: any) => r.advanceTopN !== 0);
+    const finalRound = rounds.find((r: any) => r.advanceTopN === 0);
+
+    if (nonFinalRounds.length > 0) {
+      for (const r of nonFinalRounds) {
+        const roundTracks = tracks.filter((t: any) => String(t.roundId) === String(r._id));
+        if (roundTracks.length > 0) {
+          for (const t of roundTracks) {
+            const markerName = `${r.name.trim().toUpperCase()} - ${t.name.trim().toUpperCase()}`;
+            wsData.push(makeBannerRow(markerName, subBannerStyle));
+            for (let i = 1; i <= 5; i++) {
+              wsData.push([
+                makeCell(i, dataStyleCenter),
+                makeCell("", dataStyleLeft),
+                makeCell("", dataStyleEmail),
+                makeCell("", dataStyleLeft),
+                makeCell(`Giám khảo ${r.name}`, dataStyleLeft),
+              ]);
+            }
+          }
+        } else {
+          const markerName = r.name.trim().toUpperCase();
+          wsData.push(makeBannerRow(markerName, subBannerStyle));
+          for (let i = 1; i <= 5; i++) {
+            wsData.push([
+              makeCell(i, dataStyleCenter),
+              makeCell("", dataStyleLeft),
+              makeCell("", dataStyleEmail),
+              makeCell("", dataStyleLeft),
+              makeCell(`Giám khảo ${r.name}`, dataStyleLeft),
+            ]);
+          }
+        }
+      }
+    } else {
+      wsData.push(makeBannerRow("VÒNG SƠ LOẠI - BẢNG A", subBannerStyle));
+      for (let i = 1; i <= 5; i++) {
+        wsData.push([
+          makeCell(i, dataStyleCenter),
+          makeCell("", dataStyleLeft),
+          makeCell("", dataStyleEmail),
+          makeCell("", dataStyleLeft),
+          makeCell("Giám khảo Vòng sơ loại", dataStyleLeft),
+        ]);
+      }
+    }
+
+    // Section 3: Final Round
+    const finalMarkerName = finalRound ? finalRound.name.trim().toUpperCase() : "VÒNG CHUNG KẾT";
+    wsData.push(makeBannerRow(finalMarkerName, subBannerStyle));
+    for (let i = 1; i <= 5; i++) {
+      wsData.push([
+        makeCell(i, dataStyleCenter),
+        makeCell("", dataStyleLeft),
+        makeCell("", dataStyleEmail),
+        makeCell("", dataStyleLeft),
+        makeCell("Giám khảo Vòng chung kết", dataStyleLeft),
+      ]);
+    }
+
+    const worksheet = XLSXStyle.utils.aoa_to_sheet(wsData);
+
+    worksheet["!cols"] = [
+      { wch: 12 }, // Col A (# / Marker)
+      { wch: 28 }, // Col B (Họ tên)
+      { wch: 34 }, // Col C (Email)
+      { wch: 34 }, // Col D (Khoa/Phòng ban)
+      { wch: 28 }, // Col E (Nhiệm vụ)
+    ];
+
+    const rowHeights: { hpt: number }[] = [];
+    for (let r = 0; r < wsData.length; r++) {
+      if (r === 0 || wsData[r][0]?.v === "MENTOR" || wsData[r][0]?.v === "BAN GIÁM KHẢO" || String(wsData[r][0]?.v).includes("VÒNG")) {
+        rowHeights.push({ hpt: 24 });
+      } else {
+        rowHeights.push({ hpt: 20 });
+      }
+    }
+    worksheet["!rows"] = rowHeights;
+
+    const workbook = XLSXStyle.utils.book_new();
+    XLSXStyle.utils.book_append_sheet(workbook, worksheet, "NHÂN SỰ");
+
+    const cleanEventName = (event.name || "SEAL_HACKATHON")
+      .replace(/[^a-zA-Z0-9_ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂẾỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲỴÝỶỸ\s]/g, "")
+      .replace(/\s+/g, "_");
+
+    XLSXStyle.writeFile(workbook, `FORM_MAU_NHAN_SU_${cleanEventName}.xlsx`);
+    toast.success("Đã tải xuống file form mẫu nhân sự (được định dạng đẹp).");
+  };
 
   const parseMasterSheet = async (file: File) => {
     try {
@@ -102,19 +293,45 @@ export default function PersonnelManagement() {
           role = "judge";
           continue;
         }
-        if (marker.startsWith("VÒNG SƠ LOẠI")) {
-          role = "judge";
-          roundName = "Vòng sơ loại";
-          trackName = marker.match(/TRACK\s*\d+/)?.[0] || "";
-          continue;
+
+        // Dynamic round/track matching
+        if (marker) {
+          const matchedRound = rounds.find((r: any) =>
+            marker.startsWith(r.name.trim().toLocaleUpperCase("vi-VN"))
+          );
+
+          if (matchedRound) {
+            role = "judge";
+            roundName = matchedRound.name;
+            const dashIndex = marker.indexOf("-");
+            let rawTrack = dashIndex >= 0 ? marker.substring(dashIndex + 1).trim() : "";
+
+            const matchedTrack = tracks.find(
+              (t: any) => String(t.roundId) === String(matchedRound._id) &&
+                t.name.trim().toLocaleUpperCase("vi-VN") === rawTrack.toLocaleUpperCase("vi-VN"),
+            ) || tracks.find((t: any) => String(t.roundId) === String(matchedRound._id));
+            trackName = matchedTrack ? matchedTrack.name : (rawTrack || "Bảng Chung Kết");
+            continue;
+          }
+
+          if (marker.startsWith("VÒNG SƠ LOẠI")) {
+            role = "judge";
+            roundName = "Vòng sơ loại";
+            const dashIndex = marker.indexOf("-");
+            trackName = dashIndex >= 0 ? marker.substring(dashIndex + 1).trim() : (marker.match(/TRACK\s*\d+/i)?.[0] || "");
+            continue;
+          }
+          if (marker === "VÒNG CHUNG KẾT") {
+            role = "judge";
+            roundName = "Vòng chung kết";
+            trackName = "Chung kết";
+            continue;
+          }
         }
-        if (marker === "VÒNG CHUNG KẾT") {
-          role = "judge";
-          roundName = "Vòng chung kết";
-          trackName = "Chung kết";
-          continue;
-        }
+
         if (!role || !row[1]) continue;
+        if (String(row[1]).trim().toLocaleUpperCase("vi-VN") === "HỌ TÊN") continue;
+
         converted.push({
           fullName: String(row[1]).trim(),
           email: String(row[2]).trim().toLowerCase(),
@@ -249,7 +466,16 @@ export default function PersonnelManagement() {
   };
 
   const runAccountAction = async (path: string, successFallback: string, requireConfirmation = false) => {
-    if (requireConfirmation && !window.confirm("Bạn có chắc chắn muốn thu hồi quyền nhân sự đã chọn?")) return;
+    if (requireConfirmation) {
+      const confirmed = await conform({
+        title: "Xác nhận thu hồi quyền",
+        message: "Bạn có chắc chắn muốn thu hồi quyền nhân sự đã chọn?",
+        conformText: "Thu hồi",
+        cancelText: "Hủy",
+        variant: "danger",
+      });
+      if (!confirmed) return;
+    }
     try {
       setIsAccountActionLoading(true);
       const response = await axios.post(
@@ -267,7 +493,14 @@ export default function PersonnelManagement() {
   };
 
   const deleteInvitation = async (invitation: any) => {
-    if (!window.confirm(`Xóa lời mời đã gửi đến ${invitation.email}?`)) return;
+    const confirmed = await conform({
+      title: "Xác nhận xóa lời mời",
+      message: `Xóa lời mời đã gửi đến ${invitation.email}?`,
+      conformText: "Xóa lời mời",
+      cancelText: "Hủy",
+      variant: "danger",
+    });
+    if (!confirmed) return;
     try {
       setIsAccountActionLoading(true);
       const response = await axios.delete(
@@ -300,6 +533,22 @@ export default function PersonnelManagement() {
     }
   };
 
+  const groupedProvisionedRoles = useMemo(() => {
+    const map = new Map<string, { user: any; roles: any[] }>();
+    for (const item of roles) {
+      const email = item.userId?.email?.toLowerCase() || item.userId?._id || item._id;
+      if (!email) continue;
+      if (!map.has(email)) {
+        map.set(email, {
+          user: item.userId,
+          roles: [],
+        });
+      }
+      map.get(email)!.roles.push(item);
+    }
+    return Array.from(map.values());
+  }, [roles]);
+
   const updateInvitationMentorTrack = async (invitationId: string, trackId: string) => {
     if (!trackId) return;
     try {
@@ -313,6 +562,24 @@ export default function PersonnelManagement() {
       await loadPersonnel();
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Không thể cập nhật track cho Mentor.");
+    } finally {
+      setIsAccountActionLoading(false);
+    }
+  };
+
+  const updateInvitationAssignmentTrack = async (invitationId: string, assignmentIndex: number, trackId: string) => {
+    if (!trackId) return;
+    try {
+      setIsAccountActionLoading(true);
+      const response = await axios.put(
+        `http://localhost:5000/api/personnel-invitations/${invitationId}/assignment-track`,
+        { assignmentIndex, trackId },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      toast.success(response.data.message || "Đã cập nhật track.");
+      await loadPersonnel();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Không thể cập nhật track.");
     } finally {
       setIsAccountActionLoading(false);
     }
@@ -343,7 +610,7 @@ export default function PersonnelManagement() {
 
       {!event ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
-          Tab nhân sự chỉ mở dữ liệu khi có sự kiện mang trạng thái “Đang diễn ra”.
+          Tab nhân sự chỉ mở dữ liệu khi có sự kiện mang trạng thái “Bản nháp”, “Mở đăng ký”, “Chuẩn bị” hoặc “Đang diễn ra”.
         </div>
       ) : (
         <>
@@ -366,11 +633,21 @@ export default function PersonnelManagement() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="flex items-center gap-2 text-sm font-bold"><FileSpreadsheet size={18} className="text-[#F27024]" /> Chuyển đổi Master Sheet</h2>
+                  <p className="mt-1 text-xs text-slate-500">Tải form mẫu đã được thiết lập theo vòng thi & track hoặc import file Master Sheet đã điền.</p>
                 </div>
-                <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#F27024] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#d95f1f] focus-within:ring-2 focus-within:ring-[#F27024]/30">
-                  <Upload size={15} /> Import Excel
-                  <input type="file" accept=".xlsx,.xls" className="sr-only" onChange={(event) => event.target.files?.[0] && parseMasterSheet(event.target.files[0])} />
-                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={downloadTemplate}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#F27024]/30"
+                  >
+                    <Download size={15} className="text-[#F27024]" /> Tải form mẫu
+                  </button>
+                  <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#F27024] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#d95f1f] focus-within:ring-2 focus-within:ring-[#F27024]/30">
+                    <Upload size={15} /> Import Excel
+                    <input type="file" accept=".xlsx,.xls" className="sr-only" onChange={(event) => event.target.files?.[0] && parseMasterSheet(event.target.files[0])} />
+                  </label>
+                </div>
               </div>
               {fileName && <p className="mt-3 text-xs text-slate-500">File đang kiểm duyệt: <strong>{fileName}</strong></p>}
             </section>
@@ -410,11 +687,11 @@ export default function PersonnelManagement() {
                 </div>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500"><tr><th className="p-3">Họ tên</th><th className="p-3">Email</th><th className="p-3">Vai trò</th><th className="p-3">Vòng/Track</th><th className="p-3">Kiểm tra</th></tr></thead>
+                <table className="w-full table-fixed text-left text-xs">
+                  <thead className="bg-slate-50 text-[12px] uppercase tracking-wider text-slate-500"><tr><th className="w-[18%] p-3">Họ tên</th><th className="w-[25%] p-3">Email</th><th className="w-[18%] p-3">Vai trò</th><th className="w-[27%] p-3">Vòng/Track</th><th className="w-[12%] p-3">Kiểm tra</th></tr></thead>
                   <tbody className="divide-y divide-slate-100">
                     {visiblePreview.map(({ item, index }) => (
-                      <tr key={`${item.email}-${item.role}-${index}`}><td className="p-3 font-semibold">{item.fullName}</td><td className="p-3 text-slate-500">{item.email || "Thiếu email"}</td><td className="p-3"><div className="flex flex-col items-start gap-2"><span className="rounded-md bg-[#F27024]/10 px-2 py-1 font-bold text-[#F27024]">{item.role.toUpperCase()}</span>{item.role === "judge" && <label className="inline-flex cursor-pointer items-center gap-2 text-[10px] font-bold text-slate-600"><input type="checkbox" checked={item.isChiefJudge} onChange={(event) => updateChiefJudge(index, event.target.checked)} className="h-4 w-4 rounded border-slate-300 accent-[#F27024] focus:ring-2 focus:ring-[#F27024]/30" />Chủ tịch Hội đồng</label>}</div></td><td className="p-3 text-slate-500">{item.role === "mentor" ? <label className="block"><span className="sr-only">Chọn track cho {item.fullName}</span><select value={item.trackName} onChange={(event) => updateMentorTrack(index, event.target.value)} className={`w-full min-w-36 rounded-lg border bg-white px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#F27024]/30 ${item.trackName ? "border-slate-200 text-slate-700" : "border-rose-300 text-rose-700"}`}><option value="">Chọn track</option>{tracks.map((track) => <option key={track._id} value={track.name}>{track.name}</option>)}</select></label> : <>{item.roundName}{item.trackName ? ` · ${item.trackName}` : ""}</>}</td><td className="p-3">{item.email && (item.role !== "mentor" || item.trackName) ? <CheckCircle2 size={16} className="text-emerald-600" /> : <span className="text-rose-600">{!item.email ? "Thiếu email" : "Chưa chọn track"}</span>}</td></tr>
+                      <tr key={`${item.email}-${item.role}-${index}`}><td className="p-3 font-semibold truncate" title={item.fullName}>{item.fullName}</td><td className="p-3 text-slate-500 truncate" title={item.email}>{item.email || "Thiếu email"}</td><td className="p-3"><div className="flex flex-col items-start gap-2"><span className="rounded-md bg-[#F27024]/10 px-2 py-1 font-bold text-[#F27024]">{item.role.toUpperCase()}</span>{item.role === "judge" && <label className="inline-flex cursor-pointer items-center gap-2 text-[10px] font-bold text-slate-600"><input type="checkbox" checked={item.isChiefJudge} onChange={(event) => updateChiefJudge(index, event.target.checked)} className="h-4 w-4 rounded border-slate-300 accent-[#F27024] focus:ring-2 focus:ring-[#F27024]/30" />Chủ tịch Hội đồng</label>}</div></td><td className="p-3 text-slate-500">{item.role === "mentor" ? <label className="block"><span className="sr-only">Chọn track cho {item.fullName}</span><select value={item.trackName} onChange={(event) => updateMentorTrack(index, event.target.value)} className={`w-full rounded-lg border bg-white px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#F27024]/30 ${item.trackName ? "border-slate-200 text-slate-700" : "border-rose-300 text-rose-700"}`}><option value="">Chọn track</option>{tracks.map((track) => <option key={track._id} value={track.name}>{track.name}</option>)}</select></label> : <>{item.roundName}{item.trackName ? ` · ${item.trackName}` : ""}</>}</td><td className="p-3">{item.email && (item.role !== "mentor" || item.trackName) ? <CheckCircle2 size={16} className="text-emerald-600" /> : <span className="text-rose-600">{!item.email ? "Thiếu email" : "Chưa chọn track"}</span>}</td></tr>
                     ))}
                   </tbody>
                 </table>
@@ -442,7 +719,56 @@ export default function PersonnelManagement() {
                   const statusLabel = invitation.status === "accepted" ? "Đã chấp thuận" : invitation.status === "rejected" ? "Đã từ chối" : "Đang chờ phản hồi";
                   return (
                     <div key={invitation._id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div><p className="text-sm font-bold">{invitation.fullName}</p><p className="text-xs text-slate-500">{invitation.email}</p><div className="mt-2 flex flex-wrap gap-1">{invitation.assignments?.map((item: any, index: number) => <span key={index} className={`rounded px-2 py-1 text-[10px] font-bold uppercase ${item.isChiefJudge ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{item.role}{item.trackName ? ` · ${item.trackName}` : ""}{item.isChiefJudge ? " · Chủ tịch Hội đồng" : ""}</span>)}</div>{invitation.assignments?.some((item: any) => item.role === "mentor") && <label className="mt-3 block max-w-52"><span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">Track của Mentor</span><select value={tracks.find((track) => track.name === invitation.assignments.find((item: any) => item.role === "mentor")?.trackName)?._id || ""} disabled={isAccountActionLoading} onChange={(event) => updateInvitationMentorTrack(invitation._id, event.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#F27024]/30 disabled:opacity-50"><option value="">Chọn track</option>{tracks.map((track) => <option key={track._id} value={track._id}>{track.name}</option>)}</select></label>}</div>
+                      <div>
+                        <p className="text-sm font-bold">{invitation.fullName}</p>
+                        <p className="text-xs text-slate-500">{invitation.email}</p>
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {invitation.assignments?.map((item: any, index: number) => (
+                            <span key={index} className={`rounded px-2 py-1 text-[10px] font-bold uppercase ${item.isChiefJudge ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"}`}>
+                              {item.role}{item.trackName ? ` · ${item.trackName}` : ""}{item.isChiefJudge ? " · Chủ tịch Hội đồng" : ""}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="mt-3 flex flex-wrap items-center gap-3">
+                          {invitation.assignments?.map((item: any, assignIndex: number) => {
+                            const isFinalRound = String(item.roundName || "").toLowerCase().includes("chung kết") || String(item.trackName || "").toLowerCase().includes("chung kết");
+                            if (isFinalRound) {
+                              return (
+                                <div key={assignIndex} className="block max-w-56">
+                                  <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                    Track ({item.role.toUpperCase()}{item.roundName ? ` · ${item.roundName}` : ""})
+                                  </span>
+                                  <div className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">
+                                    Bảng Chung Kết
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            const matchedTrackId = tracks.find((t) => t.name.trim().toLowerCase() === (item.trackName || "").trim().toLowerCase())?._id || "";
+                            return (
+                              <label key={assignIndex} className="block max-w-56">
+                                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                  Track ({item.role.toUpperCase()}{item.roundName ? ` · ${item.roundName}` : ""})
+                                </span>
+                                <select
+                                  value={matchedTrackId}
+                                  disabled={isAccountActionLoading}
+                                  onChange={(event) => updateInvitationAssignmentTrack(invitation._id, assignIndex, event.target.value)}
+                                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#F27024]/30 disabled:opacity-50"
+                                >
+                                  <option value="">Chọn track ({item.role})</option>
+                                  {tracks.map((track) => (
+                                    <option key={track._id} value={track._id}>
+                                      {track.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <span className={`rounded-lg px-2.5 py-1.5 text-[10px] font-bold ${statusStyle}`}>{statusLabel}</span>
                         {invitation.emailStatus === "failed" && <span className="rounded-lg bg-rose-50 px-2.5 py-1.5 text-[10px] font-bold text-rose-700">Gửi email thất bại</span>}
@@ -462,7 +788,35 @@ export default function PersonnelManagement() {
 
           <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="border-b border-slate-100 p-5"><h2 className="flex items-center gap-2 text-sm font-bold"><UserRoundCheck size={18} className="text-[#F27024]" /> Nhân sự đã được cấp quyền</h2></div>
-            {roles.length ? <div className="divide-y divide-slate-100">{roles.map((item) => <div key={item._id} className="flex items-center justify-between gap-4 p-4"><div><p className="text-sm font-bold">{item.userId?.fullName}</p><p className="text-xs text-slate-500">{item.userId?.email} · {item.trackId?.name || "Toàn sự kiện"}</p></div><div className="flex items-center gap-2"><span className="rounded-lg bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700"><ShieldCheck size={12} className="mr-1 inline" />Đã cấp tài khoản</span><span className="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase text-slate-600">{item.role}</span></div></div>)}</div> : <p className="p-8 text-center text-xs text-slate-500">Chưa có Judge hoặc Mentor nào được cấp quyền.</p>}
+            {groupedProvisionedRoles.length ? (
+              <div className="divide-y divide-slate-100">
+                {groupedProvisionedRoles.map(({ user, roles: userRoles }) => (
+                  <div key={user?._id || user?.email} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">{user?.fullName || "Chưa rõ tên"}</p>
+                      <p className="text-xs text-slate-500 font-mono">{user?.email}</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                        <ShieldCheck size={13} /> Đã cấp tài khoản
+                      </span>
+                      {userRoles.map((roleItem: any) => {
+                        const isJudge = roleItem.role === "judge";
+                        const badgeStyle = isJudge
+                          ? "bg-slate-100 text-slate-700 border-slate-200"
+                          : "bg-amber-50 text-amber-700 border-amber-200";
+                        const trackLabel = roleItem.trackId?.name || "Toàn sự kiện";
+                        return (
+                          <span key={roleItem._id} className={`rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase border ${badgeStyle}`}>
+                            {roleItem.role}{" · "}{trackLabel}{roleItem.isChiefJudge ? " · Chủ tịch Hội đồng" : ""}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : <p className="p-8 text-center text-xs text-slate-500">Chưa có Judge hoặc Mentor nào được cấp quyền.</p>}
           </section>
         </>
       )}

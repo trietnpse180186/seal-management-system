@@ -27,6 +27,7 @@ require("./features/auth/User");
 require("./features/events/Event");
 require("./features/events/Track");
 require("./features/events/Round");
+require("./features/events/PersonnelInvitation");
 require("./features/auth/EventRole");
 require("./features/grading/Rubric");
 require("./features/grading/Criterion");
@@ -39,6 +40,8 @@ require("./features/github-ai/CommitFile");
 require("./features/github-ai/AiAnalysis");
 require("./features/grading/Score");
 require("./features/grading/ScoreDetail");
+require("./features/grading/ScoreAudit");
+require("./features/grading/GradingAssistRequest");
 require("./features/grading/Ranking");
 require("./features/events/Prize");
 require("./features/events/MerchandiseRecord");
@@ -136,6 +139,7 @@ const aiAnalysesRouter = require('./features/github-ai/aiAnalyses');
 const tasksRouter = require('./features/github-ai/tasks');
 const chatRouter = require('./features/chat/chat');
 const galleryRouter = require('./features/events/gallery');
+const personnelInvitationsRouter = require('./features/events/personnelInvitations');
 const ctsvRouter = require('./features/events/ctsv');
 
 app.use('/api', indexRouter);
@@ -152,6 +156,7 @@ app.use('/api/ai-analyses', aiAnalysesRouter);
 app.use('/api/tasks', tasksRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/gallery', galleryRouter);
+app.use('/api/personnel-invitations', personnelInvitationsRouter);
 app.use('/api/ctsv', ctsvRouter);
 
 // Catch 404 and forward to error handler

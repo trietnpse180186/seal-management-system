@@ -4,6 +4,10 @@ const Schema = mongoose.Schema;
 const UserSchema = new Schema({
   email: { type: String, unique: true, required: true },
   passwordHash: { type: String, required: true },
+  authProviders: {
+    type: [{ type: String, enum: ['local', 'google', 'github'] }],
+    default: ['local'],
+  },
   fullName: { type: String, required: true },
   studentId: { type: String },
   university: { type: String },

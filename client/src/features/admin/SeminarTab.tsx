@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 import CustomDateRangePicker from "../shared/CustomDateRangePicker";
-import { useConform } from "../shared/ModalConform";
 
 interface SeminarTabProps {
   selectedEvent: any;
@@ -21,7 +20,6 @@ export default function SeminarTab({
   onPrevStep,
   onCompleteWizard,
 }: SeminarTabProps) {
-  const conform = useConform();
   const [scheduledAt, setScheduledAt] = useState("");
   const [scheduledEnd, setScheduledEnd] = useState("");
   const [meetUrl, setMeetUrl] = useState("");

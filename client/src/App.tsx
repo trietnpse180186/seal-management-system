@@ -171,6 +171,7 @@ function AppContent({
     location.pathname.startsWith("/album") ||
     location.pathname === "/confirm-survey";
   const isPersonnelInvitationPage = location.pathname === "/personnel-invitation";
+  const isConfirmSurveyPage = location.pathname === "/confirm-survey";
 
   const showChatWidget =
     user &&
@@ -183,7 +184,7 @@ function AppContent({
     <div
       className={`min-h-screen ${location.pathname === "/login" ? "bg-[#f5efe8]" : isLightModePage ? "bg-[#faf9f6]" : "bg-gradient-dark"} flex flex-col`}
     >
-      {!isJudgeRoute && !isAdminRoute && !isPersonnelInvitationPage && location.pathname !== "/" && (
+      {!isJudgeRoute && !isAdminRoute && !isPersonnelInvitationPage && !isConfirmSurveyPage && location.pathname !== "/" && (
         <Navbar
           user={user}
           roles={roles}
@@ -393,7 +394,7 @@ function AppContent({
         </Routes>
       </main>
 
-      {!isJudgeRoute && !isAdminRoute && <Footer />}
+      {!isJudgeRoute && !isAdminRoute && !isPersonnelInvitationPage && !isConfirmSurveyPage && <Footer />}
 
       {showChatWidget && (
         <MentorChat roles={roles} isSystemAdmin={!!user?.isSystemAdmin} />

@@ -26,6 +26,19 @@ function getSemesterSuffix(event) {
   else if (semLower === 'fall') semCode = 'fa';
   return semCode ? `_${semCode}${event.year}` : '';
 }
+
+function vietnameseSlug(text) {
+  if (!text) return '';
+  let slug = text;
+  slug = slug.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  slug = slug.replace(/đ/g, 'd').replace(/Đ/g, 'D');
+  slug = slug
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-');
+  return slug;
+}
 const {
   extractDriveFileId,
   sanitizeRoundForAdmin
@@ -1355,7 +1368,7 @@ router.post('/:eventId/distribute-teams', authenticateToken, async (req, res) =>
 
       // Trigger GitHub Repo creation in the background
       const suffix = getSemesterSuffix(event);
-      const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-') + suffix;
+      const slugRepoName = vietnameseSlug(team.name) + suffix;
 
       githubService.createTeamRepository(slugRepoName, 'private', orgName)
         .then(async (gitResult) => {

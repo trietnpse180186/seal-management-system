@@ -139,6 +139,35 @@ function getSemesterSuffix(event) {
   else if (semLower === "fall") semCode = "fa";
   return semCode ? `_${semCode}${event.year}` : "";
 }
+
+/**
+ * Converts Vietnamese text (with diacritical marks) to a GitHub-safe ASCII slug.
+ * Example: "Đội Sáng Tạo" → "doi-sang-tao"
+ *          "Nhóm Phát Triển 2025" → "nhom-phat-trien-2025"
+ * @param {string} text - Vietnamese text with diacritics
+ * @returns {string} - ASCII slug safe for GitHub repository names
+ */
+function vietnameseSlug(text) {
+  if (!text) return "";
+  let slug = text;
+
+  // Normalize Unicode to NFD (decomposed), then remove combining diacritical marks
+  slug = slug.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  // Handle special Vietnamese characters not covered by NFD decomposition
+  slug = slug
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D");
+
+  // Lowercase, replace non-alphanumeric with hyphens, deduplicate hyphens, trim edges
+  slug = slug
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-");
+
+  return slug;
+}
 const {
   canUserAccessRoundExam,
   canUserAccessTrackExam,
@@ -152,6 +181,7 @@ const Round = mongoose.model("Round");
 const { authenticateToken } = require("../auth/authMiddleware");
 const {
   addEmailJob,
+  addEmailJobWithDelay,
   addInAppJob,
   isQueueAvailable,
 } = require("../notifications/notificationQueue");
@@ -645,6 +675,9 @@ router.post("/register", authenticateToken, async (req, res) => {
           email: memberUser.email,
           teamName,
           inviteLink,
+          leaderName: leader ? leader.fullName : undefined,
+          leaderEmail: leader ? leader.email : undefined,
+          eventName: event ? event.name : undefined,
         });
         // Send In-App Notification via queue
         await addInAppJob({
@@ -656,7 +689,7 @@ router.post("/register", authenticateToken, async (req, res) => {
       } else {
         // Fallback: synchronous (Redis not available)
         emailService
-          .sendTeamInvitation(memberUser.email, teamName, inviteLink)
+          .sendTeamInvitation(memberUser.email, teamName, inviteLink, leader ? leader.fullName : null, leader ? leader.email : null, event ? event.name : null)
           .catch((err) =>
             console.error(
               `[FALLBACK] Failed to send invitation email to ${memberUser.email}:`,
@@ -695,11 +728,7 @@ router.post("/register", authenticateToken, async (req, res) => {
       // Automatically create Github Repository
       const orgName = event ? event.githubOrgName : undefined;
       const suffix = getSemesterSuffix(event);
-      const slugRepoName =
-        team.name
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, "-")
-          .replace(/-+/g, "-") + suffix;
+      const slugRepoName = vietnameseSlug(team.name) + suffix;
       const gitResult = await githubService.createTeamRepository(
         slugRepoName,
         "private",
@@ -867,10 +896,24 @@ router.get("/confirm-invite", async (req, res) => {
       `);
     }
 
-    // If already confirmed, redirect directly to survey page
+    // If already confirmed, redirect directly to survey page with auth token
     if (member.confirmStatus === "confirmed") {
       const team = await Team.findById(member.teamId);
-      return res.redirect(`${clientUrl}/confirm-survey?teamName=${encodeURIComponent(team ? team.name : "")}`);
+      const user = await User.findById(member.userId);
+      let authToken = "";
+      if (user) {
+        const jwt = require("jsonwebtoken");
+        const JWT_SECRET = process.env.JWT_SECRET || "seal_hackathon_secret_key_2026";
+        const sessionId = crypto.randomBytes(16).toString("hex");
+        user.activeSessionId = sessionId;
+        await user.save();
+        authToken = jwt.sign(
+          { id: user._id, email: user.email, isSystemAdmin: user.isSystemAdmin, sessionId },
+          JWT_SECRET,
+          { expiresIn: "7d" }
+        );
+      }
+      return res.redirect(`${clientUrl}/confirm-survey?token=${authToken}&teamName=${encodeURIComponent(team ? team.name : "")}`);
     }
 
     // Check token expiry for pending confirmation
@@ -1007,11 +1050,7 @@ router.get("/confirm-invite", async (req, res) => {
       const event = await Event.findById(team.eventId);
       const orgName = event ? event.githubOrgName : undefined;
       const suffix = getSemesterSuffix(event);
-      const slugRepoName =
-        team.name
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, "-")
-          .replace(/-+/g, "-") + suffix;
+      const slugRepoName = vietnameseSlug(team.name) + suffix;
       const populatedMembers = await TeamMember.find({
         teamId: team._id,
       }).populate("userId");
@@ -1076,8 +1115,23 @@ router.get("/confirm-invite", async (req, res) => {
       }
     }
 
-    // Redirect directly to frontend survey page
-    return res.redirect(`${clientUrl}/confirm-survey?teamName=${encodeURIComponent(team.name)}`);
+    // Generate auth token so user is automatically authenticated on frontend
+    const jwt = require("jsonwebtoken");
+    const JWT_SECRET = process.env.JWT_SECRET || "seal_hackathon_secret_key_2026";
+    let authToken = "";
+    if (user) {
+      const sessionId = crypto.randomBytes(16).toString("hex");
+      user.activeSessionId = sessionId;
+      await user.save();
+      authToken = jwt.sign(
+        { id: user._id, email: user.email, isSystemAdmin: user.isSystemAdmin, sessionId },
+        JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+    }
+
+    // Redirect directly to frontend survey page with token
+    return res.redirect(`${clientUrl}/confirm-survey?token=${authToken}&teamName=${encodeURIComponent(team.name)}`);
   } catch (error) {
     console.error("Invite Confirmation Error:", error.message);
     const clientUrl = resolveClientUrl();
@@ -1748,6 +1802,8 @@ router.put("/:teamId/basic-info", authenticateToken, async (req, res) => {
 
     // Invite new members
     const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+    const leaderUser = await User.findById(team.leaderId);
+    const event = await Event.findById(team.eventId);
     for (const nMember of newMembersToCreate) {
       let memberUser = await User.findOne({ email: nMember.email });
       if (!memberUser) {
@@ -1802,7 +1858,7 @@ router.put("/:teamId/basic-info", authenticateToken, async (req, res) => {
       // Send invitation email
       const inviteLink = `${req.protocol}://${req.get("host")}/api/teams/confirm-invite?token=${confirmToken}&memberId=${teamMember._id}`;
       emailService
-        .sendTeamInvitation(memberUser.email, team.name, inviteLink)
+        .sendTeamInvitation(memberUser.email, team.name, inviteLink, leaderUser ? leaderUser.fullName : null, leaderUser ? leaderUser.email : null, event ? event.name : null)
         .catch((err) =>
           console.error(
             `[MEMBER ADD] Failed to send invitation to ${memberUser.email}:`,
@@ -1898,43 +1954,55 @@ router.get("/import-template", authenticateToken, (req, res) => {
   try {
     const wb = XLSX.utils.book_new();
 
-    // Headers
-    const headers = [
-      "Tên Đội Ngũ *",
-      "Vai Trò *",
-      "Họ Tên *",
-      "Email *",
-      "GitHub Username *",
-      "MSSV",
-      "Trường Đại Học",
-      "Chiều Cao (cm) *",
-      "Cân Nặng (kg) *",
-    ];
+    const { type } = req.query;
+    const isAdmin = type === 'admin';
 
-    const sampleRows = [
-      [
-        "Đội Thi Siêu Cấp",
-        "Trưởng nhóm",
-        req.user.fullName || "Nguyễn Văn A",
-        req.user.email,
-        req.user.githubUsername || "nguyenvana-dev",
-        req.user.studentId || "SE123456",
-        req.user.university || "Đại học FPT",
-        req.user.height || 170,
-        req.user.weight || 65,
-      ],
-      [
-        "",
-        "Thành viên",
-        "Trần Thị B",
-        "member1@fe.edu.vn",
-        "tranthib-dev",
-        "SE123457",
-        "Đại học FPT",
-        165,
-        52,
-      ],
-    ];
+    // Headers
+    const headers = isAdmin
+      ? ["STT", "MSSV", "HỌ VÀ TÊN", "TÊN ĐỘI", "MAIL", "VAI TRÒ", "TRƯỜNG"]
+      : [
+          "Tên Đội Ngũ *",
+          "Vai Trò *",
+          "Họ Tên *",
+          "Email *",
+          "GitHub Username *",
+          "MSSV",
+          "Trường Đại Học",
+          "Chiều Cao (cm) *",
+          "Cân Nặng (kg) *",
+        ];
+
+    const sampleRows = isAdmin
+      ? [
+          [1, "SE204283", "Hoàng Quang Nhân", "Những cô gái nóng bỏng", "nhanhqse204283@fpt.edu.vn", "Leader", "Trường Đại học FPT"],
+          [2, "SE203583", "Đặng Nguyễn Hữu Đức", "Những cô gái nóng bỏng", "ducduchse203583@fpt.edu.vn", "Member", "Trường Đại học FPT"],
+          [3, "SE181951", "Lê Vũ Phương Hoà", "Beyond8", "hoalvpse181951@fpt.edu.vn", "Leader", "Trường Đại học FPT"],
+          [4, "SE180026", "Ngô Thành Đạt", "Beyond8", "datntse180026@fpt.edu.vn", "Member", "Trường Đại học FPT"],
+        ]
+      : [
+          [
+            "Đội Thi Siêu Cấp",
+            "Trưởng nhóm",
+            req.user.fullName || "Nguyễn Văn A",
+            req.user.email,
+            req.user.githubUsername || "nguyenvana-dev",
+            req.user.studentId || "SE123456",
+            req.user.university || "Đại học FPT",
+            req.user.height || 170,
+            req.user.weight || 65,
+          ],
+          [
+            "",
+            "Thành viên",
+            "Trần Thị B",
+            "member1@fe.edu.vn",
+            "tranthib-dev",
+            "SE123457",
+            "Đại học FPT",
+            165,
+            52,
+          ],
+        ];
 
     const wsData = [headers, ...sampleRows];
 
@@ -1988,7 +2056,8 @@ router.post(
   authenticateToken,
   upload.single("file"),
   async (req, res) => {
-    const { eventId } = req.body;
+    const { eventId, skipEmail } = req.body;
+    const shouldSkipEmail = skipEmail === true || skipEmail === "true";
 
     if (!eventId) {
       return res.status(400).json({ message: "eventId là bắt buộc." });
@@ -2044,11 +2113,51 @@ router.post(
       const headers = rawData[0];
       const rows = rawData.slice(1);
 
+      // Auto-detect Excel format based on header row
+      // Admin format (from Google Sheets/Excel): STT(0), MSSV(1), HỌ VÀ TÊN(2), TÊN ĐỘI(3), MAIL(4), VAI TRÒ(5), TRƯỜNG(6)
+      // Standard format: Tên Đội(0), Vai Trò(1), Họ Tên(2), Email(3), GitHub(4), MSSV(5), Trường(6), Chiều cao(7), Cân nặng(8)
+      const headerStr = headers.map((h) => String(h).trim().toLowerCase()).join("|");
+      const isAdminFormat =
+        headerStr.includes("stt") &&
+        (headerStr.includes("mssv") || headerStr.includes("họ và tên") || headerStr.includes("tên đội"));
+
+      function extractRowData(row) {
+        if (isAdminFormat) {
+          return {
+            teamName: String(row[3] || "").trim(),
+            roleStr: String(row[5] || "").trim().toLowerCase(),
+            fullName: String(row[2] || "").trim(),
+            email: String(row[4] || "").trim().toLowerCase(),
+            github: "",
+            studentId: String(row[1] || "").trim(),
+            university: normalizeUniversityName(String(row[6] || "").trim()),
+            height: 0,
+            weight: 0,
+            hasHeight: false,
+            hasWeight: false,
+          };
+        }
+        const heightVal = String(row[7] ?? "").trim();
+        const weightVal = String(row[8] ?? "").trim();
+        return {
+          teamName: String(row[0] || "").trim(),
+          roleStr: String(row[1] || "").trim().toLowerCase(),
+          fullName: String(row[2] || "").trim(),
+          email: String(row[3] || "").trim().toLowerCase(),
+          github: String(row[4] || "").trim(),
+          studentId: String(row[5] || "").trim(),
+          university: normalizeUniversityName(String(row[6] || "").trim()),
+          height: Number(heightVal) || 0,
+          weight: Number(weightVal) || 0,
+          hasHeight: !!heightVal,
+          hasWeight: !!weightVal,
+        };
+      }
+
       // 3. Dry Run Validation
       const errors = [];
       const teamGroups = {}; // teamName -> { leader, members: [], rowNums: [] }
       const allEmailsInSheet = new Set();
-      const allTeamNamesInSheet = new Set();
 
       // Check capacity limit
       const currentActiveTeamsCount = await Team.countDocuments({
@@ -2079,27 +2188,26 @@ router.post(
         // Skip fully empty row
         if (row.every((cell) => cell === "")) continue;
 
-        let teamName = String(row[0] || "").trim();
+        const parsed = extractRowData(row);
+        let teamName = parsed.teamName;
         if (!teamName) {
           teamName = currentTeamName;
         } else {
           currentTeamName = teamName;
         }
 
-        const roleStr = String(row[1] || "")
-          .trim()
-          .toLowerCase();
-        const fullName = String(row[2] || "").trim();
-        const email = String(row[3] || "")
-          .trim()
-          .toLowerCase();
-        const github = String(row[4] || "").trim();
-        const studentId = String(row[5] || "").trim();
-        const university = normalizeUniversityName(String(row[6] || "").trim());
-        const heightValue = String(row[7] ?? "").trim();
-        const weightValue = String(row[8] ?? "").trim();
-        const height = Number(heightValue);
-        const weight = Number(weightValue);
+        const {
+          roleStr,
+          fullName,
+          email,
+          github,
+          studentId,
+          university,
+          height,
+          weight,
+          hasHeight,
+          hasWeight,
+        } = parsed;
 
         if (!teamName) {
           errors.push(`Dòng ${rowNum}: Tên Đội Ngũ là bắt buộc.`);
@@ -2119,33 +2227,41 @@ router.post(
           errors.push(`Dòng ${rowNum}: Email là bắt buộc.`);
           continue;
         }
-        if (!github) {
+
+        // GitHub validation: only mandatory for non-admin standard format
+        if (!isAdminFormat && !github) {
           errors.push(`Dòng ${rowNum}: GitHub Username là bắt buộc.`);
           continue;
         }
-        if (!heightValue) {
-          errors.push(`Dòng ${rowNum}: Chiều Cao là bắt buộc.`);
-          continue;
-        }
-        if (!Number.isFinite(height) || height <= 0) {
-          errors.push(`Dòng ${rowNum}: Chiều Cao phải là một số dương.`);
-          continue;
-        }
-        if (!weightValue) {
-          errors.push(`Dòng ${rowNum}: Cân Nặng là bắt buộc.`);
-          continue;
-        }
-        if (!Number.isFinite(weight) || weight <= 0) {
-          errors.push(`Dòng ${rowNum}: Cân Nặng phải là một số dương.`);
-          continue;
+
+        // Height & Weight validation: only mandatory for non-admin standard format
+        if (!isAdminFormat) {
+          if (!hasHeight) {
+            errors.push(`Dòng ${rowNum}: Chiều Cao là bắt buộc.`);
+            continue;
+          }
+          if (!Number.isFinite(height) || height <= 0) {
+            errors.push(`Dòng ${rowNum}: Chiều Cao phải là một số dương.`);
+            continue;
+          }
+          if (!hasWeight) {
+            errors.push(`Dòng ${rowNum}: Cân Nặng là bắt buộc.`);
+            continue;
+          }
+          if (!Number.isFinite(weight) || weight <= 0) {
+            errors.push(`Dòng ${rowNum}: Cân Nặng phải là một số dương.`);
+            continue;
+          }
         }
 
-        // Check if username exists on GitHub
-        const userExists = await githubService.checkGithubUserExists(github);
-        if (!userExists) {
-          errors.push(
-            `Dòng ${rowNum}: GitHub Username "${github}" không tồn tại trên GitHub.`,
-          );
+        // Check if username exists on GitHub (if provided)
+        if (github) {
+          const userExists = await githubService.checkGithubUserExists(github);
+          if (!userExists) {
+            errors.push(
+              `Dòng ${rowNum}: GitHub Username "${github}" không tồn tại trên GitHub.`,
+            );
+          }
         }
 
         const isLeader =
@@ -2178,11 +2294,11 @@ router.post(
         const memberInfo = {
           email,
           fullName,
-          githubUsername: github,
+          githubUsername: github || undefined,
           studentId,
           university,
-          height,
-          weight,
+          height: height || undefined,
+          weight: weight || undefined,
           rowNum,
         };
 
@@ -2257,7 +2373,7 @@ router.post(
         }
 
         if (group.members.length < 2) {
-          errors.push(`"Số lượng thành viên không đủ (tối thiểu 3).`);
+          errors.push(`Đội "${teamName}": Số lượng thành viên không đủ (tối thiểu 3).`);
         }
       }
 
@@ -2301,8 +2417,8 @@ router.post(
           if (leader.githubUsername)
             leaderUser.githubUsername = leader.githubUsername;
           if (leader.university) leaderUser.university = leader.university;
-          leaderUser.height = leader.height;
-          leaderUser.weight = leader.weight;
+          if (leader.height) leaderUser.height = leader.height;
+          if (leader.weight) leaderUser.weight = leader.weight;
           await leaderUser.save();
         }
 
@@ -2317,13 +2433,20 @@ router.post(
         createdTeamIds.push(team._id);
 
         // Create Leader TeamMember
+        const leaderConfirmToken = crypto.randomBytes(32).toString("hex");
+        const expiryDays = shouldSkipEmail ? 7 : 1;
+        const leaderConfirmTokenExpiry = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000);
+
         const leaderMember = new TeamMember({
           teamId: team._id,
           eventId: team.eventId,
           userId: leaderUser._id,
           role: "leader",
-          confirmStatus: "confirmed",
-          confirmedAt: new Date(),
+          confirmStatus: shouldSkipEmail ? "pending" : "confirmed",
+          confirmTokenHash: leaderConfirmToken,
+          confirmTokenExpiry: leaderConfirmTokenExpiry,
+          confirmedAt: shouldSkipEmail ? undefined : new Date(),
+          invitationEmailSent: !shouldSkipEmail,
         });
         await leaderMember.save();
 
@@ -2333,6 +2456,28 @@ router.post(
           { status: "active" },
           { upsert: true, new: true },
         );
+
+        // Send email to Leader if immediate sending is enabled and imported by admin
+        if (!shouldSkipEmail && isCoordinator) {
+          const event = await Event.findById(eventId);
+          const leaderInviteLink = `${req.protocol}://${req.get("host")}/api/teams/confirm-invite?token=${leaderConfirmToken}&memberId=${leaderMember._id}`;
+          emailService
+            .sendTeamInvitation(
+              leaderUser.email,
+              teamName,
+              leaderInviteLink,
+              leaderUser.fullName,
+              leaderUser.email,
+              event ? event.name : null,
+              "leader"
+            )
+            .catch((err) =>
+              console.error(
+                `[IMPORT] Failed to send invitation to leader ${leaderUser.email}:`,
+                err.message,
+              ),
+            );
+        }
 
         // Invite other members
         for (const mData of members) {
@@ -2360,13 +2505,14 @@ router.post(
             if (mData.githubUsername)
               memberUser.githubUsername = mData.githubUsername;
             if (mData.university) memberUser.university = mData.university;
-            memberUser.height = mData.height;
-            memberUser.weight = mData.weight;
+            if (mData.height) memberUser.height = mData.height;
+            if (mData.weight) memberUser.weight = mData.weight;
             await memberUser.save();
           }
 
           const confirmToken = crypto.randomBytes(32).toString("hex");
-          const confirmTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+          // If skipEmail is requested by admin, extend validity to 7 days
+          const confirmTokenExpiry = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000);
 
           const teamMember = new TeamMember({
             teamId: team._id,
@@ -2376,6 +2522,7 @@ router.post(
             confirmStatus: "pending",
             confirmTokenHash: confirmToken,
             confirmTokenExpiry,
+            invitationEmailSent: !shouldSkipEmail,
           });
           await teamMember.save();
 
@@ -2386,19 +2533,30 @@ router.post(
             { upsert: true, new: true },
           );
 
-          // Send Email Invitation
-          const inviteLink = `${req.protocol}://${req.get("host")}/api/teams/confirm-invite?token=${confirmToken}&memberId=${teamMember._id}`;
-          emailService
-            .sendTeamInvitation(memberUser.email, teamName, inviteLink)
-            .catch((err) =>
-              console.error(
-                `[IMPORT] Failed to send invitation to ${memberUser.email}:`,
-                err.message,
-              ),
-            );
+          // Send Email Invitation only if not skipped
+          if (!shouldSkipEmail) {
+            const event = await Event.findById(eventId);
+            const inviteLink = `${req.protocol}://${req.get("host")}/api/teams/confirm-invite?token=${confirmToken}&memberId=${teamMember._id}`;
+            emailService
+              .sendTeamInvitation(
+                memberUser.email,
+                teamName,
+                inviteLink,
+                leaderUser ? leaderUser.fullName : null,
+                leaderUser ? leaderUser.email : null,
+                event ? event.name : null,
+                "member"
+              )
+              .catch((err) =>
+                console.error(
+                  `[IMPORT] Failed to send invitation to ${memberUser.email}:`,
+                  err.message,
+                ),
+              );
+          }
         }
 
-        // If registered with no additional members, auto confirm team
+        // If registered with no additional members and not pending, auto confirm team
         const pendingCount = await TeamMember.countDocuments({
           teamId: team._id,
           confirmStatus: "pending",
@@ -2411,9 +2569,18 @@ router.post(
         importedTeams.push(team);
       }
 
+      const importedTeamIds = importedTeams.map((t) => t._id);
+      const pendingMemberCount = await TeamMember.countDocuments({
+        teamId: { $in: importedTeamIds },
+        confirmStatus: "pending",
+        invitationEmailSent: false,
+      });
+
       res.json({
         message: `Đã import thành công ${importedTeams.length} đội thi!`,
         count: importedTeams.length,
+        teamIds: importedTeamIds,
+        memberCount: pendingMemberCount,
       });
     } catch (error) {
       console.error("Import teams error:", error.message);
@@ -2439,6 +2606,119 @@ router.post(
     }
   },
 );
+
+/**
+ * @route   GET /api/teams/validate-github/:username
+ * @desc    Kiểm tra GitHub username có tồn tại không
+ * @access  Public
+ */
+router.get("/validate-github/:username", async (req, res) => {
+  try {
+    const { username } = req.params;
+    if (!username || !username.trim()) {
+      return res.status(400).json({ exists: false, message: "Username là bắt buộc." });
+    }
+    const exists = await githubService.checkGithubUserExists(username.trim());
+    res.json({ exists, username: username.trim() });
+  } catch (error) {
+    console.error("Validate GitHub username error:", error.message);
+    res.status(500).json({ exists: false, message: "Lỗi hệ thống khi kiểm tra GitHub." });
+  }
+});
+
+/**
+ * @route   POST /api/teams/send-import-invitations
+ * @desc    Gửi email mời cho tất cả thí sinh (Leader & Member) chưa gửi email
+ * @access  Private (Coordinator / System Admin)
+ */
+router.post("/send-import-invitations", authenticateToken, async (req, res) => {
+  try {
+    if (!req.user.isSystemAdmin) {
+      const coordRole = await EventRole.findOne({
+        userId: req.user._id,
+        role: { $in: ["coordinator", "student_assistant"] },
+        status: "active",
+      });
+      if (!coordRole) {
+        return res.status(403).json({ message: "Không có quyền thực hiện chức năng này." });
+      }
+    }
+
+    const { teamIds } = req.body;
+    if (!Array.isArray(teamIds) || teamIds.length === 0) {
+      return res.status(400).json({ message: "Danh sách teamIds là bắt buộc." });
+    }
+
+    const pendingMembers = await TeamMember.find({
+      teamId: { $in: teamIds },
+      confirmStatus: "pending",
+      invitationEmailSent: false,
+    }).populate("userId", "email fullName");
+
+    if (pendingMembers.length === 0) {
+      return res.json({ sent: 0, failed: 0, total: 0, message: "Không có thành viên nào cần gửi email." });
+    }
+
+    let sent = 0;
+    let failed = 0;
+
+    for (let i = 0; i < pendingMembers.length; i++) {
+      const member = pendingMembers[i];
+      try {
+        member.confirmTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        await member.save();
+
+        const team = await Team.findById(member.teamId).populate("leaderId", "fullName email");
+        const event = await Event.findById(team?.eventId);
+        const inviteLink = `${req.protocol}://${req.get("host")}/api/teams/confirm-invite?token=${member.confirmTokenHash}&memberId=${member._id}`;
+
+        if (isQueueAvailable()) {
+          await addEmailJobWithDelay(
+            {
+              type: "team_invite",
+              email: member.userId.email,
+              teamName: team?.name,
+              inviteLink,
+              leaderName: team?.leaderId?.fullName || null,
+              leaderEmail: team?.leaderId?.email || null,
+              eventName: event?.name || null,
+              role: member.role,
+            },
+            i * 700,
+          );
+        } else {
+          if (i > 0) await new Promise((r) => setTimeout(r, 500));
+          await emailService.sendTeamInvitation(
+            member.userId.email,
+            team?.name,
+            inviteLink,
+            team?.leaderId?.fullName || null,
+            team?.leaderId?.email || null,
+            event?.name || null,
+            member.role,
+          );
+        }
+
+        member.invitationEmailSent = true;
+        await member.save();
+        sent++;
+      } catch (err) {
+        console.error(`[SEND-INVITATIONS] Failed for ${member.userId?.email}:`, err.message);
+        failed++;
+      }
+    }
+
+    res.json({
+      sent,
+      failed,
+      total: pendingMembers.length,
+      message: `Đã gửi ${sent} email mời thành công!`,
+    });
+  } catch (error) {
+    console.error("Send import invitations error:", error.message);
+    res.status(500).json({ message: "Lỗi hệ thống khi gửi email mời." });
+  }
+});
 
 /**
  * @route   GET /api/teams/my-team/exam-access
@@ -3174,11 +3454,7 @@ router.put("/:teamId/assign-track", authenticateToken, async (req, res) => {
 
     // Trigger GitHub Repo creation in the background
     const suffix = getSemesterSuffix(event);
-    const slugRepoName =
-      team.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, "-")
-        .replace(/-+/g, "-") + suffix;
+    const slugRepoName = vietnameseSlug(team.name) + suffix;
 
     // Check if repo already exists for this team
     const existingRepo = await GithubRepository.findOne({ teamId: team._id });

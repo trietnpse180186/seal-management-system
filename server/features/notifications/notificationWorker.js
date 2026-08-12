@@ -86,7 +86,15 @@ async function handleEmailJob(jobId, data) {
       break;
 
     case 'team_invite':
-      await emailService.sendTeamInvitation(data.email, data.teamName, data.inviteLink);
+      await emailService.sendTeamInvitation(
+        data.email,
+        data.teamName,
+        data.inviteLink,
+        data.leaderName,
+        data.leaderEmail,
+        data.eventName,
+        data.role || 'member'
+      );
       break;
 
     case 'event_open':

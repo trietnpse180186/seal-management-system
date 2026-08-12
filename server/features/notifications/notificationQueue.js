@@ -78,6 +78,26 @@ async function addEmailJob(data) {
 }
 
 /**
+ * Adds an email job with a staggered delay (for bulk sending).
+ * @param {Object} data
+ * @param {number} [delayMs=0]
+ */
+async function addEmailJobWithDelay(data, delayMs = 0) {
+  if (!notificationQueue || !isRedisAvailable) {
+    console.warn(`[QUEUE] Redis unavailable. Delayed email job (${data.type}) skipped.`);
+    return null;
+  }
+  try {
+    const job = await notificationQueue.add('send_email', data, { delay: delayMs });
+    console.log(`[QUEUE] Email job #${job.id} enqueued with ${delayMs}ms delay: type=${data.type}, to=${data.email}`);
+    return job;
+  } catch (err) {
+    console.error(`[QUEUE] Failed to enqueue delayed email job (${data.type}):`, err.message);
+    return null;
+  }
+}
+
+/**
  * Adds an in-app notification job to the queue.
  * Falls back gracefully if Redis is not available.
  * @param {Object} data
@@ -113,6 +133,7 @@ function isQueueAvailable() {
 module.exports = {
   initQueue,
   addEmailJob,
+  addEmailJobWithDelay,
   addInAppJob,
   isQueueAvailable,
   getQueue: () => notificationQueue,

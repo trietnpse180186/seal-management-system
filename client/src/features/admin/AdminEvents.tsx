@@ -3187,6 +3187,7 @@ export default function AdminEvents({
             handleSyncRepo={handleSyncRepo}
             syncingRepoId={syncingRepoId}
             readOnly={readOnly || isAssistant}
+            onRefreshTeams={fetchTeamsList}
           />
         ) : (
           <div className="glass p-8 text-center rounded-2xl text-slate-500 font-mono">

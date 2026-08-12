@@ -409,6 +409,27 @@ router.put('/profile', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @route   PATCH /api/auth/github-username
+ * @desc    Cập nhật GitHub username cho user hiện tại
+ * @access  Private (Authenticated)
+ */
+router.patch('/github-username', authenticateToken, async (req, res) => {
+  try {
+    const { githubUsername } = req.body;
+    if (!githubUsername || !githubUsername.trim()) {
+      return res.status(400).json({ message: 'GitHub Username là bắt buộc.' });
+    }
+    const user = req.user;
+    user.githubUsername = githubUsername.trim();
+    await user.save();
+    res.json({ message: 'Đã cập nhật GitHub Username.', githubUsername: user.githubUsername });
+  } catch (error) {
+    console.error('Update GitHub username error:', error.message);
+    res.status(500).json({ message: 'Lỗi hệ thống khi cập nhật GitHub Username.' });
+  }
+});
+
+/**
  * @route   POST /api/auth/assign-role
  * @desc    Assign event role to a user (System Admin only)
  * @access  Private (System Admin)

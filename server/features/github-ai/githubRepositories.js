@@ -23,12 +23,25 @@ function getSemesterSuffix(event) {
   return semCode ? `_${semCode}${event.year}` : '';
 }
 
+function vietnameseSlug(text) {
+  if (!text) return '';
+  let slug = text;
+  slug = slug.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  slug = slug.replace(/đ/g, 'd').replace(/Đ/g, 'D');
+  slug = slug
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-');
+  return slug;
+}
+
 /**
  * @route   GET /api/github-repositories/search-users
  * @desc    Search for users on GitHub
- * @access  Private
+ * @access  Public
  */
-router.get('/search-users', authenticateToken, async (req, res) => {
+router.get('/search-users', async (req, res) => {
   const { q } = req.query;
   if (!q) {
     return res.status(400).json({ message: 'Missing search query q.' });
@@ -133,7 +146,7 @@ router.post('/create', authenticateToken, async (req, res) => {
 
     // Slugify repo name
     const suffix = getSemesterSuffix(event);
-    const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-') + suffix;
+    const slugRepoName = vietnameseSlug(team.name) + suffix;
     const gitResult = await githubService.createTeamRepository(slugRepoName, 'private', orgName);
 
     const actualOrgName = gitResult.owner || orgName;

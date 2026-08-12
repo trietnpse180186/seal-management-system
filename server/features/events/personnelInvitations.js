@@ -259,6 +259,7 @@ router.post('/:invitationId/resend', authenticateToken, async (req, res) => {
         event.name,
         [...new Set(invitation.assignments.map((item) => item.role))],
         `${clientUrl}/personnel-invitation?token=${rawToken}`,
+        invitation.assignments
       );
       invitation.emailStatus = 'sent';
       await invitation.save();
@@ -393,6 +394,7 @@ router.post('/event/:eventId/send', authenticateToken, async (req, res) => {
           event.name,
           [...new Set(person.assignments.map((item) => item.role))],
           responseLink,
+          person.assignments
         );
         invitation.emailStatus = 'sent';
       } catch (emailError) {

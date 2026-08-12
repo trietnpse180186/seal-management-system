@@ -227,33 +227,88 @@ async function sendMailHelper(mailOptions) {
   return await transporter.sendMail(mailOptions);
 }
 
+const FPT_LOGO_URL = 'https://upload.wikimedia.org/wikipedia/vi/2/2d/Logo_Tr%C6%B0%E1%BB%9Dng_%C4%90%E1%BA%A1i_h%E1%BB%8Dc_FPT.svg';
+
+/**
+ * Standardized, professional HTML email wrapper with balanced layout and FPT footer logo.
+ */
+function buildBaseEmailTemplate({ headerTitle, contentHtml }) {
+  return `
+    <div style="background-color: #f8fafc; margin: 0; padding: 40px 16px; font-family: 'Inter', Arial, Helvetica, sans-serif; color: #0f172a; -webkit-font-smoothing: antialiased;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(15,23,42,0.06);">
+        <!-- Top Accent Line -->
+        <div style="height: 6px; background-color: #F27024; width: 100%;"></div>
+        
+        <!-- Header -->
+        <div style="padding: 36px 32px 16px 32px; text-align: center;">
+          <h2 style="color: #0f172a; font-size: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin: 0; line-height: 1.4;">${headerTitle}</h2>
+        </div>
+
+        <!-- Main Content -->
+        <div style="padding: 16px 32px 36px 32px; font-size: 15px; line-height: 1.7; color: #334155;">
+          ${contentHtml}
+        </div>
+
+        <!-- Footer -->
+        <div style="border-top: 1px solid #f1f5f9; padding: 24px 32px; background-color: #fafafa; text-align: center;">
+          <div style="margin-bottom: 12px;">
+            <span style="font-size: 12px; color: #64748b; vertical-align: middle; margin-right: 8px;">Powered by</span>
+            <img src="${FPT_LOGO_URL}" alt="FPT University Logo" style="height: 36px; max-width: 160px; vertical-align: middle; border: 0;" />
+          </div>
+          <p style="font-size: 12px; color: #94a3b8; margin: 0; line-height: 1.5;">
+            Hệ thống Quản lý SEAL Hackathon &copy; 2026. All rights reserved.
+          </p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 /**
  * Sends a registration/join invitation email to a team member.
  * @param {string} email - Recipient email
  * @param {string} teamName - Name of the team they are invited to join
  * @param {string} inviteLink - Confirmation link URL containing the token
+ * @param {string} [leaderName] - Optional full name of the team leader
+ * @param {string} [leaderEmail] - Optional email address of the team leader
+ * @param {string} [eventName] - Optional full name of the event/competition
  * @returns {Promise<boolean>}
  */
-async function sendTeamInvitation(email, teamName, inviteLink) {
+async function sendTeamInvitation(email, teamName, inviteLink, leaderName = null, leaderEmail = null, eventName = null) {
+  const displayEventName = eventName || 'SEAL Hackathon';
+  const isLeader = leaderEmail && email.toLowerCase() === leaderEmail.toLowerCase();
+
+  const leaderInfoSection = (!isLeader && (leaderName || leaderEmail))
+    ? `
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #F27024; border-radius: 8px; padding: 16px 20px; margin: 24px 0;">
+        <p style="margin: 0 0 8px 0; font-weight: 700; color: #0f172a; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Thông tin Trưởng nhóm:</p>
+        ${leaderName ? `<p style="margin: 4px 0; color: #334155;">Họ và tên: <strong style="color: #0f172a;">${leaderName}</strong></p>` : ''}
+        ${leaderEmail ? `<p style="margin: 4px 0; color: #334155;">Email liên hệ: <strong style="color: #0f172a;">${leaderEmail}</strong></p>` : ''}
+      </div>
+    `
+    : '';
+
+  const contentHtml = `
+    <p style="margin-top: 0;">Xin chào,</p>
+    <p>Ban Tổ chức xin thông báo: Bạn đã được mời tham gia đội thi <strong style="color: #F27024;">"${teamName}"</strong> để tham dự cuộc thi <strong>${displayEventName}</strong>.</p>
+    ${leaderInfoSection}
+    <p>Để hoàn tất thủ tục đăng ký và chính thức tham gia cùng các đồng đội, vui lòng xác nhận bằng cách nhấn vào nút dưới đây:</p>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${inviteLink}" style="background-color: #F27024; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 8px 20px rgba(242,112,36,0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">XÁC NHẬN THAM GIA ĐỘI THI</a>
+    </div>
+    <div style="font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #fed7aa; padding: 16px; background-color: #fff7ed; border-radius: 10px;">
+      <strong>Lưu ý quan trọng:</strong> Tất cả các thành viên được mời đều phải xác nhận tham gia trước khi hết hạn đăng ký hoặc khi số lượng đội đạt giới hạn tối đa để đội thi được công nhận chính thức.
+    </div>
+  `;
+
   const mailOptions = {
     from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
     to: email,
-    subject: `[SEAL Hackathon] Xác nhận tham gia đội thi "${teamName}"`,
-    html: `
-      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px; border: 1px solid #fed7aa; border-radius: 16px; background-color: #ffffff; color: #0f172a; box-shadow: 0 16px 40px rgba(15,23,42,0.10);">
-        <div style="width: 48px; height: 4px; margin: 0 auto 24px; border-radius: 999px; background-color: #F27024;"></div>
-        <h2 style="color: #0f172a; text-align: center; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 24px; font-size: 20px;">LỜI MỜI THAM GIA ĐỘI THI</h2>
-        <p style="font-size: 15px; line-height: 1.7; color: #334155;">Xin chào,</p>
-        <p style="font-size: 15px; line-height: 1.7; color: #334155;">Bạn đã được mời tham gia đội thi <strong style="color: #F27024;">"${teamName}"</strong> để tham dự sự kiện SEAL Hackathon sắp tới.</p>
-        <p style="font-size: 15px; line-height: 1.7; color: #334155;">Để hoàn tất đăng ký và tham gia cùng các đồng đội, vui lòng nhấn vào nút xác nhận dưới đây:</p>
-        <div style="text-align: center; margin: 32px 0;">
-          <a href="${inviteLink}" style="background-color: #F27024; color: #ffffff; padding: 14px 30px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 10px 24px rgba(242,112,36,0.24); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">XÁC NHẬN THAM GIA</a>
-        </div>
-        <p style="margin-top: 24px; font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #fed7aa; padding: 16px; background-color: #fff7ed; border-radius: 10px;">Lưu ý: Tất cả các thành viên được mời đều phải xác nhận tham gia trước khi hết hạn đăng ký hoặc khi số lượng đội đạt giới hạn tối đa để đội thi được công nhận chính thức.</p>
-        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin-top: 28px; margin-bottom: 20px;">
-        <p style="font-size: 12px; color: #64748b; text-align: center;">Hệ thống Quản lý SEAL Hackathon &copy; 2026</p>
-      </div>
-    `
+    subject: `[SEAL Hackathon] Lời mời tham gia đội thi "${teamName}"`,
+    html: buildBaseEmailTemplate({
+      headerTitle: 'Lời Mời Tham Gia Đội Thi',
+      contentHtml
+    })
   };
 
   if (isMock) {
@@ -261,6 +316,7 @@ async function sendTeamInvitation(email, teamName, inviteLink) {
     console.log(`To: ${email}`);
     console.log(`Subject: ${mailOptions.subject}`);
     console.log(`Confirmation Link: ${inviteLink}`);
+    if (leaderName) console.log(`Leader: ${leaderName} (${leaderEmail})`);
     console.log('----------------------------\n');
     return true;
   }
@@ -271,7 +327,6 @@ async function sendTeamInvitation(email, teamName, inviteLink) {
     return true;
   } catch (error) {
     console.error('Error sending email via Ethereal/SMTP:', error);
-    // Fall back to console print if real fails, so app doesn't break
     console.log('\n--- [EMAIL MOCK FALLBACK] ---');
     console.log(`To: ${email}`);
     console.log(`Confirmation Link: ${inviteLink}`);
@@ -280,23 +335,63 @@ async function sendTeamInvitation(email, teamName, inviteLink) {
   }
 }
 
-async function sendPersonnelInvitation(email, fullName, eventName, roles, responseLink) {
+async function sendPersonnelInvitation(email, fullName, eventName, roles, responseLink, assignments = []) {
   const roleLabel = roles.map((role) => role === 'judge' ? 'Giám khảo' : 'Mentor').join(' & ');
+  
+  let assignmentCardsHtml = '';
+  if (Array.isArray(assignments) && assignments.length > 0) {
+    const cards = assignments.map((item, idx) => {
+      const roleTitle = item.role === 'judge' 
+        ? (item.isChiefJudge ? 'Trưởng Ban Giám Khảo' : 'Giám Khảo') 
+        : 'Mentor / Cố Vấn Chuyên Môn';
+      return `
+        <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; ${idx > 0 ? 'margin-top: 10px;' : ''}">
+          <p style="margin: 0 0 6px 0; font-weight: 700; color: #F27024; font-size: 14px;">Nhiệm vụ ${assignments.length > 1 ? (idx + 1) : ''}: ${roleTitle}</p>
+          ${item.trackName ? `<p style="margin: 3px 0; color: #334155; font-size: 14px;">• <strong>Bảng đấu:</strong> ${item.trackName}</p>` : ''}
+          ${item.roundName ? `<p style="margin: 3px 0; color: #334155; font-size: 14px;">• <strong>Vòng thi:</strong> ${item.roundName}</p>` : ''}
+          ${item.note ? `<p style="margin: 3px 0; color: #64748b; font-size: 13px; font-style: italic;">• Ghi chú: ${item.note}</p>` : ''}
+        </div>
+      `;
+    }).join('');
+
+    assignmentCardsHtml = `
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #F27024; border-radius: 8px; padding: 18px 20px; margin: 24px 0;">
+        <p style="margin: 0 0 12px 0; font-weight: 700; color: #0f172a; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Chi Tiết Phân Công Nhiệm Vụ:</p>
+        ${cards}
+      </div>
+    `;
+  } else {
+    assignmentCardsHtml = `
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #F27024; border-radius: 8px; padding: 16px 20px; margin: 24px 0;">
+        <p style="margin: 0; color: #334155; font-weight: 600;">Vai trò phân công: <span style="color: #F27024;">${roleLabel}</span></p>
+      </div>
+    `;
+  }
+
+  const contentHtml = `
+    <p style="margin-top: 0;">Kính gửi <strong>${fullName}</strong>,</p>
+    <p>Ban Tổ chức cuộc thi <strong style="color: #F27024;">${eventName}</strong> trân trọng kính mời Anh/Chị tham gia đồng hành cùng chương trình với các vị trí phân công nhiệm vụ chuyên môn.</p>
+    ${assignmentCardsHtml}
+    <p>Sự tham gia và kinh nghiệm chuyên môn của Anh/Chị sẽ góp phần rất lớn vào sự thành công chung của cuộc thi cũng như sự phát triển của các đội thi.</p>
+    <p>Vui lòng mở trang phản hồi để xác nhận tiếp nhận lời mời hoặc phản hồi lại với Ban Tổ chức:</p>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${responseLink}" style="background-color: #F27024; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 8px 20px rgba(242,112,36,0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">PHẢN HỒI LỜI MỜI</a>
+    </div>
+    <div style="font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #e2e8f0; padding: 16px; background-color: #f8fafc; border-radius: 10px;">
+      Liên kết này có hiệu lực trong vòng 7 ngày và được dành riêng cho địa chỉ email <strong>${email}</strong>.
+    </div>
+  `;
+
   const mailOptions = {
     from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
     to: email,
-    subject: `[SEAL Hackathon] Lời mời tham gia nhân sự ${eventName}`,
-    html: `
-      <div style="font-family: Inter,Arial,sans-serif;max-width:600px;margin:auto;padding:32px;border:1px solid #fed7aa;border-radius:16px;color:#0f172a">
-        <div style="height:4px;background:#F27024;border-radius:999px;margin-bottom:24px"></div>
-        <h2 style="margin:0 0 20px">LỜI MỜI THAM GIA NHÂN SỰ</h2>
-        <p>Xin chào <strong>${fullName}</strong>,</p>
-        <p>Bạn được mời tham gia sự kiện <strong>${eventName}</strong> với vai trò <strong style="color:#F27024">${roleLabel}</strong>.</p>
-        <p>Vui lòng mở trang phản hồi để chấp thuận hoặc từ chối lời mời.</p>
-        <div style="text-align:center;margin:30px 0"><a href="${responseLink}" style="display:inline-block;background:#F27024;color:white;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:700">PHẢN HỒI LỜI MỜI</a></div>
-        <p style="font-size:12px;color:#64748b">Liên kết có hiệu lực trong 7 ngày và chỉ dành cho địa chỉ email này.</p>
-      </div>`,
+    subject: `[SEAL Hackathon] Thư mời đảm nhận nhân sự cuộc thi ${eventName}`,
+    html: buildBaseEmailTemplate({
+      headerTitle: 'Lời Mời Phân Công Nhân Sự',
+      contentHtml
+    })
   };
+
   if (isMock) {
     console.log(`[EMAIL MOCK] Personnel invitation to ${email}: ${responseLink}`);
     return true;
@@ -308,26 +403,42 @@ async function sendPersonnelInvitation(email, fullName, eventName, roles, respon
 async function sendPersonnelAccountGranted(email, fullName, roleLabel, loginMethod, temporaryPassword = null) {
   const loginUrl = process.env.CLIENT_URL || 'http://localhost:5173';
   const loginInstruction = loginMethod === 'google_and_password'
-    ? `<p>Bạn có thể đăng nhập theo một trong hai cách:</p><ol><li>Chọn <strong>Đăng nhập bằng Google</strong> với địa chỉ <strong>${email}</strong>.</li><li>Đăng nhập bằng email <strong>${email}</strong> và mật khẩu tạm <strong>${temporaryPassword}</strong>.</li></ol><p>Vui lòng đổi mật khẩu tạm sau lần đăng nhập đầu tiên.</p>`
+    ? `<p style="margin: 8px 0;">Anh/Chị có thể đăng nhập bằng một trong hai hình thức:</p>
+       <ol style="margin: 8px 0; padding-left: 20px; color: #334155;">
+         <li style="margin-bottom: 6px;">Chọn <strong>Đăng nhập bằng Google</strong> với địa chỉ email <strong>${email}</strong>.</li>
+         <li>Đăng nhập bằng email <strong>${email}</strong> và mật khẩu tạm thời: <strong style="color: #F27024; font-family: monospace;">${temporaryPassword}</strong></li>
+       </ol>`
     : loginMethod === 'google_and_existing_password'
-      ? `<p>Bạn có thể chọn <strong>Đăng nhập bằng Google</strong> với địa chỉ <strong>${email}</strong>, hoặc đăng nhập bằng email và mật khẩu hiện tại.</p>`
+      ? `<p style="margin: 8px 0;">Anh/Chị có thể chọn <strong>Đăng nhập bằng Google</strong> với địa chỉ email <strong>${email}</strong>, hoặc đăng nhập bằng tài khoản và mật khẩu hiện tại.</p>`
     : temporaryPassword
-      ? `<p>Tài khoản: <strong>${email}</strong><br>Mật khẩu tạm: <strong>${temporaryPassword}</strong></p><p>Vui lòng đổi mật khẩu sau lần đăng nhập đầu tiên.</p>`
-      : `<p>Hãy đăng nhập bằng địa chỉ <strong>${email}</strong> và mật khẩu hiện tại của bạn.</p>`;
+      ? `<div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 16px 0; font-family: monospace;">
+           <p style="margin: 0 0 6px 0;">Email đăng nhập: <strong>${email}</strong></p>
+           <p style="margin: 0;">Mật khẩu tạm thời: <strong style="color: #F27024;">${temporaryPassword}</strong></p>
+         </div>`
+      : `<p style="margin: 8px 0;">Anh/Chị vui lòng đăng nhập bằng địa chỉ email <strong>${email}</strong> và mật khẩu hiện tại trên hệ thống.</p>`;
+
+  const contentHtml = `
+    <p style="margin-top: 0;">Kính gửi <strong>${fullName}</strong>,</p>
+    <p>Ban Tổ chức xin trân trọng thông báo: Tài khoản của Anh/Chị đã được cấp quyền <strong style="color: #F27024;">${roleLabel}</strong> trên hệ thống Quản lý SEAL Hackathon.</p>
+    ${loginInstruction}
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${loginUrl}/login" style="background-color: #F27024; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 8px 20px rgba(242,112,36,0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">ĐĂNG NHẬP HỆ THỐNG</a>
+    </div>
+    <div style="font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #fed7aa; padding: 16px; background-color: #fff7ed; border-radius: 10px;">
+      <strong>Lưu ý bảo mật:</strong> Vì lý do an toàn thông tin, Anh/Chị vui lòng đổi mật khẩu sau lần đăng nhập đầu tiên.
+    </div>
+  `;
+
   const mailOptions = {
     from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
     to: email,
-    subject: '[SEAL Hackathon] Tài khoản nhân sự đã được cấp quyền',
-    html: `
-      <div style="font-family:Inter,Arial,sans-serif;max-width:600px;margin:auto;padding:32px;border:1px solid #fed7aa;border-radius:16px;color:#0f172a">
-        <div style="height:4px;background:#F27024;border-radius:999px;margin-bottom:24px"></div>
-        <h2>ĐÃ CẤP QUYỀN NHÂN SỰ</h2>
-        <p>Xin chào <strong>${fullName}</strong>,</p>
-        <p>Tài khoản của bạn đã được cấp quyền <strong style="color:#F27024">${roleLabel}</strong> trên hệ thống SEAL Hackathon.</p>
-        ${loginInstruction}
-        <div style="text-align:center;margin:30px 0"><a href="${loginUrl}/login" style="display:inline-block;background:#F27024;color:white;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:700">ĐĂNG NHẬP HỆ THỐNG</a></div>
-      </div>`,
+    subject: `[SEAL Hackathon] Thông báo cấp quyền tài khoản nhân sự - ${roleLabel}`,
+    html: buildBaseEmailTemplate({
+      headerTitle: 'Đã Cấp Quyền Nhân Sự',
+      contentHtml
+    })
   };
+
   if (isMock) {
     console.log(`[EMAIL MOCK] Personnel account granted to ${email} via ${loginMethod}`);
     return true;
@@ -344,25 +455,26 @@ async function sendPersonnelAccountGranted(email, fullName, roleLabel, loginMeth
  * @returns {Promise<boolean>}
  */
 async function sendEmailVerification(email, fullName, verifyLink) {
+  const contentHtml = `
+    <p style="margin-top: 0;">Kính gửi <strong>${fullName}</strong>,</p>
+    <p>Cảm ơn bạn đã đăng ký tài khoản trên hệ thống Quản lý SEAL Hackathon.</p>
+    <p>Để hoàn tất quy trình kích hoạt tài khoản và sẵn sàng tham gia các hoạt động của cuộc thi, vui lòng xác nhận địa chỉ email bằng cách nhấn vào nút dưới đây:</p>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${verifyLink}" style="background-color: #F27024; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 8px 20px rgba(242,112,36,0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">KÍCH HOẠT TÀI KHOẢN</a>
+    </div>
+    <div style="font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #fed7aa; padding: 16px; background-color: #fff7ed; border-radius: 10px;">
+      <strong>Lưu ý:</strong> Liên kết kích hoạt có hiệu lực trong vòng 24 giờ. Sau thời gian này, các tài khoản chưa xác thực sẽ bị hủy để giải phóng dữ liệu.
+    </div>
+  `;
+
   const mailOptions = {
     from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
     to: email,
-    subject: `[SEAL Hackathon] Kích hoạt tài khoản của bạn`,
-    html: `
-      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px; border: 1px solid #fed7aa; border-radius: 16px; background-color: #ffffff; color: #0f172a; box-shadow: 0 16px 40px rgba(15,23,42,0.10);">
-        <div style="width: 48px; height: 4px; margin: 0 auto 24px; border-radius: 999px; background-color: #F27024;"></div>
-        <h2 style="color: #0f172a; text-align: center; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 24px; font-size: 20px;">KÍCH HOẠT TÀI KHOẢN</h2>
-        <p style="font-size: 15px; line-height: 1.7; color: #334155;">Xin chào <strong>${fullName}</strong>,</p>
-        <p style="font-size: 15px; line-height: 1.7; color: #334155;">Cảm ơn bạn đã đăng ký tài khoản trên hệ thống Quản lý SEAL Hackathon.</p>
-        <p style="font-size: 15px; line-height: 1.7; color: #334155;">Để kích hoạt tài khoản và bắt đầu tham gia cuộc thi, vui lòng nhấn vào nút xác thực dưới đây:</p>
-        <div style="text-align: center; margin: 32px 0;">
-          <a href="${verifyLink}" style="background-color: #F27024; color: #ffffff; padding: 14px 30px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 10px 24px rgba(242,112,36,0.24); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">KÍCH HOẠT NGAY</a>
-        </div>
-        <p style="margin-top: 24px; font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #fed7aa; padding: 16px; background-color: #fff7ed; border-radius: 10px;">* Lưu ý: Đường link kích hoạt này có hiệu lực trong vòng 24 giờ. Sau thời gian này, tài khoản chưa được kích hoạt sẽ tự động bị hủy và cần đăng ký lại.</p>
-        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin-top: 28px; margin-bottom: 20px;">
-        <p style="font-size: 12px; color: #64748b; text-align: center;">Hệ thống Quản lý SEAL Hackathon &copy; 2026</p>
-      </div>
-    `
+    subject: `[SEAL Hackathon] Xác thực địa chỉ email kích hoạt tài khoản`,
+    html: buildBaseEmailTemplate({
+      headerTitle: 'Kích Hoạt Tài Khoản',
+      contentHtml
+    })
   };
   
   if (isMock) {
@@ -399,27 +511,27 @@ async function sendEmailVerification(email, fullName, verifyLink) {
  */
 async function sendEventCreationNotification(email, fullName, eventName, semester, year) {
   const clientUrl = process.env.CLIENT_URL || 'https://seal-management-staging.vercel.app';
+  const contentHtml = `
+    <p style="margin-top: 0;">Kính gửi <strong>${fullName}</strong>,</p>
+    <p>Ban Tổ chức SEAL Hackathon xin trân trọng thông báo một sự kiện/cuộc thi mới đã chính thức khởi động trên hệ thống:</p>
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #F27024; border-radius: 8px; padding: 20px; margin: 24px 0;">
+      <p style="margin: 0; font-size: 18px; font-weight: 700; color: #0f172a;">${eventName}</p>
+      <p style="margin: 6px 0 0 0; font-size: 14px; color: #64748b;">Học kỳ: <strong style="color: #F27024;">${semester} ${year}</strong></p>
+    </div>
+    <p>Hiện tại cổng đăng ký đã chính thức mở. Bạn có thể đăng nhập vào hệ thống để tìm kiếm đồng đội và đăng ký đội thi.</p>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${clientUrl}/register-team" style="background-color: #F27024; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 8px 20px rgba(242,112,36,0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">ĐĂNG KÝ ĐỘI THI NGAY</a>
+    </div>
+  `;
+
   const mailOptions = {
     from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
     to: email,
-    subject: `[SEAL Hackathon] Cuộc thi mới đã được khởi tạo: ${eventName}`,
-    html: `
-      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #1e293b; border-radius: 12px; background-color: #0b1329; color: #f1f5f9; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-        <h2 style="color: #00f0ff; text-align: center; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 1.5px; text-shadow: 0 0 15px rgba(0, 240, 255, 0.4); margin-bottom: 25px; font-size: 20px;">SỰ KIỆN HACKATHON MỚI</h2>
-        <p style="font-size: 15px; line-height: 1.6;">Xin chào <strong>${fullName}</strong>,</p>
-        <p style="font-size: 15px; line-height: 1.6;">Ban tổ chức SEAL Hackathon xin trân trọng thông báo một sự kiện/cuộc thi mới vừa được khởi tạo trên hệ thống:</p>
-        <div style="background-color: #0d1e3d; padding: 20px; border-radius: 8px; margin: 25px 0; border: 1px solid #1e293b; border-left: 4px solid #00f0ff;">
-          <p style="margin: 0; font-size: 18px; font-weight: bold; color: #ffffff;">${eventName}</p>
-          <p style="margin: 8px 0 0 0; font-size: 14px; color: #94a3b8;">Học kỳ: <strong>${semester} ${year}</strong></p>
-        </div>
-        <p style="font-size: 15px; line-height: 1.6;">Hiện tại cổng đăng ký đã mở. Bạn đã có thể đăng nhập vào hệ thống và tiến hành đăng ký đội thi của mình!</p>
-        <div style="text-align: center; margin: 35px 0;">
-          <a href="${clientUrl}/register-team" style="background-color: #00f0ff; color: #0b1329; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 0 20px rgba(0, 240, 255, 0.5); text-transform: uppercase; font-size: 13px; letter-spacing: 1px; transition: all 0.3s ease;">Đăng ký Đội ngay</a>
-        </div>
-        <hr style="border: 0; border-top: 1px solid #1e293b; margin-top: 30px; margin-bottom: 20px;">
-        <p style="font-size: 12px; color: #64748b; text-align: center;">Hệ thống Quản lý SEAL Hackathon &copy; 2026</p>
-      </div>
-    `
+    subject: `[SEAL Hackathon] Thông báo công bố sự kiện mới: ${eventName}`,
+    html: buildBaseEmailTemplate({
+      headerTitle: 'Sự Kiện Hackathon Mới',
+      contentHtml
+    })
   };
 
   if (isMock) {
@@ -450,34 +562,32 @@ async function sendEventCreationNotification(email, fullName, eventName, semeste
  */
 async function sendTrackTopicDistribution(email, fullName, trackName, attachments) {
   const fileLinks = attachments.map((att, idx) => {
-    return `<li style="margin: 8px 0;"><a href="${att.fileUrl}" style="color: #00f0ff; text-decoration: underline;" target="_blank">${att.fileName || `Tài liệu ${idx + 1}`}</a></li>`;
+    return `<li style="margin: 8px 0;"><a href="${att.fileUrl}" style="color: #F27024; text-decoration: underline; font-weight: 600;" target="_blank">${att.fileName || `Tài liệu đính kèm ${idx + 1}`}</a></li>`;
   }).join('');
+
+  const contentHtml = `
+    <p style="margin-top: 0;">Kính gửi <strong>${fullName}</strong>,</p>
+    <p>Thời gian làm bài thi của bảng đấu <strong style="color: #F27024;">"${trackName}"</strong> đã chính thức bắt đầu. Ban Tổ chức đã mở liên kết đề bài và các tài liệu hướng dẫn.</p>
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 24px 0;">
+      <p style="margin: 0 0 12px 0; font-weight: 700; color: #0f172a;">Danh sách tài liệu đính kèm:</p>
+      <ul style="margin: 0; padding-left: 20px;">
+        ${fileLinks || '<li style="color: #64748b;">Không có liên kết tài liệu đính kèm nào.</li>'}
+      </ul>
+    </div>
+    <p>Bạn cũng có thể đăng nhập vào hệ thống để truy cập bảng điều khiển và nộp bài làm:</p>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${process.env.CLIENT_URL || 'https://seal-management-staging.vercel.app'}" style="background-color: #F27024; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 8px 20px rgba(242,112,36,0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">VÀO DASHBOARD LÀM BÀI</a>
+    </div>
+  `;
 
   const mailOptions = {
     from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
     to: email,
-    subject: `[SEAL Hackathon] Đề thi bảng đấu "${trackName}" đã chính thức được mở!`,
-    html: `
-      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #1e293b; border-radius: 12px; background-color: #0b1329; color: #f1f5f9; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-        <h2 style="color: #00f0ff; text-align: center; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 1.5px; text-shadow: 0 0 15px rgba(0, 240, 255, 0.4); margin-bottom: 25px; font-size: 20px;">ĐỀ THI & TÀI LIỆU ĐÃ ĐƯỢC MỞ</h2>
-        <p style="font-size: 15px; line-height: 1.6;">Xin chào <strong>${fullName}</strong>,</p>
-        <p style="font-size: 15px; line-height: 1.6;">Thời gian làm bài thi của bảng đấu <strong>"${trackName}"</strong> đã bắt đầu. Ban tổ chức đã mở liên kết đề bài và tài liệu học tập của bảng đấu này.</p>
-        <p style="font-size: 15px; line-height: 1.6;">Bạn có thể truy cập danh sách tài liệu trực tiếp dưới đây hoặc đăng nhập vào hệ thống để bắt đầu làm bài:</p>
-        
-        <div style="background-color: #0d1e3d; padding: 20px; border-radius: 8px; margin: 25px 0; border: 1px solid #1e293b;">
-          <p style="margin: 0 0 10px 0; font-weight: bold; color: #ffffff;">Tài liệu đính kèm:</p>
-          <ul style="margin: 0; padding-left: 20px;">
-            ${fileLinks || '<li style="color: #94a3b8;">Không có liên kết tài liệu đính kèm nào.</li>'}
-          </ul>
-        </div>
-        
-        <div style="text-align: center; margin: 35px 0;">
-          <a href="${process.env.CLIENT_URL || 'https://seal-management-staging.vercel.app'}" style="background-color: #00f0ff; color: #0b1329; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 0 20px rgba(0, 240, 255, 0.5); text-transform: uppercase; font-size: 13px; letter-spacing: 1px;">Vào Dashboard Làm Bài</a>
-        </div>
-        <hr style="border: 0; border-top: 1px solid #1e293b; margin-top: 30px; margin-bottom: 20px;">
-        <p style="font-size: 12px; color: #64748b; text-align: center;">Hệ thống Quản lý SEAL Hackathon &copy; 2026</p>
-      </div>
-    `
+    subject: `[SEAL Hackathon] Thông báo công bố đề thi bảng đấu "${trackName}"`,
+    html: buildBaseEmailTemplate({
+      headerTitle: 'Đề Thi & Tài Liệu Đã Mở',
+      contentHtml
+    })
   };
 
   if (isMock) {
@@ -500,21 +610,25 @@ async function sendTrackTopicDistribution(email, fullName, trackName, attachment
 
 async function sendRoundExamOpened(email, fullName, roundName) {
   const clientUrl = process.env.CLIENT_URL || 'https://seal-management-staging.vercel.app';
+  const contentHtml = `
+    <p style="margin-top: 0;">Kính gửi <strong>${fullName}</strong>,</p>
+    <p>Vòng thi <strong style="color: #F27024;">"${roundName}"</strong> đã chính thức được mở. Vui lòng đăng nhập vào hệ thống SEAL, truy cập mục <strong>Khu vực đội</strong> và chọn <strong>Mở đề & tài liệu</strong> để tải về đề thi.</p>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${clientUrl}/team-area" style="background-color: #F27024; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 8px 20px rgba(242,112,36,0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">TRUY CẬP KHU VỰC ĐỘI</a>
+    </div>
+    <div style="font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #e2e8f0; padding: 16px; background-color: #f8fafc; border-radius: 10px;">
+      <strong>Lưu ý:</strong> Bạn cần đăng nhập tài khoản Google bằng đúng địa chỉ email đã đăng ký trên hệ thống để có quyền xem các tài liệu lưu trữ trên Google Drive.
+    </div>
+  `;
+
   const mailOptions = {
     from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
     to: email,
-    subject: `[SEAL Hackathon] Đề thi vòng "${roundName}" đã chính thức được mở!`,
-    html: `
-      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #1e293b; border-radius: 12px; background-color: #0b1329; color: #f1f5f9;">
-        <h2 style="color: #00f0ff; text-align: center; font-family: 'JetBrains Mono', monospace;">ĐỀ THI ĐÃ MỞ</h2>
-        <p style="font-size: 15px; line-height: 1.6;">Xin chào <strong>${fullName}</strong>,</p>
-        <p style="font-size: 15px; line-height: 1.6;">Vòng thi <strong>"${roundName}"</strong> đã bắt đầu. Hãy đăng nhập hệ thống SEAL → <strong>Khu vực đội</strong> → bấm <strong>Mở đề & tài liệu</strong>.</p>
-        <p style="font-size: 13px; color: #94a3b8;">Bạn cần đăng nhập Google bằng <strong>cùng email đã đăng ký</strong> trên hệ thống để xem file trên Drive.</p>
-        <div style="text-align: center; margin: 35px 0;">
-          <a href="${clientUrl}/team-area" style="background-color: #00f0ff; color: #0b1329; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Vào Khu vực đội</a>
-        </div>
-      </div>
-    `
+    subject: `[SEAL Hackathon] Thông báo mở đề thi vòng "${roundName}"`,
+    html: buildBaseEmailTemplate({
+      headerTitle: 'Đề Thi Vòng Mới Đã Mở',
+      contentHtml
+    })
   };
 
   if (isMock) {
@@ -542,39 +656,32 @@ async function sendSeminarInvitation(email, recipientName, eventName, seminarDat
   const clientUrl = process.env.CLIENT_URL || 'https://seal-management-staging.vercel.app';
   const teamAreaUrl = eventId ? `${clientUrl}/team-area?eventId=${eventId}` : `${clientUrl}/team-area`;
   const senderEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@seal-hackathon.com';
+
+  const contentHtml = `
+    <p style="margin-top: 0;">Kính gửi <strong>${recipientName || 'Thí sinh'}</strong>,</p>
+    <p>Ban Tổ chức cuộc thi <strong>${eventName}</strong> trân trọng kính mời bạn tham dự buổi Seminar hướng dẫn, giải đáp thắc mắc và phổ biến thể lệ cuộc thi.</p>
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #F27024; border-radius: 8px; padding: 20px; margin: 24px 0;">
+      <p style="margin: 0 0 10px 0; font-weight: 700; color: #0f172a; font-size: 15px;">Thông tin chi tiết buổi Seminar:</p>
+      <ul style="list-style: none; padding: 0; margin: 0; line-height: 1.8; color: #334155;">
+        <li style="margin-bottom: 6px;">Thời gian: <strong style="color: #F27024;">${formattedTime}</strong></li>
+        <li style="margin-bottom: 6px;">Chủ đề: <strong>${seminarData.title || 'Seminar Hướng Dẫn & Giải Đáp Thắc Mắc'}</strong></li>
+        ${seminarData.description ? `<li>Mô tả nội dung: ${seminarData.description}</li>` : ''}
+      </ul>
+    </div>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${teamAreaUrl}" target="_blank" style="background-color: #F27024; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 8px 20px rgba(242,112,36,0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">XÁC NHẬN THAM GIA SEMINAR</a>
+    </div>
+  `;
+
   const mailOptions = {
     from: `"SEAL Hackathon Platform" <${senderEmail}>`,
     to: senderEmail,
     bcc: email,
-    subject: `[SEAL HACKATHON] Thư Mời Tham Gia Buổi Seminar: ${eventName}`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #0b1329; color: #e2e8f0; border-radius: 12px; border: 1px solid #1e293b;">
-        <div style="text-align: center; margin-bottom: 20px;">
-          <h1 style="color: #00f0ff; font-size: 24px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px;">THƯ MỜI THAM GIA SEMINAR</h1>
-          <p style="color: #94a3b8; font-size: 14px;">Cuộc Thi: <strong style="color: #ffffff;">${eventName}</strong></p>
-        </div>
-
-        <div style="background-color: #131c35; padding: 20px; border-radius: 8px; border-left: 4px solid #00f0ff; margin-bottom: 20px;">
-          <p style="font-size: 15px; margin-top: 0;">Xin chào <strong style="color: #00f0ff;">${recipientName || 'Thí sinh'}</strong>,</p>
-          <p style="line-height: 1.6; color: #cbd5e1;">
-            Ban tổ chức cuộc thi <strong>${eventName}</strong> trân trọng kính mời bạn tham gia buổi Seminar hướng dẫn, giải đáp thắc mắc và phổ biến thể lệ chi tiết.
-          </p>
-        </div>
-
-        <div style="background-color: #0f172a; padding: 18px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 25px;">
-          <h3 style="margin-top: 0; color: #38bdf8; font-size: 16px;">📌 Thông Tin Buổi Seminar:</h3>
-          <ul style="list-style: none; padding-left: 0; margin-bottom: 0; line-height: 1.8; font-size: 14px;">
-            <li>⏰ <strong>Thời gian:</strong> <span style="color: #f59e0b; font-weight: bold;">${formattedTime}</span></li>
-            <li>📋 <strong>Chủ đề:</strong> ${seminarData.title || 'Seminar Hướng Dẫn & Giải Đáp Thắc Mắc'}</li>
-            ${seminarData.description ? `<li>📝 <strong>Mô tả:</strong> ${seminarData.description}</li>` : ''}
-          </ul>
-        </div>
-        
-        <div style="text-align: center; margin: 30px 0 10px 0;">
-          <a href="${teamAreaUrl}" target="_blank" style="background-color: #00f0ff; color: #0b1329; padding: 15px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 0 20px rgba(0, 240, 255, 0.4); text-transform: uppercase; font-size: 14px; letter-spacing: 1px;">👉 XÁC NHẬN THAM GIA</a>
-        </div>
-      </div>
-    `
+    subject: `[SEAL Hackathon] Thư mời tham dự buổi Seminar: ${eventName}`,
+    html: buildBaseEmailTemplate({
+      headerTitle: 'Thư Mời Tham Dự Seminar',
+      contentHtml
+    })
   };
 
   if (isMock) {
@@ -602,28 +709,29 @@ async function sendSeminarInvitation(email, recipientName, eventName, seminarDat
  */
 async function sendAccountProvisionEmail(email, fullName, password, roleLabel = 'Thành viên') {
   const loginUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const contentHtml = `
+    <p style="margin-top: 0;">Kính gửi <strong>${fullName}</strong>,</p>
+    <p>Ban Tổ chức SEAL Hackathon xin thông báo: Tài khoản của bạn đã được khởi tạo thành công trên hệ thống với vai trò: <strong style="color: #F27024;">${roleLabel}</strong>.</p>
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 24px 0; font-family: monospace;">
+      <p style="margin: 0 0 8px 0; font-size: 14px; color: #0f172a;">Email đăng nhập: <strong>${email}</strong></p>
+      <p style="margin: 0; font-size: 14px; color: #0f172a;">Mật khẩu tạm thời: <strong style="color: #F27024;">${password}</strong></p>
+    </div>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${loginUrl}" style="background-color: #F27024; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 8px 20px rgba(242,112,36,0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">ĐĂNG NHẬP HỆ THỐNG</a>
+    </div>
+    <div style="font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #fed7aa; padding: 16px; background-color: #fff7ed; border-radius: 10px;">
+      <strong>Lưu ý bảo mật:</strong> Vui lòng đăng nhập và tiến hành đổi mật khẩu ngay trong lần sử dụng đầu tiên để bảo vệ tài khoản của bạn.
+    </div>
+  `;
+
   const mailOptions = {
     from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
     to: email,
-    subject: `[SEAL Hackathon] Tài khoản của bạn đã được khởi tạo`,
-    html: `
-      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #1e293b; border-radius: 12px; background-color: #0b1329; color: #f1f5f9; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-        <h2 style="color: #00f0ff; text-align: center; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 1.5px; text-shadow: 0 0 15px rgba(0, 240, 255, 0.4); margin-bottom: 25px; font-size: 20px;">TÀI KHOẢN ĐÃ ĐƯỢC KHỞI TẠO</h2>
-        <p style="font-size: 15px; line-height: 1.6;">Xin chào <strong>${fullName}</strong>,</p>
-        <p style="font-size: 15px; line-height: 1.6;">Ban tổ chức SEAL Hackathon đã tạo tài khoản cho bạn trên hệ thống với vai trò: <strong>${roleLabel}</strong>.</p>
-        <p style="font-size: 15px; line-height: 1.6;">Dưới đây là thông tin đăng nhập của bạn:</p>
-        <div style="background-color: #0d1e3d; padding: 20px; border-radius: 8px; margin: 25px 0; border: 1px solid #1e293b; font-family: monospace;">
-          <p style="margin: 0; font-size: 14px; color: #ffffff;">📧 <strong>Email đăng nhập:</strong> ${email}</p>
-          <p style="margin: 8px 0 0 0; font-size: 14px; color: #ffffff;">🔑 <strong>Mật khẩu tạm thời:</strong> ${password}</p>
-        </div>
-        <p style="font-size: 15px; line-height: 1.6; color: #f59e0b;">* Lưu ý: Để bảo mật tài khoản, vui lòng đăng nhập và đổi mật khẩu ngay sau lần đăng nhập đầu tiên.</p>
-        <div style="text-align: center; margin: 35px 0;">
-          <a href="${loginUrl}" style="background-color: #00f0ff; color: #0b1329; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 0 20px rgba(0, 240, 255, 0.5); text-transform: uppercase; font-size: 13px; letter-spacing: 1px;">Đăng Nhập Hệ Thống</a>
-        </div>
-        <hr style="border: 0; border-top: 1px solid #1e293b; margin-top: 30px; margin-bottom: 20px;">
-        <p style="font-size: 12px; color: #64748b; text-align: center;">Hệ thống Quản lý SEAL Hackathon &copy; 2026</p>
-      </div>
-    `
+    subject: `[SEAL Hackathon] Thông báo khởi tạo tài khoản hệ thống`,
+    html: buildBaseEmailTemplate({
+      headerTitle: 'Khởi Tạo Tài Khoản',
+      contentHtml
+    })
   };
 
   if (isMock) {
@@ -649,24 +757,26 @@ async function sendAccountProvisionEmail(email, fullName, password, roleLabel = 
  * Sends a password reset email to the user.
  */
 async function sendPasswordResetEmail(email, fullName, resetLink) {
+  const contentHtml = `
+    <p style="margin-top: 0;">Kính gửi <strong>${fullName}</strong>,</p>
+    <p>Hệ thống Quản lý SEAL Hackathon đã nhận được yêu cầu khôi phục mật khẩu cho tài khoản của bạn.</p>
+    <p>Để hoàn tất việc thiết lập mật khẩu mới, vui lòng nhấn vào nút xác nhận dưới đây:</p>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${resetLink}" style="background-color: #F27024; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 8px 20px rgba(242,112,36,0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">ĐẶT LẠI MẬT KHẨU</a>
+    </div>
+    <div style="font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #e2e8f0; padding: 16px; background-color: #f8fafc; border-radius: 10px;">
+      <strong>Lưu ý:</strong> Liên kết này chỉ có hiệu lực trong vòng 1 giờ. Nếu bạn không gửi yêu cầu này, vui lòng bỏ qua email và mật khẩu của bạn sẽ không bị thay đổi.
+    </div>
+  `;
+
   const mailOptions = {
     from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
     to: email,
-    subject: `[SEAL Hackathon] Khôi phục mật khẩu tài khoản của bạn`,
-    html: `
-      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #1e293b; border-radius: 12px; background-color: #0b1329; color: #f1f5f9; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-        <h2 style="color: #00f0ff; text-align: center; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 1.5px; text-shadow: 0 0 15px rgba(0, 240, 255, 0.4); margin-bottom: 25px; font-size: 20px;">YÊU CẦU KHÔI PHỤC MẬT KHẨU</h2>
-        <p style="font-size: 15px; line-height: 1.6;">Xin chào <strong>${fullName}</strong>,</p>
-        <p style="font-size: 15px; line-height: 1.6;">Bạn (hoặc ai đó) đã gửi yêu cầu khôi phục mật khẩu tài khoản của bạn trên hệ thống Quản lý SEAL Hackathon.</p>
-        <p style="font-size: 15px; line-height: 1.6;">Để tiến hành đặt lại mật khẩu mới, vui lòng nhấn vào liên kết dưới đây:</p>
-        <div style="text-align: center; margin: 35px 0;">
-          <a href="${resetLink}" style="background-color: #00f0ff; color: #0b1329; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 0 20px rgba(0, 240, 255, 0.5); text-transform: uppercase; font-size: 13px; letter-spacing: 1px;">ĐẶT LẠI MẬT KHẨU</a>
-        </div>
-        <p style="margin-top: 30px; font-size: 13px; color: #94a3b8; line-height: 1.6; border-top: 1px solid #1e293b; padding-top: 20px;">* Lưu ý: Liên kết khôi phục này chỉ có hiệu lực trong vòng 1 giờ. Nếu bạn không gửi yêu cầu này, vui lòng bỏ qua email này.</p>
-        <hr style="border: 0; border-top: 1px solid #1e293b; margin-top: 30px; margin-bottom: 20px;">
-        <p style="font-size: 12px; color: #64748b; text-align: center;">Hệ thống Quản lý SEAL Hackathon &copy; 2026</p>
-      </div>
-    `
+    subject: `[SEAL Hackathon] Yêu cầu khôi phục mật khẩu tài khoản`,
+    html: buildBaseEmailTemplate({
+      headerTitle: 'Khôi Phục Mật Khẩu',
+      contentHtml
+    })
   };
 
   if (isMock) {
@@ -692,24 +802,25 @@ async function sendPasswordResetEmail(email, fullName, resetLink) {
  * Sends a certificate PDF email to the participant.
  */
 async function sendCertificateEmail(email, fullName, certificatePdfBuffer, prizeTitle, eventName) {
+  const contentHtml = `
+    <div style="text-align: center; margin-bottom: 24px;">
+      <h3 style="color: #F27024; font-size: 18px; text-transform: uppercase; margin: 0 0 4px 0;">CHÚC MỪNG BẠN ĐẠT GIẢI!</h3>
+      <p style="font-size: 13px; color: #64748b; margin: 0;">Mùa giải: ${eventName}</p>
+    </div>
+    <p style="margin-top: 0;">Kính gửi <strong>${fullName}</strong>,</p>
+    <p>Ban Tổ chức cuộc thi SEAL Hackathon xin trân trọng chúc mừng bạn và đội thi đã xuất sắc đạt thành tích: <strong style="color: #F27024;">${prizeTitle}</strong>.</p>
+    <p>Ban Tổ chức xin gửi kèm file Bằng khen / Giấy chứng nhận điện tử (định dạng PDF) trong phần đính kèm của email này để ghi nhận những nỗ lực và kết quả tuyệt vời của bạn.</p>
+    <p>Chúc bạn luôn giữ vững nhiệt huyết đam mê và tiếp tục đạt được nhiều thành công hơn nữa trên con đường học tập và sự nghiệp!</p>
+  `;
+
   const mailOptions = {
     from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
     to: email,
-    subject: `[SEAL Hackathon] Giấy chứng nhận/Bằng khen - ${eventName}`,
-    html: `
-      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #1e293b; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-        <div style="text-align: center; margin-bottom: 25px;">
-          <h2 style="color: #f27024; font-family: 'Inter', sans-serif; text-transform: uppercase; margin: 0; font-size: 22px;">CHÚC MỪNG BẠN ĐÃ ĐẠT GIẢI!</h2>
-          <p style="font-size: 13px; color: #64748b; margin-top: 5px;">Mùa giải: ${eventName}</p>
-        </div>
-        <p style="font-size: 15px; line-height: 1.6;">Xin chào <strong>${fullName}</strong>,</p>
-        <p style="font-size: 15px; line-height: 1.6;">Ban Tổ Chức cuộc thi SEAL xin trân trọng chúc mừng bạn và đội thi của bạn đã xuất sắc đạt thành tích: <strong style="color: #f27024;">${prizeTitle}</strong>.</p>
-        <p style="font-size: 15px; line-height: 1.6;">Chúng tôi xin gửi kèm file Bằng khen / Giấy chứng nhận điện tử (định dạng PDF) ở phần đính kèm dưới email này để ghi nhận nỗ lực vượt bậc của bạn.</p>
-        <p style="font-size: 15px; line-height: 1.6;">Chúc bạn luôn giữ vững ngọn lửa nhiệt huyết và gặt hái thêm nhiều thành công trên con đường học tập và sự nghiệp sắp tới!</p>
-        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin-top: 30px; margin-bottom: 20px;">
-        <p style="font-size: 12px; color: #94a3b8; text-align: center;">Powered by FPT University &copy; 2026</p>
-      </div>
-    `,
+    subject: `[SEAL Hackathon] Trân trọng gửi Giấy chứng nhận / Bằng khen - ${eventName}`,
+    html: buildBaseEmailTemplate({
+      headerTitle: 'Giấy Chứng Nhận Điện Tử',
+      contentHtml
+    }),
     attachments: [
       {
         filename: `Bang_Khen_${fullName.replace(/\s+/g, '_')}.pdf`,

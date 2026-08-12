@@ -10,7 +10,8 @@ const TeamMemberSchema = new Schema({
   confirmTokenHash: { type: String },
   confirmTokenExpiry: { type: Date },
   confirmedAt: { type: Date },
-  invitedAt: { type: Date, default: Date.now }
+  invitedAt: { type: Date, default: Date.now },
+  invitationEmailSent: { type: Boolean, default: true }
 }, {
   timestamps: true
 });

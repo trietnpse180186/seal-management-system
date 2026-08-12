@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import {
   Users,
@@ -10,7 +10,8 @@ import {
   AlertCircle,
   Loader2,
   Mail,
-  FileText
+  FileText,
+  X
 } from "lucide-react";
 import CustomSelect from "../shared/CustomSelect";
 
@@ -68,6 +69,59 @@ export default function TeamsTab({
     total: number;
     message: string;
   } | null>(null);
+
+  // Helper to persist flow state to localStorage
+  const persistFlowState = (
+    newImportResult: typeof importResult,
+    newEmailStep: 0 | 1 | 2,
+    newEmailResult: typeof emailResult
+  ) => {
+    if (!selectedEvent?._id) return;
+    const key = `seal_import_flow_${selectedEvent._id}`;
+    try {
+      if (!newImportResult && newEmailStep === 0 && !newEmailResult) {
+        localStorage.removeItem(key);
+      } else {
+        localStorage.setItem(
+          key,
+          JSON.stringify({
+            importResult: newImportResult,
+            emailStep: newEmailStep,
+            emailResult: newEmailResult,
+            updatedAt: Date.now(),
+          })
+        );
+      }
+    } catch (e) {
+      console.warn("Failed to save import flow state:", e);
+    }
+  };
+
+  // Load saved state on mount or when selectedEvent changes
+  useEffect(() => {
+    if (!selectedEvent?._id) return;
+    const key = `seal_import_flow_${selectedEvent._id}`;
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (saved && (saved.emailStep === 1 || saved.emailStep === 2 || saved.importResult || saved.emailResult)) {
+          setImportResult(saved.importResult || null);
+          setEmailStep(saved.emailStep || 0);
+          setEmailResult(saved.emailResult || null);
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to parse saved import flow state:", e);
+    }
+  }, [selectedEvent?._id]);
+
+  const handleClearFlowState = () => {
+    setImportResult(null);
+    setEmailStep(0);
+    setEmailResult(null);
+    persistFlowState(null, 0, null);
+  };
 
   const handleExportTeams = async () => {
     if (!selectedEvent?._id) return;
@@ -129,6 +183,7 @@ export default function TeamsTab({
     setImportResult(null);
     setEmailStep(0);
     setEmailResult(null);
+    persistFlowState(null, 0, null);
 
     try {
       const token = localStorage.getItem("token");
@@ -145,18 +200,19 @@ export default function TeamsTab({
         },
       });
 
-      setImportResult({
+      const newResult = {
         success: true,
         message: res.data.message || `Đã import thành công ${res.data.count} đội thi!`,
         count: res.data.count,
         teamIds: res.data.teamIds || [],
         memberCount: res.data.memberCount || 0,
-      });
+      };
 
-      // Advance to Step 1: Admin needs to click "Đã xác nhận"
-      if ((res.data.memberCount || 0) > 0) {
-        setEmailStep(1);
-      }
+      const newStep = (res.data.memberCount || 0) > 0 ? 1 : 0;
+
+      setImportResult(newResult);
+      setEmailStep(newStep);
+      persistFlowState(newResult, newStep, null);
 
       // Refresh team list in parent
       if (onRefreshTeams) {
@@ -165,15 +221,22 @@ export default function TeamsTab({
     } catch (err: any) {
       console.error("Import error:", err);
       const resData = err.response?.data;
-      setImportResult({
+      const errorResult = {
         success: false,
         message: resData?.message || "Lỗi khi import danh sách đội thi.",
         errors: resData?.errors || [],
-      });
+      };
+      setImportResult(errorResult);
+      persistFlowState(errorResult, 0, null);
     } finally {
       setImporting(false);
       setImportFile(null);
     }
+  };
+
+  const handleConfirmStep1 = () => {
+    setEmailStep(2);
+    persistFlowState(importResult, 2, emailResult);
   };
 
   const handleSendInvitations = async () => {
@@ -192,15 +255,16 @@ export default function TeamsTab({
         }
       );
 
-      setEmailResult({
+      const newEmailResult = {
         sent: res.data.sent || 0,
         failed: res.data.failed || 0,
         total: res.data.total || 0,
         message: res.data.message || `Đã gửi thành công ${res.data.sent} email mời!`,
-      });
+      };
 
-      // Reset step after sending
+      setEmailResult(newEmailResult);
       setEmailStep(0);
+      persistFlowState(null, 0, newEmailResult);
 
       // Refresh team list to update any UI states
       if (onRefreshTeams) {
@@ -345,19 +409,31 @@ export default function TeamsTab({
           {/* Import Result Feedback */}
           {importResult && (
             <div
-              className={`p-4 rounded-2xl text-xs space-y-2 animate-in fade-in duration-200 border ${
+              className={`p-4 rounded-2xl text-xs space-y-2 animate-in fade-in duration-200 border relative ${
                 importResult.success
                   ? "bg-emerald-50/80 border-emerald-200 text-emerald-800"
                   : "bg-rose-50/80 border-rose-200 text-rose-800"
               }`}
             >
-              <div className="flex items-center gap-2 font-bold font-mono">
-                {importResult.success ? (
-                  <CheckCircle2 size={16} className="text-emerald-600" />
-                ) : (
-                  <AlertCircle size={16} className="text-rose-600" />
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 font-bold font-mono">
+                  {importResult.success ? (
+                    <CheckCircle2 size={16} className="text-emerald-600" />
+                  ) : (
+                    <AlertCircle size={16} className="text-rose-600" />
+                  )}
+                  <span>{importResult.message}</span>
+                </div>
+                {!importResult.success && (
+                  <button
+                    type="button"
+                    onClick={handleClearFlowState}
+                    className="p-1 rounded-lg hover:bg-rose-200/60 text-rose-700 transition-all cursor-pointer"
+                    title="Đóng thông báo"
+                  >
+                    <X size={14} />
+                  </button>
                 )}
-                <span>{importResult.message}</span>
               </div>
 
               {importResult.success && importResult.memberCount !== undefined && (
@@ -397,7 +473,7 @@ export default function TeamsTab({
 
               <button
                 type="button"
-                onClick={() => setEmailStep(2)}
+                onClick={handleConfirmStep1}
                 className="w-full text-xs font-bold font-mono py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-amber-500/20 active:scale-[0.99]"
               >
                 <CheckCircle2 size={15} />
@@ -450,10 +526,20 @@ export default function TeamsTab({
                 <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
                 <span>{emailResult.message}</span>
               </div>
-              <span className="text-[11px] text-emerald-700">
-                Thành công: <strong>{emailResult.sent} / {emailResult.total}</strong>
-                {emailResult.failed > 0 && ` (Thất bại: ${emailResult.failed})`}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] text-emerald-700">
+                  Thành công: <strong>{emailResult.sent} / {emailResult.total}</strong>
+                  {emailResult.failed > 0 && ` (Thất bại: ${emailResult.failed})`}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleClearFlowState}
+                  className="p-1 rounded-lg hover:bg-emerald-200/60 text-emerald-700 transition-all cursor-pointer"
+                  title="Đóng thông báo"
+                >
+                  <X size={14} />
+                </button>
+              </div>
             </div>
           )}
         </div>

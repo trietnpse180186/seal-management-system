@@ -109,11 +109,17 @@ export default function TeamsTab({
           setImportResult(saved.importResult || null);
           setEmailStep(saved.emailStep || 0);
           setEmailResult(saved.emailResult || null);
+          return;
         }
       }
     } catch (e) {
       console.warn("Failed to parse saved import flow state:", e);
     }
+
+    // Reset state if current event has no saved import flow
+    setImportResult(null);
+    setEmailStep(0);
+    setEmailResult(null);
   }, [selectedEvent?._id]);
 
   const handleClearFlowState = () => {

@@ -335,118 +335,6 @@ async function sendTeamInvitation(email, teamName, inviteLink, leaderName = null
   }
 }
 
-async function sendPersonnelInvitation(email, fullName, eventName, roles, responseLink, assignments = []) {
-  const roleLabel = roles.map((role) => role === 'judge' ? 'Giám khảo' : 'Mentor').join(' & ');
-  
-  let assignmentCardsHtml = '';
-  if (Array.isArray(assignments) && assignments.length > 0) {
-    const cards = assignments.map((item, idx) => {
-      const roleTitle = item.role === 'judge' 
-        ? (item.isChiefJudge ? 'Trưởng Ban Giám Khảo' : 'Giám Khảo') 
-        : 'Mentor / Cố Vấn Chuyên Môn';
-      return `
-        <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; ${idx > 0 ? 'margin-top: 10px;' : ''}">
-          <p style="margin: 0 0 6px 0; font-weight: 700; color: #F27024; font-size: 14px;">Nhiệm vụ ${assignments.length > 1 ? (idx + 1) : ''}: ${roleTitle}</p>
-          ${item.trackName ? `<p style="margin: 3px 0; color: #334155; font-size: 14px;">• <strong>Bảng đấu:</strong> ${item.trackName}</p>` : ''}
-          ${item.roundName ? `<p style="margin: 3px 0; color: #334155; font-size: 14px;">• <strong>Vòng thi:</strong> ${item.roundName}</p>` : ''}
-          ${item.note ? `<p style="margin: 3px 0; color: #64748b; font-size: 13px; font-style: italic;">• Ghi chú: ${item.note}</p>` : ''}
-        </div>
-      `;
-    }).join('');
-
-    assignmentCardsHtml = `
-      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #F27024; border-radius: 8px; padding: 18px 20px; margin: 24px 0;">
-        <p style="margin: 0 0 12px 0; font-weight: 700; color: #0f172a; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Chi Tiết Phân Công Nhiệm Vụ:</p>
-        ${cards}
-      </div>
-    `;
-  } else {
-    assignmentCardsHtml = `
-      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #F27024; border-radius: 8px; padding: 16px 20px; margin: 24px 0;">
-        <p style="margin: 0; color: #334155; font-weight: 600;">Vai trò phân công: <span style="color: #F27024;">${roleLabel}</span></p>
-      </div>
-    `;
-  }
-
-  const contentHtml = `
-    <p style="margin-top: 0;">Kính gửi <strong>${fullName}</strong>,</p>
-    <p>Ban Tổ chức cuộc thi <strong style="color: #F27024;">${eventName}</strong> trân trọng kính mời Anh/Chị tham gia đồng hành cùng chương trình với các vị trí phân công nhiệm vụ chuyên môn.</p>
-    ${assignmentCardsHtml}
-    <p>Sự tham gia và kinh nghiệm chuyên môn của Anh/Chị sẽ góp phần rất lớn vào sự thành công chung của cuộc thi cũng như sự phát triển của các đội thi.</p>
-    <p>Vui lòng mở trang phản hồi để xác nhận tiếp nhận lời mời hoặc phản hồi lại với Ban Tổ chức:</p>
-    <div style="text-align: center; margin: 32px 0;">
-      <a href="${responseLink}" style="background-color: #F27024; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 8px 20px rgba(242,112,36,0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">PHẢN HỒI LỜI MỜI</a>
-    </div>
-    <div style="font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #e2e8f0; padding: 16px; background-color: #f8fafc; border-radius: 10px;">
-      Liên kết này có hiệu lực trong vòng 7 ngày và được dành riêng cho địa chỉ email <strong>${email}</strong>.
-    </div>
-  `;
-
-  const mailOptions = {
-    from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
-    to: email,
-    subject: `[SEAL Hackathon] Thư mời đảm nhận nhân sự cuộc thi ${eventName}`,
-    html: buildBaseEmailTemplate({
-      headerTitle: 'Lời Mời Phân Công Nhân Sự',
-      contentHtml
-    })
-  };
-
-  if (isMock) {
-    console.log(`[EMAIL MOCK] Personnel invitation to ${email}: ${responseLink}`);
-    return true;
-  }
-  await sendMailHelper(mailOptions);
-  return true;
-}
-
-async function sendPersonnelAccountGranted(email, fullName, roleLabel, loginMethod, temporaryPassword = null) {
-  const loginUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-  const loginInstruction = loginMethod === 'google_and_password'
-    ? `<p style="margin: 8px 0;">Anh/Chị có thể đăng nhập bằng một trong hai hình thức:</p>
-       <ol style="margin: 8px 0; padding-left: 20px; color: #334155;">
-         <li style="margin-bottom: 6px;">Chọn <strong>Đăng nhập bằng Google</strong> với địa chỉ email <strong>${email}</strong>.</li>
-         <li>Đăng nhập bằng email <strong>${email}</strong> và mật khẩu tạm thời: <strong style="color: #F27024; font-family: monospace;">${temporaryPassword}</strong></li>
-       </ol>`
-    : loginMethod === 'google_and_existing_password'
-      ? `<p style="margin: 8px 0;">Anh/Chị có thể chọn <strong>Đăng nhập bằng Google</strong> với địa chỉ email <strong>${email}</strong>, hoặc đăng nhập bằng tài khoản và mật khẩu hiện tại.</p>`
-    : temporaryPassword
-      ? `<div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 16px 0; font-family: monospace;">
-           <p style="margin: 0 0 6px 0;">Email đăng nhập: <strong>${email}</strong></p>
-           <p style="margin: 0;">Mật khẩu tạm thời: <strong style="color: #F27024;">${temporaryPassword}</strong></p>
-         </div>`
-      : `<p style="margin: 8px 0;">Anh/Chị vui lòng đăng nhập bằng địa chỉ email <strong>${email}</strong> và mật khẩu hiện tại trên hệ thống.</p>`;
-
-  const contentHtml = `
-    <p style="margin-top: 0;">Kính gửi <strong>${fullName}</strong>,</p>
-    <p>Ban Tổ chức xin trân trọng thông báo: Tài khoản của Anh/Chị đã được cấp quyền <strong style="color: #F27024;">${roleLabel}</strong> trên hệ thống Quản lý SEAL Hackathon.</p>
-    ${loginInstruction}
-    <div style="text-align: center; margin: 32px 0;">
-      <a href="${loginUrl}/login" style="background-color: #F27024; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 8px 20px rgba(242,112,36,0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">ĐĂNG NHẬP HỆ THỐNG</a>
-    </div>
-    <div style="font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #fed7aa; padding: 16px; background-color: #fff7ed; border-radius: 10px;">
-      <strong>Lưu ý bảo mật:</strong> Vì lý do an toàn thông tin, Anh/Chị vui lòng đổi mật khẩu sau lần đăng nhập đầu tiên.
-    </div>
-  `;
-
-  const mailOptions = {
-    from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
-    to: email,
-    subject: `[SEAL Hackathon] Thông báo cấp quyền tài khoản nhân sự - ${roleLabel}`,
-    html: buildBaseEmailTemplate({
-      headerTitle: 'Đã Cấp Quyền Nhân Sự',
-      contentHtml
-    })
-  };
-
-  if (isMock) {
-    console.log(`[EMAIL MOCK] Personnel account granted to ${email} via ${loginMethod}`);
-    return true;
-  }
-  await sendMailHelper(mailOptions);
-  return true;
-}
-
 /**
  * Sends an email verification link to a newly registered user.
  * @param {string} email - Recipient email
@@ -870,8 +758,6 @@ async function sendSupportReplyEmail(email, fullName, requestCode, title, messag
 
 module.exports = {
   sendTeamInvitation,
-  sendPersonnelInvitation,
-  sendPersonnelAccountGranted,
   sendEmailVerification,
   sendEventCreationNotification,
   sendTrackTopicDistribution,

@@ -11,7 +11,6 @@ const User = mongoose.model('User');
 const Round = mongoose.model('Round');
 const Track = mongoose.model('Track');
 const { authenticateToken } = require('../auth/authMiddleware');
-const emailService = require('../notifications/emailService');
 
 const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 const escapeRegex = (value) => value.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
@@ -26,13 +25,10 @@ async function canManagePersonnel(user, eventId) {
   }));
 }
 
-async function provisionInvitation(invitation, actorId) {
+async function provisionInvitation(invitation, actorId, suppliedPassword = '') {
   if (invitation.status !== 'accepted') throw new Error('Nhân sự chưa chấp thuận lời mời.');
 
   for (const assignment of invitation.assignments) {
-    if (assignment.role === 'mentor' && !assignment.trackName) {
-      throw new Error('Mentor phải được phân công vào một track cụ thể.');
-    }
     if (assignment.trackName && assignment.trackName !== 'Chung kết') {
       const trackExists = await Track.exists({
         eventId: invitation.eventId,
@@ -57,31 +53,25 @@ async function provisionInvitation(invitation, actorId) {
       throw new Error('Sự kiện đã có một Chủ tịch Hội đồng khác.');
     }
   }
-  let temporaryPassword = null;
-  const existingUser = Boolean(user);
+  const password = String(suppliedPassword || '').trim();
   if (!user) {
-    temporaryPassword = `Seal@${crypto.randomBytes(8).toString('hex')}`;
+    if (password.length < 6) throw new Error('Mật khẩu nhân sự phải có ít nhất 6 ký tự.');
     user = await User.create({
       email: invitation.email,
       fullName: invitation.fullName,
-      passwordHash: await bcrypt.hash(temporaryPassword, 10),
+      passwordHash: await bcrypt.hash(password, 10),
       isApproved: true,
       isActive: true,
+      authProviders: ['local'],
     });
   } else {
-    let shouldSaveUser = false;
     if (!user.isActive || !user.isApproved) {
       user.isActive = true;
       user.isApproved = true;
-      shouldSaveUser = true;
     }
-    // Personnel must receive a credential they actually know. Legacy social-login
-    // accounts also contain an unknown random hash, so hash shape cannot identify them.
-    temporaryPassword = `Seal@${crypto.randomBytes(8).toString('hex')}`;
-    user.passwordHash = await bcrypt.hash(temporaryPassword, 10);
+    if (password) user.passwordHash = await bcrypt.hash(password, 10);
     user.authProviders = [...new Set([...(user.authProviders || []), 'local'])];
-    shouldSaveUser = true;
-    if (shouldSaveUser) await user.save();
+    await user.save();
   }
 
   for (const assignment of invitation.assignments) {
@@ -150,27 +140,6 @@ async function provisionInvitation(invitation, actorId) {
   invitation.revokedAt = undefined;
   await invitation.save();
 
-  const roleLabel = [...new Set(invitation.assignments.map((item) => item.role === 'judge' ? 'Giám khảo' : 'Mentor'))].join(' & ');
-  const hasGoogleLogin = user.authProviders?.includes('google');
-  const loginMethod = hasGoogleLogin
-    ? temporaryPassword ? 'google_and_password' : 'google_and_existing_password'
-    : temporaryPassword ? 'temporary_password' : 'existing_password';
-  try {
-    await emailService.sendPersonnelAccountGranted(
-      user.email,
-      user.fullName,
-      roleLabel,
-      loginMethod,
-      temporaryPassword,
-    );
-    invitation.accountEmailStatus = 'sent';
-    invitation.accountEmailError = undefined;
-  } catch (error) {
-    invitation.accountEmailStatus = 'failed';
-    invitation.accountEmailError = error.message;
-    console.error(`Personnel access email failed for ${user.email}:`, error.message);
-  }
-  await invitation.save();
   return invitation;
 }
 
@@ -225,67 +194,16 @@ router.delete('/:invitationId', authenticateToken, async (req, res) => {
   }
 });
 
-router.post('/:invitationId/resend', authenticateToken, async (req, res) => {
-  try {
-    const invitation = await PersonnelInvitation.findById(req.params.invitationId);
-    if (!invitation) return res.status(404).json({ message: 'Không tìm thấy lời mời.' });
-    if (!await canManagePersonnel(req.user, invitation.eventId)) {
-      return res.status(403).json({ message: 'Bạn không có quyền gửi lại lời mời.' });
-    }
-    if (!['pending', 'rejected'].includes(invitation.status)) {
-      return res.status(409).json({ message: 'Chỉ gửi lại lời mời đang chờ hoặc đã bị từ chối.' });
-    }
-    const PERSONNEL_ALLOWED = ['draft', 'registration', 'prepare', 'ongoing'];
-    if (!event || !PERSONNEL_ALLOWED.includes(event.status) || event.isArchived) {
-      return res.status(409).json({ message: 'Chỉ gửi lại lời mời cho sự kiện đang trong giai đoạn hoạt động.' });
-    }
-
-    const rawToken = crypto.randomBytes(32).toString('hex');
-    invitation.status = 'pending';
-    invitation.tokenHash = hashToken(rawToken);
-    invitation.tokenExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    invitation.invitedBy = req.user._id;
-    invitation.invitedAt = new Date();
-    invitation.respondedAt = undefined;
-    invitation.emailStatus = 'pending';
-    invitation.emailError = undefined;
-    await invitation.save();
-
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-    try {
-      await emailService.sendPersonnelInvitation(
-        invitation.email,
-        invitation.fullName,
-        event.name,
-        [...new Set(invitation.assignments.map((item) => item.role))],
-        `${clientUrl}/personnel-invitation?token=${rawToken}`,
-        invitation.assignments
-      );
-      invitation.emailStatus = 'sent';
-      await invitation.save();
-    } catch (emailError) {
-      invitation.emailStatus = 'failed';
-      invitation.emailError = emailError.message;
-      await invitation.save();
-      throw emailError;
-    }
-    res.json({ message: `Đã gửi lại lời mời đến ${invitation.email}.` });
-  } catch (error) {
-    console.error('Resend Personnel Invitation Error:', error.message);
-    res.status(500).json({ message: 'Không thể gửi lại lời mời nhân sự.' });
-  }
-});
-
-router.post('/event/:eventId/send', authenticateToken, async (req, res) => {
+router.post('/event/:eventId/import', authenticateToken, async (req, res) => {
   try {
     const event = await Event.findById(req.params.eventId);
     if (!event) return res.status(404).json({ message: 'Không tìm thấy sự kiện.' });
     const PERSONNEL_ALLOWED = ['draft', 'registration', 'prepare', 'ongoing'];
     if (!PERSONNEL_ALLOWED.includes(event.status) || event.isArchived) {
-      return res.status(409).json({ message: 'Chỉ gửi lời mời cho sự kiện đang trong giai đoạn hoạt động.' });
+      return res.status(409).json({ message: 'Chỉ nhập nhân sự cho sự kiện đang trong giai đoạn hoạt động.' });
     }
     if (!await canManagePersonnel(req.user, event._id)) {
-      return res.status(403).json({ message: 'Bạn không có quyền gửi lời mời nhân sự.' });
+      return res.status(403).json({ message: 'Bạn không có quyền nhập danh sách nhân sự.' });
     }
 
     const personnel = Array.isArray(req.body.personnel) ? req.body.personnel : [];
@@ -327,7 +245,7 @@ router.post('/event/:eventId/send', authenticateToken, async (req, res) => {
     )];
     if (missingTrackNames.length > 0) {
       return res.status(422).json({
-        message: `Không thể gửi lời mời. Track không tồn tại trong sự kiện: ${missingTrackNames.join(', ')}.`,
+        message: `Không thể nhập nhân sự. Track không tồn tại trong sự kiện: ${missingTrackNames.join(', ')}.`,
         missingTracks: missingTrackNames,
       });
     }
@@ -339,11 +257,12 @@ router.post('/event/:eventId/send', authenticateToken, async (req, res) => {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !['judge', 'mentor'].includes(role)) {
         return res.status(400).json({ message: `Dữ liệu không hợp lệ tại email ${email || '(trống)'}.` });
       }
-      if (role === 'mentor' && !String(row.trackName || '').trim()) {
-        return res.status(422).json({ message: `Mentor ${email} chưa được chọn track.` });
+      if (String(row.password || '').trim().length < 6) {
+        return res.status(400).json({ message: `Mật khẩu của ${email} phải có ít nhất 6 ký tự.` });
       }
       if (!grouped.has(email)) grouped.set(email, {
         email,
+        password: String(row.password || '').trim(),
         fullName: String(row.fullName || email.split('@')[0]).trim(),
         unit: String(row.unit || '').trim(),
         assignments: [],
@@ -357,12 +276,11 @@ router.post('/event/:eventId/send', authenticateToken, async (req, res) => {
       });
     }
 
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
     const results = [];
     for (const person of grouped.values()) {
       const existing = await PersonnelInvitation.findOne({ eventId: event._id, email: person.email });
       if (existing) {
-        results.push({ email: person.email, status: existing.status, emailStatus: existing.emailStatus, skipped: true });
+        results.push({ email: person.email, status: existing.status, skipped: true });
         continue;
       }
 
@@ -375,40 +293,24 @@ router.post('/event/:eventId/send', authenticateToken, async (req, res) => {
             fullName: person.fullName,
             unit: person.unit,
             assignments: person.assignments,
-            status: 'pending',
+            status: 'accepted',
             tokenHash: hashToken(rawToken),
             tokenExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
             invitedBy: req.user._id,
             invitedAt: new Date(),
-            emailStatus: 'pending',
           },
-          $unset: { respondedAt: 1, emailError: 1 },
+          $unset: { respondedAt: 1, emailStatus: 1, emailError: 1 },
         },
         { upsert: true, new: true, setDefaultsOnInsert: true },
       );
-      const responseLink = `${clientUrl}/personnel-invitation?token=${rawToken}`;
-      try {
-        await emailService.sendPersonnelInvitation(
-          person.email,
-          person.fullName,
-          event.name,
-          [...new Set(person.assignments.map((item) => item.role))],
-          responseLink,
-          person.assignments
-        );
-        invitation.emailStatus = 'sent';
-      } catch (emailError) {
-        invitation.emailStatus = 'failed';
-        invitation.emailError = emailError.message;
-      }
-      await invitation.save();
-      results.push({ email: person.email, status: invitation.status, emailStatus: invitation.emailStatus });
+      await provisionInvitation(invitation, req.user._id, person.password);
+      results.push({ email: person.email, status: invitation.status, accountStatus: invitation.accountStatus });
     }
 
-    res.json({ message: `Đã xử lý ${results.length} lời mời nhân sự.`, results });
+    res.json({ message: `Đã nhập ${results.length} nhân sự.`, results });
   } catch (error) {
-    console.error('Send Personnel Invitations Error:', error.message);
-    res.status(500).json({ message: 'Không thể gửi danh sách lời mời nhân sự.' });
+    console.error('Import Personnel Error:', error.message);
+    res.status(500).json({ message: 'Không thể nhập danh sách nhân sự.' });
   }
 });
 
@@ -419,11 +321,81 @@ router.post('/:invitationId/provision', authenticateToken, async (req, res) => {
     if (!await canManagePersonnel(req.user, invitation.eventId)) {
       return res.status(403).json({ message: 'Bạn không có quyền cấp tài khoản.' });
     }
-    await provisionInvitation(invitation, req.user._id);
+    await provisionInvitation(invitation, req.user._id, req.body.password);
     res.json({ message: `Đã cấp tài khoản cho ${invitation.fullName}.` });
   } catch (error) {
     console.error('Provision Personnel Error:', error.message);
     res.status(400).json({ message: error.message || 'Không thể cấp tài khoản.' });
+  }
+});
+
+router.put('/:invitationId/details', authenticateToken, async (req, res) => {
+  try {
+    const invitation = await PersonnelInvitation.findById(req.params.invitationId);
+    if (!invitation) return res.status(404).json({ message: 'Không tìm thấy nhân sự.' });
+    if (!await canManagePersonnel(req.user, invitation.eventId)) {
+      return res.status(403).json({ message: 'Bạn không có quyền chỉnh sửa nhân sự.' });
+    }
+
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const password = String(req.body.password || '').trim();
+    const assignments = Array.isArray(req.body.assignments) ? req.body.assignments : [];
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: 'Tài khoản email không hợp lệ.' });
+    }
+    if (password && password.length < 6) {
+      return res.status(400).json({ message: 'Mật khẩu mới phải có ít nhất 6 ký tự.' });
+    }
+    if (!assignments.length || assignments.some((item) => !['judge', 'mentor'].includes(item.role))) {
+      return res.status(400).json({ message: 'Nhân sự phải có ít nhất một vai trò hợp lệ.' });
+    }
+
+    const duplicateInvitation = await PersonnelInvitation.exists({
+      _id: { $ne: invitation._id },
+      eventId: invitation.eventId,
+      email,
+    });
+    const duplicateUser = await User.exists({
+      ...(invitation.userId ? { _id: { $ne: invitation.userId } } : {}),
+      email,
+    });
+    if (duplicateInvitation || duplicateUser) {
+      return res.status(409).json({ message: 'Email này đã thuộc về một nhân sự khác.' });
+    }
+
+    if (invitation.userId) {
+      const user = await User.findById(invitation.userId);
+      if (user) {
+        user.email = email;
+        user.fullName = invitation.fullName;
+        user.isApproved = true;
+        user.isActive = true;
+        user.authProviders = [...new Set([...(user.authProviders || []), 'local'])];
+        if (password) user.passwordHash = await bcrypt.hash(password, 10);
+        await user.save();
+        await EventRole.updateMany(
+          { userId: user._id, eventId: invitation.eventId, role: { $in: ['judge', 'mentor'] } },
+          { $set: { status: 'removed' } },
+        );
+      }
+    }
+
+    invitation.email = email;
+    invitation.assignments = assignments.map((item) => ({
+      role: item.role,
+      isChiefJudge: item.role === 'judge' && Boolean(item.isChiefJudge),
+      roundName: String(item.roundName || '').trim(),
+      trackName: String(item.trackName || '').trim(),
+      note: String(item.note || '').trim(),
+    }));
+    invitation.status = 'accepted';
+    await invitation.save();
+    await provisionInvitation(invitation, req.user._id, password);
+
+    res.json({ message: `Đã cập nhật thông tin của ${invitation.fullName}.` });
+  } catch (error) {
+    console.error('Update Personnel Details Error:', error.message);
+    res.status(400).json({ message: error.message || 'Không thể cập nhật nhân sự.' });
   }
 });
 
@@ -533,11 +505,13 @@ router.put('/:invitationId/assignment-track', authenticateToken, async (req, res
             userId: invitation.userId,
             eventId: invitation.eventId,
             role: targetAssignment.role,
-            roundId: track.roundId?._id || track.roundId,
+            trackId: null,
+            roundId: null,
           },
           {
             $set: {
               trackId: track._id,
+              roundId: track.roundId?._id || track.roundId,
               status: 'active',
               assignedBy: req.user._id,
               assignedAt: new Date(),

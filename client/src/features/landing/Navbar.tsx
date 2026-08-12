@@ -19,6 +19,7 @@ import {
   UserCog,
   LogIn,
   Trash2,
+  LifeBuoy,
 } from "lucide-react";
 
 interface NavbarProps {
@@ -288,6 +289,7 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
     location.pathname === "/album" ||
     location.pathname === "/guest-portal" ||
     location.pathname === "/team-area" ||
+    location.pathname === "/support" ||
     location.pathname === "/confirm-survey" ||
     location.pathname === "/my-achievements";
 
@@ -385,6 +387,10 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
                   <Link to="/my-achievements" className={linkClass("/my-achievements")}>
                     <Award size={16} />
                     <span>Thành tích của tôi</span>
+                  </Link>
+                  <Link to="/support" className={linkClass("/support")}>
+                    <LifeBuoy size={16} />
+                    <span>Hỗ trợ</span>
                   </Link>
                 </>
               )}

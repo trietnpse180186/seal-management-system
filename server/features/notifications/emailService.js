@@ -849,6 +849,25 @@ async function sendCertificateEmail(email, fullName, certificatePdfBuffer, prize
   }
 }
 
+async function sendSupportReplyEmail(email, fullName, requestCode, title, message, statusLabel) {
+  const safe = (value) => String(value || '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
+  const contentHtml = `
+    <p>Kính gửi <strong>${safe(fullName || email)}</strong>,</p>
+    <p>Coordinator đã cập nhật yêu cầu hỗ trợ <strong>${safe(requestCode)}</strong>.</p>
+    <div style="padding:16px;border:1px solid #e2e8f0;border-radius:12px;background:#fff7ed;margin:20px 0;">
+      <p style="margin:0 0 8px;color:#F27024;font-weight:700;">${safe(title)}</p>
+      ${statusLabel ? `<p style="margin:0 0 8px;color:#64748b;">Trạng thái: ${safe(statusLabel)}</p>` : ''}
+      ${message ? `<p style="margin:0;white-space:pre-wrap;color:#334155;">${safe(message)}</p>` : ''}
+    </div>
+    <p>Đây là email thông báo tự động từ hệ thống SEAL Hackathon.</p>`;
+  return sendMailHelper({
+    from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
+    to: email,
+    subject: `[SEAL Hackathon] Phản hồi yêu cầu hỗ trợ ${requestCode}`,
+    html: buildBaseEmailTemplate({ headerTitle: 'Phản Hồi Hỗ Trợ', contentHtml })
+  });
+}
+
 module.exports = {
   sendTeamInvitation,
   sendPersonnelInvitation,
@@ -860,5 +879,6 @@ module.exports = {
   sendSeminarInvitation,
   sendAccountProvisionEmail,
   sendPasswordResetEmail,
-  sendCertificateEmail
+  sendCertificateEmail,
+  sendSupportReplyEmail
 };

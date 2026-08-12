@@ -93,7 +93,9 @@ async function handleEmailJob(jobId, data) {
         data.leaderName,
         data.leaderEmail,
         data.eventName,
-        data.role || 'member'
+        data.role || 'member',
+        data.seminar,
+        data.fullName
       );
       break;
 

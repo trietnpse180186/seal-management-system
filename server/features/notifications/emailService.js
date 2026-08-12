@@ -274,28 +274,106 @@ function buildBaseEmailTemplate({ headerTitle, contentHtml }) {
  * @param {string} [eventName] - Optional full name of the event/competition
  * @returns {Promise<boolean>}
  */
-async function sendTeamInvitation(email, teamName, inviteLink, leaderName = null, leaderEmail = null, eventName = null) {
+async function sendTeamInvitation(email, teamName, inviteLink, leaderName = null, leaderEmail = null, eventName = null, role = 'member', seminar = null, recipientName = null) {
   const displayEventName = eventName || 'SEAL Hackathon';
   const isLeader = leaderEmail && email.toLowerCase() === leaderEmail.toLowerCase();
+  const displayName = recipientName || 'Thí sinh';
 
-  const contentHtml = `
-    <p style="margin-top: 0;">Xin chào,</p>
-    <p>Ban Tổ chức xin thông báo: Bạn đã được mời tham gia đội thi <strong style="color: #F27024;">"${teamName}"</strong> để tham dự cuộc thi <strong>${displayEventName}</strong>.</p>
-    <p>Để hoàn tất thủ tục đăng ký và chính thức tham gia cùng các đồng đội, vui lòng xác nhận bằng cách nhấn vào nút dưới đây:</p>
-    <div style="text-align: center; margin: 32px 0;">
-      <a href="${inviteLink}" style="background-color: #F27024; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 8px 20px rgba(242,112,36,0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">XÁC NHẬN THAM GIA ĐỘI THI</a>
-    </div>
-    <div style="font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #fed7aa; padding: 16px; background-color: #fff7ed; border-radius: 10px;">
-      <strong>Lưu ý quan trọng:</strong> Tất cả các thành viên được mời đều phải xác nhận tham gia trước khi hết hạn đăng ký hoặc khi số lượng đội đạt giới hạn tối đa để đội thi được công nhận chính thức.
-    </div>
-  `;
+  let contentHtml = '';
+  if (seminar && seminar.meetUrl) {
+    const semTitle = seminar.title || 'Seminar Hướng Dẫn & Giải Đáp Thắc Mắc';
+    const semDesc = seminar.description || '';
+    const meetUrl = seminar.meetUrl;
+
+    let timeInfo = '';
+    if (seminar.scheduledAt) {
+      try {
+        const startDate = new Date(seminar.scheduledAt);
+        if (!isNaN(startDate.getTime())) {
+          const daysOfWeek = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+          const startDayOfWeek = daysOfWeek[startDate.getDay()];
+
+          const formatTimeStr = (d) => {
+            const hh = String(d.getHours()).padStart(2, '0');
+            const mm = String(d.getMinutes()).padStart(2, '0');
+            return `${hh}h${mm}`;
+          };
+
+          const startStr = formatTimeStr(startDate);
+          const startDay = startDate.getDate();
+          const startMonth = startDate.getMonth() + 1;
+          const startYear = startDate.getFullYear();
+
+          if (seminar.scheduledEnd) {
+            const endDate = new Date(seminar.scheduledEnd);
+            if (!isNaN(endDate.getTime())) {
+              const isSameDay = startDate.toDateString() === endDate.toDateString();
+              const endStr = formatTimeStr(endDate);
+
+              if (isSameDay) {
+                timeInfo = `${startStr} - ${endStr}, ngày ${startDay}/${startMonth}/${startYear} (${startDayOfWeek})`;
+              } else {
+                const endDay = endDate.getDate();
+                const endMonth = endDate.getMonth() + 1;
+                const endYear = endDate.getFullYear();
+                const endDayOfWeek = daysOfWeek[endDate.getDay()];
+                timeInfo = `${startStr}, ngày ${startDay}/${startMonth}/${startYear} (${startDayOfWeek}) - ${endStr}, ngày ${endDay}/${endMonth}/${endYear} (${endDayOfWeek})`;
+              }
+            }
+          }
+
+          if (!timeInfo) {
+            timeInfo = `${startStr}, ngày ${startDay}/${startMonth}/${startYear} (${startDayOfWeek})`;
+          }
+        }
+      } catch (e) {
+        console.error('Error formatting seminar date:', e);
+      }
+    }
+
+    contentHtml = `
+      <p style="margin-top: 0; font-family: sans-serif; font-size: 14px; color: #334155;">Xin chào thí sinh <strong>${displayName}</strong>,</p>
+      <p style="font-family: sans-serif; font-size: 13px; color: #334155; margin-bottom: 20px;">Ban tổ chức có 2 thông báo quan trọng:</p>
+
+      <h3 style="margin-top: 0; color: #0f172a; font-size: 14px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; text-transform: uppercase; font-family: sans-serif; letter-spacing: 0.5px;">1/ THÔNG TIN WORKSHOP</h3>
+      <ul style="padding-left: 20px; color: #334155; line-height: 1.6; font-size: 13px; margin: 12px 0 24px 0; font-family: sans-serif;">
+        <li style="margin-bottom: 6px;"><strong>Chủ đề:</strong> "${semTitle}"</li>
+        ${timeInfo ? `<li style="margin-bottom: 6px;"><strong>Thời gian diễn ra:</strong> ${timeInfo}</li>` : ''}
+        <li style="margin-bottom: 6px;"><strong>Hình thức:</strong> Trực tuyến qua nền tảng Google Meet</li>
+        ${semDesc ? `<li style="margin-bottom: 6px;"><strong>Mô tả:</strong> ${semDesc}</li>` : ''}
+        <li style="margin-bottom: 6px;"><strong>Link buổi workshop:</strong> <a href="${meetUrl}" style="color: #F27024; font-weight: 700; text-decoration: underline;">Tham gia tại đây</a></li>
+      </ul>
+
+      <h3 style="color: #0f172a; font-size: 14px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; text-transform: uppercase; font-family: sans-serif; letter-spacing: 0.5px; margin-top: 24px;">2/ LỜI MỜI THAM GIA ĐỘI THI</h3>
+      <p style="margin-top: 12px; color: #334155; font-size: 13px; line-height: 1.6; font-family: sans-serif;">Ban Tổ chức xin thông báo: Bạn đã được mời tham gia đội thi <strong style="color: #F27024;">"${teamName}"</strong> để tham dự cuộc thi <strong>${displayEventName}</strong>.</p>
+      <p style="color: #334155; font-size: 13px; line-height: 1.6; font-family: sans-serif;">Để hoàn tất thủ tục đăng ký và chính thức tham gia cùng các đồng đội, vui lòng xác nhận bằng cách nhấn vào nút dưới đây:</p>
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${inviteLink}" style="background-color: #F27024; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 8px 20px rgba(242,112,36,0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">XÁC NHẬN THAM GIA ĐỘI THI</a>
+      </div>
+      <div style="font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #fed7aa; padding: 16px; background-color: #fff7ed; border-radius: 10px; font-family: sans-serif;">
+        <strong>Lưu ý quan trọng:</strong> Tất cả các thành viên được mời đều phải xác nhận tham gia trước khi hết hạn đăng ký hoặc khi số lượng đội đạt giới hạn tối đa để đội thi được công nhận chính thức.
+      </div>
+    `;
+  } else {
+    contentHtml = `
+      <p style="margin-top: 0; font-family: sans-serif; font-size: 14px; color: #334155;">Xin chào thí sinh <strong>${displayName}</strong>,</p>
+      <p style="font-family: sans-serif; font-size: 13px; color: #334155;">Ban Tổ chức xin thông báo: Bạn đã được mời tham gia đội thi <strong style="color: #F27024;">"${teamName}"</strong> để tham dự cuộc thi <strong>${displayEventName}</strong>.</p>
+      <p style="font-family: sans-serif; font-size: 13px; color: #334155;">Để hoàn tất thủ tục đăng ký và chính thức tham gia cùng các đồng đội, vui lòng xác nhận bằng cách nhấn vào nút dưới đây:</p>
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${inviteLink}" style="background-color: #F27024; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 8px 20px rgba(242,112,36,0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">XÁC NHẬN THAM GIA ĐỘI THI</a>
+      </div>
+      <div style="font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #fed7aa; padding: 16px; background-color: #fff7ed; border-radius: 10px; font-family: sans-serif;">
+        <strong>Lưu ý quan trọng:</strong> Tất cả các thành viên được mời đều phải xác nhận tham gia trước khi hết hạn đăng ký hoặc khi số lượng đội đạt giới hạn tối đa để đội thi được công nhận chính thức.
+      </div>
+    `;
+  }
 
   const mailOptions = {
     from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
     to: email,
     subject: `[SEAL Hackathon] Lời mời tham gia đội thi "${teamName}"`,
     html: buildBaseEmailTemplate({
-      headerTitle: 'Lời Mời Tham Gia Đội Thi',
+      headerTitle: 'SEAL Hackathon Summer 2026',
       contentHtml
     })
   };

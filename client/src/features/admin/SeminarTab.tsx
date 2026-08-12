@@ -31,7 +31,6 @@ export default function SeminarTab({
   const [attendanceSpreadsheetUrl, setAttendanceSpreadsheetUrl] = useState("");
 
   const [saving, setSaving] = useState(false);
-  const [sendingMail, setSendingMail] = useState(false);
 
   useEffect(() => {
     if (selectedEvent && selectedEvent.seminar) {
@@ -90,76 +89,18 @@ export default function SeminarTab({
     }
   };
 
-  const handleSendEmailNow = async () => {
-    if (!meetUrl) {
-      toast.error("Vui lòng nhập Link phòng họp (Google Meet) trước khi gửi mail!");
-      return;
-    }
-    const conformed = await conform({
-      title: "Xác nhận gửi Email Seminar",
-      message: "Bạn có chắc chắn muốn gửi email chứa link Meet Seminar cho toàn bộ thí sinh đã đăng ký nhóm trong cuộc thi này?",
-    });
-    if (!conformed) {
-      return;
-    }
-    setSendingMail(true);
-    try {
-      const res = await axios.post(
-        `http://localhost:5000/api/events/${selectedEvent._id}/seminar/send-email`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      toast.success(res.data.message || "Đã phát email thành công!");
-      await fetchEventDetails();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Lỗi khi phát email Seminar.");
-    } finally {
-      setSendingMail(false);
-    }
-  };
-
-  const semStatus = selectedEvent.seminar?.isEmailSent;
-
   return (
     <div className="space-y-6 font-sans">
-      {/* Top Banner & Status Card */}
+      {/* Top Banner */}
       <div className="glass p-6 rounded-2xl border border-slate-800/80 bg-slate-900/40 relative overflow-hidden">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
           <div>
             <h2 className="text-lg font-bold text-white font-mono uppercase tracking-wide">
-              Quản Lý Seminar & Tự Động Phát Mail Google Meet
+              Quản Lỳ Lịch Seminar & Link Google Meet
             </h2>
             <p className="text-xs text-slate-400 mt-1 font-mono">
-              Thiết lập lịch Seminar hướng dẫn, gửi tự động link phòng họp Google Meet đến toàn bộ thí sinh tham gia.
+              Thiết lập lịch Seminar hướng dẫn và link phòng họp Google Meet. Thông tin này sẽ được đính kèm trực tiếp vào email mời tham gia gửi đến thí sinh.
             </p>
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-            {semStatus ? (
-              <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5">
-                <span>ĐÃ PHÁT MAIL</span>
-                {selectedEvent.seminar?.emailSentAt && (
-                  <span className="text-[10px] opacity-75 font-normal">
-                    ({new Date(selectedEvent.seminar.emailSentAt).toLocaleTimeString("vi-VN")})
-                  </span>
-                )}
-              </div>
-            ) : (
-              <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold">
-                <span>CHƯA GỬI MAIL</span>
-              </div>
-            )}
-
-            {!readOnly && (
-              <button
-                type="button"
-                onClick={handleSendEmailNow}
-                disabled={sendingMail}
-                className="bg-[#F27024] hover:bg-[#e05f13] !text-white text-xs font-bold font-mono px-4 py-2.5 rounded-xl shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-              >
-                {sendingMail ? "Đang phát mail..." : "Gửi Mail Ngay"}
-              </button>
-            )}
           </div>
         </div>
       </div>

@@ -13,7 +13,9 @@ import {
   FileText,
   X
 } from "lucide-react";
+
 import CustomSelect from "../shared/CustomSelect";
+import { useConform } from "../shared/ModalConform";
 
 interface TeamsTabProps {
   selectedEvent: any;
@@ -42,6 +44,7 @@ export default function TeamsTab({
   readOnly = false,
   onRefreshTeams,
 }: TeamsTabProps) {
+  const conform = useConform();
   const [exporting, setExporting] = useState(false);
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
 
@@ -284,6 +287,94 @@ export default function TeamsTab({
       alert(err.response?.data?.message || "Lỗi khi gửi email mời thành viên.");
     } finally {
       setSendingEmails(false);
+    }
+  };
+
+  const handleAddMember = async (teamId: string, value: string) => {
+    if (!value.trim()) return;
+    const token = localStorage.getItem("token");
+    const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    try {
+      console.log(`[CLIENT] Adding member. teamId: ${teamId}, value: ${value}`);
+      const res = await axios.post(
+        `${apiBase}/api/teams/${teamId}/admin/members`,
+        { value },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      console.log(`[CLIENT] Add member success. Response:`, res.data);
+      toast.success(res.data.message || "Đã thêm thành viên và gửi mail mời thành công!");
+      if (onRefreshTeams) {
+        console.log(`[CLIENT] Refreshing teams list...`);
+        await onRefreshTeams();
+      }
+    } catch (err: any) {
+      console.error("Add member error:", err);
+      toast.error(err.response?.data?.message || "Lỗi khi thêm thành viên.");
+    }
+  };
+
+  const handleDeleteMember = async (teamId: string, userId: string, name: string) => {
+    const conformed = await conform({
+      title: "Xóa thành viên",
+      message: `Bạn có chắc chắn muốn xóa thành viên "${name}" khỏi đội không?`,
+      variant: "danger",
+    });
+    if (!conformed) return;
+
+    const token = localStorage.getItem("token");
+    const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    try {
+      console.log(`[CLIENT] Deleting member. teamId: ${teamId}, userId: ${userId}`);
+      const res = await axios.delete(
+        `${apiBase}/api/teams/${teamId}/admin/members/${userId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      console.log(`[CLIENT] Delete success. Response:`, res.data);
+      toast.success(res.data.message || "Đã xóa thành viên thành công!");
+      if (res.data.autoApproved) {
+        toast.info("Đội thi đã tự động xác nhận do tất cả thành viên còn lại đều đã xác nhận!");
+      }
+      if (onRefreshTeams) {
+        console.log(`[CLIENT] Refreshing teams list...`);
+        await onRefreshTeams();
+      } else {
+        console.warn(`[CLIENT] onRefreshTeams prop is missing!`);
+      }
+    } catch (err: any) {
+      console.error("Delete member error:", err);
+      toast.error(err.response?.data?.message || "Lỗi khi xóa thành viên.");
+    }
+  };
+
+  const handleSetLeader = async (teamId: string, userId: string) => {
+    const conformed = await conform({
+      title: "Bổ nhiệm Trưởng nhóm",
+      message: `Bạn có chắc chắn muốn bổ nhiệm thành viên này làm Trưởng nhóm mới không? Trưởng nhóm cũ sẽ chuyển thành thành viên thường.`,
+      variant: "warning",
+    });
+    if (!conformed) return;
+
+    const token = localStorage.getItem("token");
+    const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    try {
+      console.log(`[CLIENT] Setting leader. teamId: ${teamId}, userId: ${userId}`);
+      const res = await axios.put(
+        `${apiBase}/api/teams/${teamId}/admin/members/${userId}/role`,
+        { role: "leader" },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      console.log(`[CLIENT] Set leader success. Response:`, res.data);
+      toast.success(res.data.message || "Đã chuyển đổi trưởng nhóm thành công!");
+      if (res.data.autoApproved) {
+        toast.info("Đội thi đã tự động xác nhận do tất cả thành viên còn lại đều đã xác nhận!");
+      }
+      if (onRefreshTeams) {
+        console.log(`[CLIENT] Refreshing teams list...`);
+        await onRefreshTeams();
+      }
+    } catch (err: any) {
+      console.error("Set leader error:", err);
+      toast.error(err.response?.data?.message || "Lỗi khi chuyển đổi trưởng nhóm.");
     }
   };
 
@@ -689,25 +780,85 @@ export default function TeamsTab({
                       {team.members?.map((m: any) => (
                         <div
                           key={m.userId?._id}
-                          className="flex justify-between items-center text-xs text-slate-700"
+                          className="flex justify-between items-center text-xs gap-2"
                         >
-                          <span>
-                            • {m.userId?.fullName}{" "}
+                          <span className="text-slate-700 flex-1 truncate">
+                            • {m.userId?.fullName || "Chưa cập nhật"}{" "}
                             {m.userId?.studentId && `(${m.userId.studentId}) `}
-                            {m.userId?.university &&
-                              `- ${m.userId.university} `}
-                            {m.role === "leader" && (
-                              <span className="text-[10px] text-[#F27024] font-mono font-bold">
-                                (Trưởng nhóm)
-                              </span>
+                            {m.userId?.university && `- ${m.userId.university} `}
+                            {m.role === "leader" ? (
+                              <span className="text-[#F27024] font-bold ml-1">(Trưởng nhóm)</span>
+                            ) : (
+                              !readOnly && (
+                                <button
+                                  onClick={() => handleSetLeader(team._id, m.userId?._id)}
+                                  className="text-[9px] text-[#F27024] hover:underline ml-2 font-semibold"
+                                  title="Bổ nhiệm làm Trưởng nhóm mới"
+                                >
+                                  Lên Trưởng nhóm
+                                </button>
+                              )
                             )}
                           </span>
-                          <span className="text-slate-400 font-mono text-[11px]">
-                            {m.userId?.githubUsername || "Chưa liên kết Git"}
-                          </span>
+
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-400 font-mono text-[11px] whitespace-nowrap">
+                              {m.userId?.githubUsername || "Chưa liên kết Git"}
+                            </span>
+
+                            {!readOnly && m.role !== "leader" && (
+                              <button
+                                onClick={() => handleDeleteMember(team._id, m.userId?._id, m.userId?.fullName)}
+                                className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1 rounded-md transition-colors"
+                                title="Xóa thành viên khỏi nhóm"
+                              >
+                                <svg
+                                  className="w-3.5 h-3.5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
+                    {!readOnly && (
+                      <div className="mt-3 pt-2.5 border-t border-dashed border-slate-100 flex gap-2 items-center">
+                        <input
+                          type="text"
+                          placeholder="Nhập Email hoặc MSSV để thêm..."
+                          id={`add-member-input-${team._id}`}
+                          className="flex-1 text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#F27024] placeholder:text-slate-400 font-sans"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleAddMember(team._id, (e.target as HTMLInputElement).value);
+                              (e.target as HTMLInputElement).value = "";
+                            }
+                          }}
+                        />
+                        <button
+                          onClick={() => {
+                            const inputEl = document.getElementById(`add-member-input-${team._id}`) as HTMLInputElement;
+                            if (inputEl && inputEl.value.trim()) {
+                              handleAddMember(team._id, inputEl.value);
+                              inputEl.value = "";
+                            }
+                          }}
+                          className="bg-[#F27024] hover:bg-[#d65f1a] text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors font-sans whitespace-nowrap"
+                        >
+                          Thêm
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Assign Track controls */}
@@ -842,30 +993,93 @@ export default function TeamsTab({
                       {team.members?.map((m: any) => (
                         <div
                           key={m.userId?._id}
-                          className="flex justify-between items-center text-xs"
+                          className="flex justify-between items-center text-xs gap-2"
                         >
-                          <span className="text-slate-700">
-                            • {m.userId?.fullName}{" "}
+                          <span className="text-slate-700 flex-1 truncate">
+                            • {m.userId?.fullName || "Chưa cập nhật"}{" "}
                             {m.userId?.studentId && `(${m.userId.studentId}) `}
                             {m.userId?.university && `- ${m.userId.university} `}
-                            {m.role === "leader" && (
-                              <span className="text-[#F27024] font-bold">(Trưởng nhóm)</span>
+                            {m.role === "leader" ? (
+                              <span className="text-[#F27024] font-bold ml-1">(Trưởng nhóm)</span>
+                            ) : (
+                              !readOnly && (
+                                <button
+                                  onClick={() => handleSetLeader(team._id, m.userId?._id)}
+                                  className="text-[9px] text-[#F27024] hover:underline ml-2 font-semibold"
+                                  title="Bổ nhiệm làm Trưởng nhóm mới"
+                                >
+                                  Lên Trưởng nhóm
+                                </button>
+                              )
                             )}
                           </span>
-                          <span
-                            className={`text-[10px] font-mono px-2 py-0.5 rounded-lg border ${
-                              m.confirmStatus === "confirmed"
-                                ? "text-emerald-700 bg-emerald-50 border-emerald-200"
-                                : "text-amber-700 bg-amber-50 border-amber-200"
-                            }`}
-                          >
-                            {m.confirmStatus === "confirmed"
-                              ? "Đã nhận"
-                              : "Chờ xác nhận"}
-                          </span>
+
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`text-[10px] font-mono px-2 py-0.5 rounded-lg border whitespace-nowrap ${
+                                m.confirmStatus === "confirmed"
+                                  ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                                  : "text-amber-700 bg-amber-50 border-amber-200"
+                              }`}
+                            >
+                              {m.confirmStatus === "confirmed"
+                                ? "Đã nhận"
+                                : "Chờ xác nhận"}
+                            </span>
+
+                            {!readOnly && m.role !== "leader" && (
+                              <button
+                                onClick={() => handleDeleteMember(team._id, m.userId?._id, m.userId?.fullName)}
+                                className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1 rounded-md transition-colors"
+                                title="Xóa thành viên khỏi nhóm"
+                              >
+                                <svg
+                                  className="w-3.5 h-3.5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
+                    {!readOnly && (
+                      <div className="mt-3 pt-2.5 border-t border-dashed border-slate-100 flex gap-2 items-center">
+                        <input
+                          type="text"
+                          placeholder="Nhập Email hoặc MSSV để thêm..."
+                          id={`add-member-input-${team._id}`}
+                          className="flex-1 text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#F27024] placeholder:text-slate-400 font-sans"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleAddMember(team._id, (e.target as HTMLInputElement).value);
+                              (e.target as HTMLInputElement).value = "";
+                            }
+                          }}
+                        />
+                        <button
+                          onClick={() => {
+                            const inputEl = document.getElementById(`add-member-input-${team._id}`) as HTMLInputElement;
+                            if (inputEl && inputEl.value.trim()) {
+                              handleAddMember(team._id, inputEl.value);
+                              inputEl.value = "";
+                            }
+                          }}
+                          className="bg-[#F27024] hover:bg-[#d65f1a] text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors font-sans whitespace-nowrap"
+                        >
+                          Thêm
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

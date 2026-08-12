@@ -168,6 +168,91 @@ function vietnameseSlug(text) {
 
   return slug;
 }
+
+async function handleTeamFullConfirmation(team) {
+  team.status = "confirmed";
+  await team.save();
+
+  // Sync team to external simulator API for MQTT keys
+  try {
+    await syncTeamToExternalSimulator(team);
+  } catch (err) {
+    console.error("Lỗi đồng bộ simulator khi duyệt đội:", err.message);
+  }
+
+  console.log(
+    `[TEAM] Team "${team.name}" is now FULLY CONFIRMED! Creating repo...`,
+  );
+
+  // 1. Automatically create Github Repository
+  try {
+    const event = await Event.findById(team.eventId);
+    const orgName = event ? event.githubOrgName : undefined;
+    const suffix = getSemesterSuffix(event);
+    const slugRepoName = vietnameseSlug(team.name) + suffix;
+    const populatedMembers = await TeamMember.find({
+      teamId: team._id,
+    }).populate("userId");
+
+    const gitResult = await githubService.createTeamRepository(
+      slugRepoName,
+      "private",
+      orgName,
+    );
+
+    const actualOrgName = gitResult.owner || orgName;
+
+    const newRepo = new GithubRepository({
+      eventId: team.eventId,
+      trackId: team.trackId,
+      teamId: team._id,
+      orgName: actualOrgName,
+      repoName: slugRepoName,
+      repoUrl: gitResult.repoUrl,
+      githubRepoId: gitResult.githubRepoId,
+      syncStatus: "not_synced",
+    });
+    await newRepo.save();
+
+    // 2. Add collaborators
+    for (const tm of populatedMembers) {
+      if (tm.userId && tm.userId.githubUsername) {
+        await githubService.addCollaborator(
+          slugRepoName,
+          tm.userId.githubUsername,
+          "push",
+          actualOrgName,
+        );
+      }
+    }
+
+    // Notify all team members that team is confirmed
+    for (const tm of populatedMembers) {
+      const recipientId = (tm.userId._id || tm.userId).toString();
+      if (isQueueAvailable()) {
+        await addInAppJob({
+          userId: recipientId,
+          type: "team_ready",
+          title: "Đội đã sẵn sàng thi đấu",
+          body: `Tuyệt vời! Tất cả thành viên đội "${team.name}" đã xác nhận. Repository GitHub của bạn là ${slugRepoName}.`,
+        });
+      } else {
+        const Notification = mongoose.model("Notification");
+        await new Notification({
+          userId: recipientId,
+          type: "team_ready",
+          title: "Đội đã sẵn sàng thi đấu",
+          body: `Tuyệt vời! Tất cả thành viên đội "${team.name}" đã xác nhận. Repository GitHub của bạn là ${slugRepoName}.`,
+          channel: "in_app",
+          status: "sent",
+        }).save();
+      }
+    }
+  } catch (gitErr) {
+    console.error("Lỗi tự động tạo repo GitHub:", gitErr.message);
+  }
+}
+
 const {
   canUserAccessRoundExam,
   canUserAccessTrackExam,
@@ -1058,86 +1143,8 @@ router.get("/confirm-invite", async (req, res) => {
         }).save();
       }
     }
-
     if (pendingCount === 0) {
-      // All confirmed! Promote team status
-      team.status = "confirmed";
-      await team.save();
-
-      // Sync team to external simulator API for MQTT keys
-      await syncTeamToExternalSimulator(team);
-
-      console.log(
-        `[TEAM] Team "${team.name}" is now FULLY CONFIRMED! Creating repo...`,
-      );
-
-      // 1. Automatically create Github Repository
-      const event = await Event.findById(team.eventId);
-      const orgName = event ? event.githubOrgName : undefined;
-      const suffix = getSemesterSuffix(event);
-      const slugRepoName = vietnameseSlug(team.name) + suffix;
-      const populatedMembers = await TeamMember.find({
-        teamId: team._id,
-      }).populate("userId");
-
-      try {
-        const gitResult = await githubService.createTeamRepository(
-          slugRepoName,
-          "private",
-          orgName,
-        );
-
-        const actualOrgName = gitResult.owner || orgName;
-
-        const newRepo = new GithubRepository({
-          eventId: team.eventId,
-          trackId: team.trackId,
-          teamId: team._id,
-          orgName: actualOrgName,
-          repoName: slugRepoName,
-          repoUrl: gitResult.repoUrl,
-          githubRepoId: gitResult.githubRepoId,
-          syncStatus: "not_synced",
-        });
-        await newRepo.save();
-
-        // 2. Add collaborators
-        for (const tm of populatedMembers) {
-          if (tm.userId && tm.userId.githubUsername) {
-            await githubService.addCollaborator(
-              slugRepoName,
-              tm.userId.githubUsername,
-              "push",
-              actualOrgName,
-            );
-          }
-        }
-      } catch (gitErr) {
-        console.error("Lỗi tự động tạo repo GitHub:", gitErr.message);
-      }
-
-      // Notify all team members that team is confirmed
-      for (const tm of populatedMembers) {
-        if (isQueueAvailable()) {
-          await addInAppJob({
-            userId: (tm.userId._id || tm.userId).toString(),
-            type: "team_ready",
-            title: "Đội đã sẵn sàng thi đấu",
-            body: `Tuyệt vời! Tất cả thành viên đội "${team.name}" đã xác nhận. Repository GitHub của bạn là ${slugRepoName}.`,
-          });
-        } else {
-          // Fallback: synchronous
-          const Notification = mongoose.model("Notification");
-          await new Notification({
-            userId: tm.userId._id || tm.userId,
-            type: "team_ready",
-            title: "Đội đã sẵn sàng thi đấu",
-            body: `Tuyệt vời! Tất cả thành viên đội "${team.name}" đã xác nhận. Repository GitHub của bạn là ${slugRepoName}.`,
-            channel: "in_app",
-            status: "sent",
-          }).save();
-        }
-      }
+      await handleTeamFullConfirmation(team);
     }
 
     // Generate auth token so user is automatically authenticated on frontend
@@ -1920,6 +1927,120 @@ router.put("/:teamId/basic-info", authenticateToken, async (req, res) => {
     res
       .status(500)
       .json({ message: "Lỗi hệ thống khi cập nhật thông tin thành viên." });
+  }
+});
+
+/**
+ * @route   DELETE /api/teams/:teamId/members/:userId
+ * @desc    Team leader deletes a member from their own team
+ * @access  Private (Only team leader)
+ */
+router.delete("/:teamId/members/:userId", authenticateToken, async (req, res) => {
+  const { teamId, userId } = req.params;
+
+  try {
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return res.status(404).json({ message: "Không tìm thấy đội thi." });
+    }
+
+    // Check if the current user is the leader of the team
+    if (team.leaderId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Chỉ trưởng nhóm mới có quyền xóa thành viên." });
+    }
+
+    const member = await TeamMember.findOne({ teamId, userId });
+    if (!member) {
+      return res.status(404).json({ message: "Không tìm thấy thành viên trong đội." });
+    }
+
+    if (member.role === "leader") {
+      return res.status(400).json({ message: "Không thể tự xóa chính mình (Trưởng nhóm). Vui lòng chuyển vai trò trưởng nhóm trước." });
+    }
+
+    await TeamMember.deleteOne({ _id: member._id });
+
+    // Auto-confirm logic
+    const remainingMembers = await TeamMember.find({ teamId });
+    const pendingCount = remainingMembers.filter(m => m.confirmStatus === "pending").length;
+
+    let autoApproved = false;
+    if (pendingCount === 0 && remainingMembers.length > 0 && team.status === "pending_confirm") {
+      await handleTeamFullConfirmation(team);
+      autoApproved = true;
+    }
+
+    res.json({
+      message: "Đã xóa thành viên thành công.",
+      autoApproved
+    });
+  } catch (error) {
+    console.error("Leader delete member error:", error);
+    res.status(500).json({ message: "Lỗi hệ thống khi xóa thành viên." });
+  }
+});
+
+/**
+ * @route   PUT /api/teams/:teamId/members/:userId/transfer-leader
+ * @desc    Team leader transfers leadership to another member in the team
+ * @access  Private (Only team leader)
+ */
+router.put("/:teamId/members/:userId/transfer-leader", authenticateToken, async (req, res) => {
+  const { teamId, userId } = req.params;
+
+  try {
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return res.status(404).json({ message: "Không tìm thấy đội thi." });
+    }
+
+    // Check if the current user is the leader of the team
+    if (team.leaderId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Chỉ trưởng nhóm mới có quyền chuyển vai trò trưởng nhóm." });
+    }
+
+    const member = await TeamMember.findOne({ teamId, userId });
+    if (!member) {
+      return res.status(404).json({ message: "Không tìm thấy thành viên trong đội." });
+    }
+
+    if (member.role === "leader") {
+      return res.status(400).json({ message: "Thành viên này đã là trưởng nhóm rồi." });
+    }
+
+    // Update old leader
+    const oldLeader = await TeamMember.findOne({ teamId, role: "leader" });
+    if (oldLeader) {
+      oldLeader.role = "member";
+      await oldLeader.save();
+    }
+
+    // Promote new leader
+    member.role = "leader";
+    member.confirmStatus = "confirmed"; // Leader is always confirmed
+    await member.save();
+
+    // Update Team document
+    team.leaderId = userId;
+    await team.save();
+
+    // Check if team can be auto-confirmed
+    const remainingMembers = await TeamMember.find({ teamId });
+    const pendingCount = remainingMembers.filter(m => m.confirmStatus === "pending").length;
+
+    let autoApproved = false;
+    if (pendingCount === 0 && team.status === "pending_confirm") {
+      await handleTeamFullConfirmation(team);
+      autoApproved = true;
+    }
+
+    res.json({
+      message: "Đã chuyển vai trò trưởng nhóm thành công.",
+      autoApproved
+    });
+  } catch (error) {
+    console.error("Leader transfer leadership error:", error);
+    res.status(500).json({ message: "Lỗi hệ thống khi chuyển vai trò trưởng nhóm." });
   }
 });
 
@@ -4192,6 +4313,241 @@ router.delete("/:teamId", authenticateToken, async (req, res) => {
   } catch (error) {
     console.error("Delete Team Error:", error);
     res.status(500).json({ message: "Xóa đội thi thất bại." });
+  }
+});
+
+/**
+ * @route   POST /api/teams/:teamId/admin/members
+ * @desc    Admin add a member to the team (by email or studentId)
+ * @access  Private (Admin or CTSV)
+ */
+router.post("/:teamId/admin/members", authenticateToken, async (req, res) => {
+  if (!req.user.isSystemAdmin && req.user.role !== "student_assistant") {
+    return res.status(403).json({ message: "Không có quyền thực hiện." });
+  }
+
+  const { teamId } = req.params;
+  const { value } = req.body;
+
+  if (!value) {
+    return res.status(400).json({ message: "Thiếu thông tin người dùng (Email hoặc MSSV)." });
+  }
+
+  try {
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return res.status(404).json({ message: "Không tìm thấy đội thi." });
+    }
+
+    const cleanVal = value.trim().toLowerCase();
+    const user = await User.findOne({
+      $or: [
+        { email: cleanVal },
+        { studentId: { $regex: new RegExp(`^${cleanVal}$`, "i") } }
+      ]
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng." });
+    }
+
+    // Check if user is already in this team
+    const existingInTeam = await TeamMember.findOne({ teamId, userId: user._id });
+    if (existingInTeam) {
+      return res.status(400).json({ message: "Thành viên này đã có trong đội thi." });
+    }
+
+    // Check if user is already in another team for this event
+    const existingInEvent = await TeamMember.findOne({
+      eventId: team.eventId,
+      userId: user._id,
+      confirmStatus: { $in: ["pending", "confirmed"] }
+    });
+    if (existingInEvent) {
+      return res.status(400).json({ message: "Thành viên này đã tham gia đội thi khác trong cùng cuộc thi." });
+    }
+
+    // Create confirmation token
+    const confirmToken = crypto.randomBytes(32).toString("hex");
+    const confirmTokenHash = crypto.createHash("sha256").update(confirmToken).digest("hex");
+    const confirmTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    const newMember = new TeamMember({
+      teamId: team._id,
+      eventId: team.eventId,
+      userId: user._id,
+      role: "member",
+      confirmStatus: "pending",
+      confirmTokenHash,
+      confirmTokenExpiry,
+      invitedAt: new Date(),
+    });
+    await newMember.save();
+
+    // Send invitation email
+    const inviteLink = `${req.protocol}://${req.get("host")}/api/teams/confirm-invite?token=${confirmToken}&memberId=${newMember._id}`;
+    
+    // Get event and seminar information for email
+    const event = await Event.findById(team.eventId);
+    
+    try {
+      const emailService = require("../notifications/emailService");
+      await emailService.sendTeamInvitation(
+        user.email,
+        team.name,
+        inviteLink,
+        null,
+        null,
+        event ? event.name : null,
+        "member",
+        event?.seminar ? {
+          title: event.seminar.title,
+          description: event.seminar.description,
+          scheduledAt: event.seminar.scheduledAt,
+          scheduledEnd: event.seminar.scheduledEnd,
+          meetUrl: event.seminar.meetUrl
+        } : null,
+        user.fullName
+      );
+    } catch (mailErr) {
+      console.error("Lỗi gửi mail mời thành viên:", mailErr.message);
+    }
+
+    const populated = await TeamMember.findById(newMember._id).populate(
+      "userId",
+      "fullName email studentId university githubUsername"
+    );
+
+    res.json({
+      message: "Đã thêm và gửi thư mời cho thành viên thành công.",
+      member: populated
+    });
+  } catch (error) {
+    console.error("Admin add member error:", error);
+    res.status(500).json({ message: "Lỗi hệ thống khi thêm thành viên." });
+  }
+});
+
+/**
+ * @route   DELETE /api/teams/:teamId/admin/members/:userId
+ * @desc    Admin delete a member from a team
+ * @access  Private (Admin or CTSV)
+ */
+router.delete("/:teamId/admin/members/:userId", authenticateToken, async (req, res) => {
+  if (!req.user.isSystemAdmin && req.user.role !== "student_assistant") {
+    return res.status(403).json({ message: "Không có quyền thực hiện." });
+  }
+
+  const { teamId, userId } = req.params;
+
+  try {
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return res.status(404).json({ message: "Không tìm thấy đội thi." });
+    }
+
+    const member = await TeamMember.findOne({ teamId, userId });
+    if (!member) {
+      return res.status(404).json({ message: "Không tìm thấy thành viên trong đội." });
+    }
+
+    if (member.role === "leader") {
+      return res.status(400).json({ message: "Không thể xóa trưởng nhóm. Hãy bổ nhiệm thành viên khác làm trưởng nhóm trước khi xóa." });
+    }
+
+    await TeamMember.deleteOne({ _id: member._id });
+
+    // Check if the team status needs to be promoted
+    const remainingMembers = await TeamMember.find({ teamId });
+    const pendingCount = remainingMembers.filter(m => m.confirmStatus === "pending").length;
+
+    console.log(`[ADMIN DELETE MEMBER] teamId: ${teamId}, remainingMembers: ${remainingMembers.length}, pendingCount: ${pendingCount}, team.status: ${team?.status}`);
+
+    let autoApproved = false;
+    if (pendingCount === 0 && remainingMembers.length > 0 && team.status === "pending_confirm") {
+      console.log(`[ADMIN DELETE MEMBER] Auto-approving team: ${team.name}`);
+      await handleTeamFullConfirmation(team);
+      autoApproved = true;
+    }
+
+    res.json({
+      message: "Đã xóa thành viên thành công.",
+      autoApproved
+    });
+  } catch (error) {
+    console.error("Admin delete member error:", error);
+    res.status(500).json({ message: "Lỗi hệ thống khi xóa thành viên." });
+  }
+});
+
+/**
+ * @route   PUT /api/teams/:teamId/admin/members/:userId/role
+ * @desc    Admin change a member's role (promote to leader)
+ * @access  Private (Admin or CTSV)
+ */
+router.put("/:teamId/admin/members/:userId/role", authenticateToken, async (req, res) => {
+  if (!req.user.isSystemAdmin && req.user.role !== "student_assistant") {
+    return res.status(403).json({ message: "Không có quyền thực hiện." });
+  }
+
+  const { teamId, userId } = req.params;
+  const { role } = req.body;
+
+  if (role !== "leader" && role !== "member") {
+    return res.status(400).json({ message: "Vai trò không hợp lệ." });
+  }
+
+  try {
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return res.status(404).json({ message: "Không tìm thấy đội thi." });
+    }
+
+    const member = await TeamMember.findOne({ teamId, userId });
+    if (!member) {
+      return res.status(404).json({ message: "Không tìm thấy thành viên trong đội." });
+    }
+
+    if (role === "leader") {
+      // Find the old leader
+      const oldLeader = await TeamMember.findOne({ teamId, role: "leader" });
+      if (oldLeader) {
+        oldLeader.role = "member";
+        await oldLeader.save();
+      }
+
+      // Promote new leader
+      member.role = "leader";
+      member.confirmStatus = "confirmed"; // Leader is always confirmed
+      await member.save();
+
+      // Update Team document
+      team.leaderId = userId;
+      await team.save();
+
+      // Check if team can be auto-confirmed
+      const remainingMembers = await TeamMember.find({ teamId });
+      const pendingCount = remainingMembers.filter(m => m.confirmStatus === "pending").length;
+
+      let autoApproved = false;
+      if (pendingCount === 0 && team.status === "pending_confirm") {
+        await handleTeamFullConfirmation(team);
+        autoApproved = true;
+      }
+
+      return res.json({
+        message: "Đã thay đổi trưởng nhóm thành công.",
+        autoApproved
+      });
+    } else {
+      if (member.role === "leader") {
+        return res.status(400).json({ message: "Không thể giáng chức trưởng nhóm trực tiếp. Hãy bổ nhiệm thành viên khác làm trưởng nhóm." });
+      }
+      return res.json({ message: "Thành viên đã ở vai trò này." });
+    }
+  } catch (error) {
+    console.error("Admin change role error:", error);
+    res.status(500).json({ message: "Lỗi hệ thống khi thay đổi vai trò." });
   }
 });
 

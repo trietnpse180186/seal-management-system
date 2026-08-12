@@ -421,7 +421,7 @@ async function sendTeamInvitation(email, teamName, inviteLink, leaderName = null
         <a href="${inviteLink}" style="background-color: #F27024; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 8px 20px rgba(242,112,36,0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">XÁC NHẬN THAM GIA ĐỘI THI</a>
       </div>
       <div style="font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #fed7aa; padding: 16px; background-color: #fff7ed; border-radius: 10px; font-family: sans-serif;">
-        <strong>Lưu ý quan trọng:</strong> Tất cả các thành viên được mời đều phải xác nhận tham gia trước khi hết hạn đăng ký hoặc khi số lượng đội đạt giới hạn tối đa để đội thi được công nhận chính thức.
+        <strong>Lưu ý quan trọng:</strong> Tất cả các thành viên được mời đều phải xác nhận tham gia trước 15/08/2026 để đội thi được công nhận chính thức.
       </div>
     `;
   } else {
@@ -433,7 +433,7 @@ async function sendTeamInvitation(email, teamName, inviteLink, leaderName = null
         <a href="${inviteLink}" style="background-color: #F27024; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 8px 20px rgba(242,112,36,0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">XÁC NHẬN THAM GIA ĐỘI THI</a>
       </div>
       <div style="font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #fed7aa; padding: 16px; background-color: #fff7ed; border-radius: 10px; font-family: sans-serif;">
-        <strong>Lưu ý quan trọng:</strong> Tất cả các thành viên được mời đều phải xác nhận tham gia trước khi hết hạn đăng ký hoặc khi số lượng đội đạt giới hạn tối đa để đội thi được công nhận chính thức.
+        <strong>Lưu ý quan trọng:</strong> Tất cả các thành viên được mời đều phải xác nhận tham gia trước 15/08/2026 để đội thi được công nhận chính thức.
       </div>
     `;
   }

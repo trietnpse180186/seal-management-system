@@ -101,8 +101,17 @@ async function sendMailHelper(mailOptions) {
       });
 
       if (!response.ok) {
-        const errData = await response.json();
-        const errMsg = errData.Messages?.[0]?.Errors?.[0]?.ErrorMessage || `HTTP ${response.status}`;
+        let errMsg = `HTTP ${response.status}`;
+        try {
+          const errData = await response.json();
+          // Auth errors (401/403) use top-level ErrorMessage; send errors use nested Messages[].Errors[]
+          errMsg = errData.ErrorMessage
+            || errData.Messages?.[0]?.Errors?.[0]?.ErrorMessage
+            || errMsg;
+        } catch (_) { /* non-JSON response */ }
+        if (response.status === 401) {
+          console.error('[EMAIL] Mailjet 401 Unauthorized — vui lòng kiểm tra MJ_APIKEY_PUBLIC và MJ_APIKEY_PRIVATE trong .env');
+        }
         throw new Error(errMsg);
       }
 

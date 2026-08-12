@@ -255,7 +255,10 @@ export default function TeamsTab({
       const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
       const res = await axios.post(
         `${apiBase}/api/teams/send-import-invitations`,
-        { teamIds: importResult.teamIds },
+        {
+          teamIds: importResult.teamIds,
+          eventId: selectedEvent?._id,
+        },
         {
           headers: { Authorization: `Bearer ${token}` },
         }

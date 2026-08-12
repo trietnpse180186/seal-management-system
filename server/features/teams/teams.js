@@ -678,6 +678,15 @@ router.post("/register", authenticateToken, async (req, res) => {
           leaderName: leader ? leader.fullName : undefined,
           leaderEmail: leader ? leader.email : undefined,
           eventName: event ? event.name : undefined,
+          role: "member",
+          seminar: event?.seminar ? {
+            title: event.seminar.title,
+            description: event.seminar.description,
+            scheduledAt: event.seminar.scheduledAt,
+            scheduledEnd: event.seminar.scheduledEnd,
+            meetUrl: event.seminar.meetUrl
+          } : null,
+          fullName: memberUser.fullName,
         });
         // Send In-App Notification via queue
         await addInAppJob({
@@ -689,7 +698,23 @@ router.post("/register", authenticateToken, async (req, res) => {
       } else {
         // Fallback: synchronous (Redis not available)
         emailService
-          .sendTeamInvitation(memberUser.email, teamName, inviteLink, leader ? leader.fullName : null, leader ? leader.email : null, event ? event.name : null)
+          .sendTeamInvitation(
+            memberUser.email,
+            teamName,
+            inviteLink,
+            leader ? leader.fullName : null,
+            leader ? leader.email : null,
+            event ? event.name : null,
+            "member",
+            event?.seminar ? {
+              title: event.seminar.title,
+              description: event.seminar.description,
+              scheduledAt: event.seminar.scheduledAt,
+              scheduledEnd: event.seminar.scheduledEnd,
+              meetUrl: event.seminar.meetUrl
+            } : null,
+            memberUser.fullName
+          )
           .catch((err) =>
             console.error(
               `[FALLBACK] Failed to send invitation email to ${memberUser.email}:`,
@@ -1858,7 +1883,23 @@ router.put("/:teamId/basic-info", authenticateToken, async (req, res) => {
       // Send invitation email
       const inviteLink = `${req.protocol}://${req.get("host")}/api/teams/confirm-invite?token=${confirmToken}&memberId=${teamMember._id}`;
       emailService
-        .sendTeamInvitation(memberUser.email, team.name, inviteLink, leaderUser ? leaderUser.fullName : null, leaderUser ? leaderUser.email : null, event ? event.name : null)
+        .sendTeamInvitation(
+          memberUser.email,
+          team.name,
+          inviteLink,
+          leaderUser ? leaderUser.fullName : null,
+          leaderUser ? leaderUser.email : null,
+          event ? event.name : null,
+          "member",
+          event?.seminar ? {
+            title: event.seminar.title,
+            description: event.seminar.description,
+            scheduledAt: event.seminar.scheduledAt,
+            scheduledEnd: event.seminar.scheduledEnd,
+            meetUrl: event.seminar.meetUrl
+          } : null,
+          memberUser.fullName
+        )
         .catch((err) =>
           console.error(
             `[MEMBER ADD] Failed to send invitation to ${memberUser.email}:`,
@@ -2469,7 +2510,15 @@ router.post(
               leaderUser.fullName,
               leaderUser.email,
               event ? event.name : null,
-              "leader"
+              "leader",
+              event?.seminar ? {
+                title: event.seminar.title,
+                description: event.seminar.description,
+                scheduledAt: event.seminar.scheduledAt,
+                scheduledEnd: event.seminar.scheduledEnd,
+                meetUrl: event.seminar.meetUrl
+              } : null,
+              leaderUser.fullName
             )
             .catch((err) =>
               console.error(
@@ -2545,7 +2594,15 @@ router.post(
                 leaderUser ? leaderUser.fullName : null,
                 leaderUser ? leaderUser.email : null,
                 event ? event.name : null,
-                "member"
+                "member",
+                event?.seminar ? {
+                  title: event.seminar.title,
+                  description: event.seminar.description,
+                  scheduledAt: event.seminar.scheduledAt,
+                  scheduledEnd: event.seminar.scheduledEnd,
+                  meetUrl: event.seminar.meetUrl
+                } : null,
+                memberUser.fullName
               )
               .catch((err) =>
                 console.error(
@@ -2676,7 +2733,6 @@ router.post("/send-import-invitations", authenticateToken, async (req, res) => {
         const team = await Team.findById(member.teamId).populate("leaderId", "fullName email");
         const event = await Event.findById(team?.eventId);
         const inviteLink = `${req.protocol}://${req.get("host")}/api/teams/confirm-invite?token=${member.confirmTokenHash}&memberId=${member._id}`;
-
         if (isQueueAvailable()) {
           await addEmailJobWithDelay(
             {
@@ -2688,6 +2744,14 @@ router.post("/send-import-invitations", authenticateToken, async (req, res) => {
               leaderEmail: team?.leaderId?.email || null,
               eventName: event?.name || null,
               role: member.role,
+              seminar: event?.seminar ? {
+                title: event.seminar.title,
+                description: event.seminar.description,
+                scheduledAt: event.seminar.scheduledAt,
+                scheduledEnd: event.seminar.scheduledEnd,
+                meetUrl: event.seminar.meetUrl
+              } : null,
+              fullName: member.userId.fullName,
             },
             i * 700,
           );
@@ -2701,6 +2765,14 @@ router.post("/send-import-invitations", authenticateToken, async (req, res) => {
             team?.leaderId?.email || null,
             event?.name || null,
             member.role,
+            event?.seminar ? {
+              title: event.seminar.title,
+              description: event.seminar.description,
+              scheduledAt: event.seminar.scheduledAt,
+              scheduledEnd: event.seminar.scheduledEnd,
+              meetUrl: event.seminar.meetUrl
+            } : null,
+            member.userId.fullName
           );
         }
 

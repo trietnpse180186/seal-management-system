@@ -344,10 +344,9 @@ function buildBaseEmailTemplate({ headerTitle, contentHtml }) {
  * @param {string} [eventName] - Optional full name of the event/competition
  * @returns {Promise<boolean>}
  */
-async function sendTeamInvitation(email, teamName, inviteLink, leaderName = null, leaderEmail = null, eventName = null) {
+async function sendTeamInvitation(email, teamName, inviteLink, leaderName = null, leaderEmail = null, eventName = null, role = 'member', seminar = null, recipientName = null) {
   const displayEventName = eventName || 'SEAL Hackathon';
   const isLeader = leaderEmail && email.toLowerCase() === leaderEmail.toLowerCase();
-
   // Look up candidate's full name from DB
   let displayName = 'Thí sinh';
   try {

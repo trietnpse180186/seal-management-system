@@ -23,9 +23,9 @@ export default {
         "outline-variant": "#3b494b",
       },
       fontFamily: {
-        display: ['Archivo', 'sans-serif'],
-        sans: ['DM Sans', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        display: ['Roboto', 'sans-serif'],
+        sans: ['Roboto', 'sans-serif'],
+        mono: ['Roboto Mono', 'monospace'],
       }
     },
   },

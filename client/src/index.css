@@ -7,9 +7,9 @@ html {
 }
 
 :root {
-  --font-display: 'Archivo', sans-serif;
-  --font-sans: 'DM Sans', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-display: 'Roboto', sans-serif;
+  --font-sans: 'Roboto', sans-serif;
+  --font-mono: 'Roboto Mono', monospace;
   --fpt-orange: #f27024;
 }
 
@@ -335,7 +335,7 @@ input:focus, select:focus, textarea:focus {
   top: 50%;
   transform: translateY(-50%);
   color: #00f0ff;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Roboto Mono', monospace;
   font-size: 14px;
   z-index: 2;
 }

@@ -868,12 +868,15 @@ export default function AdminEvents({
   const fetchTeamsList = async () => {
     if (!selectedEvent) return;
     try {
+      console.log(`[CLIENT] fetchTeamsList triggered for eventId: ${selectedEvent._id}`);
+      const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
       const res = await axios.get(
-        `http://localhost:5000/api/teams/all/${selectedEvent._id}`,
+        `${apiBase}/api/teams/all/${selectedEvent._id}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
       );
+      console.log(`[CLIENT] fetchTeamsList success. Fetched ${res.data?.length} teams.`);
       setTeamsList(res.data || []);
     } catch (err) {
       console.error("Lỗi lấy danh sách đội thi:", err);

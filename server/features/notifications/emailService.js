@@ -24,6 +24,7 @@ async function sendMailHelper(mailOptions) {
   const isBrevoApi = process.env.EMAIL_PASS && (process.env.EMAIL_PASS.startsWith('xsmtpsib-') || process.env.EMAIL_PASS.startsWith('xkeysib-'));
   const isResendApi = process.env.EMAIL_PASS && process.env.EMAIL_PASS.startsWith('re_');
   const isSendGridApi = process.env.EMAIL_PASS && process.env.EMAIL_PASS.startsWith('SG.');
+  const isMailjetApi = !!(process.env.MJ_APIKEY_PUBLIC && process.env.MJ_APIKEY_PRIVATE);
 
   // Parse recipient format: "Name" <email@domain.com> or email@domain.com
   let recipientEmail = mailOptions.to;
@@ -43,6 +44,75 @@ async function sendMailHelper(mailOptions) {
       bccList = mailOptions.bcc;
     } else if (typeof mailOptions.bcc === 'string') {
       bccList = mailOptions.bcc.split(',').map(e => e.trim());
+    }
+  }
+
+  if (isMailjetApi) {
+    console.log('[EMAIL] Detected Mailjet API keys. Routing mail through Mailjet HTTP API (v3.1)...');
+    try {
+      let senderName = 'SEAL Hackathon';
+      let senderEmail = process.env.EMAIL_FROM || 'no-reply@domain.com';
+
+      // Parse sender format: "Name" <email@domain.com>
+      const fromMatch = senderEmail.match(/^(?:"?([^"]*)"?\s)?(?:<(.+)>)$/);
+      if (fromMatch) {
+        senderName = fromMatch[1] || senderName;
+        senderEmail = fromMatch[2];
+      } else if (senderEmail.includes('@')) {
+        senderName = senderEmail.split('@')[0];
+      }
+
+      const message = {
+        From: { Email: senderEmail, Name: senderName },
+        To: [{ Email: recipientEmail, Name: recipientName || undefined }],
+        Subject: mailOptions.subject,
+        HTMLPart: mailOptions.html
+      };
+      if (bccList.length > 0) {
+        message.Bcc = bccList.map(email => {
+          const match = email.match(/^(?:"?([^"]*)"?\s)?(?:<(.+)>)$/);
+          if (match) {
+            return { Email: match[2], Name: match[1] || undefined };
+          }
+          return { Email: email };
+        });
+      }
+      // Support attachments (e.g. certificate PDFs)
+      if (mailOptions.attachments && mailOptions.attachments.length > 0) {
+        message.Attachments = mailOptions.attachments.map(att => ({
+          ContentType: att.contentType || 'application/octet-stream',
+          Filename: att.filename,
+          Base64Content: Buffer.from(att.content).toString('base64')
+        }));
+      }
+
+      // Mailjet uses Basic Auth: base64(API_KEY:SECRET_KEY)
+      const authToken = Buffer.from(
+        `${process.env.MJ_APIKEY_PUBLIC}:${process.env.MJ_APIKEY_PRIVATE}`
+      ).toString('base64');
+
+      const response = await fetch('https://api.mailjet.com/v3.1/send', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${authToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ Messages: [message] })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        const errMsg = errData.Messages?.[0]?.Errors?.[0]?.ErrorMessage || `HTTP ${response.status}`;
+        throw new Error(errMsg);
+      }
+
+      const resData = await response.json();
+      const messageId = resData.Messages?.[0]?.To?.[0]?.MessageID;
+      console.log(`[EMAIL] Mailjet HTTP API Success! Message ID: ${messageId}`);
+      return { messageId: String(messageId) };
+    } catch (apiErr) {
+      console.error(`[EMAIL] Mailjet HTTP API failed: ${apiErr.message}.`);
+      throw apiErr;
     }
   }
 
@@ -274,30 +344,36 @@ function buildBaseEmailTemplate({ headerTitle, contentHtml }) {
  * @param {string} [eventName] - Optional full name of the event/competition
  * @returns {Promise<boolean>}
  */
-async function sendTeamInvitation(email, teamName, inviteLink, leaderName = null, leaderEmail = null, eventName = null) {
+async function sendTeamInvitation(email, teamName, inviteLink, leaderName = null, leaderEmail = null, eventName = null, role = 'member', seminar = null, recipientName = null) {
   const displayEventName = eventName || 'SEAL Hackathon';
   const isLeader = leaderEmail && email.toLowerCase() === leaderEmail.toLowerCase();
-
-  const leaderInfoSection = (!isLeader && (leaderName || leaderEmail))
-    ? `
-      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #F27024; border-radius: 8px; padding: 16px 20px; margin: 24px 0;">
-        <p style="margin: 0 0 8px 0; font-weight: 700; color: #0f172a; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Thông tin Trưởng nhóm:</p>
-        ${leaderName ? `<p style="margin: 4px 0; color: #334155;">Họ và tên: <strong style="color: #0f172a;">${leaderName}</strong></p>` : ''}
-        ${leaderEmail ? `<p style="margin: 4px 0; color: #334155;">Email liên hệ: <strong style="color: #0f172a;">${leaderEmail}</strong></p>` : ''}
-      </div>
-    `
-    : '';
+  // Look up candidate's full name from DB
+  let displayName = 'Thí sinh';
+  try {
+    const mongoose = require('mongoose');
+    const User = mongoose.model('User');
+    const u = await User.findOne({ email: email.toLowerCase() });
+    if (u && u.fullName) {
+      displayName = u.fullName;
+    }
+  } catch (dbErr) {
+    console.error('[EMAIL] Failed to fetch user fullName for greeting:', dbErr.message);
+  }
 
   const contentHtml = `
-    <p style="margin-top: 0;">Xin chào,</p>
-    <p>Ban Tổ chức xin thông báo: Bạn đã được mời tham gia đội thi <strong style="color: #F27024;">"${teamName}"</strong> để tham dự cuộc thi <strong>${displayEventName}</strong>.</p>
-    ${leaderInfoSection}
-    <p>Để hoàn tất thủ tục đăng ký và chính thức tham gia cùng các đồng đội, vui lòng xác nhận bằng cách nhấn vào nút dưới đây:</p>
+    <p style="margin-top: 0; font-family: sans-serif; font-size: 14px; color: #334155;">Xin chào thí sinh <strong>${displayName}</strong>,</p>
+    <p style="font-family: sans-serif; font-size: 14px; color: #334155; margin-bottom: 12px; font-weight: bold;">Ban tổ chức xin thông báo</p>
+    <p style="font-family: sans-serif; font-size: 14px; color: #334155; margin-bottom: 16px;">Bạn có lời mời tham gia đội thi</p>
+    <p style="font-family: sans-serif; font-size: 14px; color: #334155; margin-bottom: 24px; padding-left: 12px; border-left: 3px solid #F27024; line-height: 1.6;">
+      <strong>Cuộc thi:</strong> ${displayEventName}<br/>
+      <strong>Đội thi:</strong> "${teamName}"
+    </p>
+    <p style="font-family: sans-serif; font-size: 13px; color: #334155; line-height: 1.6;">Để hoàn tất thủ tục đăng ký và chính thức tham gia cùng các đồng đội, vui lòng xác nhận bằng cách nhấn vào nút dưới đây:</p>
     <div style="text-align: center; margin: 32px 0;">
       <a href="${inviteLink}" style="background-color: #F27024; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 8px 20px rgba(242,112,36,0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">XÁC NHẬN THAM GIA ĐỘI THI</a>
     </div>
-    <div style="font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #fed7aa; padding: 16px; background-color: #fff7ed; border-radius: 10px;">
-      <strong>Lưu ý quan trọng:</strong> Tất cả các thành viên được mời đều phải xác nhận tham gia trước khi hết hạn đăng ký hoặc khi số lượng đội đạt giới hạn tối đa để đội thi được công nhận chính thức.
+    <div style="font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #fed7aa; padding: 16px; background-color: #fff7ed; border-radius: 10px; font-family: sans-serif;">
+      <strong>Lưu ý quan trọng:</strong> Tất cả các thành viên được mời đều phải xác nhận tham gia trước ngày 15/08/2026 để đội thi được công nhận chính thức.
     </div>
   `;
 
@@ -306,7 +382,7 @@ async function sendTeamInvitation(email, teamName, inviteLink, leaderName = null
     to: email,
     subject: `[SEAL Hackathon] Lời mời tham gia đội thi "${teamName}"`,
     html: buildBaseEmailTemplate({
-      headerTitle: 'Lời Mời Tham Gia Đội Thi',
+      headerTitle: 'SEAL Hackathon Summer 2026',
       contentHtml
     })
   };

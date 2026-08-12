@@ -28,6 +28,7 @@ const EventRole = mongoose.model('EventRole');
 const { authenticateToken, requireSystemAdmin, requireAdminOrAssistant } = require('./authMiddleware');
 const emailService = require('../notifications/emailService');
 const { addEmailJob, isQueueAvailable } = require('../notifications/notificationQueue');
+const githubService = require('../github-ai/githubService');
 
 const captchaService = require('./captchaService');
 const { verifyFirebaseIdToken } = require('./firebaseAdmin');
@@ -346,6 +347,46 @@ router.get('/me', authenticateToken, async (req, res) => {
 });
 
 /**
+ * Automatically syncs GitHub collaborators on all team repos when a user updates their GitHub username.
+ */
+async function syncUserGithubCollaborator(userId, oldUsername, newUsername) {
+  if (!newUsername || (oldUsername && oldUsername.toLowerCase() === newUsername.toLowerCase())) {
+    return;
+  }
+  try {
+    const TeamMember = mongoose.model('TeamMember');
+    const GithubRepository = mongoose.model('GithubRepository');
+
+    // Find all confirmed teams this user belongs to
+    const memberships = await TeamMember.find({ userId, confirmStatus: 'confirmed' });
+    const teamIds = memberships.map(m => m.teamId);
+
+    if (teamIds.length === 0) return;
+
+    const repos = await GithubRepository.find({ teamId: { $in: teamIds } });
+    for (const repo of repos) {
+      if (oldUsername) {
+        try {
+          await githubService.removeCollaborator(repo.repoName, oldUsername, repo.orgName);
+          console.log(`[GITHUB SYNC] Removed old collaborator ${oldUsername} from ${repo.repoName}`);
+        } catch (removeErr) {
+          console.error(`[GITHUB SYNC] Failed to remove ${oldUsername}:`, removeErr.message);
+        }
+      }
+
+      try {
+        await githubService.addCollaborator(repo.repoName, newUsername, 'push', repo.orgName);
+        console.log(`[GITHUB SYNC] Invited new collaborator ${newUsername} to ${repo.repoName}`);
+      } catch (addErr) {
+        console.error(`[GITHUB SYNC] Failed to invite ${newUsername}:`, addErr.message);
+      }
+    }
+  } catch (err) {
+    console.error('[GITHUB SYNC] Error syncing user GitHub collaborators:', err.message);
+  }
+}
+
+/**
  * @route   PUT /api/auth/profile
  * @desc    Update current user profile details
  * @access  Private
@@ -367,14 +408,24 @@ router.put('/profile', authenticateToken, async (req, res) => {
 
   try {
     const user = req.user;
+    const oldGithubUsername = user.githubUsername;
+    const newGithubUsername = githubUsername ? githubUsername.trim() : undefined;
+
     user.fullName = fullName.trim();
     user.studentId = studentId ? studentId.trim() : undefined;
     user.university = university ? normalizeUniversityName(university) : undefined;
-    user.githubUsername = githubUsername ? githubUsername.trim() : undefined;
+    user.githubUsername = newGithubUsername;
     user.height = Number(height);
     user.weight = Number(weight);
 
     await user.save();
+
+    // Auto sync GitHub repo collaborators if username changed
+    if (newGithubUsername && oldGithubUsername !== newGithubUsername) {
+      syncUserGithubCollaborator(user._id, oldGithubUsername, newGithubUsername).catch(e =>
+        console.error('[GITHUB SYNC] Async error:', e.message)
+      );
+    }
 
     const roles = await EventRole.find({ userId: user._id, status: 'active' })
       .populate('eventId', 'name semester year status')
@@ -420,8 +471,19 @@ router.patch('/github-username', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'GitHub Username là bắt buộc.' });
     }
     const user = req.user;
-    user.githubUsername = githubUsername.trim();
+    const oldGithubUsername = user.githubUsername;
+    const newGithubUsername = githubUsername.trim();
+
+    user.githubUsername = newGithubUsername;
     await user.save();
+
+    // Auto sync GitHub repo collaborators if username changed
+    if (newGithubUsername && oldGithubUsername !== newGithubUsername) {
+      syncUserGithubCollaborator(user._id, oldGithubUsername, newGithubUsername).catch(e =>
+        console.error('[GITHUB SYNC] Async error:', e.message)
+      );
+    }
+
     res.json({ message: 'Đã cập nhật GitHub Username.', githubUsername: user.githubUsername });
   } catch (error) {
     console.error('Update GitHub username error:', error.message);

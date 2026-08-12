@@ -1,7 +1,31 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 const { authenticateToken } = require('../auth/authMiddleware');
+
+// Ensure upload directory exists
+const UPLOAD_DIR = path.join(__dirname, '../../public/uploads/chat');
+if (!fs.existsSync(UPLOAD_DIR)) {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, UPLOAD_DIR);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 20 * 1024 * 1024 } // 20 MB limit
+});
 
 const ChatRoom = mongoose.model('ChatRoom');
 const ChatMessage = mongoose.model('ChatMessage');
@@ -51,7 +75,7 @@ router.get('/rooms', authenticateToken, async (req, res) => {
 
     const uniqueEventIds = Array.from(new Set(associatedEventIds));
     const coordinatorEventIds = myRoles
-      .filter(r => r.role === 'coordinator')
+      .filter(r => r.role === 'admin_view')
       .map(r => r.eventId.toString());
 
     // 3. Tự động tạo phòng chat tổng cho các event của thí sinh nếu chưa có
@@ -312,6 +336,26 @@ router.post('/rooms/team', authenticateToken, async (req, res) => {
     console.error('[CHAT] Error creating team room:', err.message);
     res.status(500).json({ message: 'Lỗi khởi tạo phòng chat riêng với đội thi.' });
   }
+});
+
+/**
+ * @route   POST /api/chat/upload
+ * @desc    Upload file đính kèm trong chat
+ * @access  Private
+ */
+router.post('/upload', authenticateToken, upload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'Không có file nào được upload.' });
+  }
+
+  const fileUrl = `http://localhost:5000/uploads/chat/${req.file.filename}`;
+  res.json({
+    message: 'Upload file thành công!',
+    fileUrl,
+    fileName: req.file.originalname,
+    fileSize: req.file.size,
+    fileType: req.file.mimetype
+  });
 });
 
 module.exports = router;

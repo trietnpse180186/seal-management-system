@@ -116,15 +116,9 @@ async function isEventChatClosed(eventId) {
 }
 
 async function isCoordinatorForEvent(userId, eventId) {
-  const EventRole = mongoose.model('EventRole');
-  const id = normalizeEventId(eventId);
-  const role = await EventRole.findOne({
-    userId,
-    eventId: id,
-    role: 'coordinator',
-    status: 'active'
-  });
-  return !!role;
+  const User = mongoose.model('User');
+  const user = await User.findById(userId).select('isSystemAdmin').lean();
+  return !!user?.isSystemAdmin;
 }
 
 async function canViewEndedEventChat(userId, eventId, isSystemAdmin = false) {

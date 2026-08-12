@@ -10,7 +10,10 @@ import {
   Edit,
   Trash2,
   ExternalLink,
+  Crown,
+  BriefcaseBusiness,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useConform } from "../shared/ModalConform";
 import CustomSelect from "../shared/CustomSelect";
 
@@ -50,6 +53,7 @@ interface TracksTabProps {
     trackId: string,
     role?: "judge" | "mentor",
     teamId?: string,
+    isChiefJudge?: boolean,
   ) => Promise<void>;
   handleRemoveRole?: (roleId: string) => Promise<void>;
 
@@ -79,6 +83,10 @@ const isFinalRound = (round: any) => {
     name === "final"
   );
 };
+
+// Personnel assignment is temporarily centralized in Admin > Quản lý nhân sự.
+const SHOW_TRACK_PERSONNEL_ACTIONS = false;
+
 export default function TracksTab({
   selectedEvent,
   tracks,
@@ -120,9 +128,39 @@ export default function TracksTab({
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [memberRole, setMemberRole] = useState<"judge" | "mentor">("judge");
   const [selectedTeamId, setSelectedTeamId] = useState("");
+  const [isChiefJudge, setIsChiefJudge] = useState(false);
   const [isCreateTrackOpen, setIsCreateTrackOpen] = useState(false);
   const isFormVisible = editingTrack ? true : isCreateTrackOpen;
   const conform = useConform();
+
+  // Import judges via Excel
+  const handleImportJudges = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedEvent) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("eventId", selectedEvent._id);
+
+    try {
+      const res = await axios.post("http://localhost:5000/api/auth/import-judges", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      toast.success(res.data.message || "Import Giám khảo thành công!");
+      if (fetchEventDetails) await fetchEventDetails();
+    } catch (err: any) {
+      const errMsg = err.response?.data?.message || "Lỗi import Giám khảo.";
+      const detailedErrors = err.response?.data?.errors;
+      if (detailedErrors && detailedErrors.length > 0) {
+        toast.error(`${errMsg} Chi tiết: ${detailedErrors.join(", ")}`);
+      } else {
+        toast.error(errMsg);
+      }
+    }
+  };
 
   // Drive upload state
   const [driveFileName, setDriveFileName] = useState("");
@@ -179,34 +217,30 @@ export default function TracksTab({
   const remainingTeams = maxEventTeams - totalAllocatedTeams;
 
   const displayableTracks = useMemo(
-    () =>
-      tracks.filter((t: any) => {
-        const roundOfTrack = rounds.find(
-          (r: any) => r._id === (t.roundId?._id || t.roundId),
-        );
-        const isFinal =
-          isFinalRound(roundOfTrack) ||
-          t.name.toLowerCase().includes("chung kết") ||
-          isDefaultFinalRoundTrack(t);
-        return !isFinal;
-      }),
-    [tracks, rounds, finalRoundId],
+    () => tracks,
+    [tracks],
   );
 
   useEffect(() => {
-    if (
-      displayableTracks.length > 0 &&
-      (!selectedTrack || isDefaultFinalRoundTrack(selectedTrack))
-    ) {
+    if (displayableTracks.length > 0 && !selectedTrack) {
       setSelectedTrack(displayableTracks[0]);
     }
   }, [displayableTracks, selectedTrack, setSelectedTrack]);
 
-  const trackMembers = eventRoles.filter(
-    (role: any) =>
-      (role.role === "judge" || role.role === "mentor") &&
-      (role.trackId?._id || role.trackId) === selectedTrack?._id,
-  );
+  const trackMembers = eventRoles.filter((role: any) => {
+    if (role.role !== "judge" && role.role !== "mentor") return false;
+    const roleTrackId = role.trackId?._id || role.trackId;
+    const roleRoundId = role.roundId?._id || role.roundId;
+    const selectedTrackRoundId = selectedTrack?.roundId?._id || selectedTrack?.roundId;
+
+    if (roleTrackId) {
+      return String(roleTrackId) === String(selectedTrack?._id);
+    }
+    if (roleRoundId && selectedTrackRoundId) {
+      return String(roleRoundId) === String(selectedTrackRoundId);
+    }
+    return false;
+  });
 
   useEffect(() => {
     if (editingTrack || !trackRoundId) return;
@@ -524,24 +558,20 @@ export default function TracksTab({
 
       {/* Column 2: Attachments & Judges list stack */}
       <div className="space-y-6">
-        {/* Drive Upload Card — gắn link Drive cho bảng đấu đang chọn */}
-        <div className="glass p-6 rounded-2xl space-y-4">
-          <h3 className="text-md font-bold text-slate-900 dark:text-white flex items-center gap-1.5 font-mono border-b border-slate-200 dark:border-slate-800/80 pb-3">
-            <BookOpen size={16} className="text-orange-500" />
-            <span>Đề bài & Tài liệu</span>
-            {selectedTrack && (
-              <span className="ml-auto text-xs font-bold text-orange-500 border border-orange-500/30 bg-orange-500/10 px-3 py-1 rounded font-mono uppercase tracking-wider">
-                {formatTrackName(selectedTrack.name)}
-              </span>
-            )}
-          </h3>
+        {/* Drive Upload Card — gắn link Drive cho bảng đấu đang chọn (Không hiển thị ở Bảng Chung Kết) */}
+        {selectedTrack && !isDefaultFinalRoundTrack(selectedTrack) && (
+          <div className="glass p-6 rounded-2xl space-y-4">
+            <h3 className="text-md font-bold text-slate-900 dark:text-white flex items-center gap-1.5 font-mono border-b border-slate-200 dark:border-slate-800/80 pb-3">
+              <BookOpen size={16} className="text-orange-500" />
+              <span>Đề bài & Tài liệu</span>
+              {selectedTrack && (
+                <span className="ml-auto text-xs font-bold text-orange-500 border border-orange-500/30 bg-orange-500/10 px-3 py-1 rounded font-mono uppercase tracking-wider">
+                  {formatTrackName(selectedTrack.name)}
+                </span>
+              )}
+            </h3>
 
-          {!selectedTrack ? (
-            <p className="text-xs text-slate-500 italic text-center py-4 font-sans">
-              Chọn một bảng đấu ở cột bên trái để gắn link Drive riêng.
-            </p>
-          ) : (
-            (() => {
+            {(() => {
               // Đọc trực tiếp từ track — mỗi bảng có link riêng
               const currentUrl = selectedTrack.examDriveFileUrl;
               const currentName = selectedTrack.examDriveFileName;
@@ -622,23 +652,45 @@ export default function TracksTab({
                   )}
                 </div>
               );
-            })()
-          )}
-        </div>
+            })()}
+          </div>
+        )}
 
         {/* Judge Assignment Card */}
         {selectedTrack ? (
           <div className="glass p-6 rounded-2xl space-y-4">
-            <h3 className="text-md font-bold text-white flex items-center gap-1.5 font-mono border-b border-slate-800/80 pb-3">
-              <Users size={16} className="text-cyan-400" />
-              <span>
-                Ban chuyên môn (
-                <span className="text-cyan-400 drop-shadow-[0_0_4px_rgba(34,211,238,0.35)]">
-                  {formatTrackName(selectedTrack.name)}
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+              <h3 className="text-md font-bold text-white flex items-center gap-1.5 font-mono">
+                <Users size={16} className="text-cyan-400" />
+                <span>
+                  Ban chuyên môn (
+                  <span className="text-cyan-400 drop-shadow-[0_0_4px_rgba(34,211,238,0.35)]">
+                    {formatTrackName(selectedTrack.name)}
+                  </span>
+                  )
                 </span>
-                )
-              </span>
-            </h3>
+              </h3>
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/admin/personnel"
+                  className="flex items-center gap-1.5 bg-slate-900 border border-cyan-500/30 hover:border-cyan-400/50 text-[10px] font-mono font-bold text-cyan-400 px-3 py-1.5 rounded-lg transition-all hover:bg-cyan-500/10 hover:shadow-[0_0_10px_rgba(34,211,238,0.1)]"
+                >
+                  <BriefcaseBusiness size={12} />
+                  <span>Quản lý nhân sự</span>
+                </Link>
+                {SHOW_TRACK_PERSONNEL_ACTIONS && !readOnly && (
+                  <label className="flex items-center gap-1 bg-slate-900 border border-slate-800 hover:border-slate-700 text-[10px] font-mono font-bold text-slate-300 px-2.5 py-1.5 rounded-lg cursor-pointer transition-all hover:bg-slate-800">
+                    <span>Import Giám khảo</span>
+                    <input
+                      type="file"
+                      accept=".xlsx, .xls"
+                      className="hidden"
+                      onChange={handleImportJudges}
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
 
             {/* List of judges and mentors */}
             <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
@@ -668,6 +720,12 @@ export default function TracksTab({
                         >
                           {role.role === "judge" ? "Giám khảo" : "Mentor"}
                         </span>
+                        {role.role === "judge" && role.isChiefJudge && (
+                          <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                            <Crown className="w-3 h-3 text-amber-400" />
+                            Chủ tịch
+                          </span>
+                        )}
                         {role.role === "mentor" && mentoredTeam && (
                           <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
                             Đội: {mentoredTeam.name}
@@ -675,7 +733,7 @@ export default function TracksTab({
                         )}
                       </div>
                     </div>
-                    {handleRemoveRole && !readOnly && (
+                    {SHOW_TRACK_PERSONNEL_ACTIONS && handleRemoveRole && !readOnly && (
                       <button
                         onClick={() => handleRemoveRole(role._id)}
                         className="text-rose-500 hover:text-rose-400 font-bold text-[9px] uppercase font-mono border border-rose-500/10 hover:border-rose-500/30 px-2 py-0.5 rounded bg-rose-500/5 cursor-pointer animate-all"
@@ -694,7 +752,7 @@ export default function TracksTab({
             </div>
 
             {/* Form to add member */}
-            {handleAssignRoleForTrack && !readOnly && (
+            {SHOW_TRACK_PERSONNEL_ACTIONS && handleAssignRoleForTrack && !readOnly && (
               <form
                 onSubmit={async (e) => {
                   e.preventDefault();
@@ -704,9 +762,11 @@ export default function TracksTab({
                     selectedTrack._id,
                     memberRole,
                     selectedTeamId || undefined,
+                    memberRole === "judge" ? isChiefJudge : false,
                   );
                   setJudgeEmail("");
                   setSelectedTeamId("");
+                  setIsChiefJudge(false);
                 }}
                 className="space-y-3.5 pt-3 border-t border-slate-800/80"
               >
@@ -736,6 +796,17 @@ export default function TracksTab({
                     />
                     Mentor
                   </label>
+                  {memberRole === "judge" && (
+                    <label className="flex items-center gap-1.5 cursor-pointer text-xs text-slate-300 ml-auto">
+                      <input
+                        type="checkbox"
+                        checked={isChiefJudge}
+                        onChange={(e) => setIsChiefJudge(e.target.checked)}
+                        className="accent-cyan-500 rounded border-slate-800"
+                      />
+                      Chủ tịch Hội đồng
+                    </label>
+                  )}
                 </div>
 
                 <div className="flex gap-2 relative">

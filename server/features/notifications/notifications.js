@@ -86,4 +86,42 @@ router.put('/:id/read', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * @route   DELETE /api/notifications/clear-all
+ * @desc    Delete all notifications for logged in user
+ * @access  Private
+ */
+router.delete('/clear-all', authenticateToken, async (req, res) => {
+  try {
+    await Notification.deleteMany({ userId: req.user._id });
+    res.json({ message: 'All notifications cleared' });
+  } catch (error) {
+    console.error('Clear All Notifications Error:', error.message);
+    res.status(500).json({ message: 'Server error deleting notifications.' });
+  }
+});
+
+/**
+ * @route   DELETE /api/notifications/:id
+ * @desc    Delete a single notification
+ * @access  Private
+ */
+router.delete('/:id', authenticateToken, async (req, res) => {
+  try {
+    const notification = await Notification.findOneAndDelete({
+      _id: req.params.id,
+      userId: req.user._id,
+    });
+
+    if (!notification) {
+      return res.status(404).json({ message: 'Notification not found' });
+    }
+
+    res.json({ message: 'Notification deleted', id: req.params.id });
+  } catch (error) {
+    console.error('Delete Notification Error:', error.message);
+    res.status(500).json({ message: 'Server error deleting notification.' });
+  }
+});
+
 module.exports = router;

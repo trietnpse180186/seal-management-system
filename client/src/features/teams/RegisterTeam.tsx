@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { Users, UserPlus, Trash2, Calendar, FolderGit2, CheckCircle, Download, Upload, FileSpreadsheet, AlertTriangle } from 'lucide-react';
+import { Users, UserPlus, Trash2, Calendar, FolderGit2, CheckCircle, Download, Upload, FileSpreadsheet, AlertTriangle, Mail, ExternalLink } from 'lucide-react';
 import UniversityCombobox from '../shared/UniversityCombobox';
 import CustomSelect from '../shared/CustomSelect';
 import CaptchaInput from '../shared/CaptchaInput';
@@ -94,6 +94,7 @@ export default function RegisterTeam() {
   // History reuse states
   const [pastTeams, setPastTeams] = useState<any[]>([]);
   const [selectedPastTeamId, setSelectedPastTeamId] = useState('');
+  const [pendingInvitations, setPendingInvitations] = useState<any[]>([]);
   const [infoMessage, setInfoMessage] = useState('');
 
   const [loading, setLoading] = useState(false);
@@ -203,7 +204,9 @@ export default function RegisterTeam() {
         fullName: m.fullName || '',
         githubUsername: m.githubUsername || '',
         studentId: m.studentId || '',
-        university: m.university || ''
+        university: m.university || '',
+        height: m.height ? String(m.height) : '',
+        weight: m.weight ? String(m.weight) : ''
       })));
     }
 
@@ -233,6 +236,32 @@ export default function RegisterTeam() {
       })
       .catch(err => console.error('Error fetching user profile:', err));
   }, [token]);
+
+  useEffect(() => {
+    if (!token || !selectedEventId) return;
+    axios.get(`http://localhost:5000/api/teams/my-pending-invitations?eventId=${selectedEventId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => {
+        setPendingInvitations(res.data.invitations || []);
+      })
+      .catch(err => console.error('Error fetching pending invitations:', err));
+  }, [token, selectedEventId]);
+
+  const handleOpenEmail = (leaderEmail?: string) => {
+    if (leaderEmail) {
+      const domain = leaderEmail.split('@')[1]?.toLowerCase();
+      if (domain === 'gmail.com' || domain === 'fpt.edu.vn') {
+        window.open('https://mail.google.com', '_blank');
+        return;
+      }
+      if (domain === 'outlook.com' || domain === 'hotmail.com') {
+        window.open('https://outlook.live.com', '_blank');
+        return;
+      }
+    }
+    window.open('https://mail.google.com', '_blank');
+  };
 
   const leaderEmailTimeout = useRef<any>(null);
 
@@ -599,21 +628,21 @@ export default function RegisterTeam() {
 
   if (alreadyHasTeam) {
     return (
-      <div className="team-area-light relative overflow-hidden font-sans bg-slate-50 text-slate-900 min-h-screen flex items-center justify-center py-24">
+      <div className="team-area-light relative overflow-hidden font-sans bg-[#faf9f6] text-slate-800 min-h-screen flex items-center justify-center py-24">
         {/* Background Grid & Glow */}
         <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle_at_15%_15%,rgba(242,112,36,0.08)_0%,transparent_40%),radial-gradient(circle_at_85%_85%,rgba(242,112,36,0.05)_0%,transparent_40%)]"></div>
-        <div className="glass p-8 rounded-3xl border border-slate-200 max-w-xl mx-auto space-y-6 relative z-10 bg-white/95 text-center shadow-lg">
+        <div className="bg-white p-8 rounded-3xl border border-slate-200 max-w-xl mx-auto space-y-6 relative z-10 text-center shadow-sm text-slate-800">
           <div className="inline-flex bg-[#F27024]/10 p-4 rounded-full text-[#F27024] mb-2 border border-[#F27024]/20">
             <Users size={40} />
           </div>
-          <h3 className="text-2xl font-bold text-slate-900">Bạn đã tham gia đội thi "{existingTeamName}"</h3>
+          <h3 className="text-2xl font-bold text-slate-800">Bạn đã tham gia đội thi "{existingTeamName}"</h3>
           <p className="text-slate-600 max-w-md mx-auto text-sm leading-relaxed font-sans">
             Hệ thống ghi nhận bạn đã là thành viên chính thức của một đội thi đang hoạt động.
           </p>
           <div>
             <Link
               to="/team-area"
-              className="inline-flex items-center justify-center px-6 py-3 bg-[#F27024] hover:bg-[#e05e1b] text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md shadow-[#F27024]/15"
+              className="inline-flex items-center justify-center px-6 py-3 bg-[#F27024] hover:bg-[#d95f1f] !text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md shadow-[#F27024]/15"
             >
               Vào Khu vực Đội thi
             </Link>
@@ -625,25 +654,25 @@ export default function RegisterTeam() {
 
   if (events.length === 0) {
     return (
-      <div className="team-area-light relative overflow-hidden font-sans bg-slate-50 text-slate-900 min-h-screen py-12">
+      <div className="team-area-light relative overflow-hidden font-sans bg-[#faf9f6] text-slate-800 min-h-screen py-12">
         <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle_at_15%_15%,rgba(242,112,36,0.08)_0%,transparent_40%),radial-gradient(circle_at_85%_85%,rgba(242,112,36,0.05)_0%,transparent_40%)]"></div>
         <div className="relative z-10 max-w-4xl mx-auto px-4 font-mono">
           <div className="flex items-center gap-3 mb-8 text-left">
             <div>
-              <h1 className="text-3xl font-extrabold text-slate-900">
-                <span className="text-[#F27024] text-orange-glow font-mono-tech">ĐĂNG KÝ ĐỘI THI</span>
+              <h1 className="text-3xl font-extrabold text-slate-800">
+                <span className="text-[#F27024] font-mono-tech">ĐĂNG KÝ ĐỘI THI</span>
               </h1>
               <p className="text-slate-500 text-sm mt-1 font-sans">Thành lập nhóm và mời các thành viên tham gia</p>
             </div>
           </div>
-          <div className="glass p-8 rounded-3xl text-center mb-8 border border-slate-200 space-y-4 bg-white/95">
+          <div className="bg-white p-8 rounded-3xl text-center mb-8 border border-slate-200 space-y-4 shadow-sm text-slate-800">
             <div className="inline-flex bg-[#F27024]/10 p-4 rounded-full text-[#F27024] mb-2 border border-[#F27024]/20">
               <Calendar size={40} />
             </div>
-            <h3 className="text-xl font-bold text-slate-900 uppercase tracking-tight">
+            <h3 className="text-xl font-bold text-slate-800 uppercase tracking-tight">
               Hiện đang không có cuộc thi nào mở đăng ký
             </h3>
-            <p className="text-slate-655 max-w-md mx-auto text-sm leading-relaxed font-sans">
+            <p className="text-slate-500 max-w-md mx-auto text-sm leading-relaxed font-sans">
               Vui lòng theo dõi thông tin từ Ban tổ chức để cập nhật các sự kiện Hackathon mới nhất sắp diễn ra.
             </p>
           </div>
@@ -653,7 +682,7 @@ export default function RegisterTeam() {
   }
 
   return (
-    <div className="team-area-light relative overflow-hidden font-sans bg-slate-50 text-slate-900 min-h-screen">
+    <div className="team-area-light relative overflow-hidden font-sans bg-[#faf9f6] text-slate-800 min-h-screen">
       {/* Background Grid & Glow */}
       <div className="absolute inset-0 pointer-events-none z-0 bg-[radial-gradient(circle_at_15%_15%,rgba(242,112,36,0.08)_0%,transparent_40%),radial-gradient(circle_at_85%_85%,rgba(242,112,36,0.05)_0%,transparent_40%)]"></div>
 
@@ -670,6 +699,42 @@ export default function RegisterTeam() {
           <p className="text-slate-500 text-sm mt-1 font-sans">Thành lập nhóm và mời các thành viên tham gia (yêu cầu tối thiểu 3 thành viên bao gồm cả Trưởng nhóm)</p>
         </div>
       </div>
+
+      {pendingInvitations.length > 0 && (
+        <div className="mb-8 p-6 rounded-3xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border-2 border-[#F27024]/40 shadow-lg text-slate-800 relative overflow-hidden">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="p-3 bg-[#F27024] text-white rounded-2xl shadow-md shrink-0 mt-0.5">
+                <Mail size={24} />
+              </div>
+              <div>
+                <span className="inline-block px-2.5 py-0.5 rounded-md bg-[#F27024]/20 text-[#F27024] text-[10px] font-black uppercase tracking-wider mb-1">
+                  LỜI MỜI THAM GIA ĐỘI THI
+                </span>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  Bạn đang có lời mời vào đội{' '}
+                  <span className="text-[#F27024] font-black">
+                    "{pendingInvitations[0].teamName}"
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-600 mt-0.5 font-sans">
+                  Mời bởi Trưởng nhóm:{' '}
+                  <strong>{pendingInvitations[0].leaderName}</strong> ({pendingInvitations[0].leaderEmail}). Vui lòng kiểm tra email để xác nhận tham gia.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleOpenEmail(pendingInvitations[0].leaderEmail)}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-[#F27024] text-white font-extrabold text-xs uppercase tracking-wider shadow-md hover:bg-[#d95f1f] hover:shadow-lg transition-all cursor-pointer whitespace-nowrap"
+            >
+              <Mail size={16} />
+              <span>Mở Email xác nhận</span>
+              <ExternalLink size={14} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {success ? (
         <div className="glass glow-blue p-8 rounded-3xl text-center mb-8 border-emerald-500/30 font-mono">

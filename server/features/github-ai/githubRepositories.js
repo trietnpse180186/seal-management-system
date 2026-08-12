@@ -23,12 +23,25 @@ function getSemesterSuffix(event) {
   return semCode ? `_${semCode}${event.year}` : '';
 }
 
+function vietnameseSlug(text) {
+  if (!text) return '';
+  let slug = text;
+  slug = slug.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  slug = slug.replace(/đ/g, 'd').replace(/Đ/g, 'D');
+  slug = slug
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-');
+  return slug;
+}
+
 /**
  * @route   GET /api/github-repositories/search-users
  * @desc    Search for users on GitHub
- * @access  Private
+ * @access  Public
  */
-router.get('/search-users', authenticateToken, async (req, res) => {
+router.get('/search-users', async (req, res) => {
   const { q } = req.query;
   if (!q) {
     return res.status(400).json({ message: 'Missing search query q.' });
@@ -59,7 +72,7 @@ router.get('/', authenticateToken, async (req, res) => {
     if (!req.user.isSystemAdmin) {
       // Check roles
       const roles = await EventRole.find({ userId: req.user._id, status: 'active' });
-      const isStaff = roles.some(r => ['coordinator', 'judge', 'mentor'].includes(r.role));
+      const isStaff = roles.some(r => ['judge', 'mentor'].includes(r.role));
       
       if (!isStaff) {
         // Participant -> find their team repo
@@ -117,8 +130,7 @@ router.post('/create', authenticateToken, async (req, res) => {
 
     // Auth check
     if (!req.user.isSystemAdmin) {
-      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId: team.eventId, role: 'coordinator', status: 'active' });
-      if (!isCoord) return res.status(403).json({ message: 'Chỉ điều phối viên hoặc quản trị viên mới được quyền tạo repository.' });
+      return res.status(403).json({ message: 'Quyền truy cập bị từ chối. Chỉ quản trị viên mới được quyền tạo repository.' });
     }
 
     // Check if repository already exists
@@ -134,7 +146,7 @@ router.post('/create', authenticateToken, async (req, res) => {
 
     // Slugify repo name
     const suffix = getSemesterSuffix(event);
-    const slugRepoName = team.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-') + suffix;
+    const slugRepoName = vietnameseSlug(team.name) + suffix;
     const gitResult = await githubService.createTeamRepository(slugRepoName, 'private', orgName);
 
     const actualOrgName = gitResult.owner || orgName;
@@ -188,8 +200,7 @@ router.post('/link', authenticateToken, async (req, res) => {
 
     // Auth check
     if (!req.user.isSystemAdmin) {
-      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId: team.eventId, role: 'coordinator', status: 'active' });
-      if (!isCoord) return res.status(403).json({ message: 'Chỉ điều phối viên hoặc quản trị viên mới được quyền liên kết repository.' });
+      return res.status(403).json({ message: 'Quyền truy cập bị từ chối. Chỉ quản trị viên mới được quyền liên kết repository.' });
     }
 
     // Check existing repo
@@ -327,8 +338,7 @@ router.post('/:id/kick-all', authenticateToken, async (req, res) => {
 
     // Auth check
     if (!req.user.isSystemAdmin) {
-      const isCoord = await EventRole.findOne({ userId: req.user._id, eventId: repo.eventId, role: 'coordinator', status: 'active' });
-      if (!isCoord) return res.status(403).json({ message: 'Chỉ điều phối viên hoặc quản trị viên mới được quyền thu hồi quyền truy cập.' });
+      return res.status(403).json({ message: 'Quyền truy cập bị từ chối. Chỉ quản trị viên mới được quyền thu hồi quyền truy cập.' });
     }
 
     // 1. Get all confirmed team members

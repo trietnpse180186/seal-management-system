@@ -396,7 +396,7 @@ export default function JudgeScoring() {
       console.log("Team highlighted event received on scoring board:", data);
       if (data.teamId === teamId) {
         setIsHighlighted(true);
-        toast.info("Đội thi này đang được chọn để trình bày / chấm điểm bởi Coordinator!", {
+        toast.info("Đội thi này đang được chọn để trình bày / chấm điểm bởi Admin!", {
           position: "top-center",
           duration: 5000
         });
@@ -433,11 +433,26 @@ export default function JudgeScoring() {
   }, [selectedEventId, teamId, selectedRoundId, token, fetchExistingScore]);
 
   const handleScoreChange = (critId: string, field: string, val: any) => {
+    let finalVal = val;
+
+    if (field === 'scoreValue' && val !== '' && val !== null && val !== undefined) {
+      const num = parseFloat(val);
+      if (!isNaN(num)) {
+        const currentCrit = criteria?.find((item: any) => item._id === critId);
+        const maxLimit = currentCrit?.maxScore ?? 5;
+        if (num < 0) {
+          finalVal = 0;
+        } else if (num > maxLimit) {
+          finalVal = maxLimit;
+        }
+      }
+    }
+
     setScores((prev: any) => ({
       ...prev,
       [critId]: {
         ...prev[critId],
-        [field]: val
+        [field]: finalVal
       }
     }));
   };
@@ -936,7 +951,8 @@ export default function JudgeScoring() {
                                   value={scoreVal}
                                   onChange={e => handleScoreChange(c._id, 'scoreValue', e.target.value)}
                                   disabled={isRoundLocked}
-                                  className="bg-white border-2 border-[#F27024]/40 rounded-xl text-slate-800 text-center text-lg px-4 py-2 w-32 focus:ring-4 focus:ring-[#F27024]/20 focus:border-[#F27024] focus:outline-none disabled:opacity-50 font-black placeholder-slate-300 font-mono"
+                                  style={{ backgroundColor: '#ffffff', color: '#0f172a' }}
+                                  className="!bg-white bg-white border-2 border-[#F27024]/40 rounded-xl !text-slate-900 text-slate-900 text-center text-lg px-4 py-2 w-32 focus:ring-4 focus:ring-[#F27024]/20 focus:border-[#F27024] focus:outline-none disabled:opacity-50 font-black placeholder-slate-400 font-mono shadow-sm"
                                 />
                                 <span className="text-lg text-[#F27024] font-black font-mono">/ {c.maxScore}đ</span>
                               </div>
@@ -1606,7 +1622,7 @@ export default function JudgeScoring() {
 
       {/* Live Data Modal */}
       {liveDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/95 p-4 animate-fadeIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-md p-4 animate-fadeIn">
           <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-5xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto flex flex-col space-y-4">
 
             {/* Modal Header */}

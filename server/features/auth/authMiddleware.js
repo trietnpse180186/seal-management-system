@@ -64,7 +64,7 @@ function requireSystemAdmin(req, res, next) {
 }
 
 /**
- * Middleware to verify the user is a system admin or a student assistant (CTV).
+ * Middleware to verify the user is a system admin or a student assistant (CTSV).
  */
 function requireAdminOrAssistant(req, res, next) {
   if (!req.user || (!req.user.isSystemAdmin && !req.user.isStudentAssistant)) {
@@ -76,7 +76,7 @@ function requireAdminOrAssistant(req, res, next) {
 /**
  * Higher-order middleware to verify if user has a specific role in a specific event.
  * Expects eventId in req.params.eventId, req.body.eventId, or req.query.eventId
- * @param {Array<string>} allowedRoles - List of allowed roles (e.g. ['coordinator', 'judge'])
+ * @param {Array<string>} allowedRoles - List of allowed roles (e.g. ['student_assistant', 'judge'])
  */
 function requireEventRole(allowedRoles) {
   return async (req, res, next) => {

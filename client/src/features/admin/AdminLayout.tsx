@@ -13,6 +13,8 @@ import {
   Camera,
   PanelLeftClose,
   PanelLeftOpen,
+  BriefcaseBusiness,
+  Trash2,
 } from "lucide-react";
 
 interface AdminLayoutProps {
@@ -31,6 +33,7 @@ export default function AdminLayout({
   const isAdminView =
     !user?.isSystemAdmin && roles?.some((r) => r.role === "admin_view");
   const isAssistant = roles?.some((r) => r.role === "student_assistant");
+  const isCoordinator = !!user?.isSystemAdmin;
 
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -106,6 +109,31 @@ export default function AdminLayout({
     }
   };
 
+  const deleteNotification = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`http://localhost:5000/api/notifications/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setNotifications((prev) => prev.filter((n) => n._id !== id));
+    } catch (err) {
+      console.error("Failed to delete notification", err);
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete("http://localhost:5000/api/notifications/clear-all", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setNotifications([]);
+    } catch (err) {
+      console.error("Failed to clear all notifications", err);
+    }
+  };
+
   const isActive = (path: string) => {
     if (path === "/admin") {
       return location.pathname === "/admin";
@@ -128,6 +156,11 @@ export default function AdminLayout({
       path: "/admin/users",
       label: "Quản lý tài khoản",
       icon: Users,
+    },
+    {
+      path: "/admin/personnel",
+      label: "Quản lý nhân sự",
+      icon: BriefcaseBusiness,
     },
     {
       path: "/admin/grades",
@@ -154,6 +187,10 @@ export default function AdminLayout({
   const filteredNavItems = navItems.filter(item => {
     if (isAssistant) {
       return ['/admin/users', '/admin/events', '/admin/grades', '/admin/leaderboard'].includes(item.path);
+    }
+    // If not a system admin (and not assistant), hide the global user accounts management tab
+    if (item.path === '/admin/users' && !user?.isSystemAdmin) {
+      return false;
     }
     return true;
   }).map(item => {
@@ -197,6 +234,8 @@ export default function AdminLayout({
               </h4>
               <p className="text-[9px] text-cyan-400 font-mono uppercase tracking-wider">
                 {user?.isSystemAdmin
+                  ? "Admin"
+                  : isCoordinator
                   ? "Admin"
                   : isAssistant
                   ? "Cộng tác viên"
@@ -310,18 +349,28 @@ export default function AdminLayout({
               {/* Notifications Dropdown */}
               {showNotifications && (
                 <div className="absolute right-0 mt-2 w-[420px] max-h-96 overflow-y-auto bg-slate-900 border border-slate-700 rounded-xl shadow-[0_0_20px_rgba(0,0,0,0.5)] z-50">
-                  <div className="flex justify-between items-center p-3 border-b border-slate-800 sticky top-0 bg-slate-900/100 z-10">
+                  <div className="flex justify-between items-center p-3 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">
                     <h4 className="text-sm font-semibold text-white font-mono">
                       Thông báo
                     </h4>
-                    {unreadCount > 0 && (
-                      <button
-                        onClick={markAllAsRead}
-                        className="text-xs text-cyan-400 hover:text-cyan-300 font-mono"
-                      >
-                        Đánh dấu đã đọc
-                      </button>
-                    )}
+                    <div className="flex items-center gap-3 text-xs font-mono">
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={markAllAsRead}
+                          className="text-cyan-400 hover:text-cyan-300"
+                        >
+                          Đánh dấu đã đọc
+                        </button>
+                      )}
+                      {notifications.length > 0 && (
+                        <button
+                          onClick={clearAllNotifications}
+                          className="text-rose-400 hover:text-rose-300 inline-flex items-center gap-1"
+                        >
+                          <Trash2 size={12} /> Xóa tất cả
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="flex flex-col">
                     {notifications.length === 0 ? (
@@ -333,22 +382,40 @@ export default function AdminLayout({
                         <div
                           key={notif._id}
                           onClick={() => {
-                            if (notif.status === "pending")
+                            if (notif.status === "pending" || !notif.isRead)
                               markAsRead(notif._id);
                           }}
-                          className={`p-3 border-b border-slate-800/50 cursor-pointer transition-colors ${notif.status === "pending" ? "bg-cyan-950/20 hover:bg-cyan-950/30" : "hover:bg-slate-800/50"}`}
+                          className={`group relative p-3 border-b border-slate-800/50 cursor-pointer transition-colors flex justify-between items-start ${
+                            notif.status === "pending" || !notif.isRead
+                              ? "bg-cyan-950/20 hover:bg-cyan-950/30"
+                              : "hover:bg-slate-800/50"
+                          }`}
                         >
-                          <p
-                            className={`text-xs font-semibold whitespace-normal break-words ${notif.status === "pending" ? "text-cyan-300" : "text-slate-300"}`}
+                          <div className="flex-1 pr-3">
+                            <p
+                              className={`text-xs font-semibold whitespace-normal break-words ${
+                                notif.status === "pending" || !notif.isRead
+                                  ? "text-cyan-300"
+                                  : "text-slate-300"
+                              }`}
+                            >
+                              {notif.title}
+                            </p>
+                            <p className="text-xs text-slate-400 mt-1 whitespace-normal break-words leading-relaxed">
+                              {notif.body}
+                            </p>
+                            <p className="text-[10px] text-slate-500 mt-2">
+                              {new Date(notif.createdAt).toLocaleString("vi-VN")}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => deleteNotification(notif._id, e)}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-400 rounded transition-all shrink-0"
+                            title="Xóa thông báo"
                           >
-                            {notif.title}
-                          </p>
-                          <p className="text-xs text-slate-400 mt-1 whitespace-normal break-words leading-relaxed">
-                            {notif.body}
-                          </p>
-                          <p className="text-[10px] text-slate-500 mt-2">
-                            {new Date(notif.createdAt).toLocaleString()}
-                          </p>
+                            <Trash2 size={13} />
+                          </button>
                         </div>
                       ))
                     )}

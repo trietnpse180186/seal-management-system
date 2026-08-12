@@ -5,6 +5,9 @@ const XLSX = require('xlsx-js-style');
 
 const Score = mongoose.model('Score');
 const ScoreDetail = mongoose.model('ScoreDetail');
+const ScoreAudit = mongoose.model('ScoreAudit');
+const GradingAssistRequest = mongoose.model('GradingAssistRequest');
+const Notification = mongoose.model('Notification');
 const Rubric = mongoose.model('Rubric');
 const Criterion = mongoose.model('Criterion');
 const Team = mongoose.model('Team');
@@ -19,6 +22,47 @@ const Track = mongoose.model('Track');
 const aiService = require('../github-ai/aiService');
 const { authenticateToken } = require('../auth/authMiddleware');
 const { addInAppJob, isQueueAvailable } = require('../notifications/notificationQueue');
+const { validateScoreSubmissionPolicy, buildScoreChangeSummary } = require('./scorePolicy');
+
+const AUTO_GRANT_WINDOW_MS = 5 * 60 * 1000;
+
+function isAutoAssistWindow(round) {
+  if (!round?.gradingEndTime) return false;
+  return new Date(round.gradingEndTime).getTime() - Date.now() <= AUTO_GRANT_WINDOW_MS;
+}
+
+async function findCoordinatorRole(userId, eventId) {
+  return EventRole.findOne({
+    userId,
+    eventId,
+    role: { $in: ['admin_view', 'student_assistant'] },
+    status: 'active',
+  });
+}
+
+async function resolveAssistAccess({ team, round, judgeId, coordinatorId }) {
+  let request = await GradingAssistRequest.findOne({
+    teamId: team._id,
+    roundId: round._id,
+    judgeId,
+    coordinatorId,
+  });
+
+  if (isAutoAssistWindow(round) && !['approved', 'auto_granted'].includes(request?.status)) {
+    request = await GradingAssistRequest.findOneAndUpdate(
+      { teamId: team._id, roundId: round._id, judgeId, coordinatorId },
+      { $set: { status: 'auto_granted', autoGrantedAt: new Date() } },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
+  }
+
+  return {
+    allowed: ['approved', 'auto_granted'].includes(request?.status),
+    request,
+    autoGrantAvailable: isAutoAssistWindow(round),
+    gradingEndTime: round.gradingEndTime,
+  };
+}
 
 /**
  * @route   GET /api/grades/suggestion
@@ -42,7 +86,7 @@ router.get('/suggestion', authenticateToken, async (req, res) => {
         userId: req.user._id,
         eventId: team.eventId,
         roundId: roundId,
-        role: { $in: ['judge', 'coordinator', 'admin_view', 'student_assistant'] },
+        role: { $in: ['judge', 'admin_view', 'student_assistant'] },
         status: 'active'
       });
 
@@ -50,7 +94,7 @@ router.get('/suggestion', authenticateToken, async (req, res) => {
         userRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: team.eventId,
-          role: { $in: ['judge', 'coordinator', 'admin_view', 'student_assistant'] },
+          role: { $in: ['judge', 'admin_view', 'student_assistant'] },
           $or: [{ roundId: null }, { roundId: { $exists: false } }],
           status: 'active'
         });
@@ -133,7 +177,7 @@ router.get('/team/:teamId/achievements', authenticateToken, async (req, res) => 
         const coordRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: team.eventId,
-          role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
+          role: { $in: ['admin_view', 'student_assistant'] },
           status: 'active'
         });
         isCoordinatorOrAdmin = !!coordRole;
@@ -151,7 +195,7 @@ router.get('/team/:teamId/achievements', authenticateToken, async (req, res) => 
       const coordRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: team.eventId,
-        role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
+        role: { $in: ['admin_view', 'student_assistant'] },
         status: 'active'
       });
       authorized = !!coordRole;
@@ -217,7 +261,7 @@ router.get('/team/:teamId/round/:roundId', authenticateToken, async (req, res) =
         const coordRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: team.eventId,
-          role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
+          role: { $in: ['admin_view', 'student_assistant'] },
           status: 'active'
         });
         isCoordinatorOrAdmin = !!coordRole;
@@ -231,7 +275,7 @@ router.get('/team/:teamId/round/:roundId', authenticateToken, async (req, res) =
     const coordinatorRole = await EventRole.findOne({
       userId: req.user._id,
       eventId: team.eventId,
-      role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
+      role: { $in: ['admin_view', 'student_assistant'] },
       status: 'active'
     });
     const isCoordinator = req.user.isSystemAdmin || !!coordinatorRole;
@@ -242,7 +286,7 @@ router.get('/team/:teamId/round/:roundId', authenticateToken, async (req, res) =
         userId: req.user._id,
         eventId: team.eventId,
         roundId: req.params.roundId,
-        role: { $in: ['judge', 'coordinator', 'admin_view', 'student_assistant'] },
+        role: { $in: ['judge', 'admin_view', 'student_assistant'] },
         status: 'active'
       });
 
@@ -250,7 +294,7 @@ router.get('/team/:teamId/round/:roundId', authenticateToken, async (req, res) =
         userRole = await EventRole.findOne({
           userId: req.user._id,
           eventId: team.eventId,
-          role: { $in: ['judge', 'coordinator', 'admin_view', 'student_assistant'] },
+          role: { $in: ['judge', 'admin_view', 'student_assistant'] },
           $or: [{ roundId: null }, { roundId: { $exists: false } }],
           status: 'active'
         });
@@ -311,6 +355,210 @@ router.get('/team/:teamId/round/:roundId', authenticateToken, async (req, res) =
 });
 
 /**
+ * @route   GET /api/grades/team/:teamId/round/:roundId/history
+ * @desc    Fetch score audit history for a team in a round
+ * @access  Private (Judges / Coords)
+ */
+router.get('/team/:teamId/round/:roundId/history', authenticateToken, async (req, res) => {
+  try {
+    const team = await Team.findById(req.params.teamId);
+    if (!team) return res.status(404).json({ message: 'Team not found.' });
+
+    const Event = mongoose.model('Event');
+    const parentEvent = await Event.findById(team.eventId);
+    if (parentEvent && parentEvent.isArchived) {
+      let isCoordinatorOrAdmin = req.user.isSystemAdmin;
+      if (!isCoordinatorOrAdmin) {
+        const coordRole = await EventRole.findOne({
+          userId: req.user._id,
+          eventId: team.eventId,
+          role: { $in: ['admin_view', 'student_assistant'] },
+          status: 'active'
+        });
+        isCoordinatorOrAdmin = !!coordRole;
+      }
+      if (!isCoordinatorOrAdmin) {
+        return res.status(403).json({ message: 'Sự kiện của đội thi này đã bị ẩn. Bạn không có quyền truy cập lịch sử điểm.' });
+      }
+    }
+
+    const history = await ScoreAudit.find({
+      teamId: req.params.teamId,
+      roundId: req.params.roundId,
+    }).sort({ createdAt: -1 }).populate('actorId', 'fullName email').lean();
+
+    res.json({ history });
+  } catch (error) {
+    console.error('Fetch Score History Error:', error.message);
+    res.status(500).json({ message: 'Server error retrieving score history.' });
+  }
+});
+
+router.get('/assist/status', authenticateToken, async (req, res) => {
+  try {
+    const { teamId, roundId, judgeId } = req.query;
+    if (!teamId || !roundId || !judgeId) {
+      return res.status(400).json({ message: 'Thiếu thông tin đội, vòng thi hoặc giám khảo.' });
+    }
+
+    const [team, round, existingScore] = await Promise.all([
+      Team.findById(teamId),
+      Round.findById(roundId),
+      Score.findOne({ teamId, roundId, judgeId }),
+    ]);
+    if (!team || !round) return res.status(404).json({ message: 'Không tìm thấy đội hoặc vòng thi.' });
+
+    const coordinatorRole = await findCoordinatorRole(req.user._id, team.eventId);
+    if (!req.user.isSystemAdmin && !coordinatorRole) {
+      return res.status(403).json({ message: 'Bạn không có quyền quản lý hoạt động chấm điểm.' });
+    }
+
+    const access = await resolveAssistAccess({
+      team,
+      round,
+      judgeId,
+      coordinatorId: req.user._id,
+    });
+    res.json({
+      hasScore: Boolean(existingScore),
+      allowed: !existingScore && access.allowed,
+      status: access.request?.status || 'not_requested',
+      autoGrantAvailable: access.autoGrantAvailable,
+      gradingEndTime: access.gradingEndTime,
+    });
+  } catch (error) {
+    console.error('Fetch Assist Status Error:', error.message);
+    res.status(500).json({ message: 'Không thể kiểm tra quyền hỗ trợ chấm điểm.' });
+  }
+});
+
+router.post('/assist/remind', authenticateToken, async (req, res) => {
+  try {
+    const { teamId, roundId, judgeId } = req.body;
+    const [team, round] = await Promise.all([Team.findById(teamId), Round.findById(roundId)]);
+    if (!team || !round || !judgeId) return res.status(400).json({ message: 'Thông tin nhắc chấm điểm không hợp lệ.' });
+
+    const coordinatorRole = await findCoordinatorRole(req.user._id, team.eventId);
+    if (!req.user.isSystemAdmin && !coordinatorRole) {
+      return res.status(403).json({ message: 'Bạn không có quyền gửi nhắc nhở.' });
+    }
+    const existingScore = await Score.exists({ teamId, roundId, judgeId });
+    if (existingScore) return res.status(409).json({ message: 'Giám khảo đã hoàn tất chấm điểm cho đội này.' });
+
+    const recentReminder = await Notification.exists({
+      userId: judgeId,
+      type: 'grading_reminder',
+      'metadata.teamId': teamId,
+      'metadata.roundId': roundId,
+      createdAt: { $gte: new Date(Date.now() - AUTO_GRANT_WINDOW_MS) },
+    });
+    if (recentReminder) return res.status(429).json({ message: 'Đã gửi nhắc nhở trong 5 phút gần đây.' });
+
+    await Notification.create({
+      userId: judgeId,
+      type: 'grading_reminder',
+      title: 'Nhắc hoàn tất chấm điểm',
+      body: `Điều phối viên nhắc bạn hoàn tất chấm điểm cho đội ${team.name}.`,
+      metadata: { teamId, roundId },
+      channel: 'in_app',
+      status: 'sent',
+      sentAt: new Date(),
+    });
+    res.json({ message: 'Đã gửi nhắc nhở đến giám khảo.' });
+  } catch (error) {
+    console.error('Send Grading Reminder Error:', error.message);
+    res.status(500).json({ message: 'Không thể gửi nhắc nhở chấm điểm.' });
+  }
+});
+
+router.post('/assist/request', authenticateToken, async (req, res) => {
+  try {
+    const { teamId, roundId, judgeId } = req.body;
+    const [team, round] = await Promise.all([Team.findById(teamId), Round.findById(roundId)]);
+    if (!team || !round || !judgeId) return res.status(400).json({ message: 'Thông tin đề nghị hỗ trợ không hợp lệ.' });
+
+    const coordinatorRole = await findCoordinatorRole(req.user._id, team.eventId);
+    if (!req.user.isSystemAdmin && !coordinatorRole) {
+      return res.status(403).json({ message: 'Bạn không có quyền gửi đề nghị hỗ trợ.' });
+    }
+    if (await Score.exists({ teamId, roundId, judgeId })) {
+      return res.status(409).json({ message: 'Giám khảo đã hoàn tất chấm điểm cho đội này.' });
+    }
+
+    const access = await resolveAssistAccess({ team, round, judgeId, coordinatorId: req.user._id });
+    if (access.allowed) {
+      return res.json({ message: 'Quyền hỗ trợ chấm điểm đã được mở.', status: access.request.status });
+    }
+
+    const request = await GradingAssistRequest.findOneAndUpdate(
+      { teamId, roundId, judgeId, coordinatorId: req.user._id },
+      { $set: { status: 'pending' }, $unset: { respondedAt: 1, autoGrantedAt: 1 } },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
+    await Notification.create({
+      userId: judgeId,
+      type: 'grading_assist_request',
+      title: 'Đề nghị hỗ trợ chấm điểm',
+      body: `Điều phối viên đề nghị được hỗ trợ hoàn tất bài chấm cho đội ${team.name}.`,
+      metadata: { requestId: request._id, teamId, roundId },
+      channel: 'in_app',
+      status: 'sent',
+      sentAt: new Date(),
+    });
+    res.json({ message: 'Đã gửi đề nghị đến giám khảo.', status: request.status });
+  } catch (error) {
+    console.error('Create Assist Request Error:', error.message);
+    res.status(500).json({ message: 'Không thể gửi đề nghị hỗ trợ chấm điểm.' });
+  }
+});
+
+router.patch('/assist/:requestId/respond', authenticateToken, async (req, res) => {
+  try {
+    const { decision } = req.body;
+    if (!['approved', 'rejected'].includes(decision)) {
+      return res.status(400).json({ message: 'Phản hồi không hợp lệ.' });
+    }
+    const request = await GradingAssistRequest.findOne({
+      _id: req.params.requestId,
+      judgeId: req.user._id,
+      status: 'pending',
+    }).populate('teamId', 'name');
+    if (!request) return res.status(404).json({ message: 'Đề nghị không còn hiệu lực.' });
+
+    request.status = decision;
+    request.respondedAt = new Date();
+    await request.save();
+    await Notification.updateMany(
+      {
+        userId: req.user._id,
+        type: 'grading_assist_request',
+        'metadata.requestId': request._id,
+      },
+      {
+        $set: {
+          isRead: true,
+          'metadata.requestStatus': decision,
+        },
+      },
+    );
+    await Notification.create({
+      userId: request.coordinatorId,
+      type: 'grading_assist_response',
+      title: decision === 'approved' ? 'Đã chấp thuận hỗ trợ chấm điểm' : 'Đã từ chối hỗ trợ chấm điểm',
+      body: `Giám khảo đã ${decision === 'approved' ? 'chấp thuận' : 'từ chối'} đề nghị hỗ trợ cho đội ${request.teamId?.name || ''}.`,
+      metadata: { requestId: request._id, status: decision },
+      channel: 'in_app',
+      status: 'sent',
+      sentAt: new Date(),
+    });
+    res.json({ message: decision === 'approved' ? 'Đã chấp thuận đề nghị.' : 'Đã từ chối đề nghị.', status: decision });
+  } catch (error) {
+    console.error('Respond Assist Request Error:', error.message);
+    res.status(500).json({ message: 'Không thể cập nhật phản hồi.' });
+  }
+});
+
+/**
  * @route   POST /api/grades/submit
  * @desc    Submit score for a team by a judge
  * @access  Private (Judges / Coords)
@@ -343,7 +591,7 @@ router.post('/submit', authenticateToken, async (req, res) => {
       userId: req.user._id,
       eventId: team.eventId,
       roundId: roundId,
-      role: { $in: ['judge', 'coordinator', 'admin_view', 'student_assistant'] },
+      role: { $in: ['judge', 'admin_view', 'student_assistant'] },
       status: 'active'
     });
 
@@ -351,7 +599,7 @@ router.post('/submit', authenticateToken, async (req, res) => {
       userRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: team.eventId,
-        role: { $in: ['judge', 'coordinator', 'admin_view', 'student_assistant'] },
+        role: { $in: ['judge', 'admin_view', 'student_assistant'] },
         $or: [{ roundId: null }, { roundId: { $exists: false } }],
         status: 'active'
       });
@@ -370,6 +618,46 @@ router.post('/submit', authenticateToken, async (req, res) => {
 
     const repo = await GithubRepository.findOne({ teamId });
     const snapshot = await RepositorySnapshot.findOne({ teamId, roundId });
+
+    const existingScores = await Score.find({ teamId, roundId }).sort({ createdAt: 1 });
+    let targetJudgeId = req.user._id;
+    if (req.body.judgeId && (
+      req.user.isSystemAdmin
+      || (userRole && ['admin_view', 'student_assistant'].includes(userRole.role))
+    )) {
+      targetJudgeId = req.body.judgeId;
+    }
+
+    if (targetJudgeId.toString() !== req.user._id.toString()) {
+      const assistAccess = await resolveAssistAccess({
+        team,
+        round,
+        judgeId: targetJudgeId,
+        coordinatorId: req.user._id,
+      });
+      if (!assistAccess.allowed) {
+        return res.status(403).json({
+          message: assistAccess.request?.status === 'pending'
+            ? 'Đang chờ giám khảo chấp thuận đề nghị hỗ trợ chấm điểm.'
+            : 'Bạn chưa được giám khảo cấp quyền hỗ trợ chấm điểm cho đội này.',
+        });
+      }
+    }
+
+    const policy = validateScoreSubmissionPolicy(existingScores, userRole?.role || 'judge', targetJudgeId);
+    if (!policy.allowed) {
+      await ScoreAudit.create({
+        teamId,
+        roundId,
+        judgeId: targetJudgeId,
+        actorId: req.user._id,
+        actorRole: userRole?.role || 'judge',
+        action: 'blocked_regrade',
+        summary: policy.reason,
+        reason: policy.reason,
+      });
+      return res.status(409).json({ message: policy.reason });
+    }
 
     // Calculate score totals
     let totalRawScore = 0;
@@ -406,16 +694,14 @@ router.post('/submit', authenticateToken, async (req, res) => {
       });
     }
 
-    // Decide who is the judge
-    let targetJudgeId = req.user._id;
-    if (req.body.judgeId && (req.user.isSystemAdmin || (userRole && ['coordinator', 'student_assistant'].includes(userRole.role)))) {
-      targetJudgeId = req.body.judgeId;
-    }
-
-    // Create or update Score
+    let previousScore = null;
     let score = await Score.findOne({ teamId, roundId, judgeId: targetJudgeId });
     if (score) {
-      if (score.status === 'locked' && !req.user.isSystemAdmin && !(userRole && ['coordinator', 'student_assistant'].includes(userRole.role))) {
+      previousScore = {
+        overallComment: score.overallComment,
+        details: await ScoreDetail.find({ scoreId: score._id }).lean(),
+      };
+      if (score.status === 'locked' && !req.user.isSystemAdmin && !(userRole && userRole.role === 'student_assistant')) {
         return res.status(400).json({ message: 'Điểm số của bạn cho đội thi này trong vòng đấu này đã bị khoá.' });
       }
       score.totalRawScore = totalRawScore;
@@ -451,6 +737,31 @@ router.post('/submit', authenticateToken, async (req, res) => {
       ...d
     }));
     await ScoreDetail.insertMany(preparedDetails);
+
+    const auditAction = previousScore ? 'regrade_score' : 'submit_score';
+    const changeDetails = buildScoreChangeSummary(previousScore, {
+      overallComment,
+      details: preparedDetails,
+    }, criteriaList);
+
+    await ScoreAudit.create({
+      scoreId: score._id,
+      teamId,
+      roundId,
+      judgeId: targetJudgeId,
+      actorId: req.user._id,
+      actorRole: userRole?.role || 'judge',
+      action: auditAction,
+      summary: previousScore ? 'Kết quả chấm điểm đã được điều chỉnh theo quy trình kiểm soát.' : 'Giám khảo đã chấm điểm cho đội thi.',
+      changeDetails,
+      before: previousScore,
+      after: {
+        overallComment,
+        details: preparedDetails,
+        totalRawScore,
+        totalWeightedScore: score.totalWeightedScore,
+      },
+    });
 
     // Create EventLog
     const EventLog = mongoose.model('EventLog');
@@ -508,7 +819,7 @@ router.post('/lock-round', authenticateToken, async (req, res) => {
   try {
     // Auth Check
     if (!req.user.isSystemAdmin) {
-      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: { $in: ['coordinator', 'student_assistant'] } });
+      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: 'student_assistant' });
       if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
     }
 
@@ -619,6 +930,61 @@ router.post('/lock-round', authenticateToken, async (req, res) => {
     round.status = 'completed';
     await round.save();
 
+    // ----------------------------------------------------
+    // TỰ ĐỘNG GÁN GIẢI THƯỞNG CHO VÒNG CHUNG KẾT (Pha 2)
+    // ----------------------------------------------------
+    try {
+      const allRounds = await Round.find({ eventId });
+      const maxOrder = Math.max(...allRounds.map(r => r.order || 0));
+      if (round.order === maxOrder) {
+        const Prize = mongoose.model('Prize');
+        const Event = mongoose.model('Event');
+        
+        // Safety Check: Xóa giải thưởng cũ của vòng thi này để tránh trùng lặp
+        await Prize.deleteMany({ eventId, roundId });
+        
+        const event = await Event.findById(eventId);
+        if (event) {
+          const defaultPrizes = [
+            { title: '01 GIẢI NHẤT', amount: '7.000.000 đồng', benefits: 'Giấy chứng nhận + hoa' },
+            { title: '01 GIẢI NHÌ', amount: '5.000.000 đồng', benefits: 'Giấy chứng nhận + hoa' },
+            { title: '01 GIẢI BA', amount: '3.000.000 đồng', benefits: 'Giấy chứng nhận + hoa' },
+            { title: '01 GIẢI KHUYẾN KHÍCH', amount: '1.500.000 đồng', benefits: 'Giấy chứng nhận' }
+          ];
+          const eventPrizes = event.prizes && event.prizes.length > 0 ? event.prizes : defaultPrizes;
+          
+          // Lấy top các đội xếp hạng cao nhất
+          const savedRankings = await Ranking.find({ roundId }).sort({ rank: 1 }).limit(eventPrizes.length);
+          
+          const prizesToSave = [];
+          savedRankings.forEach(ranking => {
+            const prizeConfig = eventPrizes[ranking.rank - 1];
+            if (prizeConfig) {
+              prizesToSave.push({
+                eventId,
+                trackId: ranking.trackId,
+                roundId,
+                teamId: ranking.teamId,
+                rank: ranking.rank,
+                title: prizeConfig.title,
+                value: prizeConfig.amount,
+                description: prizeConfig.benefits,
+                announcedAt: new Date(),
+                disbursementStatus: 'pending'
+              });
+            }
+          });
+          
+          if (prizesToSave.length > 0) {
+            await Prize.insertMany(prizesToSave);
+          }
+        }
+      }
+    } catch (prizeErr) {
+      console.error('Error auto-assigning prizes:', prizeErr.message);
+    }
+    // ----------------------------------------------------
+
     // Gửi thông báo in-app tới toàn bộ thành viên trong bảng đấu
     const TeamMember = mongoose.model('TeamMember');
 
@@ -686,7 +1052,7 @@ router.post('/unlock-round', authenticateToken, async (req, res) => {
   try {
     // Auth Check
     if (!req.user.isSystemAdmin) {
-      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: { $in: ['coordinator', 'student_assistant'] } });
+      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: 'student_assistant' });
       if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
     }
 
@@ -703,8 +1069,10 @@ router.post('/unlock-round', authenticateToken, async (req, res) => {
       });
     }
 
-    // 1. Delete generated rankings for this round
+    // 1. Delete generated rankings and prizes for this round
     await Ranking.deleteMany({ roundId });
+    const Prize = mongoose.model('Prize');
+    await Prize.deleteMany({ eventId, roundId });
 
     // 2. Unlock all scores (set status back to 'submitted')
     await Score.updateMany({ roundId }, { status: 'submitted', $unset: { lockedAt: 1 } });
@@ -753,7 +1121,7 @@ router.get('/leaderboard/:roundId', authenticateToken, async (req, res) => {
       const coordRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: round.eventId,
-        role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
+        role: { $in: ['admin_view', 'student_assistant'] },
         status: 'active'
       });
       isCoordinator = !!coordRole;
@@ -800,7 +1168,7 @@ router.get('/live-ranking/:roundId', authenticateToken, async (req, res) => {
       const coordRole = await EventRole.findOne({
         userId: req.user._id,
         eventId: round.eventId,
-        role: { $in: ['coordinator', 'admin_view', 'student_assistant'] },
+        role: { $in: ['admin_view', 'student_assistant'] },
         status: 'active'
       });
       isCoordinator = !!coordRole;
@@ -839,7 +1207,11 @@ router.get('/live-ranking/:roundId', authenticateToken, async (req, res) => {
         trackId: team.trackId,
         averageScore,
         judgeCount,
-        judges: teamScores.map(s => ({ fullName: s.judgeId?.fullName, score: s.totalWeightedScore })),
+        judges: teamScores.map(s => ({
+          _id: s.judgeId?._id,
+          fullName: s.judgeId?.fullName,
+          score: s.totalWeightedScore
+        })),
         isLive: true
       };
     });
@@ -909,7 +1281,7 @@ router.get('/judge-ranking/:roundId', authenticateToken, async (req, res) => {
       const roleRecord = await EventRole.findOne({
         userId: req.user._id,
         eventId: round.eventId,
-        role: { $in: ['judge', 'coordinator', 'student_assistant'] },
+        role: { $in: ['judge', 'student_assistant'] },
         status: 'active'
       });
       hasAccess = !!roleRecord;
@@ -1024,7 +1396,7 @@ router.post('/advance-round', authenticateToken, async (req, res) => {
   try {
     // Auth Check
     if (!req.user.isSystemAdmin) {
-      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: { $in: ['coordinator', 'student_assistant'] } });
+      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: 'student_assistant' });
       if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
     }
 
@@ -1144,7 +1516,7 @@ router.post('/rollback-round', authenticateToken, async (req, res) => {
   try {
     // Auth Check
     if (!req.user.isSystemAdmin) {
-      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: { $in: ['coordinator', 'student_assistant'] }, status: 'active' });
+      const coordinatorRole = await EventRole.findOne({ userId: req.user._id, eventId, role: 'student_assistant', status: 'active' });
       if (!coordinatorRole) return res.status(403).json({ message: 'Unauthorized. Coordinator role required.' });
     }
 
@@ -1246,13 +1618,7 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
         status: 'active'
       });
       if (roleRecord) {
-        const isCoord = await EventRole.findOne({
-          userId: req.user._id,
-          eventId: round.eventId,
-          role: 'coordinator',
-          status: 'active'
-        });
-        if (!isCoord && !req.user.isSystemAdmin) {
+        if (!req.user.isSystemAdmin) {
           targetJudgeId = req.user._id.toString();
         }
       }
@@ -1285,6 +1651,9 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
     let title = '';
     let subtitle = '';
     let metadataRow = '';
+    let headerRowCount = 1;
+    let extraMerges = [];
+    let totalDataRows = 0;
 
     // Check if we are exporting for a specific judge or summary
     if (targetJudgeId) {
@@ -1297,13 +1666,14 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
       metadataRow = `Vòng thi: ${round.name} | Bảng đấu: ${track ? track.name : 'Tất cả'} | Giám khảo: ${judge.fullName}`;
 
       // Build table headers
-      // STT | Tên Đội | Tên Đề Tài | Criteria 1 | ... | Criteria N | Tổng Điểm | Nhận Xét
-      const headers = ["STT", "Tên Đội Thi", "Tên Đề Tài / Dự Án"];
+      // Build table headers
+      // STT | Tên Đội | Criteria 1 | ... | Criteria N | Tổng Điểm | Nhận Xét
+      const headers = ["STT", "Tên Đội Thi"];
       criteria.forEach(c => {
         const weightPercent = c.weight > 1 ? c.weight : c.weight * 100;
         headers.push(`${c.code}\n(${weightPercent}%)`);
       });
-      headers.push("Tổng Điểm\n(Hệ 10)", "Ý Kiến / Nhận Xét");
+      headers.push("Tổng Điểm\n", "Ý Kiến / Nhận Xét");
 
       wsData.push([title], [subtitle], [metadataRow], [], headers);
 
@@ -1319,8 +1689,7 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
       teams.forEach((team, idx) => {
         const row = [
           idx + 1,
-          team.name,
-          team.topicSubmission?.title || 'Chưa đăng ký đề tài'
+          team.name
         ];
 
         const teamScore = scores.find(s => s.teamId.toString() === team._id.toString());
@@ -1342,20 +1711,22 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
         wsData.push(row);
       });
 
+      totalDataRows = teams.length;
+
       // Signature section
       const signRowStart = wsData.length + 2;
       wsData.push([]); // blank row
       wsData.push([]); // blank row
 
-      // We will place signatures on columns: Column B (index 1) and Column G/H (index 4+N)
+      // We will place signatures on columns: Column B (index 1) and Column G/H (index 2+N)
       const sigRow = [];
       sigRow[1] = "TRƯỞNG BAN TỔ CHỨC";
-      sigRow[3 + criteria.length] = "GIÁM KHẢO XÁC NHẬN";
+      sigRow[2 + criteria.length] = "GIÁM KHẢO XÁC NHẬN";
       wsData.push(sigRow);
 
       const subSigRow = [];
       subSigRow[1] = "(Ký và ghi rõ họ tên)";
-      subSigRow[3 + criteria.length] = "(Ký và ghi rõ họ tên)";
+      subSigRow[2 + criteria.length] = "(Ký và ghi rõ họ tên)";
       wsData.push(subSigRow);
 
       // Add 4 empty rows for space to sign
@@ -1363,7 +1734,7 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
 
       const nameSigRow = [];
       nameSigRow[1] = ".......................................";
-      nameSigRow[3 + criteria.length] = judge.fullName;
+      nameSigRow[2 + criteria.length] = judge.fullName;
       wsData.push(nameSigRow);
 
     } else {
@@ -1392,25 +1763,18 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
       });
       const judges = Object.values(uniqueJudgesMap);
 
-      // Table Headers:
-      // STT | Tên Đội | Tên Đề Tài | Criteria 1 (TB) | ... | Criteria N (TB) | Judge 1 Total | ... | Judge M Total | Điểm Trung Bình | Thứ Hạng | Nhận Xét Tổng Hợp
-      const headers = ["STT", "Tên Đội Thi", "Tên Đề Tài / Dự Án"];
-
-      // Add criteria headers
+      // Table Headers (single row, vertical layout):
+      // STT | Tên Đội Thi | Giám Khảo | C1 (w%) | ... | CN (w%) | Tổng Điểm | Điểm TB | Thứ Hạng
+      const headers = ["STT", "Tên Đội Thi", "Giám Khảo"];
       criteria.forEach(c => {
         const weightPercent = c.weight > 1 ? c.weight : c.weight * 100;
-        headers.push(`${c.code} (TB)\n(${weightPercent}%)`);
+        headers.push(`${c.code}\n(${weightPercent}%)`);
       });
-
-      // Add judge total headers
-      judges.forEach(j => {
-        headers.push(j.fullName);
-      });
-      headers.push("Điểm Trung Bình", "Thứ Hạng", "Nhận Xét Tổng Hợp");
+      headers.push("Tổng Điểm", "Điểm Trung Bình", "Thứ Hạng");
       wsData.push([title], [subtitle], [metadataRow], [], headers);
 
-      // Build row data for each team
-      const rowsWithAverages = teams.map((team, idx) => {
+      // Build row data for each team (vertical: each judge = one row)
+      const teamDataForSort = teams.map((team) => {
         const teamScores = scores.filter(s => s.teamId.toString() === team._id.toString());
         const judgeCount = teamScores.length;
 
@@ -1420,72 +1784,78 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
           averageScore = Math.round((sum / judgeCount) * 100) / 100;
         }
 
-        // Calculate average score for each criterion
-        const criteriaAverages = criteria.map(c => {
-          if (judgeCount === 0) return 0;
-          let criterionSum = 0;
-          let count = 0;
-          teamScores.forEach(ts => {
+        return { team, teamScores, averageScore };
+      });
+
+      // Sort by averageScore descending to calculate rankings
+      teamDataForSort.sort((a, b) => b.averageScore - a.averageScore);
+
+      // Track data row start for merge calculations
+      const dataRowStart = wsData.length; // row index where data begins (should be 5)
+      let currentRow = dataRowStart;
+
+      teamDataForSort.forEach((item, idx) => {
+        const { team, teamScores, averageScore } = item;
+        const judgeCount = judges.length;
+        const rowsForTeam = judgeCount + 1; // N judge rows + 1 summary row
+
+        // Judge rows: one row per judge
+        judges.forEach(j => {
+          const ts = teamScores.find(s => s.judgeId._id.toString() === j._id.toString());
+          const row = ['', '', j.fullName];
+          criteria.forEach(c => {
+            if (!ts) { row.push('-'); return; }
             const detail = scoreDetails.find(d =>
               d.scoreId.toString() === ts._id.toString() &&
               d.criterionId.toString() === c._id.toString()
             );
-            if (detail) {
-              criterionSum += detail.scoreValue;
-              count++;
-            }
+            row.push(detail ? detail.scoreValue : '-');
           });
-          return count > 0 ? Math.round((criterionSum / count) * 100) / 100 : 0;
+          row.push(ts ? ts.totalWeightedScore : '-'); // Tổng Điểm
+          row.push(''); // Điểm TB (empty for judge rows)
+          row.push(''); // Thứ Hạng (empty for judge rows)
+          wsData.push(row);
         });
 
-        const judgeScoresList = judges.map(j => {
-          const s = teamScores.find(ts => ts.judgeId._id.toString() === j._id.toString());
-          return s ? s.totalWeightedScore : '-';
-        });
+        // Summary row for this team
+        const summaryRow = ['', '', ''];
+        // Empty criteria cells for summary row
+        criteria.forEach(() => summaryRow.push(''));
+        summaryRow.push(''); // Tổng Điểm (empty)
+        summaryRow.push(averageScore); // Điểm TB
+        summaryRow.push(idx + 1); // Thứ Hạng
+        wsData.push(summaryRow);
 
-        const comments = teamScores
-          .map(s => s.overallComment ? `${s.judgeId.fullName}: ${s.overallComment}` : '')
-          .filter(Boolean)
-          .join('\n');
+        // Set STT and Team Name in the first row of this team block
+        const firstRowIdx = currentRow;
+        wsData[firstRowIdx][0] = idx + 1; // STT
+        wsData[firstRowIdx][1] = team.name; // Tên Đội
 
-        return {
-          teamName: team.name,
-          topic: team.topicSubmission?.title || 'Chưa đăng ký đề tài',
-          criteriaAverages,
-          judgeScoresList,
-          averageScore,
-          comments
-        };
+        // Merge STT, Tên Đội vertically across all rows for this team
+        if (rowsForTeam > 1) {
+          extraMerges.push({ s: { r: firstRowIdx, c: 0 }, e: { r: firstRowIdx + rowsForTeam - 1, c: 0 } });
+          extraMerges.push({ s: { r: firstRowIdx, c: 1 }, e: { r: firstRowIdx + rowsForTeam - 1, c: 1 } });
+        }
+
+        currentRow += rowsForTeam;
       });
 
-      // Sort by averageScore descending to calculate rankings
-      rowsWithAverages.sort((a, b) => b.averageScore - a.averageScore);
-
-      rowsWithAverages.forEach((item, idx) => {
-        wsData.push([
-          idx + 1,
-          item.teamName,
-          item.topic,
-          ...item.criteriaAverages,
-          ...item.judgeScoresList,
-          item.averageScore,
-          idx + 1, // Rank
-          item.comments
-        ]);
-      });
+      totalDataRows = currentRow - dataRowStart;
 
       // Signature section
       wsData.push([]); // blank row
       wsData.push([]); // blank row
 
+      const maxColCount = headers.length;
+      const sigColRight = Math.min(Math.floor(maxColCount / 2) + 1, maxColCount - 1);
       const sigRow = [];
-      sigRow[1] = "ĐẠI DIỆN BAN THƯ KÝ";
-      sigRow[2 + criteria.length + judges.length] = "TRƯỞNG BAN TỔ CHỨC";
+      sigRow[1] = "GIÁM KHẢO";
+      sigRow[sigColRight] = "TRƯỞNG BAN TỔ CHỨC";
       wsData.push(sigRow);
 
       const subSigRow = [];
       subSigRow[1] = "(Ký và ghi rõ họ tên)";
-      subSigRow[2 + criteria.length + judges.length] = "(Ký và ghi rõ họ tên)";
+      subSigRow[sigColRight] = "(Ký và ghi rõ họ tên)";
       wsData.push(subSigRow);
 
       // Add 4 empty rows for space to sign
@@ -1493,38 +1863,41 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
 
       const nameSigRow = [];
       nameSigRow[1] = ".......................................";
-      nameSigRow[2 + criteria.length + judges.length] = ".......................................";
+      nameSigRow[sigColRight] = ".......................................";
+      nameSigRow[sigColRight] = ".......................................";
       wsData.push(nameSigRow);
     }
 
     const ws = XLSX.utils.aoa_to_sheet(wsData);
 
     // Merge title cells
-    const maxCols = wsData[4] ? wsData[4].length : 8;
+    const maxCols = Math.max(...wsData.map(r => r.length || 0), 7);
     ws['!merges'] = [
       { s: { r: 0, c: 0 }, e: { r: 0, c: maxCols - 1 } },
       { s: { r: 1, c: 0 }, e: { r: 1, c: maxCols - 1 } },
-      { s: { r: 2, c: 0 }, e: { r: 2, c: maxCols - 1 } }
+      { s: { r: 2, c: 0 }, e: { r: 2, c: maxCols - 1 } },
+      ...extraMerges
     ];
 
     // Set column widths
     ws['!cols'] = [
       { wch: 6 },  // STT
-      { wch: 25 }, // Tên Đội Thi
-      { wch: 30 }  // Tên Đề Tài
+      { wch: 28 }  // Tên Đội Thi
     ];
-    for (let c = 3; c < maxCols; c++) {
+    for (let c = 2; c < maxCols; c++) {
       ws['!cols'].push({ wch: 18 });
     }
-    // Make comment/remark column wider
-    ws['!cols'][maxCols - 1] = { wch: 40 };
+    if (targetJudgeId) {
+      // Make comment/remark column wider for individual judge sheets
+      ws['!cols'][maxCols - 1] = { wch: 40 };
+    }
 
     // Apply beautiful styling
     const range = XLSX.utils.decode_range(ws['!ref']);
-    const numDataRows = teams.length;
+    const numDataRows = totalDataRows || teams.length;
     const headerRowIdx = 4;
-    const dataStartRowIdx = 5;
-    const dataEndRowIdx = 5 + numDataRows - 1;
+    const dataStartRowIdx = headerRowIdx + headerRowCount;
+    const dataEndRowIdx = dataStartRowIdx + numDataRows - 1;
 
     for (let r = range.s.r; r <= range.e.r; ++r) {
       for (let c = range.s.c; c <= range.e.c; ++c) {
@@ -1546,7 +1919,7 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
           // Metadata
           cell.s.font = { italic: true, size: 10, name: 'Calibri', color: { rgb: '475569' } };
           cell.s.alignment = { horizontal: 'center', vertical: 'center' };
-        } else if (r === headerRowIdx) {
+        } else if (r >= headerRowIdx && r < dataStartRowIdx) {
           // Table Header
           cell.s.font = { bold: true, name: 'Calibri', color: { rgb: 'FFFFFF' }, size: 10 };
           cell.s.fill = { patternType: 'solid', fgColor: { rgb: '1E293B' } }; // Dark blue slate
@@ -1562,7 +1935,7 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
           cell.s.font = { name: 'Calibri', size: 10 };
           cell.s.alignment = {
             vertical: 'center',
-            horizontal: c === 0 || (c >= 3 && c < maxCols - 1) ? 'center' : 'left',
+            horizontal: c === 0 || c >= 3 ? 'center' : 'left',
             wrapText: true
           };
           cell.s.border = {
@@ -1598,7 +1971,9 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
     ws['!rows'][0] = { hpx: 30 }; // Title
     ws['!rows'][1] = { hpx: 20 }; // Subtitle
     ws['!rows'][2] = { hpx: 20 }; // Metadata
-    ws['!rows'][headerRowIdx] = { hpx: 28 }; // Table header
+    for (let hr = headerRowIdx; hr < dataStartRowIdx; hr++) {
+      ws['!rows'][hr] = { hpx: 28 }; // Table header(s)
+    }
     for (let r = dataStartRowIdx; r <= dataEndRowIdx; r++) {
       ws['!rows'][r] = { hpx: 24 }; // Data rows
     }

@@ -18,6 +18,7 @@ import {
   UserPlus,
   UserCog,
   LogIn,
+  Trash2,
 } from "lucide-react";
 
 interface NavbarProps {
@@ -244,8 +245,33 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
     }
   };
 
+  const deleteNotification = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`http://localhost:5000/api/notifications/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setNotifications((prev) => prev.filter((n) => n._id !== id));
+    } catch (err) {
+      console.error("Failed to delete notification", err);
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete("http://localhost:5000/api/notifications/clear-all", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setNotifications([]);
+    } catch (err) {
+      console.error("Failed to clear all notifications", err);
+    }
+  };
+
   const isSystemAdmin = user?.isSystemAdmin;
-  const isCoordinator = !!isSystemAdmin || roles?.some((r) => r.role === "coordinator") || roles?.some((r) => r.role === "admin_view");
+  const isCoordinator = !!isSystemAdmin || roles?.some((r) => r.role === "admin_view");
   const isJudge = roles?.some((r) => r.role === "judge") || isSystemAdmin;
   const isMentor = roles?.some((r) => r.role === "mentor");
   const isParticipant =
@@ -433,17 +459,27 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
                         <h4 className="text-sm font-semibold text-slate-800">
                           Thông báo
                         </h4>
-                        {unreadCount > 0 && (
-                          <button
-                            onClick={markAllAsRead}
-                            className={`text-xs ${usesLightShell
-                                ? "text-[#F27024] hover:text-[#e05e1b]"
-                                : "text-cyan-400 hover:text-cyan-300"
-                              }`}
-                          >
-                            Đánh dấu đã đọc
-                          </button>
-                        )}
+                        <div className="flex items-center gap-3 text-xs">
+                          {unreadCount > 0 && (
+                            <button
+                              onClick={markAllAsRead}
+                              className={`font-semibold ${usesLightShell
+                                  ? "text-[#F27024] hover:text-[#e05e1b]"
+                                  : "text-cyan-400 hover:text-cyan-300"
+                                }`}
+                            >
+                              Đánh dấu đã đọc
+                            </button>
+                          )}
+                          {notifications.length > 0 && (
+                            <button
+                              onClick={clearAllNotifications}
+                              className="text-rose-500 hover:text-rose-600 transition-colors inline-flex items-center gap-1 font-semibold"
+                            >
+                              <Trash2 size={12} /> Xóa tất cả
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <div className="flex flex-col">
                         {notifications.length === 0 ? (
@@ -458,7 +494,7 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
                               onClick={() => {
                                 if (!notif.isRead) markAsRead(notif._id);
                               }}
-                              className={`p-3 border-b cursor-pointer transition-colors flex gap-3 items-start ${!notif.isRead
+                              className={`group relative p-3 border-b cursor-pointer transition-colors flex gap-3 items-start ${!notif.isRead
                                   ? usesLightShell
                                     ? "bg-[#F27024]/5 hover:bg-[#F27024]/10 border-slate-200/50"
                                     : "bg-cyan-950/20 hover:bg-cyan-950/30 border-slate-800/50"
@@ -477,7 +513,7 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
                                   ? <MessageSquare size={14} />
                                   : <Bell size={14} />}
                               </div>
-                              <div className="flex-1 min-w-0 font-sans">
+                              <div className="flex-1 min-w-0 font-sans pr-6">
                                 <p className={`text-xs font-semibold ${!notif.isRead
                                     ? usesLightShell
                                       ? "text-slate-900 font-bold"
@@ -493,12 +529,22 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
                                   {new Date(notif.createdAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
                                 </p>
                               </div>
-                              {!notif.isRead && (
-                                <div className={`flex-shrink-0 mt-1.5 w-2 h-2 rounded-full ${usesLightShell
-                                    ? "bg-[#F27024] shadow-[0_0_6px_rgba(242,112,36,0.8)]"
-                                    : "bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]"
-                                  }`} />
-                              )}
+                              <div className="flex items-center gap-1.5 flex-shrink-0">
+                                {!notif.isRead && (
+                                  <div className={`w-2 h-2 rounded-full ${usesLightShell
+                                      ? "bg-[#F27024] shadow-[0_0_6px_rgba(242,112,36,0.8)]"
+                                      : "bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]"
+                                    }`} />
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={(e) => deleteNotification(notif._id, e)}
+                                  className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-500 rounded transition-all"
+                                  title="Xóa thông báo"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
                             </div>
                           ))
                         )}
@@ -515,7 +561,7 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
                     {(() => {
                       if (isSystemAdmin) return "Quản trị viên Hệ thống";
                       const rolesList = [];
-                      if (roles?.some((r: any) => r.role === "coordinator" || r.role === "admin_view")) rolesList.push("Ban tổ chức");
+                      if (roles?.some((r: any) => r.role === "coordinator" || r.role === "admin_view")) rolesList.push("Admin");
                       if (roles?.some((r: any) => r.role === "judge")) rolesList.push("Giám khảo");
                       if (roles?.some((r: any) => r.role === "mentor")) rolesList.push("Mentor");
                       if (roles?.some((r: any) => r.role === "participant")) rolesList.push("Thí sinh");

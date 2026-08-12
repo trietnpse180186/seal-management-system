@@ -6,6 +6,10 @@ const chatMessageSchema = new mongoose.Schema({
   senderName: { type: String, required: true },
   content: { type: String, required: true },
   isRecalled: { type: Boolean, default: false },
+  fileUrl: { type: String },
+  fileName: { type: String },
+  fileSize: { type: Number },
+  fileType: { type: String },
   replyTo: {
     messageId: { type: String },
     senderName: { type: String },

@@ -51,7 +51,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     <ConfirmContext.Provider value={confirm}>
       {children}
       {isOpen && options && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-955/95 transition-all duration-300">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/65 backdrop-blur-md transition-all duration-300">
           <div className={`relative w-full max-w-md p-6 rounded-2xl space-y-6 font-sans animate-in fade-in zoom-in-95 duration-200 ${
             usesLightShell 
               ? "bg-[#faf9f6] border border-slate-200 text-slate-800 shadow-2xl" 
@@ -96,11 +96,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={handleCancel}
-                className={`px-4 py-2 border rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                  usesLightShell 
-                    ? "bg-slate-100 border-slate-200 hover:bg-slate-200 text-slate-600" 
-                    : "bg-slate-950/40 border-slate-850 text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
-                }`}
+                className="btn-cancel px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
               >
                 {options.cancelText || "Hủy"}
               </button>

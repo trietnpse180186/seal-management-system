@@ -10,7 +10,15 @@ const PrizeSchema = new Schema({
   title: { type: String },
   description: { type: String },
   value: { type: String },
-  announcedAt: { type: Date }
+  announcedAt: { type: Date },
+  disbursementStatus: {
+    type: String,
+    enum: ['pending', 'delivered'],
+    default: 'pending'
+  },
+  disbursedAt: { type: Date },
+  disbursedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  notes: { type: String }
 }, {
   timestamps: true
 });

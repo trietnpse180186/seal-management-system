@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import { Users, ExternalLink } from "lucide-react";
 import CustomSelect from "../shared/CustomSelect";
@@ -6,18 +6,36 @@ import CustomSelect from "../shared/CustomSelect";
 export default function MentorDashboard({ user, roles }: any) {
   const token = localStorage.getItem("token");
   
-  const mentorRoles = roles.filter((r: any) => r.role === "mentor");
-  const uniqueEvents = Array.from(new Set(mentorRoles.map((r: any) => r.eventId)))
-    .filter(id => id !== null && id !== undefined)
+  const mentorRoles = useMemo(
+    () => roles.filter((r: any) => r.role === "mentor"),
+    [roles],
+  );
+  const uniqueEvents = useMemo(() => Array.from(new Set<string>(mentorRoles.map((r: any) => String(r.eventId))))
+    .filter(id => id && id !== "null" && id !== "undefined")
     .map(id => {
-      const r = mentorRoles.find((role: any) => role.eventId === id);
-      return { value: String(id), label: r ? r.eventName : "Event" };
-    });
+      const role = mentorRoles.find((item: any) => String(item.eventId) === id);
+      return {
+        value: id,
+        label: role ? role.eventName : "Event",
+        status: role?.eventStatus || "",
+      };
+    })
+    .sort((a, b) => Number(b.status === "ongoing") - Number(a.status === "ongoing")), [mentorRoles]);
 
   const [selectedEventId, setSelectedEventId] = useState(uniqueEvents.length > 0 ? String(uniqueEvents[0].value) : "");
   const [teams, setTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const ongoingEvent = uniqueEvents.find((item) => item.status === "ongoing");
+    const selectedEvent = uniqueEvents.find((item) => item.value === selectedEventId);
+    if ((!selectedEvent || selectedEvent.status !== "ongoing") && ongoingEvent) {
+      setSelectedEventId(ongoingEvent.value);
+    } else if (!selectedEvent && uniqueEvents[0]) {
+      setSelectedEventId(uniqueEvents[0].value);
+    }
+  }, [selectedEventId, uniqueEvents]);
 
   useEffect(() => {
     if (!selectedEventId) {

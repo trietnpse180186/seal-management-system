@@ -8,7 +8,8 @@ import {
   Bell,
   Users,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Trash2,
 } from 'lucide-react';
 
 interface JudgeLayoutProps {
@@ -23,6 +24,7 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
 
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [respondingRequestId, setRespondingRequestId] = useState('');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     return localStorage.getItem("judge_sidebar_collapsed") === "true";
   });
@@ -57,9 +59,7 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
     }
   }, [user]);
 
-  const unreadCount = notifications.filter(
-    (n) => n.status === "pending"
-  ).length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const markAsRead = async (id: string) => {
     try {
@@ -72,7 +72,7 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
         }
       );
       setNotifications(
-        notifications.map((n) => (n._id === id ? { ...n, status: "sent" } : n))
+        notifications.map((n) => (n._id === id ? { ...n, isRead: true } : n))
       );
     } catch (err) {
       console.error("Failed to mark notification as read", err);
@@ -89,9 +89,57 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      setNotifications(notifications.map((n) => ({ ...n, status: "sent" })));
+      setNotifications(notifications.map((n) => ({ ...n, isRead: true })));
     } catch (err) {
       console.error("Failed to mark all as read", err);
+    }
+  };
+
+  const deleteNotification = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`http://localhost:5000/api/notifications/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setNotifications((prev) => prev.filter((n) => n._id !== id));
+    } catch (err) {
+      console.error("Failed to delete notification", err);
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete("http://localhost:5000/api/notifications/clear-all", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setNotifications([]);
+    } catch (err) {
+      console.error("Failed to clear all notifications", err);
+    }
+  };
+
+  const respondToAssistRequest = async (notification: any, decision: 'approved' | 'rejected') => {
+    const requestId = notification.metadata?.requestId;
+    if (!requestId) return;
+    try {
+      setRespondingRequestId(requestId);
+      const token = localStorage.getItem('token');
+      await axios.patch(
+        `http://localhost:5000/api/grades/assist/${requestId}/respond`,
+        { decision },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      setNotifications((current) => current.map((item) =>
+        item._id === notification._id
+          ? { ...item, isRead: true, metadata: { ...item.metadata, requestStatus: decision } }
+          : item,
+      ));
+    } catch (err) {
+      console.error('Failed to respond to grading assist request', err);
+    } finally {
+      setRespondingRequestId('');
     }
   };
 
@@ -261,14 +309,24 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
                     <h4 className="text-sm font-semibold text-slate-800">
                       Thông báo
                     </h4>
-                    {unreadCount > 0 && (
-                      <button
-                        onClick={markAllAsRead}
-                        className="text-xs text-[#F27024] hover:text-[#d95f1f] font-semibold"
-                      >
-                        Đánh dấu đã đọc
-                      </button>
-                    )}
+                    <div className="flex items-center gap-3 text-xs font-semibold">
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={markAllAsRead}
+                          className="text-[#F27024] hover:text-[#d95f1f]"
+                        >
+                          Đánh dấu đã đọc
+                        </button>
+                      )}
+                      {notifications.length > 0 && (
+                        <button
+                          onClick={clearAllNotifications}
+                          className="text-rose-500 hover:text-rose-600 transition-colors inline-flex items-center gap-1"
+                        >
+                          <Trash2 size={12} /> Xóa tất cả
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="flex flex-col">
                     {notifications.length === 0 ? (
@@ -280,30 +338,71 @@ export default function JudgeLayout({ user, roles = [], onLogout }: JudgeLayoutP
                         <div
                           key={notif._id}
                           onClick={() => {
-                            if (notif.status === "pending")
+                            if (!notif.isRead)
                               markAsRead(notif._id);
                           }}
-                          className={`p-3 border-b border-slate-50 cursor-pointer transition-colors ${
-                            notif.status === "pending"
+                          className={`group relative p-3 border-b border-slate-50 cursor-pointer transition-colors flex justify-between items-start ${
+                            !notif.isRead
                               ? "bg-[#F27024]/5 hover:bg-[#F27024]/10"
                               : "hover:bg-slate-50"
                           }`}
                         >
-                          <p
-                            className={`text-xs font-semibold ${
-                              notif.status === "pending"
-                                ? "text-[#F27024]"
-                                : "text-slate-700"
-                            }`}
+                          <div className="flex-1 pr-3">
+                            <p
+                              className={`text-xs font-semibold ${
+                                !notif.isRead
+                                  ? "text-[#F27024]"
+                                  : "text-slate-700"
+                              }`}
+                            >
+                              {notif.title}
+                            </p>
+                            <p className="text-xs text-slate-500 mt-1">
+                              {notif.body}
+                            </p>
+                            {notif.type === 'grading_assist_request' && !notif.metadata?.requestStatus && (
+                              <div className="mt-3 grid grid-cols-2 gap-2">
+                                <button
+                                  type="button"
+                                  disabled={respondingRequestId === notif.metadata?.requestId}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    respondToAssistRequest(notif, 'approved');
+                                  }}
+                                  className="rounded-lg bg-[#F27024] px-2 py-1.5 text-[10px] font-bold text-white transition-colors hover:bg-[#d95f1f] focus:outline-none focus:ring-2 focus:ring-[#F27024]/30 disabled:opacity-50"
+                                >
+                                  Chấp thuận
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={respondingRequestId === notif.metadata?.requestId}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    respondToAssistRequest(notif, 'rejected');
+                                  }}
+                                  className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-bold text-slate-600 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300 disabled:opacity-50"
+                                >
+                                  Từ chối
+                                </button>
+                              </div>
+                            )}
+                            {notif.metadata?.requestStatus && (
+                              <p className="mt-2 text-[10px] font-semibold text-slate-500">
+                                Đã {notif.metadata.requestStatus === 'approved' ? 'chấp thuận' : 'từ chối'}
+                              </p>
+                            )}
+                            <p className="text-[10px] text-slate-400 mt-2">
+                              {new Date(notif.createdAt).toLocaleString('vi-VN')}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => deleteNotification(notif._id, e)}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-500 rounded transition-all shrink-0"
+                            title="Xóa thông báo"
                           >
-                            {notif.title}
-                          </p>
-                          <p className="text-xs text-slate-500 mt-1">
-                            {notif.body}
-                          </p>
-                          <p className="text-[10px] text-slate-400 mt-2">
-                            {new Date(notif.createdAt).toLocaleString()}
-                          </p>
+                            <Trash2 size={13} />
+                          </button>
                         </div>
                       ))
                     )}

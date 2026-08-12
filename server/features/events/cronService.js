@@ -716,13 +716,15 @@ async function distributeRoundExamMaterials() {
   const { addInAppJob, isQueueAvailable } = require('../notifications/notificationQueue');
 
   const pendingRounds = await Round.find({
-    driveFileId: { $ne: null },
-    startTime: { $ne: null, $lte: now },
+    $or: [
+      { startTime: { $ne: null, $lte: now } },
+      { isExamManualOpen: true }
+    ],
     isNotificationSent: { $ne: true }
   });
 
   for (const round of pendingRounds) {
-    console.log(`[CRON] Round "${round.name}" startTime reached. Syncing Drive + notifying participants...`);
+    console.log(`[CRON] Round "${round.name}" is active/manually opened. Syncing Drive + notifying participants...`);
 
     let syncResult;
     try {

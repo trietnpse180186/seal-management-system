@@ -4,17 +4,23 @@ import axios from 'axios';
 interface GithubUserAutocompleteProps {
   value: string;
   onChange: (val: string) => void;
+  onSelectUser?: (user: { username: string; avatarUrl: string }) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  theme?: 'light' | 'dark';
 }
 
 export default function GithubUserAutocomplete({
   value,
   onChange,
+  onSelectUser,
+  onKeyDown,
   placeholder = "Nhập github-username",
   className = "",
-  disabled = false
+  disabled = false,
+  theme = "dark"
 }: GithubUserAutocompleteProps) {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -31,18 +37,21 @@ export default function GithubUserAutocomplete({
     const delayDebounce = setTimeout(async () => {
       setLoading(true);
       try {
+        const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
         const token = localStorage.getItem('token');
-        const res = await axios.get(`http://localhost:5000/api/github-repositories/search-users?q=${encodeURIComponent(value.trim())}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await axios.get(
+          `${apiBase}/api/github-repositories/search-users?q=${encodeURIComponent(value.trim())}`,
+          { headers }
+        );
         setSuggestions(res.data || []);
-        setIsOpen(res.data && res.data.length > 0);
+        setIsOpen(Array.isArray(res.data) && res.data.length > 0);
       } catch (err) {
         console.error('Failed to search github users:', err);
       } finally {
         setLoading(false);
       }
-    }, 450);
+    }, 350);
 
     return () => clearTimeout(delayDebounce);
   }, [value]);
@@ -58,14 +67,19 @@ export default function GithubUserAutocomplete({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleSelect = (username: string) => {
-    onChange(username);
+  const handleSelect = (user: { username: string; avatarUrl: string }) => {
+    onChange(user.username);
+    if (onSelectUser) {
+      onSelectUser(user);
+    }
     setIsOpen(false);
   };
 
+  const isLight = theme === 'light';
+
   return (
-    <div className="relative" ref={dropdownRef}>
-      <div className="relative flex items-center">
+    <div className="relative w-full" ref={dropdownRef}>
+      <div className="relative flex items-center w-full">
         <input
           type="text"
           disabled={disabled}
@@ -74,6 +88,7 @@ export default function GithubUserAutocomplete({
             onChange(e.target.value);
             setIsOpen(true);
           }}
+          onKeyDown={onKeyDown}
           onFocus={() => {
             if (suggestions.length > 0) setIsOpen(true);
           }}
@@ -85,28 +100,41 @@ export default function GithubUserAutocomplete({
           spellCheck={false}
         />
         {loading && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-cyan-400"></div>
+          <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+            <div className={`animate-spin rounded-full h-4 w-4 border-2 border-t-transparent ${isLight ? 'border-[#F27024]' : 'border-cyan-400'}`}></div>
           </div>
         )}
       </div>
 
       {isOpen && suggestions.length > 0 && (
-        <div className="absolute z-50 left-0 w-full mt-1.5 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl max-h-48 overflow-y-auto font-sans text-xs">
+        <div
+          className={`absolute z-50 left-0 w-full mt-1.5 rounded-2xl shadow-2xl max-h-56 overflow-y-auto font-sans text-xs border ${
+            isLight
+              ? 'bg-white border-slate-200/90 text-slate-800 shadow-slate-300/50'
+              : 'bg-slate-900 border-slate-800 text-slate-300 shadow-black/80'
+          }`}
+        >
           <div className="p-1.5 space-y-0.5">
+            <div className={`px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider font-bold ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+              Gợi ý tài khoản GitHub
+            </div>
             {suggestions.map((u: any) => (
               <button
                 key={u.username}
                 type="button"
-                onClick={() => handleSelect(u.username)}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-left rounded-lg text-slate-300 hover:text-white hover:bg-cyan-500/10 hover:border-cyan-500/30 border border-transparent transition-all"
+                onClick={() => handleSelect(u)}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-left rounded-xl transition-all border border-transparent cursor-pointer ${
+                  isLight
+                    ? 'hover:bg-orange-50 hover:text-[#F27024] hover:border-orange-200/60'
+                    : 'hover:text-white hover:bg-cyan-500/10 hover:border-cyan-500/30'
+                }`}
               >
                 <img
                   src={u.avatarUrl}
                   alt={u.username}
-                  className="w-5 h-5 rounded-full border border-slate-700"
+                  className={`w-5 h-5 rounded-full object-cover shrink-0 border ${isLight ? 'border-slate-200' : 'border-slate-700'}`}
                 />
-                <span className="font-mono font-semibold">{u.username}</span>
+                <span className="font-mono font-semibold truncate">{u.username}</span>
               </button>
             ))}
           </div>

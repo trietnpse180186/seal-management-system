@@ -4,6 +4,24 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
 const crypto = require('crypto');
+const multer = require('multer');
+const XLSX = require('xlsx');
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req, file, cb) => {
+    if (
+      file.originalname.endsWith('.xlsx') ||
+      file.originalname.endsWith('.xls') ||
+      file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+      file.mimetype === 'application/vnd.ms-excel'
+    ) {
+      cb(null, true);
+    } else {
+      cb(new Error('Chỉ chấp nhận file Excel (.xlsx, .xls)'), false);
+    }
+  }
+});
 
 const User = mongoose.model('User');
 const EventRole = mongoose.model('EventRole');
@@ -74,6 +92,7 @@ async function mapUserRoles(roles) {
       id: roleObj._id,
       eventId: roleObj.eventId ? (roleObj.eventId._id || roleObj.eventId) : null,
       eventName: roleObj.eventId ? `${roleObj.eventId.name || 'System'} (${roleObj.eventId.semester || ''} ${roleObj.eventId.year || ''})` : 'System',
+      eventStatus: roleObj.eventId?.status || null,
       role: roleName,
       trackId: roleObj.trackId ? (roleObj.trackId._id || roleObj.trackId) : null
     });
@@ -390,12 +409,33 @@ router.put('/profile', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @route   PATCH /api/auth/github-username
+ * @desc    Cập nhật GitHub username cho user hiện tại
+ * @access  Private (Authenticated)
+ */
+router.patch('/github-username', authenticateToken, async (req, res) => {
+  try {
+    const { githubUsername } = req.body;
+    if (!githubUsername || !githubUsername.trim()) {
+      return res.status(400).json({ message: 'GitHub Username là bắt buộc.' });
+    }
+    const user = req.user;
+    user.githubUsername = githubUsername.trim();
+    await user.save();
+    res.json({ message: 'Đã cập nhật GitHub Username.', githubUsername: user.githubUsername });
+  } catch (error) {
+    console.error('Update GitHub username error:', error.message);
+    res.status(500).json({ message: 'Lỗi hệ thống khi cập nhật GitHub Username.' });
+  }
+});
+
+/**
  * @route   POST /api/auth/assign-role
  * @desc    Assign event role to a user (System Admin only)
  * @access  Private (System Admin)
  */
 router.post('/assign-role', authenticateToken, requireSystemAdmin, async (req, res) => {
-  const { userEmail, eventId, trackId, role, teamId } = req.body;
+  const { userEmail, eventId, trackId, role, teamId, isChiefJudge } = req.body;
 
   if (!userEmail || !eventId || !role) {
     return res.status(400).json({ message: 'User email, event ID, and role are required.' });
@@ -473,6 +513,7 @@ router.post('/assign-role', authenticateToken, requireSystemAdmin, async (req, r
       trackId: trackId || undefined,
       roundId: resolvedRoundId,
       role,
+      isChiefJudge: !!isChiefJudge,
       assignedBy: req.user._id
     });
 
@@ -604,12 +645,14 @@ router.post('/google', async (req, res) => {
         passwordHash,
         fullName: userName,
         avatarUrl: userAvatar,
+        authProviders: ['google'],
         isSystemAdmin: isFirstUser,
         isApproved: true
       });
       await user.save();
-    } else if (userAvatar && !user.avatarUrl) {
-      user.avatarUrl = userAvatar;
+    } else {
+      if (userAvatar && !user.avatarUrl) user.avatarUrl = userAvatar;
+      if (!user.authProviders?.includes('google')) user.authProviders = [...(user.authProviders || []), 'google'];
       await user.save();
     }
 
@@ -787,6 +830,7 @@ router.post('/github', async (req, res) => {
         fullName: userName,
         githubUsername: userGithub,
         avatarUrl: userAvatar,
+        authProviders: ['github'],
         isSystemAdmin: isFirstUser,
         isApproved: true
       });
@@ -799,6 +843,10 @@ router.post('/github', async (req, res) => {
       }
       if (userAvatar && !user.avatarUrl) {
         user.avatarUrl = userAvatar;
+        updated = true;
+      }
+      if (!user.authProviders?.includes('github')) {
+        user.authProviders = [...(user.authProviders || []), 'github'];
         updated = true;
       }
       if (updated) {
@@ -906,12 +954,14 @@ router.post('/firebase-google', async (req, res) => {
         passwordHash,
         fullName: userName,
         avatarUrl: userAvatar,
+        authProviders: ['google'],
         isSystemAdmin: isFirstUser,
         isApproved: true,
       });
       await user.save();
-    } else if (userAvatar && !user.avatarUrl) {
-      user.avatarUrl = userAvatar;
+    } else {
+      if (userAvatar && !user.avatarUrl) user.avatarUrl = userAvatar;
+      if (!user.authProviders?.includes('google')) user.authProviders = [...(user.authProviders || []), 'google'];
       await user.save();
     }
 
@@ -1235,7 +1285,7 @@ router.get('/users', authenticateToken, requireAdminOrAssistant, async (req, res
     const activeEvents = await Event.find({ status: { $in: ['registration', 'ongoing'] } }).select('_id');
     let targetEventIds = activeEvents.map(e => e._id);
 
-    // If CTV, find the specific event(s) assigned to this CTV
+    // If CTSV, find the specific event(s) assigned to this CTSV
     if (isAssistant) {
       const assistantRoles = await EventRole.find({
         userId: req.user._id,
@@ -1263,7 +1313,7 @@ router.get('/users', authenticateToken, requireAdminOrAssistant, async (req, res
 
     const teamUserIds = memberships.map(m => m.userId.toString());
 
-    // If CTV, filter query to ONLY include users who are team members in their assigned event
+    // If CTSV, filter query to ONLY include users who are team members in their assigned event
     if (isAssistant) {
       query._id = { $in: teamUserIds };
     }
@@ -1403,47 +1453,6 @@ router.delete('/users/:id', authenticateToken, requireAdminOrAssistant, async (r
   }
 });
 
-/**
- * @route   POST /api/auth/users/:id/toggle-coordinator
- * @desc    Toggle global coordinator role for user
- * @access  Private (System Admin only)
- */
-router.post('/users/:id/toggle-coordinator', authenticateToken, requireSystemAdmin, async (req, res) => {
-  try {
-    const userId = req.params.id;
-    const existingRoles = await EventRole.find({ userId, role: 'coordinator', status: 'active' });
-    const isCurrentlyCoordinator = existingRoles.length > 0;
-
-    if (isCurrentlyCoordinator) {
-      await EventRole.deleteMany({ userId, role: 'coordinator' });
-      return res.json({ message: 'Đã thu hồi quyền Ban tổ chức (Coordinator)!', isCoordinator: false });
-    } else {
-      const Event = mongoose.model('Event');
-      const events = await Event.find({});
-      if (events.length > 0) {
-        for (const ev of events) {
-          await EventRole.updateOne(
-            { userId, eventId: ev._id, role: 'coordinator' },
-            { $set: { status: 'active', assignedBy: req.user._id } },
-            { upsert: true }
-          );
-        }
-      } else {
-        // Dummy placeholder eventRole if no events exist yet
-        await EventRole.create({
-          userId,
-          role: 'coordinator',
-          assignedBy: req.user._id,
-          status: 'active'
-        });
-      }
-      return res.json({ message: 'Đã cấp quyền Ban tổ chức (Coordinator) thành công!', isCoordinator: true });
-    }
-  } catch (error) {
-    console.error('Toggle Coordinator Error:', error.message);
-    res.status(500).json({ message: 'Server error toggling coordinator role.' });
-  }
-});
 
 router.post('/users/auto-provision', authenticateToken, requireSystemAdmin, async (req, res) => {
   try {
@@ -1614,11 +1623,11 @@ router.post('/users/:id/toggle-student-assistant', authenticateToken, requireSys
       const hasOtherRole = await EventRole.findOne({
         userId,
         eventId: { $in: activeEventIds },
-        role: { $in: ['judge', 'mentor', 'coordinator'] },
+        role: { $in: ['judge', 'mentor'] },
         status: 'active'
       });
       if (hasOtherRole) {
-        const roleNameMap = { judge: 'Giám khảo', mentor: 'Mentor', coordinator: 'Coordinator' };
+        const roleNameMap = { judge: 'Giám khảo', mentor: 'Mentor' };
         const roleTitle = roleNameMap[hasOtherRole.role] || hasOtherRole.role;
         return res.status(400).json({ message: `Tài khoản này đang có vai trò ${roleTitle} trong sự kiện, không thể cấp quyền Cộng tác viên.` });
       }
@@ -1762,5 +1771,147 @@ router.post('/reset-password', async (req, res) => {
     res.status(500).json({ message: 'Có lỗi xảy ra trong quá trình đặt lại mật khẩu.' });
   }
 });
+
+router.post('/import-judges', authenticateToken, requireSystemAdmin, upload.single('file'), async (req, res) => {
+    const { eventId } = req.body;
+    if (!eventId) {
+      return res.status(400).json({ message: 'Vui lòng cung cấp Event ID.' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'Vui lòng upload file Excel.' });
+    }
+
+    try {
+      const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const rawData = XLSX.utils.sheet_to_json(sheet);
+
+      if (rawData.length === 0) {
+        return res.status(400).json({ message: 'File Excel rỗng hoặc không đúng định dạng.' });
+      }
+
+      const Event = mongoose.model('Event');
+      const Track = mongoose.model('Track');
+      const event = await Event.findById(eventId);
+      if (!event) return res.status(404).json({ message: 'Không tìm thấy cuộc thi.' });
+
+      const importedJudges = [];
+      const errors = [];
+
+      for (let index = 0; index < rawData.length; index++) {
+        const row = rawData[index];
+        const emailKey = Object.keys(row).find(k => k.toLowerCase() === 'email');
+        const nameKey = Object.keys(row).find(k => k.toLowerCase() === 'họ tên' || k.toLowerCase() === 'full name' || k.toLowerCase() === 'fullname');
+        const trackKey = Object.keys(row).find(k => k.toLowerCase() === 'bảng đấu' || k.toLowerCase() === 'track' || k.toLowerCase() === 'bảng');
+        const isChiefKey = Object.keys(row).find(k => k.toLowerCase() === 'chủ tịch' || k.toLowerCase() === 'chief' || k.toLowerCase() === 'is chief' || k.toLowerCase() === 'ischiefjudge');
+
+        const email = emailKey ? String(row[emailKey]).trim().toLowerCase() : null;
+        const fullName = nameKey ? String(row[nameKey]).trim() : '';
+        const trackName = trackKey ? String(row[trackKey]).trim() : '';
+        const isChief = isChiefKey ? (/y|yes|true|1|chủ tịch/i.test(String(row[isChiefKey]).trim())) : false;
+
+        if (!email) {
+          errors.push(`Dòng ${index + 2}: Thiếu email.`);
+          continue;
+        }
+
+        // Check if track exists in event
+        let trackId = null;
+        if (trackName) {
+          const cleanTrackName = trackName.replace(/^bảng\s+/i, '').trim();
+          const track = await Track.findOne({
+            eventId,
+            $or: [
+              { name: new RegExp('^' + trackName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') },
+              { name: new RegExp('^' + cleanTrackName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') },
+              { name: new RegExp('^bảng\\s+' + cleanTrackName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '$', 'i') }
+            ]
+          });
+          if (!track) {
+            errors.push(`Dòng ${index + 2}: Bảng đấu "${trackName}" không tồn tại trong cuộc thi này.`);
+            continue;
+          }
+          trackId = track._id;
+        }
+
+        let user = await User.findOne({ email });
+        const defaultPassword = 'password123';
+        
+        if (!user) {
+          const salt = await bcrypt.genSalt(10);
+          const passwordHash = await bcrypt.hash(defaultPassword, salt);
+          user = new User({
+            email,
+            passwordHash,
+            fullName: fullName || email.split('@')[0],
+            isApproved: true,
+            isActive: true
+          });
+          await user.save();
+
+          try {
+            await emailService.sendAccountProvisionEmail(user.email, user.fullName, defaultPassword, 'Giám khảo');
+          } catch (emailErr) {
+            console.error(`Dòng ${index + 2}: Lỗi gửi email đến ${email}:`, emailErr.message);
+          }
+        }
+
+        // Resolve roundId if trackId is provided
+        let resolvedRoundId = undefined;
+        if (track) {
+          resolvedRoundId = track.roundId;
+        }
+
+        // Delete existing duplicate role to prevent duplicate key error
+        await EventRole.deleteOne({
+          userId: user._id,
+          eventId,
+          trackId: trackId || undefined,
+          roundId: resolvedRoundId,
+          role: 'judge'
+        });
+
+        // Assign or update EventRole for judge
+        await EventRole.create({
+          userId: user._id,
+          eventId,
+          trackId: trackId || undefined,
+          roundId: resolvedRoundId,
+          role: 'judge',
+          isChiefJudge: isChief,
+          assignedBy: req.user._id,
+          assignedAt: new Date()
+        });
+
+        importedJudges.push({ email, fullName, isChief });
+      }
+
+      if (errors.length > 0 && importedJudges.length === 0) {
+        return res.status(400).json({ message: 'Import thất bại.', errors });
+      }
+
+      // Log to EventLog
+      const EventLog = mongoose.model('EventLog');
+      const log = new EventLog({
+        eventId,
+        actorId: req.user._id,
+        action: 'import_judges',
+        details: `Đã import danh sách giám khảo từ Excel: thành công ${importedJudges.length}/${rawData.length} người. Lỗi: ${errors.length}`
+      });
+      await log.save();
+
+      res.json({
+        message: `Đã import thành công ${importedJudges.length} giám khảo!`,
+        importedCount: importedJudges.length,
+        errors: errors.length > 0 ? errors : undefined
+      });
+
+    } catch (err) {
+      console.error('Import Judges Error:', err);
+      res.status(500).json({ message: 'Lỗi hệ thống khi import giám khảo.', error: err.message });
+    }
+  });
 
 module.exports = router;

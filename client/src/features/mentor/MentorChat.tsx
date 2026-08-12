@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import axios from 'axios';
-import { Send, Users, User, Quote, Forward, MoreHorizontal, X, ArrowLeft, MessageSquare, Search, Megaphone, MessagesSquare, MessageCircle } from 'lucide-react';
+import { Send, Users, User, Quote, Forward, MoreHorizontal, X, ArrowLeft, MessageSquare, Search, Megaphone, MessagesSquare, MessageCircle, Paperclip, FileText, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { useConfirm } from "../shared/ConfirmDialog";
 
@@ -13,6 +13,10 @@ interface Message {
   content: string;
   createdAt: string;
   isRecalled?: boolean;
+  fileUrl?: string;
+  fileName?: string;
+  fileSize?: number;
+  fileType?: string;
   replyTo?: {
     messageId: string;
     senderName: string;
@@ -57,6 +61,51 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [attachedFile, setAttachedFile] = useState<{
+    fileUrl: string;
+    fileName: string;
+    fileSize: number;
+    fileType: string;
+  } | null>(null);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("Tệp đính kèm không được vượt quá 20MB.");
+      return;
+    }
+
+    setUploadingFile(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const token = localStorage.getItem('token');
+
+    try {
+      const res = await axios.post("http://localhost:5000/api/chat/upload", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setAttachedFile({
+        fileUrl: res.data.fileUrl,
+        fileName: res.data.fileName,
+        fileSize: res.data.fileSize,
+        fileType: res.data.fileType,
+      });
+      toast.success("Tải lên tệp đính kèm thành công!");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Lỗi tải lên tệp đính kèm.");
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [unreadCounts, setUnreadCounts] = useState<{ [roomId: string]: number }>({});
@@ -416,7 +465,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
 
   const sendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !selectedRoom || !socket) return;
+    if ((!newMessage.trim() && !attachedFile) || !selectedRoom || !socket) return;
 
     if (isRoomReadOnly(selectedRoom)) {
       toast.error('Cuộc thi đã kết thúc. Chỉ có thể xem lịch sử chat.');
@@ -426,6 +475,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
     socket.emit('send_message', {
       roomId: selectedRoom._id,
       content: newMessage.trim(),
+      fileAttachment: attachedFile || undefined,
       replyTo: replyingTo ? {
         messageId: replyingTo._id,
         senderName: replyingTo.senderName,
@@ -434,6 +484,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
     });
 
     setNewMessage('');
+    setAttachedFile(null);
     setReplyingTo(null);
   };
 
@@ -676,6 +727,46 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                                   )}
 
                                   <div className="break-words whitespace-pre-wrap leading-relaxed">{msg.content}</div>
+
+                                  {msg.fileUrl && !isRecalled && (() => {
+                                    const fileUrlResolved = msg.fileUrl.startsWith("http://") || msg.fileUrl.startsWith("https://")
+                                      ? msg.fileUrl
+                                      : `http://localhost:5000${msg.fileUrl}`;
+                                    
+                                    return /(\.png|\.jpg|\.jpeg|\.gif)$/i.test(msg.fileUrl) ? (
+                                      <div className="mt-1.5 rounded-lg overflow-hidden border border-black/5 max-w-xs bg-slate-100">
+                                        <img
+                                          src={fileUrlResolved}
+                                          alt={msg.fileName}
+                                          className="max-h-40 w-auto object-cover cursor-pointer hover:opacity-90"
+                                          onClick={() => window.open(fileUrlResolved, '_blank')}
+                                        />
+                                      </div>
+                                    ) : (
+                                      <div className={`mt-1.5 p-2 rounded-lg border flex items-center gap-2 max-w-xs ${
+                                        isMe ? 'bg-white/10 border-white/20 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
+                                      }`}>
+                                        <FileText className="w-5 h-5 shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-[10px] font-bold truncate leading-tight">{msg.fileName || 'Tài liệu'}</p>
+                                          <p className="text-[9px] opacity-70 leading-none">
+                                            {msg.fileSize ? `${(msg.fileSize / 1024 / 1024).toFixed(2)} MB` : 'Chưa rõ'}
+                                          </p>
+                                        </div>
+                                        <a
+                                          href={fileUrlResolved}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          download={msg.fileName}
+                                          className={`p-1 rounded hover:bg-black/10 shrink-0 ${
+                                            isMe ? 'text-white' : 'text-slate-600'
+                                          }`}
+                                        >
+                                          <Download className="w-3.5 h-3.5" />
+                                        </a>
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
 
                                 {/* Action Buttons on Hover */}
@@ -724,8 +815,8 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                                         {activeMenuId === msg._id && (
                                           <div
                                             onClick={(e) => e.stopPropagation()}
-                                            className={`absolute ${isMe ? 'right-0' : 'left-0'
-                                              } top-full mt-1.5 bg-white border border-slate-250 rounded-xl shadow-xl py-1 z-20 w-32 overflow-hidden`}
+                                            className={`absolute ${isMe ? 'left-0' : 'right-0'
+                                              } bottom-full mb-1.5 bg-white border border-slate-200 rounded-xl shadow-xl py-1 z-[99] w-32 overflow-hidden`}
                                           >
                                             <button
                                               onClick={() => {
@@ -801,7 +892,37 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                         </div>
                       )}
 
-                      <form onSubmit={sendMessage} className="flex gap-2">
+                      {attachedFile && (
+                        <div className="px-2.5 py-1.5 bg-slate-50 border-l-2 border-cyan-500 flex items-center justify-between text-xs text-slate-600 gap-2 mb-2 rounded-lg">
+                          <div className="truncate flex-1 flex items-center gap-1.5">
+                            <Paperclip className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
+                            <span className="font-bold text-cyan-500">TỆP ĐÍNH KÈM:</span>{" "}
+                            <span className="italic text-slate-500 truncate">{attachedFile.fileName} ({(attachedFile.fileSize / 1024 / 1024).toFixed(2)} MB)</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setAttachedFile(null)}
+                            className="text-slate-400 hover:text-slate-650 cursor-pointer"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      )}
+
+                      <form onSubmit={sendMessage} className="flex gap-2 items-center">
+                        <label className="p-2 border border-slate-300 rounded-xl hover:bg-slate-100 cursor-pointer transition-colors text-slate-500 hover:text-slate-700 flex items-center justify-center shrink-0">
+                          {uploadingFile ? (
+                            <span className="w-3.5 h-3.5 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin"></span>
+                          ) : (
+                            <Paperclip size={14} />
+                          )}
+                          <input
+                            type="file"
+                            className="hidden"
+                            onChange={handleFileChange}
+                            disabled={uploadingFile}
+                          />
+                        </label>
                         <input
                           type="text"
                           value={newMessage}
@@ -811,7 +932,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                         />
                         <button
                           type="submit"
-                          disabled={!newMessage.trim() || !isConnected}
+                          disabled={(!newMessage.trim() && !attachedFile) || !isConnected}
                           className="bg-[#F27024] hover:bg-[#d95f1f] disabled:opacity-40 disabled:hover:bg-[#F27024] text-white p-2 rounded-xl transition-colors flex items-center justify-center cursor-pointer shadow-sm shadow-[#F27024]/10"
                         >
                           <Send size={14} />

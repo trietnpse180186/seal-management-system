@@ -1414,7 +1414,7 @@ export default function TeamArea() {
                             )
                           ) : (
                             <span className="flex items-center gap-0.5 bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-0.5 rounded text-[9px] font-bold">
-                              <Clock size={8} /> Chờ duyệt
+                              <Clock size={8} /> {m.role === "leader" ? "Leader (Chờ duyệt)" : "Chờ duyệt"}
                             </span>
                           )}
                         </div>

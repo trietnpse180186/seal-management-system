@@ -2015,9 +2015,8 @@ router.put("/:teamId/members/:userId/transfer-leader", authenticateToken, async 
       await oldLeader.save();
     }
 
-    // Promote new leader
+    // Promote new leader (retain existing confirmStatus without auto-confirming)
     member.role = "leader";
-    member.confirmStatus = "confirmed"; // Leader is always confirmed
     await member.save();
 
     // Update Team document
@@ -4516,9 +4515,8 @@ router.put("/:teamId/admin/members/:userId/role", authenticateToken, async (req,
         await oldLeader.save();
       }
 
-      // Promote new leader
+      // Promote new leader (retain existing confirmStatus without auto-confirming)
       member.role = "leader";
-      member.confirmStatus = "confirmed"; // Leader is always confirmed
       await member.save();
 
       // Update Team document

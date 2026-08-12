@@ -38,6 +38,7 @@ import MentorDashboard from "./features/mentor/MentorDashboard";
 import MentorTeamDetail from "./features/mentor/MentorTeamDetail";
 import MentorChat from "./features/mentor/MentorChat";
 import Gallery from "./features/landing/Gallery";
+import SupportCenter from "./features/support/SupportCenter";
 import { Toaster, toast } from "sonner";
 import { ConformProvider } from "./features/shared/ModalConform";
 import { ConfirmProvider } from "./features/shared/ConfirmDialog";
@@ -167,6 +168,7 @@ function AppContent({
     location.pathname === "/login" ||
     location.pathname === "/achievements" ||
     location.pathname === "/my-achievements" ||
+    location.pathname === "/support" ||
     location.pathname === "/guest-portal" ||
     location.pathname.startsWith("/album") ||
     location.pathname === "/confirm-survey";
@@ -277,6 +279,15 @@ function AppContent({
             }
           />
 
+          <Route
+            path="/support"
+            element={
+              <ProtectedRoute user={user} roles={roles} allowedRoles={["participant"]}>
+                <SupportCenter />
+              </ProtectedRoute>
+            }
+          />
+
           {/* Admin Routes under AdminLayout */}
           <Route
             path="/admin"
@@ -299,6 +310,7 @@ function AppContent({
             <Route path="users" element={<AdminUsersView />} />
             <Route path="live" element={<AdminLiveInteraction />} />
             <Route path="personnel" element={<PersonnelManagement />} />
+            <Route path="support" element={<SupportCenter coordinator />} />
             <Route
               path="grades"
               element={<AdminGradesView user={user} roles={roles} />}

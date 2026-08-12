@@ -52,6 +52,7 @@ require("./features/github-ai/Task");
 require("./features/grading/EventLog");
 require("./features/chat/ChatRoom");
 require("./features/chat/ChatMessage");
+require("./features/support/SupportRequest");
 const app = express();
 
 // Connect to MongoDB
@@ -141,6 +142,7 @@ const chatRouter = require('./features/chat/chat');
 const galleryRouter = require('./features/events/gallery');
 const personnelInvitationsRouter = require('./features/events/personnelInvitations');
 const ctsvRouter = require('./features/events/ctsv');
+const supportRouter = require('./features/support/support');
 
 app.use('/api', indexRouter);
 app.use('/api/auth', authRouter);
@@ -158,6 +160,7 @@ app.use('/api/chat', chatRouter);
 app.use('/api/gallery', galleryRouter);
 app.use('/api/personnel-invitations', personnelInvitationsRouter);
 app.use('/api/ctsv', ctsvRouter);
+app.use('/api/support', supportRouter);
 
 // Catch 404 and forward to error handler
 app.use(function (req, res, next) {

@@ -289,9 +289,9 @@ export default function GuestPortal({ user }: GuestPortalProps) {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12 font-mono">
         {/* Hero Section */}
-        <section className="relative overflow-hidden border border-slate-200 bg-white/95 p-8 flex flex-col md:flex-row items-center justify-between gap-8 rounded-2xl transition-all hover:border-[#F27024]/40 hover:shadow-[0_0_20px_rgba(242,112,36,0.06)]">
+        <section className="relative grid grid-cols-1 items-center gap-8 overflow-hidden rounded-2xl border border-slate-200 bg-white/95 p-8 transition-all hover:border-[#F27024]/40 hover:shadow-[0_0_20px_rgba(242,112,36,0.06)] md:grid-cols-2">
           <div className="absolute top-0 right-0 w-64 h-64 bg-[#F27024]/5 rounded-full blur-3xl"></div>
-          <div className="flex-1 space-y-6 z-10 text-left">
+          <div className="z-10 w-full space-y-6 text-left">
             <div className="flex items-center space-x-2">
               <span className="relative flex h-2 w-2">
 
@@ -336,13 +336,13 @@ export default function GuestPortal({ user }: GuestPortalProps) {
             </div>
           </div>
 
-          <div className="flex-1 relative h-64 md:h-80 w-full rounded-xl border border-slate-200 overflow-hidden bg-slate-900 shadow-inner">
+          <div className="relative mx-auto aspect-square w-full max-w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-inner md:max-w-[320px]">
             <video
               autoPlay
               loop
               muted
               playsInline
-              className="w-full h-full object-cover"
+              className="block w-full h-full object-contain"
               src="/davinci_edit_the_existing_video_only__keep_the_exact_shiel.mp4"
             />
             <div className="absolute inset-0 border border-[#F27024]/20 pointer-events-none rounded-xl"></div>

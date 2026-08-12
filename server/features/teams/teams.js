@@ -2644,16 +2644,21 @@ router.post("/send-import-invitations", authenticateToken, async (req, res) => {
       }
     }
 
-    const { teamIds } = req.body;
+    const { teamIds, eventId } = req.body;
     if (!Array.isArray(teamIds) || teamIds.length === 0) {
       return res.status(400).json({ message: "Danh sách teamIds là bắt buộc." });
     }
 
-    const pendingMembers = await TeamMember.find({
+    const query = {
       teamId: { $in: teamIds },
       confirmStatus: "pending",
       invitationEmailSent: false,
-    }).populate("userId", "email fullName");
+    };
+    if (eventId && mongoose.Types.ObjectId.isValid(eventId)) {
+      query.eventId = eventId;
+    }
+
+    const pendingMembers = await TeamMember.find(query).populate("userId", "email fullName");
 
     if (pendingMembers.length === 0) {
       return res.json({ sent: 0, failed: 0, total: 0, message: "Không có thành viên nào cần gửi email." });

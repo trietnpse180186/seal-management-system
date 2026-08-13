@@ -18,6 +18,7 @@ import PersonnelInvitationResponse from "./features/auth/PersonnelInvitationResp
 import LandingPage from "./features/landing/LandingPage";
 import AdminDashboard from "./features/admin/AdminDashboard";
 import AdminEvents from "./features/admin/AdminEvents";
+import EventStatisticsPage from "./features/admin/EventStatisticsPage";
 import AdminLiveInteraction from "./features/admin/AdminLiveInteraction";
 import PersonnelManagement from "./features/admin/PersonnelManagement";
 import TeamArea from "./features/teams/TeamArea";
@@ -307,6 +308,7 @@ function AppContent({
           >
             <Route index element={<AdminDashboard />} />
             <Route path="events" element={<AdminEvents />} />
+            <Route path="statistics" element={<EventStatisticsPage />} />
             <Route path="users" element={<AdminUsersView />} />
             <Route path="live" element={<AdminLiveInteraction />} />
             <Route path="personnel" element={<PersonnelManagement />} />

@@ -16,6 +16,7 @@ import {
   BriefcaseBusiness,
   LifeBuoy,
   Trash2,
+  ChartNoAxesCombined,
 } from "lucide-react";
 
 interface AdminLayoutProps {
@@ -164,6 +165,11 @@ export default function AdminLayout({
       icon: BriefcaseBusiness,
     },
     {
+      path: "/admin/statistics",
+      label: "Dashboard thống kê",
+      icon: ChartNoAxesCombined,
+    },
+    {
       path: "/admin/support",
       label: "Yêu cầu hỗ trợ",
       icon: LifeBuoy,
@@ -192,7 +198,7 @@ export default function AdminLayout({
 
   const filteredNavItems = navItems.filter(item => {
     if (isAssistant) {
-      return ['/admin/users', '/admin/events', '/admin/grades', '/admin/leaderboard'].includes(item.path);
+      return ['/admin/users', '/admin/events', '/admin/statistics', '/admin/grades', '/admin/leaderboard'].includes(item.path);
     }
     if (item.path === '/admin/support' && !user?.isSystemAdmin && !roles?.some((r) => r.role === 'admin_view')) {
       return false;

@@ -33,9 +33,13 @@ async function loadTeamAggregateContext(teamId, commitsLimit = 40, reviewsLimit 
   const Criterion = mongoose.model('Criterion');
 
   let roundCriteria = [];
+  let trackName = 'Unknown';
   try {
-    const team = await Team.findById(teamId);
+    const team = await Team.findById(teamId).populate('trackId');
     if (team) {
+      if (team.trackId) {
+        trackName = team.trackId.name;
+      }
       let roundId = team.currentRoundId;
       if (!roundId) {
         const Round = mongoose.model('Round');
@@ -58,7 +62,7 @@ async function loadTeamAggregateContext(teamId, commitsLimit = 40, reviewsLimit 
       }
     }
   } catch (err) {
-    console.error('[CONTEXT STORE ERROR] Failed loading round criteria:', err.message);
+    console.error('[CONTEXT STORE ERROR] Failed loading round criteria or track:', err.message);
   }
 
   let criteriaPrompt = '';
@@ -84,7 +88,8 @@ async function loadTeamAggregateContext(teamId, commitsLimit = 40, reviewsLimit 
     commitSummaries,
     reviewSummaries,
     roundCriteria,
-    criteriaPrompt
+    criteriaPrompt,
+    trackName
   };
 }
 

@@ -268,10 +268,22 @@ export const UsersTab: React.FC<UsersTabProps> = ({
         }
       }
       if (editingUser) {
+        const normalizedEmail = formData.email.trim().toLowerCase();
+        const emailConflict = users.some(
+          (u) =>
+            u._id !== editingUser._id &&
+            u.email.toLowerCase() === normalizedEmail,
+        );
+        if (emailConflict) {
+          toast.error("Tài khoản với email này đã tồn tại trong hệ thống.");
+          return;
+        }
+
         // Update basic User info
         await axios.put(
           `${API_BASE}/api/auth/users/${editingUser._id}`,
           {
+            email: normalizedEmail,
             fullName: formData.fullName,
             studentId: formData.studentId,
             university: formData.university,
@@ -1284,12 +1296,11 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                   <input
                     type="email"
                     required
-                    disabled={!!editingUser}
                     value={formData.email}
                     onChange={(e) =>
                       setFormData({ ...formData, email: e.target.value })
                     }
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white disabled:opacity-50 focus:outline-none focus:border-cyan-500 font-mono"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500 font-mono"
                     placeholder="user@example.com"
                   />
                 </div>

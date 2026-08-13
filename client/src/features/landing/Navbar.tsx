@@ -43,7 +43,22 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
   const socketRef = useRef<Socket | null>(null);
   const [hasTeam, setHasTeam] = useState<boolean | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isRegistrationOpen, setIsRegistrationOpen] = useState<boolean>(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const checkRegistrationStatus = async () => {
+      try {
+        const apiBase = import.meta.env.VITE_API_URL || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.origin : 'http://localhost:5000');
+        const res = await axios.get(`${apiBase}/api/events?status=registration`);
+        setIsRegistrationOpen(res.data && res.data.length > 0);
+      } catch (err) {
+        console.error("Failed to fetch registration status:", err);
+        setIsRegistrationOpen(false);
+      }
+    };
+    checkRegistrationStatus();
+  }, [user, location.pathname]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -364,10 +379,12 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
                 <span>Xem lịch trình</span>
               </Link>
 
-              <Link to={user ? "/team-area" : "/login?redirect=/team-area"} className={linkClass(user ? "/team-area" : "/login", isRegisterActive)}>
-                <UserPlus size={16} />
-                <span>Đăng ký thi</span>
-              </Link>
+              {isRegistrationOpen && (
+                <Link to={user ? "/team-area" : "/login?redirect=/team-area"} className={linkClass(user ? "/team-area" : "/login", isRegisterActive)}>
+                  <UserPlus size={16} />
+                  <span>Đăng ký thi</span>
+                </Link>
+              )}
             </>
           )}
 
@@ -380,10 +397,12 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
                     <Compass size={16} />
                     <span>Trang chủ</span>
                   </Link>
-                  <Link to="/team-area" className={linkClass("/team-area")}>
-                    <GitBranch size={16} />
-                    <span>{hasTeam ? "Khu vực đội thi" : "Đăng ký đội thi"}</span>
-                  </Link>
+                  {(hasTeam || isRegistrationOpen) && (
+                    <Link to="/team-area" className={linkClass("/team-area")}>
+                      <GitBranch size={16} />
+                      <span>{hasTeam ? "Khu vực đội thi" : "Đăng ký đội thi"}</span>
+                    </Link>
+                  )}
                   <Link to="/my-achievements" className={linkClass("/my-achievements")}>
                     <Award size={16} />
                     <span>Thành tích của tôi</span>

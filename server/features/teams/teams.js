@@ -2918,6 +2918,91 @@ router.post("/send-import-invitations", authenticateToken, async (req, res) => {
 });
 
 /**
+ * @route   POST /api/teams/send-member-invitations
+ * @desc    Send or resend invitation emails to selected pending contestants
+ * @access  Private (Coordinator / System Admin)
+ */
+router.post("/send-member-invitations", authenticateToken, async (req, res) => {
+  try {
+    const { eventId, memberIds } = req.body;
+    if (!eventId || !mongoose.Types.ObjectId.isValid(eventId)) {
+      return res.status(400).json({ message: "Sự kiện không hợp lệ." });
+    }
+
+    if (!req.user.isSystemAdmin) {
+      const coordRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId,
+        role: { $in: ["coordinator", "student_assistant"] },
+        status: "active",
+      });
+      if (!coordRole) {
+        return res.status(403).json({ message: "Không có quyền gửi email lời mời." });
+      }
+    }
+
+    const query = { eventId, confirmStatus: "pending" };
+    if (Array.isArray(memberIds) && memberIds.length > 0) {
+      const validMemberIds = memberIds.filter((id) => mongoose.Types.ObjectId.isValid(id));
+      if (validMemberIds.length === 0) {
+        return res.status(400).json({ message: "Danh sách thí sinh không hợp lệ." });
+      }
+      query._id = { $in: validMemberIds };
+    } else {
+      query.invitationEmailSent = false;
+    }
+
+    const members = await TeamMember.find(query).populate("userId", "email fullName");
+    let sent = 0;
+    const failures = [];
+
+    for (const member of members) {
+      try {
+        if (!member.userId?.email) throw new Error("Thí sinh chưa có địa chỉ email");
+        if (!member.confirmTokenHash || !member.confirmTokenExpiry || member.confirmTokenExpiry < new Date()) {
+          member.confirmTokenHash = crypto.randomBytes(32).toString("hex");
+          member.confirmTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        }
+
+        const team = await Team.findById(member.teamId).populate("leaderId", "fullName email");
+        if (!team) throw new Error("Không tìm thấy đội thi");
+        const event = await Event.findById(eventId);
+        const inviteLink = `${req.protocol}://${req.get("host")}/api/teams/confirm-invite?token=${member.confirmTokenHash}&memberId=${member._id}`;
+
+        await emailService.sendTeamInvitation(
+          member.userId.email, team.name, inviteLink,
+          team.leaderId?.fullName || null, team.leaderId?.email || null,
+          event?.name || null, member.role, event?.seminar || null,
+          member.userId.fullName,
+        );
+
+        member.invitationEmailSent = true;
+        member.invitedAt = new Date();
+        await member.save();
+        sent++;
+      } catch (error) {
+        member.invitationEmailSent = false;
+        await member.save().catch(() => {});
+        failures.push({ memberId: member._id, email: member.userId?.email || "", message: error.message });
+      }
+    }
+
+    res.json({
+      sent,
+      failed: failures.length,
+      total: members.length,
+      failures,
+      message: failures.length
+        ? `Đã gửi ${sent}/${members.length} email. Có ${failures.length} email gửi lỗi.`
+        : `Đã gửi thành công ${sent} email lời mời.`,
+    });
+  } catch (error) {
+    console.error("Send Member Invitations Error:", error.message);
+    res.status(500).json({ message: "Lỗi hệ thống khi gửi email lời mời." });
+  }
+});
+
+/**
  * @route   GET /api/teams/my-team/exam-access
  * @desc    Trả về link Google Drive đề bài cho thành viên đội đã xác nhận.
  *          Link Drive phải được admin set "Anyone with the link" — không cần OAuth cấp quyền.

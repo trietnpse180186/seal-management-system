@@ -10,6 +10,8 @@ import {
   AlertCircle,
   Loader2,
   Mail,
+  Search,
+  Send,
   FileText,
   X
 } from "lucide-react";
@@ -67,6 +69,9 @@ export default function TeamsTab({
   // 2: Confirmed -> Button changes to "Gửi email mời (N thành viên)"
   const [emailStep, setEmailStep] = useState<0 | 1 | 2>(0);
   const [sendingEmails, setSendingEmails] = useState(false);
+  const [activeTeamView, setActiveTeamView] = useState<"teams" | "contestants">("teams");
+  const [contestantSearch, setContestantSearch] = useState("");
+  const [sendingMemberIds, setSendingMemberIds] = useState<string[]>([]);
   const [emailResult, setEmailResult] = useState<{
     sent: number;
     failed: number;
@@ -291,6 +296,49 @@ export default function TeamsTab({
     }
   };
 
+  const pendingContestants = teamsList.flatMap((team: any) =>
+    (team.members || [])
+      .filter((member: any) => member.confirmStatus === "pending")
+      .map((member: any) => ({ ...member, teamName: team.name }))
+  );
+
+  const visibleContestants = pendingContestants.filter((member: any) => {
+    const keyword = contestantSearch.trim().toLowerCase();
+    if (!keyword) return true;
+    return [member.userId?.fullName, member.userId?.email, member.userId?.studentId, member.teamName]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(keyword));
+  });
+
+  const handleSendMemberEmails = async (memberIds?: string[]) => {
+    if (!selectedEvent?._id) return;
+    const ids = memberIds || pendingContestants
+      .filter((member: any) => !member.invitationEmailSent)
+      .map((member: any) => member._id);
+    if (ids.length === 0) {
+      toast.info("Không có thí sinh nào đang chờ gửi email.");
+      return;
+    }
+
+    setSendingMemberIds(ids);
+    try {
+      const token = localStorage.getItem("token");
+      const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+      const res = await axios.post(
+        `${apiBase}/api/teams/send-member-invitations`,
+        { eventId: selectedEvent._id, memberIds: ids },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data.failed > 0) toast.warning(res.data.message);
+      else toast.success(res.data.message);
+      if (onRefreshTeams) await onRefreshTeams();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Không thể gửi email lời mời.");
+    } finally {
+      setSendingMemberIds([]);
+    }
+  };
+
   const handleAddMember = async (teamId: string, value: string) => {
     if (!value.trim()) return;
     const token = localStorage.getItem("token");
@@ -429,8 +477,51 @@ export default function TeamsTab({
         </div>
       </div>
 
+      <nav className="flex gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1" aria-label="Chế độ quản lý đội thi">
+        <button type="button" onClick={() => setActiveTeamView("teams")} aria-pressed={activeTeamView === "teams"} className={`flex-1 rounded-xl px-4 py-2.5 text-xs font-bold font-mono transition-all focus:outline-none focus:ring-2 focus:ring-[#F27024]/40 ${activeTeamView === "teams" ? "bg-white text-[#F27024] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
+          Danh sách đội ({teamsList.length})
+        </button>
+        <button type="button" onClick={() => setActiveTeamView("contestants")} aria-pressed={activeTeamView === "contestants"} className={`flex-1 rounded-xl px-4 py-2.5 text-xs font-bold font-mono transition-all focus:outline-none focus:ring-2 focus:ring-[#F27024]/40 ${activeTeamView === "contestants" ? "bg-white text-[#F27024] shadow-sm" : "text-slate-500 hover:text-slate-800"}`}>
+          Email thí sinh ({pendingContestants.length})
+        </button>
+      </nav>
+
+      {activeTeamView === "contestants" && (
+        <section className="space-y-4" aria-labelledby="contestant-email-title">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h4 id="contestant-email-title" className="text-sm font-bold text-slate-900">Quản lý email xác nhận</h4>
+              <p className="mt-1 text-xs text-slate-500">Theo dõi và gửi lại lời mời cho các thí sinh chưa xác nhận.</p>
+            </div>
+            {!readOnly && <button type="button" onClick={() => handleSendMemberEmails()} disabled={sendingMemberIds.length > 0 || !pendingContestants.some((member: any) => !member.invitationEmailSent)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#F27024] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#d95f1d] focus:outline-none focus:ring-2 focus:ring-[#F27024]/40 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+              {sendingMemberIds.length > 0 ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} Gửi tất cả email chưa gửi
+            </button>}
+          </div>
+          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 focus-within:border-[#F27024] focus-within:ring-2 focus-within:ring-[#F27024]/10">
+            <Search size={15} className="text-slate-400" aria-hidden="true" /><span className="sr-only">Tìm thí sinh</span>
+            <input value={contestantSearch} onChange={(event) => setContestantSearch(event.target.value)} placeholder="Tìm theo tên, email, MSSV hoặc đội..." className="w-full bg-transparent text-xs text-slate-800 outline-none placeholder:text-slate-400" />
+          </label>
+          <div className="overflow-hidden rounded-2xl border border-slate-200">
+            <div className="overflow-x-auto"><table className="min-w-full divide-y divide-slate-200 text-left text-xs">
+              <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500"><tr><th className="px-4 py-3 font-bold">Thí sinh</th><th className="px-4 py-3 font-bold">Đội / Vai trò</th><th className="px-4 py-3 font-bold">Xác nhận</th><th className="px-4 py-3 font-bold">Email</th>{!readOnly && <th className="px-4 py-3 text-right font-bold">Thao tác</th>}</tr></thead>
+              <tbody className="divide-y divide-slate-100 bg-white">{visibleContestants.map((member: any) => {
+                const isSending = sendingMemberIds.includes(member._id);
+                return <tr key={member._id} className="hover:bg-slate-50/80">
+                  <td className="px-4 py-3"><p className="font-semibold text-slate-800">{member.userId?.fullName || "Chưa cập nhật"}</p><p className="mt-0.5 text-slate-500">{member.userId?.email}</p></td>
+                  <td className="px-4 py-3 text-slate-600"><p>{member.teamName}</p><p className="mt-0.5 text-[10px] uppercase text-slate-400">{member.role === "leader" ? "Trưởng nhóm" : "Thành viên"}</p></td>
+                  <td className="px-4 py-3"><span className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700">Chờ xác nhận</span></td>
+                  <td className="px-4 py-3"><span className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${member.invitationEmailSent ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-600"}`}>{member.invitationEmailSent ? "Đã gửi" : "Chưa gửi / gửi lỗi"}</span></td>
+                  {!readOnly && <td className="px-4 py-3 text-right"><button type="button" onClick={() => handleSendMemberEmails([member._id])} disabled={sendingMemberIds.length > 0} aria-label={`Gửi email lời mời cho ${member.userId?.fullName || member.userId?.email}`} className="inline-flex items-center gap-1.5 rounded-lg border border-orange-200 px-3 py-1.5 font-bold text-[#F27024] transition-all hover:bg-orange-50 focus:outline-none focus:ring-2 focus:ring-[#F27024]/30 disabled:cursor-not-allowed disabled:opacity-50">{isSending ? <Loader2 size={12} className="animate-spin" /> : <Mail size={12} />}{member.invitationEmailSent ? "Gửi lại" : "Gửi mail"}</button></td>}
+                </tr>;
+              })}</tbody>
+            </table></div>
+            {visibleContestants.length === 0 && <p className="px-4 py-10 text-center text-xs text-slate-500">Không có thí sinh chờ xác nhận phù hợp.</p>}
+          </div>
+        </section>
+      )}
+
       {/* ─── IMPORT EXCEL SECTION FOR ADMIN (WHITE THEME) ─── */}
-      {!readOnly && (
+      {!readOnly && activeTeamView === "teams" && (
         <div className="bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-slate-100">
             <h4 className="text-xs font-bold text-[#F27024] uppercase tracking-wider font-mono flex items-center gap-2">
@@ -647,7 +738,7 @@ export default function TeamsTab({
       )}
 
       {/* Grouped lists */}
-      <div className="space-y-6">
+      {activeTeamView === "teams" && <div className="space-y-6">
         {/* 1. Confirmed Teams */}
         <div>
           <h4 className="text-xs font-bold text-emerald-600 uppercase tracking-wider font-mono mb-3 flex items-center gap-2">
@@ -1028,6 +1119,19 @@ export default function TeamsTab({
                                 : "Chờ xác nhận"}
                             </span>
 
+                            {!readOnly && m.confirmStatus === "pending" && (
+                              <button
+                                type="button"
+                                onClick={() => handleSendMemberEmails([m._id])}
+                                disabled={sendingMemberIds.length > 0}
+                                className="inline-flex items-center gap-1 rounded-md border border-orange-200 px-2 py-1 text-[10px] font-bold text-[#F27024] transition-colors hover:bg-orange-50 focus:outline-none focus:ring-2 focus:ring-[#F27024]/30 disabled:cursor-not-allowed disabled:opacity-50"
+                                title={m.invitationEmailSent ? "Gửi lại email lời mời" : "Gửi email lời mời"}
+                              >
+                                {sendingMemberIds.includes(m._id) ? <Loader2 size={11} className="animate-spin" /> : <Mail size={11} />}
+                                {m.invitationEmailSent ? "Gửi lại" : "Gửi mail"}
+                              </button>
+                            )}
+
                             {!readOnly && m.role !== "leader" && (
                               <button
                                 onClick={() => handleDeleteMember(team._id, m.userId?._id, m.userId?.fullName)}
@@ -1092,7 +1196,7 @@ export default function TeamsTab({
               )}
           </div>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

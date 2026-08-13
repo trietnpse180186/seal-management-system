@@ -2918,6 +2918,120 @@ router.post("/send-import-invitations", authenticateToken, async (req, res) => {
 });
 
 /**
+ * @route   POST /api/teams/send-member-invitations
+ * @desc    Send or resend invitation emails to selected pending contestants
+ * @access  Private (Coordinator / System Admin)
+ */
+router.post("/send-member-invitations", authenticateToken, async (req, res) => {
+  try {
+    const { eventId, memberIds } = req.body;
+    if (!eventId || !mongoose.Types.ObjectId.isValid(eventId)) {
+      return res.status(400).json({ message: "Sự kiện không hợp lệ." });
+    }
+
+    if (!req.user.isSystemAdmin) {
+      const coordRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId,
+        role: { $in: ["coordinator", "student_assistant"] },
+        status: "active",
+      });
+      if (!coordRole) {
+        return res.status(403).json({ message: "Không có quyền gửi email lời mời." });
+      }
+    }
+
+    if (!isQueueAvailable()) {
+      return res.status(503).json({
+        message: "Hàng đợi email chưa sẵn sàng. Vui lòng kiểm tra kết nối Redis rồi thử lại.",
+      });
+    }
+
+    const query = {
+      eventId,
+      confirmStatus: "pending",
+      invitationEmailStatus: { $nin: ["queued", "sending"] },
+    };
+    if (Array.isArray(memberIds) && memberIds.length > 0) {
+      const validMemberIds = memberIds.filter((id) => mongoose.Types.ObjectId.isValid(id));
+      if (validMemberIds.length === 0) {
+        return res.status(400).json({ message: "Danh sách thí sinh không hợp lệ." });
+      }
+      query._id = { $in: validMemberIds };
+    } else {
+      query.invitationEmailSent = false;
+    }
+
+    const members = await TeamMember.find(query).populate("userId", "email fullName");
+    let queued = 0;
+    const failures = [];
+
+    for (let index = 0; index < members.length; index++) {
+      const member = members[index];
+      try {
+        if (!member.userId?.email) throw new Error("Thí sinh chưa có địa chỉ email");
+        if (!member.confirmTokenHash || !member.confirmTokenExpiry || member.confirmTokenExpiry < new Date()) {
+          member.confirmTokenHash = crypto.randomBytes(32).toString("hex");
+          member.confirmTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        }
+
+        const team = await Team.findById(member.teamId).populate("leaderId", "fullName email");
+        if (!team) throw new Error("Không tìm thấy đội thi");
+        const event = await Event.findById(eventId);
+        const inviteLink = `${req.protocol}://${req.get("host")}/api/teams/confirm-invite?token=${member.confirmTokenHash}&memberId=${member._id}`;
+
+        const nextAttempt = (member.invitationEmailAttempts || 0) + 1;
+        const jobId = `team-invite-${member._id}-${nextAttempt}`;
+        member.invitationEmailStatus = "queued";
+        member.invitationEmailJobId = jobId;
+        member.invitationEmailLastError = undefined;
+        await member.save();
+
+        const job = await addEmailJobWithDelay(
+          {
+            type: "team_invite",
+            teamMemberId: member._id.toString(),
+            email: member.userId.email,
+            teamName: team.name,
+            inviteLink,
+            leaderName: team.leaderId?.fullName || null,
+            leaderEmail: team.leaderId?.email || null,
+            eventName: event?.name || null,
+            role: member.role,
+            seminar: event?.seminar || null,
+            fullName: member.userId.fullName,
+          },
+          index * 100,
+          { jobId },
+        );
+        if (!job) throw new Error("Không thể thêm email vào hàng đợi");
+        queued++;
+      } catch (error) {
+        member.invitationEmailSent = false;
+        member.invitationEmailStatus = "failed";
+        member.invitationEmailLastError = error.message;
+        await member.save().catch(() => {});
+        failures.push({ memberId: member._id, email: member.userId?.email || "", message: error.message });
+      }
+    }
+
+    res.json({
+      queued,
+      sent: 0,
+      failed: failures.length,
+      total: members.length,
+      failures,
+      message: failures.length
+        ? `Đã đưa ${queued}/${members.length} email vào hàng đợi. Có ${failures.length} email chưa thể xếp hàng.`
+        : `Đã đưa ${queued} email vào hàng đợi an toàn.`,
+    });
+  } catch (error) {
+    console.error("Send Member Invitations Error:", error.message);
+    res.status(500).json({ message: "Lỗi hệ thống khi gửi email lời mời." });
+  }
+});
+
+/**
  * @route   GET /api/teams/my-team/exam-access
  * @desc    Trả về link Google Drive đề bài cho thành viên đội đã xác nhận.
  *          Link Drive phải được admin set "Anyone with the link" — không cần OAuth cấp quyền.

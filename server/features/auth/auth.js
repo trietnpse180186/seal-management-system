@@ -1472,10 +1472,21 @@ router.post('/users', authenticateToken, requireAdminOrAssistant, async (req, re
  * @access  Private (System Admin only)
  */
 router.put('/users/:id', authenticateToken, requireAdminOrAssistant, async (req, res) => {
-  const { fullName, studentId, university, isSystemAdmin, isActive, password } = req.body;
+  const { fullName, studentId, university, isSystemAdmin, isActive, password, email } = req.body;
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User không tồn tại.' });
+
+    if (email !== undefined && email.trim() !== '') {
+      const normalizedEmail = email.trim().toLowerCase();
+      if (normalizedEmail !== user.email) {
+        const existingUser = await User.findOne({ email: normalizedEmail, _id: { $ne: user._id } });
+        if (existingUser) {
+          return res.status(400).json({ message: 'Email này đã được sử dụng bởi tài khoản khác.' });
+        }
+        user.email = normalizedEmail;
+      }
+    }
 
     if (fullName !== undefined) user.fullName = fullName;
     if (studentId !== undefined) user.studentId = studentId;
@@ -1492,7 +1503,7 @@ router.put('/users/:id', authenticateToken, requireAdminOrAssistant, async (req,
     res.json({ message: 'Cập nhật tài khoản người dùng thành công!', user });
   } catch (error) {
     console.error('Update User Error:', error.message);
-    res.status(500).json({ message: 'Server error updating user.' });
+    res.status(500).json({ message: error.message || 'Server error updating user.' });
   }
 });
 

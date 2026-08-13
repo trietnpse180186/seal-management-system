@@ -263,9 +263,8 @@ export default function TeamsTab({
       const token = localStorage.getItem("token");
       const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
       const res = await axios.post(
-        `${apiBase}/api/teams/send-import-invitations`,
+        `${apiBase}/api/teams/send-member-invitations`,
         {
-          teamIds: importResult.teamIds,
           eventId: selectedEvent?._id,
         },
         {
@@ -274,7 +273,7 @@ export default function TeamsTab({
       );
 
       const newEmailResult = {
-        sent: res.data.sent || 0,
+        sent: res.data.queued || res.data.sent || 0,
         failed: res.data.failed || 0,
         total: res.data.total || 0,
         message: res.data.message || `Đã gửi thành công ${res.data.sent} email mời!`,
@@ -310,10 +309,31 @@ export default function TeamsTab({
       .some((value) => String(value).toLowerCase().includes(keyword));
   });
 
+  useEffect(() => {
+    if (activeTeamView !== "contestants" || !onRefreshTeams) return;
+    const refreshTimer = window.setInterval(() => void onRefreshTeams(), 5000);
+    return () => window.clearInterval(refreshTimer);
+  }, [activeTeamView, onRefreshTeams]);
+
+  const getEmailStatus = (member: any) => {
+    const status = member.invitationEmailStatus || (member.invitationEmailSent ? "sent" : "pending");
+    const statuses: Record<string, { label: string; className: string }> = {
+      pending: { label: "Chưa gửi", className: "border-slate-200 bg-slate-50 text-slate-600" },
+      queued: { label: "Đang chờ", className: "border-sky-200 bg-sky-50 text-sky-700" },
+      sending: { label: "Đang gửi", className: "border-violet-200 bg-violet-50 text-violet-700" },
+      sent: { label: "Đã gửi", className: "border-emerald-200 bg-emerald-50 text-emerald-700" },
+      failed: { label: "Gửi lỗi", className: "border-rose-200 bg-rose-50 text-rose-700" },
+    };
+    return statuses[status] || statuses.pending;
+  };
+
+  const canQueueEmail = (member: any) =>
+    !["queued", "sending"].includes(member.invitationEmailStatus);
+
   const handleSendMemberEmails = async (memberIds?: string[]) => {
     if (!selectedEvent?._id) return;
     const ids = memberIds || pendingContestants
-      .filter((member: any) => !member.invitationEmailSent)
+      .filter((member: any) => !member.invitationEmailSent && canQueueEmail(member))
       .map((member: any) => member._id);
     if (ids.length === 0) {
       toast.info("Không có thí sinh nào đang chờ gửi email.");
@@ -493,7 +513,7 @@ export default function TeamsTab({
               <h4 id="contestant-email-title" className="text-sm font-bold text-slate-900">Quản lý email xác nhận</h4>
               <p className="mt-1 text-xs text-slate-500">Theo dõi và gửi lại lời mời cho các thí sinh chưa xác nhận.</p>
             </div>
-            {!readOnly && <button type="button" onClick={() => handleSendMemberEmails()} disabled={sendingMemberIds.length > 0 || !pendingContestants.some((member: any) => !member.invitationEmailSent)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#F27024] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#d95f1d] focus:outline-none focus:ring-2 focus:ring-[#F27024]/40 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
+            {!readOnly && <button type="button" onClick={() => handleSendMemberEmails()} disabled={sendingMemberIds.length > 0 || !pendingContestants.some((member: any) => !member.invitationEmailSent && canQueueEmail(member))} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#F27024] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#d95f1d] focus:outline-none focus:ring-2 focus:ring-[#F27024]/40 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500">
               {sendingMemberIds.length > 0 ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} Gửi tất cả email chưa gửi
             </button>}
           </div>
@@ -510,8 +530,8 @@ export default function TeamsTab({
                   <td className="px-4 py-3"><p className="font-semibold text-slate-800">{member.userId?.fullName || "Chưa cập nhật"}</p><p className="mt-0.5 text-slate-500">{member.userId?.email}</p></td>
                   <td className="px-4 py-3 text-slate-600"><p>{member.teamName}</p><p className="mt-0.5 text-[10px] uppercase text-slate-400">{member.role === "leader" ? "Trưởng nhóm" : "Thành viên"}</p></td>
                   <td className="px-4 py-3"><span className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700">Chờ xác nhận</span></td>
-                  <td className="px-4 py-3"><span className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${member.invitationEmailSent ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-600"}`}>{member.invitationEmailSent ? "Đã gửi" : "Chưa gửi / gửi lỗi"}</span></td>
-                  {!readOnly && <td className="px-4 py-3 text-right"><button type="button" onClick={() => handleSendMemberEmails([member._id])} disabled={sendingMemberIds.length > 0} aria-label={`Gửi email lời mời cho ${member.userId?.fullName || member.userId?.email}`} className="inline-flex items-center gap-1.5 rounded-lg border border-orange-200 px-3 py-1.5 font-bold text-[#F27024] transition-all hover:bg-orange-50 focus:outline-none focus:ring-2 focus:ring-[#F27024]/30 disabled:cursor-not-allowed disabled:opacity-50">{isSending ? <Loader2 size={12} className="animate-spin" /> : <Mail size={12} />}{member.invitationEmailSent ? "Gửi lại" : "Gửi mail"}</button></td>}
+                  <td className="px-4 py-3"><span className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${getEmailStatus(member).className}`}>{getEmailStatus(member).label}</span>{member.invitationEmailLastError && <p className="mt-1 max-w-xs truncate text-[10px] text-rose-600" title={member.invitationEmailLastError}>{member.invitationEmailLastError}</p>}</td>
+                  {!readOnly && <td className="px-4 py-3 text-right"><button type="button" onClick={() => handleSendMemberEmails([member._id])} disabled={sendingMemberIds.length > 0 || !canQueueEmail(member)} aria-label={`Gửi email lời mời cho ${member.userId?.fullName || member.userId?.email}`} className="inline-flex items-center gap-1.5 rounded-lg border border-orange-200 px-3 py-1.5 font-bold text-[#F27024] transition-all hover:bg-orange-50 focus:outline-none focus:ring-2 focus:ring-[#F27024]/30 disabled:cursor-not-allowed disabled:opacity-50">{isSending || !canQueueEmail(member) ? <Loader2 size={12} className="animate-spin" /> : <Mail size={12} />}{canQueueEmail(member) ? (member.invitationEmailSent ? "Gửi lại" : "Gửi mail") : "Đang xử lý"}</button></td>}
                 </tr>;
               })}</tbody>
             </table></div>
@@ -1123,12 +1143,12 @@ export default function TeamsTab({
                               <button
                                 type="button"
                                 onClick={() => handleSendMemberEmails([m._id])}
-                                disabled={sendingMemberIds.length > 0}
+                                disabled={sendingMemberIds.length > 0 || !canQueueEmail(m)}
                                 className="inline-flex items-center gap-1 rounded-md border border-orange-200 px-2 py-1 text-[10px] font-bold text-[#F27024] transition-colors hover:bg-orange-50 focus:outline-none focus:ring-2 focus:ring-[#F27024]/30 disabled:cursor-not-allowed disabled:opacity-50"
                                 title={m.invitationEmailSent ? "Gửi lại email lời mời" : "Gửi email lời mời"}
                               >
-                                {sendingMemberIds.includes(m._id) ? <Loader2 size={11} className="animate-spin" /> : <Mail size={11} />}
-                                {m.invitationEmailSent ? "Gửi lại" : "Gửi mail"}
+                                {sendingMemberIds.includes(m._id) || !canQueueEmail(m) ? <Loader2 size={11} className="animate-spin" /> : <Mail size={11} />}
+                                {canQueueEmail(m) ? (m.invitationEmailSent ? "Gửi lại" : "Gửi mail") : "Đang xử lý"}
                               </button>
                             )}
 

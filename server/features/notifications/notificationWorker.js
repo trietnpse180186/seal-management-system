@@ -27,6 +27,9 @@ function startNotificationWorker() {
     console.error('[WORKER] Redis connection error:', err.message);
   });
 
+  const emailConcurrency = Math.max(1, parseInt(process.env.EMAIL_WORKER_CONCURRENCY || '2', 10));
+  const emailRateLimit = Math.max(1, parseInt(process.env.EMAIL_RATE_LIMIT_PER_SECOND || '2', 10));
+
   worker = new Worker(
     'notifications',
     async (job) => {
@@ -42,7 +45,11 @@ function startNotificationWorker() {
     },
     {
       connection: workerConnection,
-      concurrency: 5, // Process up to 5 jobs in parallel
+      concurrency: emailConcurrency,
+      limiter: {
+        max: emailRateLimit,
+        duration: 1000,
+      },
     }
   );
 
@@ -50,8 +57,21 @@ function startNotificationWorker() {
     console.log(`[WORKER] Job #${job.id} (${job.name}) completed successfully.`);
   });
 
-  worker.on('failed', (job, err) => {
+  worker.on('failed', async (job, err) => {
     console.error(`[WORKER] Job #${job?.id} (${job?.name}) failed after ${job?.attemptsMade} attempt(s): ${err.message}`);
+    if (job?.data?.teamMemberId) {
+      try {
+        const TeamMember = mongoose.model('TeamMember');
+        const maxAttempts = job.opts.attempts || 1;
+        await TeamMember.findByIdAndUpdate(job.data.teamMemberId, {
+          invitationEmailSent: false,
+          invitationEmailStatus: job.attemptsMade >= maxAttempts ? 'failed' : 'queued',
+          invitationEmailLastError: err.message,
+        });
+      } catch (updateError) {
+        console.error(`[WORKER] Failed to update invitation status: ${updateError.message}`);
+      }
+    }
   });
 
   let isLimitPaused = false;
@@ -80,6 +100,18 @@ async function handleEmailJob(jobId, data) {
   const { type } = data;
   console.log(`[WORKER] Processing email job #${jobId}: type=${type}, to=${data.email}`);
 
+  if (type === 'team_invite' && data.teamMemberId) {
+    const TeamMember = mongoose.model('TeamMember');
+    await TeamMember.findByIdAndUpdate(data.teamMemberId, {
+      $set: {
+        invitationEmailStatus: 'sending',
+        invitationEmailJobId: String(jobId),
+      },
+      $unset: { invitationEmailLastError: 1 },
+      $inc: { invitationEmailAttempts: 1 },
+    });
+  }
+
   switch (type) {
     case 'email_verify':
       await emailService.sendEmailVerification(data.email, data.fullName, data.verifyLink);
@@ -97,6 +129,17 @@ async function handleEmailJob(jobId, data) {
         data.seminar,
         data.fullName
       );
+      if (data.teamMemberId) {
+        const TeamMember = mongoose.model('TeamMember');
+        await TeamMember.findByIdAndUpdate(data.teamMemberId, {
+          $set: {
+            invitationEmailSent: true,
+            invitationEmailStatus: 'sent',
+            invitationEmailSentAt: new Date(),
+          },
+          $unset: { invitationEmailLastError: 1 },
+        });
+      }
       break;
 
     case 'event_open':

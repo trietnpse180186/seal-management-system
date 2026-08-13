@@ -2941,7 +2941,17 @@ router.post("/send-member-invitations", authenticateToken, async (req, res) => {
       }
     }
 
-    const query = { eventId, confirmStatus: "pending" };
+    if (!isQueueAvailable()) {
+      return res.status(503).json({
+        message: "Hàng đợi email chưa sẵn sàng. Vui lòng kiểm tra kết nối Redis rồi thử lại.",
+      });
+    }
+
+    const query = {
+      eventId,
+      confirmStatus: "pending",
+      invitationEmailStatus: { $nin: ["queued", "sending"] },
+    };
     if (Array.isArray(memberIds) && memberIds.length > 0) {
       const validMemberIds = memberIds.filter((id) => mongoose.Types.ObjectId.isValid(id));
       if (validMemberIds.length === 0) {
@@ -2953,10 +2963,11 @@ router.post("/send-member-invitations", authenticateToken, async (req, res) => {
     }
 
     const members = await TeamMember.find(query).populate("userId", "email fullName");
-    let sent = 0;
+    let queued = 0;
     const failures = [];
 
-    for (const member of members) {
+    for (let index = 0; index < members.length; index++) {
+      const member = members[index];
       try {
         if (!member.userId?.email) throw new Error("Thí sinh chưa có địa chỉ email");
         if (!member.confirmTokenHash || !member.confirmTokenExpiry || member.confirmTokenExpiry < new Date()) {
@@ -2969,32 +2980,50 @@ router.post("/send-member-invitations", authenticateToken, async (req, res) => {
         const event = await Event.findById(eventId);
         const inviteLink = `${req.protocol}://${req.get("host")}/api/teams/confirm-invite?token=${member.confirmTokenHash}&memberId=${member._id}`;
 
-        await emailService.sendTeamInvitation(
-          member.userId.email, team.name, inviteLink,
-          team.leaderId?.fullName || null, team.leaderId?.email || null,
-          event?.name || null, member.role, event?.seminar || null,
-          member.userId.fullName,
-        );
-
-        member.invitationEmailSent = true;
-        member.invitedAt = new Date();
+        const nextAttempt = (member.invitationEmailAttempts || 0) + 1;
+        const jobId = `team-invite-${member._id}-${nextAttempt}`;
+        member.invitationEmailStatus = "queued";
+        member.invitationEmailJobId = jobId;
+        member.invitationEmailLastError = undefined;
         await member.save();
-        sent++;
+
+        const job = await addEmailJobWithDelay(
+          {
+            type: "team_invite",
+            teamMemberId: member._id.toString(),
+            email: member.userId.email,
+            teamName: team.name,
+            inviteLink,
+            leaderName: team.leaderId?.fullName || null,
+            leaderEmail: team.leaderId?.email || null,
+            eventName: event?.name || null,
+            role: member.role,
+            seminar: event?.seminar || null,
+            fullName: member.userId.fullName,
+          },
+          index * 100,
+          { jobId },
+        );
+        if (!job) throw new Error("Không thể thêm email vào hàng đợi");
+        queued++;
       } catch (error) {
         member.invitationEmailSent = false;
+        member.invitationEmailStatus = "failed";
+        member.invitationEmailLastError = error.message;
         await member.save().catch(() => {});
         failures.push({ memberId: member._id, email: member.userId?.email || "", message: error.message });
       }
     }
 
     res.json({
-      sent,
+      queued,
+      sent: 0,
       failed: failures.length,
       total: members.length,
       failures,
       message: failures.length
-        ? `Đã gửi ${sent}/${members.length} email. Có ${failures.length} email gửi lỗi.`
-        : `Đã gửi thành công ${sent} email lời mời.`,
+        ? `Đã đưa ${queued}/${members.length} email vào hàng đợi. Có ${failures.length} email chưa thể xếp hàng.`
+        : `Đã đưa ${queued} email vào hàng đợi an toàn.`,
     });
   } catch (error) {
     console.error("Send Member Invitations Error:", error.message);

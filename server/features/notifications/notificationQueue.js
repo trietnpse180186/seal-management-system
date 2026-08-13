@@ -82,13 +82,13 @@ async function addEmailJob(data) {
  * @param {Object} data
  * @param {number} [delayMs=0]
  */
-async function addEmailJobWithDelay(data, delayMs = 0) {
+async function addEmailJobWithDelay(data, delayMs = 0, options = {}) {
   if (!notificationQueue || !isRedisAvailable) {
     console.warn(`[QUEUE] Redis unavailable. Delayed email job (${data.type}) skipped.`);
     return null;
   }
   try {
-    const job = await notificationQueue.add('send_email', data, { delay: delayMs });
+    const job = await notificationQueue.add('send_email', data, { delay: delayMs, ...options });
     console.log(`[QUEUE] Email job #${job.id} enqueued with ${delayMs}ms delay: type=${data.type}, to=${data.email}`);
     return job;
   } catch (err) {

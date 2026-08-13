@@ -257,7 +257,8 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
     teamId,
     context.commitSummaries,
     context.reviewSummaries,
-    context.criteriaPrompt
+    context.criteriaPrompt,
+    context.trackName
   );
 
   // 1. Try n8n webhook first if configured
@@ -425,7 +426,8 @@ async function analyzeCommitAndAggregate(commit, files, teamId, commits, priorRe
     context.commitSummaries,
     context.reviewSummaries,
     context.criteriaPrompt,
-    detailedRubrics
+    detailedRubrics,
+    context.trackName
   );
 
   // 1. Call n8n webhook (only 1 call!)

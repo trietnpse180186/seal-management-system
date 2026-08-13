@@ -12,6 +12,7 @@ import {
   ExternalLink,
   Crown,
   BriefcaseBusiness,
+  RefreshCw,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useConform } from "../shared/ModalConform";
@@ -132,6 +133,37 @@ export default function TracksTab({
   const [isCreateTrackOpen, setIsCreateTrackOpen] = useState(false);
   const isFormVisible = editingTrack ? true : isCreateTrackOpen;
   const conform = useConform();
+  const [reRegisteringTrackId, setReRegisteringTrackId] = useState<string | null>(null);
+
+  const handleReRegisterTrackMqtt = async (track: any) => {
+    if (!track.environmentId) {
+      toast.error("Bảng đấu chưa được cấu hình Environment ID.");
+      return;
+    }
+    const confirmed = await conform({
+      title: "Đăng ký lại MQTT cho Bảng đấu",
+      message: `Bạn có chắc chắn muốn đăng ký lại MQTT cho tất cả đội trong bảng "${track.name}" với Environment ID (${track.environmentId})? Dữ liệu phát telemetry sẽ được đồng bộ lại theo môi trường này.`,
+      conformText: "Đăng ký lại",
+      cancelText: "Hủy",
+      variant: "warning",
+    });
+    if (!confirmed) return;
+
+    setReRegisteringTrackId(track._id);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.post(
+        `http://localhost:5000/api/teams/track/${track._id}/re-register-mqtt`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success(res.data.message || "Đã đăng ký lại MQTT thành công!");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Lỗi khi đăng ký lại MQTT.");
+    } finally {
+      setReRegisteringTrackId(null);
+    }
+  };
 
   // Import judges via Excel
   const handleImportJudges = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -360,6 +392,20 @@ export default function TracksTab({
                 <div className="flex items-center gap-2.5 ml-2 shrink-0">
                   {!readOnly && !isDefaultFinalRoundTrack(t) && (
                     <>
+                      {t.environmentId && (
+                        <button
+                          type="button"
+                          disabled={reRegisteringTrackId === t._id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleReRegisterTrackMqtt(t);
+                          }}
+                          className="text-slate-400 hover:text-amber-400 transition-colors p-1 cursor-pointer disabled:opacity-50"
+                          title="Đăng ký lại MQTT cho tất cả đội trong bảng đấu với Env ID hiện tại"
+                        >
+                          <RefreshCw size={14} className={reRegisteringTrackId === t._id ? "animate-spin" : ""} />
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={(e) => {

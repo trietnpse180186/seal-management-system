@@ -4064,8 +4064,10 @@ router.post("/:teamId/sync-mqtt", authenticateToken, async (req, res) => {
         });
     }
 
-    // If already registered on external system, fetch latest credentials using code
-    if (team.externalTeamCode) {
+    const forceReRegister = req.body?.forceReRegister || req.query?.forceReRegister === "true";
+
+    // If already registered on external system and not forcing re-register, fetch latest credentials using code
+    if (team.externalTeamCode && !forceReRegister) {
       try {
         const { fetchExternalKeys } = require("./externalTeamService");
         const result = await fetchExternalKeys(team.externalTeamCode);
@@ -4098,18 +4100,20 @@ router.post("/:teamId/sync-mqtt", authenticateToken, async (req, res) => {
         });
       }
     } else {
-      // Not registered yet, register now
+      // Not registered yet or forcing re-register with current track environmentId
       let baseCode = generateTeamCode(team.name);
       if (!baseCode) {
         baseCode = `TEAM_${team._id.toString().substring(18).toUpperCase()}`;
       }
 
-      let code = baseCode;
+      let code = forceReRegister && team.externalTeamCode
+        ? `${baseCode}_${crypto.randomBytes(2).toString("hex").toUpperCase()}`
+        : baseCode;
       let syncSuccess = false;
       let result = null;
       let attempts = 0;
 
-      while (!syncSuccess && attempts < 3) {
+      while (!syncSuccess && attempts < 5) {
         try {
           attempts++;
           const { createExternalTeam } = require("./externalTeamService");
@@ -4120,7 +4124,7 @@ router.post("/:teamId/sync-mqtt", authenticateToken, async (req, res) => {
           );
           syncSuccess = true;
         } catch (err) {
-          if (err.code === "TEAM_CODE_EXISTS" && attempts < 3) {
+          if (err.code === "TEAM_CODE_EXISTS" && attempts < 5) {
             const suffix = crypto.randomBytes(2).toString("hex").toUpperCase();
             code = `${baseCode}_${suffix}`;
           } else {
@@ -4157,6 +4161,90 @@ router.post("/:teamId/sync-mqtt", authenticateToken, async (req, res) => {
   } catch (error) {
     console.error("Manual Sync Error:", error.message);
     res.status(500).json({ message: "Lỗi hệ thống khi đồng bộ khóa MQTT." });
+  }
+});
+
+/**
+ * @route   POST /api/teams/track/:trackId/re-register-mqtt
+ * @desc    Re-register all teams in a track with current track environmentId
+ * @access  Private (System Admin or Coordinator)
+ */
+router.post("/track/:trackId/re-register-mqtt", authenticateToken, async (req, res) => {
+  const { trackId } = req.params;
+
+  try {
+    const track = await Track.findById(trackId);
+    if (!track || !track.environmentId) {
+      return res
+        .status(400)
+        .json({ message: "Bảng đấu chưa được cấu hình Environment ID." });
+    }
+
+    const coordinatorRole = await EventRole.findOne({
+      userId: req.user._id,
+      eventId: track.eventId,
+      role: { $in: ["coordinator", "student_assistant"] },
+      status: "active",
+    });
+
+    if (!req.user.isSystemAdmin && !coordinatorRole) {
+      return res.status(403).json({ message: "Bạn không có quyền thực hiện." });
+    }
+
+    const teams = await Team.find({
+      $or: [{ trackId: track._id }, { originalTrackId: track._id }],
+    });
+
+    const { createExternalTeam } = require("./externalTeamService");
+    let successCount = 0;
+    let failedCount = 0;
+
+    for (const team of teams) {
+      let baseCode = generateTeamCode(team.name) || `TEAM_${team._id.toString().substring(18).toUpperCase()}`;
+      let code = `${baseCode}_${crypto.randomBytes(2).toString("hex").toUpperCase()}`;
+      let syncSuccess = false;
+      let attempts = 0;
+
+      while (!syncSuccess && attempts < 5) {
+        try {
+          attempts++;
+          const result = await createExternalTeam(code, team.name, track.environmentId);
+          if (result) {
+            team.externalTeamId = result.team?.id || "";
+            team.externalTeamCode = code;
+            team.accessCode = result.accessCode || "";
+            team.testApiKey = result.testApiKey || "";
+            team.judgeApiKey = result.judgeApiKey || "";
+            team.mqttUsername = result.mqttUsername || "";
+            team.mqttPassword = result.mqttPassword || "";
+            team.testTopic = `hackathon/${code.toLowerCase()}/test/telemetry`;
+            team.judgeTopic = `hackathon/${code.toLowerCase()}/judge/telemetry`;
+            await team.save();
+            syncSuccess = true;
+            successCount++;
+          }
+        } catch (err) {
+          if (err.code === "TEAM_CODE_EXISTS" && attempts < 5) {
+            const suffix = crypto.randomBytes(2).toString("hex").toUpperCase();
+            code = `${baseCode}_${suffix}`;
+          } else {
+            console.error(`Re-register team ${team.name} failed:`, err.message);
+            failedCount++;
+            break;
+          }
+        }
+      }
+    }
+
+    return res.json({
+      message: `Đã đăng ký lại MQTT cho ${successCount}/${teams.length} đội trong bảng đấu ${track.name}.`,
+      successCount,
+      failedCount,
+      total: teams.length,
+    });
+  } catch (error) {
+    console.error("Re-register Track MQTT Error:", error.message);
+    res.status(500).json({ message: "Lỗi hệ thống khi đăng ký lại MQTT cho bảng đấu." });
   }
 });
 

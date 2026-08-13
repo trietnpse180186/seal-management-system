@@ -1628,8 +1628,13 @@ export default function JudgeScoring() {
             {/* Modal Header */}
             <div className="flex justify-between items-start border-b border-slate-100 pb-3">
               <div>
-                <h3 className="text-base font-bold text-slate-800 uppercase tracking-normal">
-                  SỐ LIỆU LIVE — {team.name} ({team.externalTeamCode})
+                <h3 className="text-base font-bold text-slate-800 uppercase tracking-normal flex items-center gap-2 flex-wrap">
+                  <span>SỐ LIỆU LIVE — {team.name} ({team.externalTeamCode || "Chưa sync"})</span>
+                  {environmentCode && (
+                    <span className="rounded-lg bg-orange-100 border border-orange-200 px-2.5 py-0.5 text-xs font-bold text-[#F27024] font-mono">
+                      ENV: {environmentCode}
+                    </span>
+                  )}
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 font-sans">
                   Dữ liệu phát trực tiếp từ server (cập nhật ~1.5s). Thay đổi kịch bản dữ liệu bên dưới để giả lập các sự cố lỗi thiết bị.

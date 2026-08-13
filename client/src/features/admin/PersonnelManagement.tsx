@@ -65,9 +65,8 @@ export default function PersonnelManagement() {
       ]);
       setRoles(rolesRes.data.filter((item: any) => ["judge", "mentor"].includes(item.role)));
       setInvitations(invitationsRes.data);
-      const activeRound = eventDetailsRes.data.rounds?.find((round: any) => round.status === "active");
       setRounds(eventDetailsRes.data.rounds || []);
-      setTracks((eventDetailsRes.data.tracks || []).filter((track: any) => !activeRound || String(track.roundId) === String(activeRound._id)));
+      setTracks(eventDetailsRes.data.tracks || []);
     } catch (error) {
       console.error("Load personnel error", error);
       toast.error("Không thể tải danh sách nhân sự sự kiện.");
@@ -296,35 +295,53 @@ export default function PersonnelManagement() {
 
         // Dynamic round/track matching
         if (marker) {
+          const normalizeKey = (str: string) =>
+            str.trim().toLowerCase().replace(/^(bảng|track|vòng)\s*/i, "").trim();
+
           const matchedRound = rounds.find((r: any) =>
-            marker.startsWith(r.name.trim().toLocaleUpperCase("vi-VN"))
+            marker.startsWith(r.name.trim().toLocaleUpperCase("vi-VN")) ||
+            (marker.includes("CHUNG KẾT") && (r.advanceTopN === 0 || r.name.toLowerCase().includes("chung kết"))) ||
+            (marker.includes("LOẠI") && r.name.toLowerCase().includes("loại"))
           );
 
           if (matchedRound) {
             role = "judge";
             roundName = matchedRound.name;
+            const isFinal = matchedRound.advanceTopN === 0 || matchedRound.name.toLowerCase().includes("chung kết");
             const dashIndex = marker.indexOf("-");
             let rawTrack = dashIndex >= 0 ? marker.substring(dashIndex + 1).trim() : "";
 
-            const matchedTrack = tracks.find(
-              (t: any) => String(t.roundId) === String(matchedRound._id) &&
-                t.name.trim().toLocaleUpperCase("vi-VN") === rawTrack.toLocaleUpperCase("vi-VN"),
-            ) || tracks.find((t: any) => String(t.roundId) === String(matchedRound._id));
-            trackName = matchedTrack ? matchedTrack.name : (rawTrack || "Bảng Chung Kết");
+            const roundTracks = tracks.filter((t: any) => String(t.roundId) === String(matchedRound._id));
+            const matchedTrack = roundTracks.find(
+              (t: any) =>
+                t.name.trim().toLocaleUpperCase("vi-VN") === rawTrack.toLocaleUpperCase("vi-VN") ||
+                (rawTrack && normalizeKey(t.name) === normalizeKey(rawTrack))
+            ) || (isFinal ? (roundTracks[0] || tracks.find((t) => t.name.toLowerCase().includes("chung kết"))) : undefined);
+
+            if (matchedTrack) {
+              trackName = matchedTrack.name;
+            } else if (isFinal) {
+              trackName = "Bảng Chung Kết";
+            } else if (rawTrack) {
+              trackName = /^bảng\s+/i.test(rawTrack) ? rawTrack : `Bảng ${rawTrack}`;
+            } else {
+              trackName = "";
+            }
             continue;
           }
 
-          if (marker.startsWith("VÒNG SƠ LOẠI")) {
+          if (marker.startsWith("VÒNG SƠ LOẠI") || marker.startsWith("LOẠI")) {
             role = "judge";
             roundName = "Vòng sơ loại";
             const dashIndex = marker.indexOf("-");
-            trackName = dashIndex >= 0 ? marker.substring(dashIndex + 1).trim() : (marker.match(/TRACK\s*\d+/i)?.[0] || "");
+            let rawTrack = dashIndex >= 0 ? marker.substring(dashIndex + 1).trim() : (marker.match(/TRACK\s*\d+/i)?.[0] || "");
+            trackName = rawTrack ? (/^bảng\s+/i.test(rawTrack) ? rawTrack : `Bảng ${rawTrack}`) : "";
             continue;
           }
-          if (marker === "VÒNG CHUNG KẾT") {
+          if (marker === "VÒNG CHUNG KẾT" || marker.startsWith("VÒNG CHUNG KẾT")) {
             role = "judge";
             roundName = "Vòng chung kết";
-            trackName = "Chung kết";
+            trackName = "Bảng Chung Kết";
             continue;
           }
         }
@@ -493,10 +510,13 @@ export default function PersonnelManagement() {
   };
 
   const deleteInvitation = async (invitation: any) => {
+    const isProvisioned = invitation.accountStatus === "provisioned" || invitation.status === "accepted";
     const confirmed = await conform({
-      title: "Xác nhận xóa lời mời",
-      message: `Xóa lời mời đã gửi đến ${invitation.email}?`,
-      conformText: "Xóa lời mời",
+      title: "Xác nhận xóa nhân sự",
+      message: isProvisioned
+        ? `Bạn có chắc chắn muốn xóa nhân sự ${invitation.fullName} (${invitation.email})? Quyền Judge/Mentor của nhân sự này trong sự kiện sẽ bị thu hồi và xóa hoàn toàn.`
+        : `Bạn có chắc chắn muốn xóa lời mời của ${invitation.fullName} (${invitation.email})?`,
+      conformText: "Xóa nhân sự",
       cancelText: "Hủy",
       variant: "danger",
     });
@@ -507,10 +527,10 @@ export default function PersonnelManagement() {
         `http://localhost:5000/api/personnel-invitations/${invitation._id}`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
-      toast.success(response.data.message || "Đã xóa lời mời.");
+      toast.success(response.data.message || "Đã xóa nhân sự.");
       await loadPersonnel();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Không thể xóa lời mời nhân sự.");
+      toast.error(error.response?.data?.message || "Không thể xóa nhân sự.");
     } finally {
       setIsAccountActionLoading(false);
     }
@@ -713,7 +733,8 @@ export default function PersonnelManagement() {
                         </div>
                         <div className="mt-3 flex flex-wrap items-center gap-3">
                           {invitation.assignments?.map((item: any, assignIndex: number) => {
-                            const isFinalRound = String(item.roundName || "").toLowerCase().includes("chung kết") || String(item.trackName || "").toLowerCase().includes("chung kết");
+                            const roundObj = rounds.find((r) => r.name.trim().toLowerCase() === (item.roundName || "").trim().toLowerCase());
+                            const isFinalRound = (roundObj && roundObj.advanceTopN === 0) || String(item.roundName || "").toLowerCase().includes("chung kết");
                             if (isFinalRound) {
                               return (
                                 <div key={assignIndex} className="block max-w-56">
@@ -727,7 +748,9 @@ export default function PersonnelManagement() {
                               );
                             }
 
-                            const matchedTrackId = tracks.find((t) => t.name.trim().toLowerCase() === (item.trackName || "").trim().toLowerCase())?._id || "";
+                            const roundTracks = roundObj ? tracks.filter((t) => String(t.roundId) === String(roundObj._id)) : tracks;
+                            const availableTracks = roundTracks.length > 0 ? roundTracks : tracks;
+                            const matchedTrackId = availableTracks.find((t) => t.name.trim().toLowerCase() === (item.trackName || "").trim().toLowerCase())?._id || "";
                             return (
                               <label key={assignIndex} className="block max-w-56">
                                 <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
@@ -740,7 +763,7 @@ export default function PersonnelManagement() {
                                   className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#F27024]/30 disabled:opacity-50"
                                 >
                                   <option value="">Chọn track ({item.role})</option>
-                                  {tracks.map((track) => (
+                                  {availableTracks.map((track) => (
                                     <option key={track._id} value={track._id}>
                                       {track.name}
                                     </option>
@@ -756,10 +779,19 @@ export default function PersonnelManagement() {
                         {invitation.emailStatus === "failed" && <span className="rounded-lg bg-rose-50 px-2.5 py-1.5 text-[10px] font-bold text-rose-700">Gửi email thất bại</span>}
                         {invitation.accountEmailStatus === "failed" && <span className="rounded-lg bg-rose-50 px-2.5 py-1.5 text-[10px] font-bold text-rose-700">Email tài khoản thất bại</span>}
                         {["pending", "rejected"].includes(invitation.status) && <button type="button" disabled={isAccountActionLoading} onClick={() => resendInvitation(invitation)} className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-[10px] font-bold text-orange-700 transition-colors hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-orange-300 disabled:cursor-not-allowed disabled:opacity-50">Gửi lại lời mời</button>}
-                        {["pending", "rejected"].includes(invitation.status) && <button type="button" aria-label={`Xóa lời mời của ${invitation.fullName}`} disabled={isAccountActionLoading} onClick={() => deleteInvitation(invitation)} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-[10px] font-bold text-rose-700 transition-colors hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-300 disabled:cursor-not-allowed disabled:opacity-50"><Trash2 size={12} aria-hidden="true" />Xóa lời mời</button>}
                         {invitation.status === "accepted" && invitation.accountStatus !== "provisioned" && <button type="button" disabled={isAccountActionLoading} onClick={() => runAccountAction(`${invitation._id}/provision`, "Đã cấp tài khoản.")} className="rounded-lg bg-[#F27024] px-3 py-1.5 text-[10px] font-bold text-white hover:bg-[#d95f1f] disabled:opacity-50">{invitation.accountStatus === "revoked" ? "Cấp lại tài khoản" : "Cấp tài khoản"}</button>}
                         {invitation.accountStatus === "provisioned" && <><span className="rounded-lg bg-emerald-50 px-2.5 py-1.5 text-[10px] font-bold text-emerald-700">Đã cấp tài khoản</span><button type="button" disabled={isAccountActionLoading} onClick={() => runAccountAction(`${invitation._id}/revoke`, "Đã thu hồi quyền.", true)} className="rounded-lg border border-rose-200 px-3 py-1.5 text-[10px] font-bold text-rose-700 hover:bg-rose-50 disabled:opacity-50">Thu hồi</button></>}
                         {invitation.accountStatus === "revoked" && <span className="rounded-lg bg-slate-100 px-2.5 py-1.5 text-[10px] font-bold text-slate-600">Đã thu hồi</span>}
+                        <button
+                          type="button"
+                          aria-label={`Xóa nhân sự ${invitation.fullName}`}
+                          disabled={isAccountActionLoading}
+                          onClick={() => deleteInvitation(invitation)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-[10px] font-bold text-rose-700 transition-colors hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <Trash2 size={12} aria-hidden="true" />
+                          Xóa nhân sự
+                        </button>
                       </div>
                     </div>
                   );

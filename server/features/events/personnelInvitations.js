@@ -210,18 +210,22 @@ router.get('/event/:eventId', authenticateToken, async (req, res) => {
 router.delete('/:invitationId', authenticateToken, async (req, res) => {
   try {
     const invitation = await PersonnelInvitation.findById(req.params.invitationId);
-    if (!invitation) return res.status(404).json({ message: 'Không tìm thấy lời mời.' });
+    if (!invitation) return res.status(404).json({ message: 'Không tìm thấy nhân sự hoặc lời mời.' });
     if (!await canManagePersonnel(req.user, invitation.eventId)) {
-      return res.status(403).json({ message: 'Bạn không có quyền xóa lời mời nhân sự.' });
+      return res.status(403).json({ message: 'Bạn không có quyền xóa nhân sự.' });
     }
-    if (!['pending', 'rejected'].includes(invitation.status)) {
-      return res.status(409).json({ message: 'Không thể xóa lời mời đã được chấp thuận.' });
+    if (invitation.userId) {
+      await EventRole.deleteMany({
+        userId: invitation.userId,
+        eventId: invitation.eventId,
+        role: { $in: ['judge', 'mentor'] },
+      });
     }
     await invitation.deleteOne();
-    res.json({ message: `Đã xóa lời mời của ${invitation.fullName}.` });
+    res.json({ message: `Đã xóa nhân sự ${invitation.fullName} khỏi sự kiện.` });
   } catch (error) {
-    console.error('Delete Personnel Invitation Error:', error.message);
-    res.status(500).json({ message: 'Không thể xóa lời mời nhân sự.' });
+    console.error('Delete Personnel Error:', error.message);
+    res.status(500).json({ message: 'Không thể xóa nhân sự.' });
   }
 });
 

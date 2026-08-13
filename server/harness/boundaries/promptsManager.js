@@ -105,8 +105,10 @@ const promptsRegistry = {
     IMPORTANT: You MUST write all descriptive fields (especially suggested_questions_for_team, overall_picture.push_summary, overall_picture.current_focus, overall_picture.project_about, assessment.advantages, assessment.disadvantages, assessment.improvement_areas, and suggested_test_cases) entirely in fluent, professional Vietnamese.
   `,
 
-  repository_review: (teamId, commitSummaries, reviewSummaries, criteriaPrompt) => `
+  repository_review: (teamId, commitSummaries, reviewSummaries, criteriaPrompt, trackName) => `
     You are an expert AI Judge Auditor for the SEAL Hackathon. Synthesize the development history of team ${teamId}.
+    This team is participating in: ${trackName || 'Unknown Track'}
+
     Use the following inputs:
     
     Commits history (up to 200):
@@ -148,10 +150,15 @@ const promptsRegistry = {
     }
   `,
 
-  combined_sync_review: (authorName, authorGithubUsername, message, fileSummaries, teamId, commitSummaries, reviewSummaries, criteriaPrompt, detailedRubrics) => `
+  combined_sync_review: (authorName, authorGithubUsername, message, fileSummaries, teamId, commitSummaries, reviewSummaries, criteriaPrompt, detailedRubrics, trackName) => `
     You are an expert AI code reviewer and Hackathon Judge Auditor for the SEAL Hackathon.
     Your task is to analyze the new batch of commits and also synthesize the overall development history of team ${teamId} to evaluate their progress.
     
+    The team participating in this Hackathon belongs to: ${trackName || 'Unknown Track'}
+    
+    IMPORTANT: You MUST evaluate and audit this team based EXCLUSIVELY on the criteria and device checklist of their designated track: ${trackName || 'Unknown Track'}.
+    Do NOT check criteria for other tracks.
+
     =========================================
     PART 1: NEW BATCH OF COMMITS TO REVIEW
     =========================================
@@ -182,7 +189,7 @@ const promptsRegistry = {
     =========================================
     PART 4: HARD CONSTRAINTS VALIDATION (CRITICAL FAILS)
     =========================================
-    Analyze the code repository for the active track based on their specific Auto-Fail criteria:
+    Analyze the code repository for their designated track (${trackName || 'Unknown Track'}) based on the specific Auto-Fail criteria:
     - Track 1 (Smart Home):
       1. AI Algorithm Evidence: Look for imports or configurations of ML/DL/LLM Agent libraries or APIs. If it is only static IF/ELSE/SWITCH rules, flag it as WARNING_CHECK_SLIDE since the team might present their architecture in the slide.
       2. Severity Accuracy: Scan for severity mapping logic (LOW/MEDIUM/HIGH/CRITICAL) for incidents and check for logical alignment with BTC rules.
@@ -194,7 +201,7 @@ const promptsRegistry = {
     - Track 3 (Smart Factory):
       1. Predictive algorithm evidence: Check if there is code predicting faults before threshold is reached (e.g. trend analysis, forecasting) rather than just passive threshold checking. Flag as WARNING_CHECK_SLIDE if only passive code is found.
       2. Debouncing/Filtering: Check for debounce/throttle logic to filter noise.
-      3. UX Industrial Dashboard: Check if layout is designed for control rooms (incident prioritizing, non-cluttered).
+      3. UX Industrial Dashboard & 04/06 Devices: Check if layout is designed for control rooms (incident prioritizing, non-cluttered). Check if at least 4 out of 6 Track 3 devices (MOTOR_01, LINE_01, CONVEYOR_01, PRESS_01, GAS_01, PROBE_01) are parsed and displayed.
 
     =========================================
     INSTRUCTIONS & OUTPUT FORMAT

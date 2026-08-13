@@ -19,8 +19,6 @@ const PersonnelInvitationSchema = new Schema({
   invitedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   invitedAt: { type: Date, default: Date.now },
   respondedAt: { type: Date },
-  emailStatus: { type: String, enum: ['pending', 'sent', 'failed'], default: 'pending' },
-  emailError: { type: String },
   accountStatus: {
     type: String,
     enum: ['not_provisioned', 'provisioned', 'revoked'],
@@ -29,8 +27,6 @@ const PersonnelInvitationSchema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: 'User' },
   provisionedAt: { type: Date },
   revokedAt: { type: Date },
-  accountEmailStatus: { type: String, enum: ['pending', 'sent', 'failed'] },
-  accountEmailError: { type: String },
 }, { timestamps: true });
 
 PersonnelInvitationSchema.index({ eventId: 1, email: 1 }, { unique: true });

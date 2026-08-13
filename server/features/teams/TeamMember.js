@@ -11,7 +11,15 @@ const TeamMemberSchema = new Schema({
   confirmTokenExpiry: { type: Date },
   confirmedAt: { type: Date },
   invitedAt: { type: Date, default: Date.now },
-  invitationEmailSent: { type: Boolean, default: true }
+  invitationEmailSent: { type: Boolean, default: true },
+  invitationEmailStatus: {
+    type: String,
+    enum: ['pending', 'queued', 'sending', 'sent', 'failed']
+  },
+  invitationEmailJobId: { type: String },
+  invitationEmailSentAt: { type: Date },
+  invitationEmailLastError: { type: String },
+  invitationEmailAttempts: { type: Number, default: 0 }
 }, {
   timestamps: true
 });

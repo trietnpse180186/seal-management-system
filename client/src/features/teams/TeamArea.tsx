@@ -19,6 +19,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import RegisterTeam from "./RegisterTeam";
+import { useConform } from "../shared/ModalConform";
 import GithubUserAutocomplete from "../shared/GithubUserAutocomplete";
 import UniversityCombobox from "../shared/UniversityCombobox";
 
@@ -197,6 +198,7 @@ function SeminarWidget({ seminar }: SeminarWidgetProps) {
 }
 
 export default function TeamArea() {
+  const conform = useConform();
   const [searchParams] = useSearchParams();
   const eventIdParam = searchParams.get("eventId");
   const token = localStorage.getItem("token");
@@ -609,6 +611,61 @@ export default function TeamArea() {
       toast.error(err.response?.data?.message || "Lỗi khi cập nhật thông tin.");
     } finally {
       setSavingBasicInfo(false);
+    }
+  };
+
+  const handleDeleteMemberParticipant = async (userId: string, name: string) => {
+    if (!data?.team?._id) return;
+    const conformed = await conform({
+      title: "Xóa thành viên",
+      message: `Bạn có chắc chắn muốn xóa thành viên "${name}" khỏi đội thi không?`,
+      variant: "danger",
+    });
+    if (!conformed) return;
+
+    try {
+      const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+      const res = await axios.delete(
+        `${apiBase}/api/teams/${data.team._id}/members/${userId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success(res.data.message || "Đã xóa thành viên thành công!");
+      if (res.data.autoApproved) {
+        toast.info("Đội thi đã được tự động duyệt do tất cả thành viên còn lại đều đã xác nhận!");
+      }
+      setShowEditModal(false);
+      await fetchTeamData();
+    } catch (err: any) {
+      console.error("Leader delete member error:", err);
+      toast.error(err.response?.data?.message || "Lỗi khi xóa thành viên.");
+    }
+  };
+
+  const handleTransferLeaderParticipant = async (userId: string, name: string) => {
+    if (!data?.team?._id) return;
+    const conformed = await conform({
+      title: "Chuyển vai trò Trưởng nhóm",
+      message: `Bạn có chắc chắn muốn bổ nhiệm "${name}" làm Trưởng nhóm mới không? Bạn sẽ chuyển thành thành viên bình thường.`,
+      variant: "warning",
+    });
+    if (!conformed) return;
+
+    try {
+      const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5000";
+      const res = await axios.put(
+        `${apiBase}/api/teams/${data.team._id}/members/${userId}/transfer-leader`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success(res.data.message || "Đã chuyển vai trò Trưởng nhóm thành công!");
+      if (res.data.autoApproved) {
+        toast.info("Đội thi đã được tự động duyệt do tất cả thành viên còn lại đều đã xác nhận!");
+      }
+      setShowEditModal(false);
+      await fetchTeamData();
+    } catch (err: any) {
+      console.error("Leader transfer leader error:", err);
+      toast.error(err.response?.data?.message || "Lỗi khi chuyển vai trò Trưởng nhóm.");
     }
   };
 
@@ -1357,7 +1414,7 @@ export default function TeamArea() {
                             )
                           ) : (
                             <span className="flex items-center gap-0.5 bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-0.5 rounded text-[9px] font-bold">
-                              <Clock size={8} /> Chờ duyệt
+                              <Clock size={8} /> {m.role === "leader" ? "Leader (Chờ duyệt)" : "Chờ duyệt"}
                             </span>
                           )}
                         </div>
@@ -1604,6 +1661,26 @@ export default function TeamArea() {
                           >
                             XÓA
                           </button>
+                        )}
+                        {isLeader && !member.isNew && member.role !== "leader" && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleTransferLeaderParticipant(member.userId, member.fullName)}
+                              className="text-amber-500 hover:text-amber-400 text-[8px] font-bold cursor-pointer font-mono border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 rounded"
+                              title="Chuyển vai trò Trưởng nhóm"
+                            >
+                              CHUYỂN TRƯỞNG NHÓM
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteMemberParticipant(member.userId, member.fullName)}
+                              className="text-rose-500 hover:text-rose-400 text-[8px] font-bold cursor-pointer font-mono border border-rose-500/20 bg-rose-500/10 px-2 py-0.5 rounded"
+                              title="Xóa thành viên khỏi đội"
+                            >
+                              XÓA
+                            </button>
+                          </>
                         )}
                       </div>
 

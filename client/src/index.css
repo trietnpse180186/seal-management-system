@@ -847,6 +847,27 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 2px rgba(242, 112, 36, 0.15), 0 0 10px rgba(242, 112, 36, 0.2) !important;
 }
 
+/* Support form uses the same light palette as the participant team area. */
+.support-light input,
+.support-light select,
+.support-light textarea,
+.support-light select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+  color-scheme: light;
+}
+
+.support-light input:focus,
+.support-light select:focus,
+.support-light select:active,
+.support-light textarea:focus {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #f27024 !important;
+  box-shadow: 0 0 0 2px rgba(242, 112, 36, 0.15) !important;
+}
+
 .team-area-light .glow-cyan,
 .team-area-light .glow-blue {
   box-shadow: 0 0 20px rgba(242, 112, 36, 0.06) !important;

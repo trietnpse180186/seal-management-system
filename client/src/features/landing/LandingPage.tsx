@@ -3,6 +3,7 @@ import Hero from "./Hero";
 import About from "./About";
 import Timeline from "./Timeline";
 import Prizes from "./Prizes";
+import GuestSupportButton from "../support/GuestSupportButton";
 
 interface LandingPageProps {
   user: any;
@@ -32,6 +33,8 @@ export default function LandingPage({ user }: LandingPageProps) {
       <Timeline />
 
       <Prizes />
+
+      {!user && <GuestSupportButton />}
     </div>
   );
 }

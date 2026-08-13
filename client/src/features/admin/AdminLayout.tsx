@@ -14,7 +14,9 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   BriefcaseBusiness,
+  LifeBuoy,
   Trash2,
+  ChartNoAxesCombined,
 } from "lucide-react";
 
 interface AdminLayoutProps {
@@ -163,6 +165,16 @@ export default function AdminLayout({
       icon: BriefcaseBusiness,
     },
     {
+      path: "/admin/statistics",
+      label: "Dashboard thống kê",
+      icon: ChartNoAxesCombined,
+    },
+    {
+      path: "/admin/support",
+      label: "Yêu cầu hỗ trợ",
+      icon: LifeBuoy,
+    },
+    {
       path: "/admin/grades",
       label: "Xem chi tiết điểm",
       icon: Award,
@@ -186,7 +198,10 @@ export default function AdminLayout({
 
   const filteredNavItems = navItems.filter(item => {
     if (isAssistant) {
-      return ['/admin/users', '/admin/events', '/admin/grades', '/admin/leaderboard'].includes(item.path);
+      return ['/admin/users', '/admin/events', '/admin/statistics', '/admin/grades', '/admin/leaderboard'].includes(item.path);
+    }
+    if (item.path === '/admin/support' && !user?.isSystemAdmin && !roles?.some((r) => r.role === 'admin_view')) {
+      return false;
     }
     // If not a system admin (and not assistant), hide the global user accounts management tab
     if (item.path === '/admin/users' && !user?.isSystemAdmin) {

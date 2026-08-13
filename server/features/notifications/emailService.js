@@ -353,30 +353,36 @@ function buildBaseEmailTemplate({ headerTitle, contentHtml }) {
  * @param {string} [eventName] - Optional full name of the event/competition
  * @returns {Promise<boolean>}
  */
-async function sendTeamInvitation(email, teamName, inviteLink, leaderName = null, leaderEmail = null, eventName = null) {
+async function sendTeamInvitation(email, teamName, inviteLink, leaderName = null, leaderEmail = null, eventName = null, role = 'member', seminar = null, recipientName = null) {
   const displayEventName = eventName || 'SEAL Hackathon';
   const isLeader = leaderEmail && email.toLowerCase() === leaderEmail.toLowerCase();
-
-  const leaderInfoSection = (!isLeader && (leaderName || leaderEmail))
-    ? `
-      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #F27024; border-radius: 8px; padding: 16px 20px; margin: 24px 0;">
-        <p style="margin: 0 0 8px 0; font-weight: 700; color: #0f172a; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Thông tin Trưởng nhóm:</p>
-        ${leaderName ? `<p style="margin: 4px 0; color: #334155;">Họ và tên: <strong style="color: #0f172a;">${leaderName}</strong></p>` : ''}
-        ${leaderEmail ? `<p style="margin: 4px 0; color: #334155;">Email liên hệ: <strong style="color: #0f172a;">${leaderEmail}</strong></p>` : ''}
-      </div>
-    `
-    : '';
+  // Look up candidate's full name from DB
+  let displayName = 'Thí sinh';
+  try {
+    const mongoose = require('mongoose');
+    const User = mongoose.model('User');
+    const u = await User.findOne({ email: email.toLowerCase() });
+    if (u && u.fullName) {
+      displayName = u.fullName;
+    }
+  } catch (dbErr) {
+    console.error('[EMAIL] Failed to fetch user fullName for greeting:', dbErr.message);
+  }
 
   const contentHtml = `
-    <p style="margin-top: 0;">Xin chào,</p>
-    <p>Ban Tổ chức xin thông báo: Bạn đã được mời tham gia đội thi <strong style="color: #F27024;">"${teamName}"</strong> để tham dự cuộc thi <strong>${displayEventName}</strong>.</p>
-    ${leaderInfoSection}
-    <p>Để hoàn tất thủ tục đăng ký và chính thức tham gia cùng các đồng đội, vui lòng xác nhận bằng cách nhấn vào nút dưới đây:</p>
+    <p style="margin-top: 0; font-family: sans-serif; font-size: 14px; color: #334155;">Xin chào thí sinh <strong>${displayName}</strong>,</p>
+    <p style="font-family: sans-serif; font-size: 14px; color: #334155; margin-bottom: 12px; font-weight: bold;">Ban tổ chức xin thông báo</p>
+    <p style="font-family: sans-serif; font-size: 14px; color: #334155; margin-bottom: 16px;">Bạn có lời mời tham gia đội thi</p>
+    <p style="font-family: sans-serif; font-size: 14px; color: #334155; margin-bottom: 24px; padding-left: 12px; border-left: 3px solid #F27024; line-height: 1.6;">
+      <strong>Cuộc thi:</strong> ${displayEventName}<br/>
+      <strong>Đội thi:</strong> "${teamName}"
+    </p>
+    <p style="font-family: sans-serif; font-size: 13px; color: #334155; line-height: 1.6;">Để hoàn tất thủ tục đăng ký và chính thức tham gia cùng các đồng đội, vui lòng xác nhận bằng cách nhấn vào nút dưới đây:</p>
     <div style="text-align: center; margin: 32px 0;">
       <a href="${inviteLink}" style="background-color: #F27024; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 8px 20px rgba(242,112,36,0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">XÁC NHẬN THAM GIA ĐỘI THI</a>
     </div>
-    <div style="font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #fed7aa; padding: 16px; background-color: #fff7ed; border-radius: 10px;">
-      <strong>Lưu ý quan trọng:</strong> Tất cả các thành viên được mời đều phải xác nhận tham gia trước khi hết hạn đăng ký hoặc khi số lượng đội đạt giới hạn tối đa để đội thi được công nhận chính thức.
+    <div style="font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #fed7aa; padding: 16px; background-color: #fff7ed; border-radius: 10px; font-family: sans-serif;">
+      <strong>Lưu ý quan trọng:</strong> Tất cả các thành viên được mời đều phải xác nhận tham gia trước ngày 15/08/2026 để đội thi được công nhận chính thức.
     </div>
   `;
 
@@ -385,7 +391,7 @@ async function sendTeamInvitation(email, teamName, inviteLink, leaderName = null
     to: email,
     subject: `[SEAL Hackathon] Lời mời tham gia đội thi "${teamName}"`,
     html: buildBaseEmailTemplate({
-      headerTitle: 'Lời Mời Tham Gia Đội Thi',
+      headerTitle: 'SEAL Hackathon Summer 2026',
       contentHtml
     })
   };
@@ -412,118 +418,6 @@ async function sendTeamInvitation(email, teamName, inviteLink, leaderName = null
     console.log('-----------------------------\n');
     throw error;
   }
-}
-
-async function sendPersonnelInvitation(email, fullName, eventName, roles, responseLink, assignments = []) {
-  const roleLabel = roles.map((role) => role === 'judge' ? 'Giám khảo' : 'Mentor').join(' & ');
-  
-  let assignmentCardsHtml = '';
-  if (Array.isArray(assignments) && assignments.length > 0) {
-    const cards = assignments.map((item, idx) => {
-      const roleTitle = item.role === 'judge' 
-        ? (item.isChiefJudge ? 'Trưởng Ban Giám Khảo' : 'Giám Khảo') 
-        : 'Mentor / Cố Vấn Chuyên Môn';
-      return `
-        <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; ${idx > 0 ? 'margin-top: 10px;' : ''}">
-          <p style="margin: 0 0 6px 0; font-weight: 700; color: #F27024; font-size: 14px;">Nhiệm vụ ${assignments.length > 1 ? (idx + 1) : ''}: ${roleTitle}</p>
-          ${item.trackName ? `<p style="margin: 3px 0; color: #334155; font-size: 14px;">• <strong>Bảng đấu:</strong> ${item.trackName}</p>` : ''}
-          ${item.roundName ? `<p style="margin: 3px 0; color: #334155; font-size: 14px;">• <strong>Vòng thi:</strong> ${item.roundName}</p>` : ''}
-          ${item.note ? `<p style="margin: 3px 0; color: #64748b; font-size: 13px; font-style: italic;">• Ghi chú: ${item.note}</p>` : ''}
-        </div>
-      `;
-    }).join('');
-
-    assignmentCardsHtml = `
-      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #F27024; border-radius: 8px; padding: 18px 20px; margin: 24px 0;">
-        <p style="margin: 0 0 12px 0; font-weight: 700; color: #0f172a; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Chi Tiết Phân Công Nhiệm Vụ:</p>
-        ${cards}
-      </div>
-    `;
-  } else {
-    assignmentCardsHtml = `
-      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #F27024; border-radius: 8px; padding: 16px 20px; margin: 24px 0;">
-        <p style="margin: 0; color: #334155; font-weight: 600;">Vai trò phân công: <span style="color: #F27024;">${roleLabel}</span></p>
-      </div>
-    `;
-  }
-
-  const contentHtml = `
-    <p style="margin-top: 0;">Kính gửi <strong>${fullName}</strong>,</p>
-    <p>Ban Tổ chức cuộc thi <strong style="color: #F27024;">${eventName}</strong> trân trọng kính mời Anh/Chị tham gia đồng hành cùng chương trình với các vị trí phân công nhiệm vụ chuyên môn.</p>
-    ${assignmentCardsHtml}
-    <p>Sự tham gia và kinh nghiệm chuyên môn của Anh/Chị sẽ góp phần rất lớn vào sự thành công chung của cuộc thi cũng như sự phát triển của các đội thi.</p>
-    <p>Vui lòng mở trang phản hồi để xác nhận tiếp nhận lời mời hoặc phản hồi lại với Ban Tổ chức:</p>
-    <div style="text-align: center; margin: 32px 0;">
-      <a href="${responseLink}" style="background-color: #F27024; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 8px 20px rgba(242,112,36,0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">PHẢN HỒI LỜI MỜI</a>
-    </div>
-    <div style="font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #e2e8f0; padding: 16px; background-color: #f8fafc; border-radius: 10px;">
-      Liên kết này có hiệu lực trong vòng 7 ngày và được dành riêng cho địa chỉ email <strong>${email}</strong>.
-    </div>
-  `;
-
-  const mailOptions = {
-    from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
-    to: email,
-    subject: `[SEAL Hackathon] Thư mời đảm nhận nhân sự cuộc thi ${eventName}`,
-    html: buildBaseEmailTemplate({
-      headerTitle: 'Lời Mời Phân Công Nhân Sự',
-      contentHtml
-    })
-  };
-
-  if (isMock) {
-    console.log(`[EMAIL MOCK] Personnel invitation to ${email}: ${responseLink}`);
-    return true;
-  }
-  await sendMailHelper(mailOptions);
-  return true;
-}
-
-async function sendPersonnelAccountGranted(email, fullName, roleLabel, loginMethod, temporaryPassword = null) {
-  const loginUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-  const loginInstruction = loginMethod === 'google_and_password'
-    ? `<p style="margin: 8px 0;">Anh/Chị có thể đăng nhập bằng một trong hai hình thức:</p>
-       <ol style="margin: 8px 0; padding-left: 20px; color: #334155;">
-         <li style="margin-bottom: 6px;">Chọn <strong>Đăng nhập bằng Google</strong> với địa chỉ email <strong>${email}</strong>.</li>
-         <li>Đăng nhập bằng email <strong>${email}</strong> và mật khẩu tạm thời: <strong style="color: #F27024; font-family: monospace;">${temporaryPassword}</strong></li>
-       </ol>`
-    : loginMethod === 'google_and_existing_password'
-      ? `<p style="margin: 8px 0;">Anh/Chị có thể chọn <strong>Đăng nhập bằng Google</strong> với địa chỉ email <strong>${email}</strong>, hoặc đăng nhập bằng tài khoản và mật khẩu hiện tại.</p>`
-    : temporaryPassword
-      ? `<div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 16px 0; font-family: monospace;">
-           <p style="margin: 0 0 6px 0;">Email đăng nhập: <strong>${email}</strong></p>
-           <p style="margin: 0;">Mật khẩu tạm thời: <strong style="color: #F27024;">${temporaryPassword}</strong></p>
-         </div>`
-      : `<p style="margin: 8px 0;">Anh/Chị vui lòng đăng nhập bằng địa chỉ email <strong>${email}</strong> và mật khẩu hiện tại trên hệ thống.</p>`;
-
-  const contentHtml = `
-    <p style="margin-top: 0;">Kính gửi <strong>${fullName}</strong>,</p>
-    <p>Ban Tổ chức xin trân trọng thông báo: Tài khoản của Anh/Chị đã được cấp quyền <strong style="color: #F27024;">${roleLabel}</strong> trên hệ thống Quản lý SEAL Hackathon.</p>
-    ${loginInstruction}
-    <div style="text-align: center; margin: 32px 0;">
-      <a href="${loginUrl}/login" style="background-color: #F27024; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 8px 20px rgba(242,112,36,0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">ĐĂNG NHẬP HỆ THỐNG</a>
-    </div>
-    <div style="font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #fed7aa; padding: 16px; background-color: #fff7ed; border-radius: 10px;">
-      <strong>Lưu ý bảo mật:</strong> Vì lý do an toàn thông tin, Anh/Chị vui lòng đổi mật khẩu sau lần đăng nhập đầu tiên.
-    </div>
-  `;
-
-  const mailOptions = {
-    from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
-    to: email,
-    subject: `[SEAL Hackathon] Thông báo cấp quyền tài khoản nhân sự - ${roleLabel}`,
-    html: buildBaseEmailTemplate({
-      headerTitle: 'Đã Cấp Quyền Nhân Sự',
-      contentHtml
-    })
-  };
-
-  if (isMock) {
-    console.log(`[EMAIL MOCK] Personnel account granted to ${email} via ${loginMethod}`);
-    return true;
-  }
-  await sendMailHelper(mailOptions);
-  return true;
 }
 
 /**
@@ -928,10 +822,27 @@ async function sendCertificateEmail(email, fullName, certificatePdfBuffer, prize
   }
 }
 
+async function sendSupportReplyEmail(email, fullName, requestCode, title, message, statusLabel) {
+  const safe = (value) => String(value || '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
+  const contentHtml = `
+    <p>Kính gửi <strong>${safe(fullName || email)}</strong>,</p>
+    <p>Coordinator đã cập nhật yêu cầu hỗ trợ <strong>${safe(requestCode)}</strong>.</p>
+    <div style="padding:16px;border:1px solid #e2e8f0;border-radius:12px;background:#fff7ed;margin:20px 0;">
+      <p style="margin:0 0 8px;color:#F27024;font-weight:700;">${safe(title)}</p>
+      ${statusLabel ? `<p style="margin:0 0 8px;color:#64748b;">Trạng thái: ${safe(statusLabel)}</p>` : ''}
+      ${message ? `<p style="margin:0;white-space:pre-wrap;color:#334155;">${safe(message)}</p>` : ''}
+    </div>
+    <p>Đây là email thông báo tự động từ hệ thống SEAL Hackathon.</p>`;
+  return sendMailHelper({
+    from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
+    to: email,
+    subject: `[SEAL Hackathon] Phản hồi yêu cầu hỗ trợ ${requestCode}`,
+    html: buildBaseEmailTemplate({ headerTitle: 'Phản Hồi Hỗ Trợ', contentHtml })
+  });
+}
+
 module.exports = {
   sendTeamInvitation,
-  sendPersonnelInvitation,
-  sendPersonnelAccountGranted,
   sendEmailVerification,
   sendEventCreationNotification,
   sendTrackTopicDistribution,
@@ -939,5 +850,6 @@ module.exports = {
   sendSeminarInvitation,
   sendAccountProvisionEmail,
   sendPasswordResetEmail,
-  sendCertificateEmail
+  sendCertificateEmail,
+  sendSupportReplyEmail
 };

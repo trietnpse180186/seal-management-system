@@ -994,7 +994,7 @@ export default function TeamArea() {
         )}
 
         {/* Dynamic Exam / Topic / Round / Code Dashboard Grid */}
-        {hasContestStarted && (
+        {team && !team.isEliminated && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8 items-stretch">
             {/* Left: Exam & Materials Card */}
             {isExamVisible && (

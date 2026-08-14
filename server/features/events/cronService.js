@@ -725,7 +725,6 @@ async function distributeRoundExamMaterials() {
   const now = new Date();
   const Round = mongoose.model('Round');
   const Notification = mongoose.model('Notification');
-  const emailService = require('../notifications/emailService');
   const { syncDriveAccessForRound } = require('./driveAccessService');
   const { getEligibleUserIdsForRound } = require('./examAccessService');
   const { addInAppJob, isQueueAvailable } = require('../notifications/notificationQueue');
@@ -782,12 +781,6 @@ async function distributeRoundExamMaterials() {
       } catch (notifErr) {
         console.error(`[CRON ERROR] Notification to ${user._id}:`, notifErr.message);
       }
-
-      try {
-        await emailService.sendRoundExamOpened(user.email, user.fullName, round.name);
-      } catch (emailErr) {
-        console.error(`[CRON ERROR] Email to ${user.email}:`, emailErr.message);
-      }
     }
 
     round.isNotificationSent = true;
@@ -805,7 +798,6 @@ async function distributeTrackTopics() {
   const Team = mongoose.model('Team');
   const TeamMember = mongoose.model('TeamMember');
   const Notification = mongoose.model('Notification');
-  const emailService = require('../notifications/emailService');
   const { addInAppJob, isQueueAvailable } = require('../notifications/notificationQueue');
 
   // Find tracks where startTime has started and attachments haven't been distributed yet
@@ -828,7 +820,6 @@ async function distributeTrackTopics() {
         if (!member.userId) continue;
 
         const user = member.userId;
-        const attachmentsList = track.attachments || [];
 
         // Send in-app notification
         const notifTitle = `Đề thi & tài liệu bảng đấu "${track.name}" đã được mở!`;
@@ -854,13 +845,6 @@ async function distributeTrackTopics() {
           }
         } catch (notifErr) {
           console.error(`[CRON ERROR] Failed to send in-app notification to user ${user._id}:`, notifErr.message);
-        }
-
-        // Send email notification
-        try {
-          await emailService.sendTrackTopicDistribution(user.email, user.fullName, track.name, attachmentsList);
-        } catch (emailErr) {
-          console.error(`[CRON ERROR] Failed to send email to ${user.email}:`, emailErr.message);
         }
       }
     }

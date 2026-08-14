@@ -4630,6 +4630,92 @@ router.post("/:teamId/admin/members", authenticateToken, async (req, res) => {
 });
 
 /**
+ * @route   DELETE /api/teams/:teamId/admin
+ * @desc    Admin permanently deletes a team and its associated records from DB
+ * @access  Private (Admin, CTSV, or Event Coordinator)
+ */
+router.delete("/:teamId/admin", authenticateToken, async (req, res) => {
+  const { teamId } = req.params;
+
+  try {
+    const Team = mongoose.model("Team");
+    const TeamMember = mongoose.model("TeamMember");
+    const GithubRepository = mongoose.model("GithubRepository");
+
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return res.status(404).json({ message: "Không tìm thấy đội thi." });
+    }
+
+    let isAuthorized = req.user.isSystemAdmin || req.user.role === "student_assistant";
+    if (!isAuthorized) {
+      const EventRole = mongoose.model("EventRole");
+      const coordinatorRole = await EventRole.findOne({
+        eventId: team.eventId,
+        userId: req.user._id,
+        role: { $in: ["admin", "coordinator"] },
+        status: "active"
+      });
+      if (coordinatorRole) isAuthorized = true;
+    }
+
+    if (!isAuthorized) {
+      return res.status(403).json({ message: "Không có quyền xóa đội thi." });
+    }
+
+    // Clean up all related records
+    await TeamMember.deleteMany({ teamId });
+    await GithubRepository.deleteMany({ teamId });
+
+    if (mongoose.models.ChatRoom) {
+      await mongoose.model("ChatRoom").deleteMany({ teamId });
+    }
+    if (mongoose.models.Commit) {
+      await mongoose.model("Commit").deleteMany({ teamId });
+    }
+    if (mongoose.models.CommitFile) {
+      await mongoose.model("CommitFile").deleteMany({ teamId });
+    }
+    if (mongoose.models.AiAnalysis) {
+      await mongoose.model("AiAnalysis").deleteMany({ teamId });
+    }
+    if (mongoose.models.RepositorySnapshot) {
+      await mongoose.model("RepositorySnapshot").deleteMany({ teamId });
+    }
+    if (mongoose.models.Task) {
+      await mongoose.model("Task").deleteMany({ teamId });
+    }
+    if (mongoose.models.Score) {
+      await mongoose.model("Score").deleteMany({ teamId });
+    }
+    if (mongoose.models.Ranking) {
+      await mongoose.model("Ranking").deleteMany({ teamId });
+    }
+
+    // Delete the team document
+    await Team.deleteOne({ _id: teamId });
+
+    if (mongoose.models.EventLog) {
+      const EventLog = mongoose.model("EventLog");
+      await new EventLog({
+        eventId: team.eventId,
+        userId: req.user._id,
+        action: "delete_team",
+        type: "admin",
+        details: `Admin/Coordinator đã xóa vĩnh viễn đội thi "${team.name}" (ID: ${teamId}) khỏi hệ thống.`
+      }).save().catch(() => {});
+    }
+
+    console.log(`[ADMIN DELETE TEAM] Permanently deleted team "${team.name}" (ID: ${teamId})`);
+
+    res.json({ message: `Đã xóa vĩnh viễn đội thi "${team.name}" thành công!` });
+  } catch (error) {
+    console.error("Admin Delete Team Error:", error);
+    res.status(500).json({ message: "Lỗi hệ thống khi xóa đội thi." });
+  }
+});
+
+/**
  * @route   DELETE /api/teams/:teamId/admin/members/:userId
  * @desc    Admin delete a member from a team
  * @access  Private (Admin or CTSV)

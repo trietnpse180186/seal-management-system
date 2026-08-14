@@ -579,7 +579,7 @@ export default function JudgeScoring() {
     if (status === 'PASSED') classes = "bg-emerald-50 text-emerald-700 border border-emerald-200";
     if (status === 'FAILED') classes = "bg-rose-50 text-rose-700 border border-rose-200";
     if (status === 'WARNING') classes = "bg-amber-50 text-amber-700 border border-amber-200";
-    
+
     return (
       <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${classes}`}>
         {status || 'UNKNOWN'}
@@ -803,7 +803,7 @@ export default function JudgeScoring() {
                     className="flex items-center gap-1.5 bg-[#F27024]/5 hover:bg-[#F27024]/10 text-[#F27024] border border-[#F27024]/20 px-5 rounded-xl text-xs font-bold transition-all h-12 cursor-pointer shadow-sm"
                   >
                     <Sparkles size={12} className={aiLoading ? 'animate-spin' : 'text-[#F27024]'} />
-                    <span>{aiLoading ? 'Agent 2 đang phân tích...' : 'Lấy gợi ý AI (Agent 2)'}</span>
+                    <span>{aiLoading ? 'Agent 2 đang phân tích...' : 'Lấy gợi ý từ AI'}</span>
                   </button>
                 )}
               </div>
@@ -1235,11 +1235,10 @@ export default function JudgeScoring() {
                       </h3>
                       <p className="text-xs text-slate-500 mt-1">Đánh giá tự động tính hợp lệ của giải pháp từ n8n Pipeline</p>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                      hardConstraints.is_disqualified 
-                        ? "bg-rose-50 text-rose-750 border border-rose-200" 
-                        : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                    }`}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${hardConstraints.is_disqualified
+                      ? "bg-rose-50 text-rose-750 border border-rose-200"
+                      : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                      }`}>
                       {hardConstraints.is_disqualified ? "Không Hợp Lệ (0 Điểm)" : "Đạt Yêu Cầu"}
                     </span>
                   </div>
@@ -1374,11 +1373,10 @@ export default function JudgeScoring() {
                                   <p className="font-bold text-slate-800">{m.requirement}</p>
                                   {m.evidence && <p className="text-slate-500 text-[11px] font-sans">{m.evidence}</p>}
                                 </div>
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-normal shrink-0 ${
-                                  isPass ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-normal shrink-0 ${isPass ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
                                   isPartial ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                                  'bg-rose-50 text-rose-700 border border-rose-200'
-                                }`}>
+                                    'bg-rose-50 text-rose-700 border border-rose-200'
+                                  }`}>
                                   {m.status}
                                 </span>
                               </div>
@@ -1434,11 +1432,10 @@ export default function JudgeScoring() {
                             const text = isObj ? `${item.requirement_gap ? `[${item.requirement_gap}] ` : ''}${item.actionable_step || ''}` : item;
                             return (
                               <div key={i} className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-start gap-2.5 text-xs">
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-black shrink-0 ${
-                                  priority === 'P0' ? 'bg-rose-500 text-white' :
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-black shrink-0 ${priority === 'P0' ? 'bg-rose-500 text-white' :
                                   priority === 'P1' ? 'bg-amber-500 text-white' :
-                                  'bg-blue-500 text-white'
-                                }`}>
+                                    'bg-blue-500 text-white'
+                                  }`}>
                                   {priority}
                                 </span>
                                 <p className="text-slate-700 leading-relaxed font-medium">{text}</p>

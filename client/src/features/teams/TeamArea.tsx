@@ -374,10 +374,19 @@ export default function TeamArea() {
     data?.team &&
     data.team.eventId?.status === "ongoing" &&
     ((round?.startTime && new Date(round.startTime) <= currentTime) ||
-      round?.isExamManualOpen) &&
+      round?.isExamManualOpen ||
+      round?.status === "active" ||
+      track?.examAccess?.examOpened) &&
     track?.environmentId
   );
-  const isExamVisible = hasContestStarted && !!(round?.startTime || round?.isExamManualOpen);
+  const isExamVisible =
+    hasContestStarted &&
+    !!(
+      round?.startTime ||
+      round?.isExamManualOpen ||
+      round?.status === "active" ||
+      track?.examAccess?.examOpened
+    );
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -409,10 +418,7 @@ export default function TeamArea() {
     const endVal = track?.endTime || round?.endTime;
 
     if (!startVal || !endVal) {
-      return {
-        text: "Chưa cấu hình thời gian làm bài",
-        color: "text-slate-500",
-      };
+      return null;
     }
 
     const start = new Date(startVal);
@@ -448,17 +454,14 @@ export default function TeamArea() {
       const text =
         days > 0 ? `Còn lại: ${days} ngày ${timeStr}` : `Còn lại: ${timeStr}`;
 
-      const isUrgent = diffMs < 1000 * 60 * 60; // < 1 hour
       return {
         text,
-        color: isUrgent
-          ? "text-rose-500 animate-pulse font-extrabold"
-          : "text-cyan-400 font-bold",
+        color: "text-emerald-500 font-bold",
       };
     } else {
       return {
-        text: "Đã hết thời gian làm bài",
-        color: "text-slate-500 font-semibold",
+        text: "Đã kết thúc thời gian làm bài",
+        color: "text-slate-400 font-medium",
       };
     }
   };
@@ -896,21 +899,21 @@ export default function TeamArea() {
                   </div>
                 </div>
                 {/* Timer / Info section */}
-                <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 self-start sm:self-auto">
-                  <Clock size={14} className="text-[#F27024]" />
-                  <div className="text-xs font-mono">
-                    <span className="text-slate-400 uppercase tracking-wider text-[9px] block">
-                      Thời gian mở cuộc thi
-                    </span>
-                    <span className="text-amber-600 font-bold">
-                      {hasContestStart
-                        ? new Date(hasContestStart) > currentTime
+                {hasContestStart && (
+                  <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 self-start sm:self-auto">
+                    <Clock size={14} className="text-[#F27024]" />
+                    <div className="text-xs font-mono">
+                      <span className="text-slate-400 uppercase tracking-wider text-[9px] block">
+                        Thời gian mở cuộc thi
+                      </span>
+                      <span className="text-amber-600 font-bold">
+                        {new Date(hasContestStart) > currentTime
                           ? getRemainingTimeText(hasContestStart)
-                          : "Sắp diễn ra"
-                        : "Chưa công bố"}
-                    </span>
+                          : "Sắp diễn ra"}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             );
           }
@@ -990,14 +993,15 @@ export default function TeamArea() {
           </div>
         )}
 
-        {/* Row 1: Exam, MQTT Connection & Members */}
-        {team && !team.isEliminated && (
+        {/* Dynamic Exam / Topic / Round / Code Dashboard Grid */}
+        {hasContestStarted && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8 items-stretch">
             {/* Left: Exam & Materials Card */}
             {isExamVisible && (
               <div
-                className={`${showMqttCard ? "lg:col-span-4" : "lg:col-span-8"
-                  } bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-slate-800 relative overflow-hidden flex flex-col justify-between`}
+                className={`${
+                  showMqttCard ? "lg:col-span-4" : "lg:col-span-6"
+                } bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-slate-800 relative overflow-hidden flex flex-col justify-between`}
               >
                 <div className="flex flex-col justify-between h-full">
                   <div className="flex justify-between items-center border-b border-slate-100 pb-3 mb-5">
@@ -1015,7 +1019,8 @@ export default function TeamArea() {
                   </div>
 
                   {team?.eventId?.contestStart &&
-                    new Date(team.eventId.contestStart) > currentTime ? (
+                    new Date(team.eventId.contestStart) > currentTime &&
+                    !hasContestStarted ? (
                     <div className="flex flex-col items-center justify-center py-6 space-y-4">
                       <div className="space-y-1.5 text-center">
                         <p className="text-xs text-amber-600 font-sans font-semibold uppercase tracking-wider">
@@ -1034,7 +1039,10 @@ export default function TeamArea() {
                       </div>
                     </div>
                   ) : round?.startTime &&
-                    new Date(round.startTime) > currentTime ? (
+                    new Date(round.startTime) > currentTime &&
+                    !round?.isExamManualOpen &&
+                    round?.status !== "active" &&
+                    !team?.trackId?.examAccess?.examOpened ? (
                     <div className="flex flex-col items-center justify-center py-6 space-y-4">
                       <div className="space-y-1.5 text-center">
                         <p className="text-xs text-amber-600 font-sans font-semibold uppercase tracking-wider">

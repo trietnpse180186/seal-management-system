@@ -421,13 +421,13 @@ export default function TeamAreaScreen({ navigation }) {
                     <Text style={styles.sectionTitle}>[ĐỀ_BÀI_&_TÀI_LIỆU_THI]</Text>
                   </View>
 
-                  {team?.eventId?.contestStart && new Date(team.eventId.contestStart) > currentTime ? (
+                  {team?.eventId?.contestStart && new Date(team.eventId.contestStart) > currentTime && team?.eventId?.status !== 'ongoing' ? (
                     <View style={styles.countdownContainer}>
                       <Text style={styles.countdownLabel}>Đề bài cuộc thi "{team.eventId.name}" sẽ được mở sau:</Text>
                       <Text style={styles.countdownTime}>{getRemainingTimeText(team.eventId.contestStart)}</Text>
                       <Text style={styles.countdownDetail}>Thời gian mở đề: {formatTimeStr(team.eventId.contestStart)}</Text>
                     </View>
-                  ) : round?.startTime && new Date(round.startTime) > currentTime ? (
+                  ) : round?.startTime && new Date(round.startTime) > currentTime && !round?.isExamManualOpen && round?.status !== 'active' && !team?.trackId?.examAccess?.examOpened ? (
                     <View style={styles.countdownContainer}>
                       <Text style={styles.countdownLabel}>Đề bài vòng "{round.name}" sẽ được mở sau:</Text>
                       <Text style={styles.countdownTime}>{getRemainingTimeText(round.startTime)}</Text>

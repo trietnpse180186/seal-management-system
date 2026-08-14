@@ -15,6 +15,7 @@ const Round = mongoose.model('Round');
 const GithubRepository = mongoose.model('GithubRepository');
 const RepositorySnapshot = mongoose.model('RepositorySnapshot');
 const Commit = mongoose.model('Commit');
+const AiAnalysis = mongoose.model('AiAnalysis');
 const Ranking = mongoose.model('Ranking');
 const EventRole = mongoose.model('EventRole');
 const Track = mongoose.model('Track');
@@ -65,12 +66,12 @@ async function resolveAssistAccess({ team, round, judgeId, coordinatorId }) {
 }
 
 /**
- * @route   GET /api/grades/suggestion
+ * @route   POST /api/grades/suggestion
  * @desc    Get Gemini AI suggested grading based on commits & rubric
  * @access  Private (Judges / Coords)
  */
-router.get('/suggestion', authenticateToken, async (req, res) => {
-  const { teamId, roundId, rubricId } = req.query;
+router.post('/suggestion', authenticateToken, async (req, res) => {
+  const { teamId, roundId, rubricId } = req.body;
 
   if (!teamId || !roundId || !rubricId) {
     return res.status(400).json({ message: 'Missing teamId, roundId, or rubricId parameters.' });
@@ -79,6 +80,11 @@ router.get('/suggestion', authenticateToken, async (req, res) => {
   try {
     const team = await Team.findById(teamId);
     if (!team) return res.status(404).json({ message: 'Team not found.' });
+
+    const activeRubric = await Rubric.findOne({ _id: rubricId, roundId, isActive: true });
+    if (!activeRubric) {
+      return res.status(400).json({ message: 'Rubric is not active or is not assigned to the selected round.' });
+    }
 
     // Verify track permissions for judges
     if (!req.user.isSystemAdmin) {
@@ -137,9 +143,51 @@ router.get('/suggestion', authenticateToken, async (req, res) => {
         capturedReason: 'AI Grading Pre-fetch Generation'
       });
       await snapshot.save();
+    } else if (repo.lastCommitSha && snapshot.commitSha !== repo.lastCommitSha) {
+      snapshot.commitSha = repo.lastCommitSha;
+      snapshot.branch = repo.defaultBranch;
+      snapshot.capturedReason = 'AI Grading Refresh';
+      await snapshot.save();
     }
 
-    // 4. Generate suggestion
+    // 4. Agent 2 evaluates saved Agent 1 evidence (if any) along with commit history
+    // against the active rubric assigned to the selected round.
+    const priorReviews = await AiAnalysis.find({
+      teamId,
+      repositoryId: repo._id,
+      analysisType: 'commit_review',
+      status: 'completed'
+    }).sort({ createdAt: -1 }).limit(10);
+
+    const aggregateResult = await aiService.analyzeTeamAggregate(
+      teamId,
+      commits,
+      priorReviews,
+      { roundId, rubricId, criteria }
+    );
+
+    const aggregateAnalysis = new AiAnalysis({
+      repositoryId: repo._id,
+      teamId,
+      roundId,
+      repositorySnapshotId: snapshot._id,
+      analysisType: 'repository_review',
+      provider: aggregateResult._provider || 'Google Gemini',
+      model: aggregateResult._model || 'gemini-3.1-flash-lite',
+      inputSummary: {
+        trigger: 'judge_ai_analysis_button',
+        rubricId,
+        rubricVersion: activeRubric.version,
+        agent1AnalysisIds: priorReviews.map(review => review._id)
+      },
+      result: aggregateResult,
+      status: 'completed',
+      completedAt: new Date()
+    });
+    await aggregateAnalysis.save();
+
+    // 5. Convert Agent 2 qualitative evaluation into score suggestions. The
+    // judge remains responsible for editing and submitting the official score.
     const suggestions = await aiService.generateScoringSuggestion(snapshot, commits, criteria);
 
     // Map code back to Criterion ID for UI ease

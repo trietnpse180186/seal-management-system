@@ -1,0 +1,124 @@
+{
+  "schema_version": "2.0",
+  "analysis_type": "repository_review",
+  "team_id": "",
+  "team_code": "TEAM_01",
+  "repository_id": "",
+  "repo_name": "repository-name",
+  "round_id": "",
+  "track_id": "",
+  "declared_track": {
+    "name": "Unknown",
+    "source": "team.trackId | event configuration | unknown"
+  },
+  "latest_commit_sha": "",
+  "active_rubric": {
+    "rubric_id": "",
+    "version": 1,
+    "total_weight": 100,
+    "max_criterion_score": 5,
+    "criteria": [
+      {
+        "criterion_id": "",
+        "code": "",
+        "name": "",
+        "description": "",
+        "weight": 25,
+        "max_score": 5,
+        "grading_levels": [
+          {
+            "label": "Điểm 5",
+            "min_score": 5,
+            "max_score": 5,
+            "description": ""
+          },
+          {
+            "label": "Điểm 4",
+            "min_score": 4,
+            "max_score": 4,
+            "description": ""
+          },
+          {
+            "label": "Điểm 3",
+            "min_score": 3,
+            "max_score": 3,
+            "description": ""
+          },
+          {
+            "label": "Điểm 2",
+            "min_score": 2,
+            "max_score": 2,
+            "description": ""
+          },
+          {
+            "label": "Điểm 1",
+            "min_score": 1,
+            "max_score": 1,
+            "description": ""
+          }
+        ]
+      }
+    ]
+  },
+  "aggregate_context": {
+    "commits": [
+      {
+        "sha": "",
+        "message": "",
+        "author_name": "",
+        "author_github_username": "",
+        "committed_at": "",
+        "modified_files": [],
+        "change_summary": ""
+      }
+    ],
+    "prior_push_reviews": [
+      {
+        "analysis_id": "",
+        "commit_sha": "",
+        "reviewed_at": "",
+        "schema_version": "1.0 | 2.0 | unknown",
+        "review_output": {}
+      }
+    ]
+  },
+  "current_push_review": {
+    "schema_version": "2.0",
+    "analysis_type": "commit_review",
+    "result": {}
+  },
+  "demo_evidence": {
+    "source": "judge_runtime | imported_evidence | unavailable",
+    "mqtt_runtime": {
+      "tested": false,
+      "connected": false,
+      "topic": "",
+      "device_codes_observed": [],
+      "payload_structure_validated": false,
+      "reconnect_verified": false,
+      "invalid_or_missing_metric_verified": false
+    },
+    "ui_update_latency_ms": null,
+    "agent_execution_traces": [],
+    "tool_calls": [],
+    "state_changes": [],
+    "verification_results": [],
+    "approval_results": [],
+    "judge_scenarios": [
+      { "scenario": "stale_device_data", "status": "not_tested", "evidence": "" },
+      { "scenario": "missing_metric", "status": "not_tested", "evidence": "" },
+      { "scenario": "tool_timeout", "status": "not_tested", "evidence": "" },
+      { "scenario": "approval_rejected", "status": "not_tested", "evidence": "" },
+      { "scenario": "missing_required_information", "status": "not_tested", "evidence": "" },
+      { "scenario": "agent_conflict", "status": "not_tested", "evidence": "" },
+      { "scenario": "duplicate_request", "status": "not_tested", "evidence": "" },
+      { "scenario": "agent_or_service_unavailable", "status": "not_tested", "evidence": "" }
+    ],
+    "demo_notes": ""
+  },
+  "scoring_policy": {
+    "ai_output_is_advisory_only": true,
+    "backend_calculates_weighted_scores": true,
+    "judge_submits_final_score": true
+  }
+}

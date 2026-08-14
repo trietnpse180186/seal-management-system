@@ -6,6 +6,8 @@ const AiAnalysis = mongoose.model('AiAnalysis');
 const Commit = mongoose.model('Commit');
 const GithubRepository = mongoose.model('GithubRepository');
 const Team = mongoose.model('Team');
+const Rubric = mongoose.model('Rubric');
+const Criterion = mongoose.model('Criterion');
 
 const aiService = require('./aiService');
 const { parseAiResult } = require('./aiService');
@@ -100,33 +102,55 @@ router.get('/:id', authenticateToken, async (req, res) => {
  */
 router.post('/team/:teamId/aggregate', authenticateToken, async (req, res) => {
   const { teamId } = req.params;
+  const { roundId, rubricId } = req.body;
 
   try {
+    if (!roundId || !rubricId) {
+      return res.status(400).json({ message: 'roundId and rubricId are required for Agent 2 analysis.' });
+    }
     const team = await Team.findById(teamId);
     if (!team) return res.status(404).json({ message: 'Không tìm thấy đội thi.' });
 
     const repo = await GithubRepository.findOne({ teamId });
     if (!repo) return res.status(400).json({ message: 'Đội thi này chưa được thiết lập GitHub repository.' });
 
-    console.log(`[SYNC MANUAL] Running Team Aggregate Review for team: ${teamId}...`);
+    const rubric = await Rubric.findOne({ _id: rubricId, roundId, isActive: true });
+    if (!rubric) return res.status(400).json({ message: 'Rubric is not active or is not assigned to the selected round.' });
+    const criteria = await Criterion.find({ rubricId: rubric._id }).sort({ order: 1 });
+    if (criteria.length === 0) return res.status(404).json({ message: 'No criteria found for this rubric.' });
+
+    console.log(`[AI MANUAL] Running Agent 2 aggregate review for team: ${teamId}, round: ${roundId}...`);
     
     // Fetch up to 40 commits
     const commits = await Commit.find({ teamId, message: { $not: /initial commit/i } }).sort({ committedAt: 1 }).limit(40);
-    // Fetch up to 10 prior reviews
+    // Fetch up to 10 prior reviews (if available)
     const priorReviews = await AiAnalysis.find({
       teamId,
+      repositoryId: repo._id,
       analysisType: 'commit_review',
       status: 'completed'
     }).sort({ createdAt: -1 }).limit(10);
 
-    const aggResult = await aiService.analyzeTeamAggregate(teamId, commits, priorReviews);
+    const aggResult = await aiService.analyzeTeamAggregate(
+      teamId,
+      commits,
+      priorReviews,
+      { roundId, rubricId, criteria }
+    );
 
     const aggAnalysis = new AiAnalysis({
       repositoryId: repo._id,
       teamId: teamId,
+      roundId,
       analysisType: 'repository_review', // maps to team_aggregate
       provider: aggResult._provider || 'Google Gemini',
       model: aggResult._model || 'gemini-3.1-flash-lite',
+      inputSummary: {
+        trigger: 'manual_ai_analysis',
+        rubricId,
+        rubricVersion: rubric.version,
+        agent1AnalysisIds: priorReviews.map(review => review._id)
+      },
       result: aggResult,
       status: 'completed',
       completedAt: new Date()

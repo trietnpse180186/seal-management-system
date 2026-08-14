@@ -606,6 +606,75 @@ ${aiResult.assessment?.improvement_areas || 'Không có thông tin.'}
               await aiAnalysis.save();
             }
           }
+
+          // 2. Automatically run Agent 2 Team Aggregate analysis in the same sync batch
+          try {
+            console.log(`[SYNC] Running Agent 2 team aggregate analysis for team: ${repo.teamId}...`);
+            const allTeamCommits = await Commit.find({ teamId: repo.teamId, message: { $not: /initial commit/i } })
+              .sort({ committedAt: 1 })
+              .limit(40);
+
+            const priorReviews = await AiAnalysis.find({
+              teamId: repo.teamId,
+              repositoryId: repo._id,
+              analysisType: 'commit_review',
+              status: 'completed'
+            }).sort({ createdAt: -1 }).limit(10);
+
+            // Fetch team's current round active rubric criteria if available
+            const Team = mongoose.model('Team');
+            const Rubric = mongoose.model('Rubric');
+            const Criterion = mongoose.model('Criterion');
+            const teamDoc = await Team.findById(repo.teamId);
+            let roundId = teamDoc?.currentRoundId;
+            let criteria = [];
+            let rubricId = null;
+
+            if (roundId) {
+              const activeRubric = await Rubric.findOne({ roundId, isActive: true });
+              if (activeRubric) {
+                rubricId = activeRubric._id;
+                criteria = await Criterion.find({ rubricId: activeRubric._id }).sort({ order: 1 });
+              }
+            }
+
+            const aggResult = await aiService.analyzeTeamAggregate(
+              repo.teamId,
+              allTeamCommits.length > 0 ? allTeamCommits : syncedCommits.map(s => s.commitRecord).filter(Boolean),
+              priorReviews,
+              {
+                roundId,
+                rubricId,
+                criteria,
+                latestCommitSha: latestCommit.commitSha,
+                currentPushReview: aiResult
+              }
+            );
+
+            if (aggResult) {
+              const aggAnalysis = new AiAnalysis({
+                repositoryId: repo._id,
+                teamId: repo.teamId,
+                roundId,
+                analysisType: 'repository_review',
+                provider: aggResult._provider || 'Google Gemini',
+                model: aggResult._model || 'gemini-3.1-flash-lite',
+                inputSummary: {
+                  trigger: 'cron_sync_auto_aggregate',
+                  rubricId,
+                  commitCount: allTeamCommits.length,
+                  agent1AnalysisIds: priorReviews.map(r => r._id)
+                },
+                result: aggResult,
+                status: 'completed',
+                completedAt: new Date()
+              });
+              await aggAnalysis.save();
+              console.log(`[SYNC] Completed Agent 2 aggregate AI analysis successfully for team: ${repo.teamId}`);
+            }
+          } catch (aggErr) {
+            console.warn(`[SYNC] Agent 2 aggregate analysis warning (non-fatal):`, aggErr.message);
+          }
         }
 
       } catch (aiErr) {

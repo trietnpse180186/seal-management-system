@@ -123,17 +123,13 @@ router.post('/team/:teamId/aggregate', authenticateToken, async (req, res) => {
     
     // Fetch up to 40 commits
     const commits = await Commit.find({ teamId, message: { $not: /initial commit/i } }).sort({ committedAt: 1 }).limit(40);
-    // Fetch up to 10 prior reviews
+    // Fetch up to 10 prior reviews (if available)
     const priorReviews = await AiAnalysis.find({
       teamId,
       repositoryId: repo._id,
       analysisType: 'commit_review',
       status: 'completed'
     }).sort({ createdAt: -1 }).limit(10);
-
-    if (priorReviews.length === 0) {
-      return res.status(409).json({ message: 'No completed Agent 1 analyses are available for this repository yet.' });
-    }
 
     const aggResult = await aiService.analyzeTeamAggregate(
       teamId,

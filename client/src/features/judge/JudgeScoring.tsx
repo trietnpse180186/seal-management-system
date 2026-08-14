@@ -25,7 +25,11 @@ import {
   ChevronUp,
   Cpu,
   Server,
-  Database
+  Database,
+  AlertTriangle,
+  Target,
+  FlaskConical,
+  ShieldCheck
 } from 'lucide-react';
 import {
   LineChart,
@@ -65,6 +69,7 @@ export default function JudgeScoring() {
   const [allAiAnalyses, setAllAiAnalyses] = useState<any[]>([]);
   const [expandedCommitId, setExpandedCommitId] = useState<string | null>(null);
   const [expandedSli, setExpandedSli] = useState<boolean>(false); // for SMB scale details
+  const [expandedExamCrosscheck, setExpandedExamCrosscheck] = useState<boolean>(false);
 
   // Grade state
   const [scores, setScores] = useState<any>({});
@@ -1309,15 +1314,79 @@ export default function JudgeScoring() {
 
                 {teamAggregateReview ? (
                   <div className="space-y-6 text-xs sm:text-sm leading-relaxed">
+                    {/* System Identity Banner */}
+                    {teamAggregateReview.result.team_system_identity && (
+                      <div className="bg-[#F27024]/5 border border-[#F27024]/20 p-4 rounded-xl space-y-1.5 shadow-sm">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-[#F27024] font-bold uppercase tracking-normal">Nhận diện Hệ thống & Track</span>
+                          <span className="text-[11px] bg-[#F27024]/10 text-[#F27024] font-bold px-2.5 py-0.5 rounded border border-[#F27024]/20">
+                            {teamAggregateReview.result.team_system_identity.detected_track || 'Track Auto-detect'}
+                          </span>
+                        </div>
+                        <p className="text-slate-850 font-bold text-xs sm:text-sm">
+                          {teamAggregateReview.result.team_system_identity.project_about || teamAggregateReview.result.smb_scale_advisory?.system_identity_recap}
+                        </p>
+                        {teamAggregateReview.result.team_system_identity.primary_user_value && (
+                          <p className="text-slate-600 text-xs italic">
+                            <strong>Giá trị người dùng:</strong> {teamAggregateReview.result.team_system_identity.primary_user_value}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Disqualification Risks */}
+                    {Array.isArray(teamAggregateReview.result.disqualification_risks) && teamAggregateReview.result.disqualification_risks.length > 0 && (
+                      <div className="bg-rose-50 border border-rose-250 p-4 rounded-xl space-y-2 shadow-sm">
+                        <span className="text-xs text-rose-700 font-bold uppercase tracking-normal flex items-center gap-1.5">
+                          <AlertTriangle size={14} className="text-rose-600" /> Cảnh báo Rủi ro Loại (Disqualification Risks)
+                        </span>
+                        <ul className="list-disc pl-5 space-y-1 text-rose-800 text-xs font-medium">
+                          {teamAggregateReview.result.disqualification_risks.map((risk: string, i: number) => (
+                            <li key={i}>{risk}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
                     {/* Historical Synthesis */}
                     <div className="space-y-2">
                       <span className="text-xs text-slate-500 font-bold uppercase tracking-normal block flex items-center gap-1.5">
                         <BookOpen size={12} className="text-[#F27024]" /> Tóm tắt lịch sử phát triển
                       </span>
                       <p className="text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-100 leading-relaxed font-sans shadow-sm text-xs sm:text-sm">
-                        {teamAggregateReview.result.overall_picture?.historical_synthesis}
+                        {teamAggregateReview.result.historical_synthesis?.evolution_summary || teamAggregateReview.result.overall_picture?.historical_synthesis}
                       </p>
                     </div>
+
+                    {/* Minimum Acceptance Check */}
+                    {Array.isArray(teamAggregateReview.result.minimum_acceptance) && teamAggregateReview.result.minimum_acceptance.length > 0 && (
+                      <div className="space-y-2">
+                        <span className="text-xs text-slate-700 font-bold uppercase tracking-normal flex items-center gap-1.5">
+                          <CheckCircle2 size={13} className="text-[#F27024]" /> Kiểm tra Nghiệm thu Tối thiểu ({teamAggregateReview.result.minimum_acceptance.filter((m: any) => m.status === 'pass' || m.status === 'implemented').length}/{teamAggregateReview.result.minimum_acceptance.length} Đạt)
+                        </span>
+                        <div className="grid grid-cols-1 gap-2">
+                          {teamAggregateReview.result.minimum_acceptance.map((m: any, i: number) => {
+                            const isPass = m.status === 'pass' || m.status === 'implemented';
+                            const isPartial = m.status === 'partial';
+                            return (
+                              <div key={i} className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
+                                <div className="space-y-0.5">
+                                  <p className="font-bold text-slate-800">{m.requirement}</p>
+                                  {m.evidence && <p className="text-slate-500 text-[11px] font-sans">{m.evidence}</p>}
+                                </div>
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-normal shrink-0 ${
+                                  isPass ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                                  isPartial ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                                  'bg-rose-50 text-rose-700 border border-rose-200'
+                                }`}>
+                                  {m.status}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Qualitative criteria review */}
                     {teamAggregateReview.result.criteria_comments && (
@@ -1325,7 +1394,7 @@ export default function JudgeScoring() {
                         <span className="text-xs text-slate-500 font-bold uppercase tracking-normal block flex items-center gap-1.5">
                           <Code size={12} className="text-[#F27024]" /> Đánh giá định tính theo tiêu chí Rubric (R1/R2)
                         </span>
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                           {Object.entries(teamAggregateReview.result.criteria_comments).map(([key, value]: [string, any], idx: number) => {
                             const displayName = key.replace(/_/g, ' ').toUpperCase();
                             return (
@@ -1337,7 +1406,7 @@ export default function JudgeScoring() {
                                       value.grade === 'Khá' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
                                         value.grade === 'Trung bình' ? 'bg-slate-100 text-slate-600 border border-slate-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
                                     }`}>
-                                    {value.grade}
+                                    {value.suggested_score !== undefined ? `${value.suggested_score}đ / 5đ — ` : ''}{value.grade}
                                   </span>
                                 </div>
                                 {value.comment && (
@@ -1349,6 +1418,101 @@ export default function JudgeScoring() {
                             );
                           })}
                         </div>
+                      </div>
+                    )}
+
+                    {/* Improvement Priorities */}
+                    {Array.isArray(teamAggregateReview.result.improvement_priorities) && teamAggregateReview.result.improvement_priorities.length > 0 && (
+                      <div className="space-y-2">
+                        <span className="text-xs text-slate-700 font-bold uppercase tracking-normal flex items-center gap-1.5">
+                          <Target size={13} className="text-[#F27024]" /> Danh sách Ưu tiên Cải thiện (P0 / P1 / P2)
+                        </span>
+                        <div className="space-y-2">
+                          {teamAggregateReview.result.improvement_priorities.map((item: any, i: number) => {
+                            const isObj = typeof item === 'object' && item !== null;
+                            const priority = isObj ? item.priority : (typeof item === 'string' && item.startsWith('P0') ? 'P0' : item.startsWith('P1') ? 'P1' : 'P2');
+                            const text = isObj ? `${item.requirement_gap ? `[${item.requirement_gap}] ` : ''}${item.actionable_step || ''}` : item;
+                            return (
+                              <div key={i} className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-start gap-2.5 text-xs">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-black shrink-0 ${
+                                  priority === 'P0' ? 'bg-rose-500 text-white' :
+                                  priority === 'P1' ? 'bg-amber-500 text-white' :
+                                  'bg-blue-500 text-white'
+                                }`}>
+                                  {priority}
+                                </span>
+                                <p className="text-slate-700 leading-relaxed font-medium">{text}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Suggested Test Cases */}
+                    {Array.isArray(teamAggregateReview.result.suggested_test_cases) && teamAggregateReview.result.suggested_test_cases.length > 0 && (
+                      <div className="space-y-2">
+                        <span className="text-xs text-slate-700 font-bold uppercase tracking-normal flex items-center gap-1.5">
+                          <FlaskConical size={13} className="text-[#F27024]" /> Kịch bản Kiểm thử gợi ý cho Giám khảo (Test Cases)
+                        </span>
+                        <div className="grid grid-cols-1 gap-2">
+                          {teamAggregateReview.result.suggested_test_cases.map((tc: any, i: number) => {
+                            const isObj = typeof tc === 'object' && tc !== null;
+                            return (
+                              <div key={i} className="bg-slate-50 p-3.5 rounded-xl border border-slate-150 text-xs space-y-1.5 shadow-sm">
+                                <p className="font-bold text-slate-800 text-xs">{isObj ? tc.test_case_name : `Test Case #${i + 1}`}</p>
+                                {isObj ? (
+                                  <div className="text-[11px] text-slate-600 space-y-0.5">
+                                    {tc.given && <p><strong className="text-slate-700 font-bold">Given:</strong> {tc.given}</p>}
+                                    {tc.when && <p><strong className="text-slate-700 font-bold">When:</strong> {tc.when}</p>}
+                                    {tc.then && <p><strong className="text-slate-700 font-bold">Then:</strong> {tc.then}</p>}
+                                  </div>
+                                ) : (
+                                  <p className="text-slate-600">{tc}</p>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Exam Spec Crosscheck (Collapsible) */}
+                    {teamAggregateReview.result.exam_spec_crosscheck && (
+                      <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedExamCrosscheck(!expandedExamCrosscheck)}
+                          className="w-full text-left p-4 flex justify-between items-center hover:bg-slate-100/80 transition-colors"
+                        >
+                          <span className="text-xs sm:text-sm text-slate-700 font-bold uppercase tracking-normal flex items-center gap-1.5">
+                            <ShieldCheck size={12} className="text-[#F27024]" /> Đối chiếu 5 Nhóm Đề thi (30 / 25 / 20 / 15 / 10)
+                          </span>
+                          {expandedExamCrosscheck ? <ChevronUp size={16} className="text-slate-550" /> : <ChevronDown size={16} className="text-slate-550" />}
+                        </button>
+
+                        {expandedExamCrosscheck && (
+                          <div className="p-4 border-t border-slate-200 space-y-3 bg-white leading-relaxed text-xs sm:text-sm text-slate-600">
+                            {teamAggregateReview.result.exam_spec_crosscheck.innovation_and_product_value_30 && (
+                              <p><strong className="text-[#F27024] font-bold">Sáng tạo & Giá trị sản phẩm (30đ):</strong> {teamAggregateReview.result.exam_spec_crosscheck.innovation_and_product_value_30}</p>
+                            )}
+                            {teamAggregateReview.result.exam_spec_crosscheck.multi_agent_collaboration_25 && (
+                              <p><strong className="text-[#F27024] font-bold">Chất lượng phối hợp Multi-Agent (25đ):</strong> {teamAggregateReview.result.exam_spec_crosscheck.multi_agent_collaboration_25}</p>
+                            )}
+                            {teamAggregateReview.result.exam_spec_crosscheck.iot_and_external_world_20 && (
+                              <p><strong className="text-[#F27024] font-bold">Tương tác IoT & Thế giới ngoài (20đ):</strong> {teamAggregateReview.result.exam_spec_crosscheck.iot_and_external_world_20}</p>
+                            )}
+                            {teamAggregateReview.result.exam_spec_crosscheck.task_completion_15 && (
+                              <p><strong className="text-[#F27024] font-bold">Khả năng hoàn thành tác vụ (15đ):</strong> {teamAggregateReview.result.exam_spec_crosscheck.task_completion_15}</p>
+                            )}
+                            {teamAggregateReview.result.exam_spec_crosscheck.transparency_safety_and_experience_10 && (
+                              <p><strong className="text-[#F27024] font-bold">Minh bạch, an toàn & UX (10đ):</strong> {teamAggregateReview.result.exam_spec_crosscheck.transparency_safety_and_experience_10}</p>
+                            )}
+                            {teamAggregateReview.result.exam_spec_crosscheck.session_7_5_3_readiness && (
+                              <p><strong className="text-slate-700 font-bold">Độ sẵn sàng phiên 7-5-3:</strong> {teamAggregateReview.result.exam_spec_crosscheck.session_7_5_3_readiness}</p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -1391,6 +1555,18 @@ export default function JudgeScoring() {
                             )}
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {/* Final Summary Callout */}
+                    {teamAggregateReview.result.final_summary && (
+                      <div className="bg-amber-50/60 border border-amber-250 p-4 rounded-xl space-y-1.5 shadow-sm">
+                        <span className="text-xs font-bold text-[#F27024] uppercase tracking-normal flex items-center gap-1.5">
+                          <Sparkles size={13} className="text-[#F27024]" /> Tổng kết Đánh giá Toàn diện từ Agent 2
+                        </span>
+                        <p className="text-slate-700 text-xs sm:text-sm leading-relaxed font-medium">
+                          {teamAggregateReview.result.final_summary}
+                        </p>
                       </div>
                     )}
                   </div>

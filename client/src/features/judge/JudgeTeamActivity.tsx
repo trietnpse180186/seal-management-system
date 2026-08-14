@@ -10,7 +10,9 @@ import {
   Calendar,
   Award,
   RefreshCw,
-  CheckCircle2
+  CheckCircle2,
+  AlertTriangle,
+  Target
 } from 'lucide-react';
 
 export default function JudgeTeamActivity() {
@@ -272,10 +274,24 @@ export default function JudgeTeamActivity() {
                   </p>
                   {aiInsight.team_system_identity?.primary_user_value && (
                     <p className="text-slate-600 text-[11px] mt-1 italic">
-                      Giá trị: {aiInsight.team_system_identity.primary_user_value}
+                      <strong>Giá trị:</strong> {aiInsight.team_system_identity.primary_user_value}
                     </p>
                   )}
                 </div>
+
+                {/* Disqualification Risks */}
+                {Array.isArray(aiInsight.disqualification_risks) && aiInsight.disqualification_risks.length > 0 && (
+                  <div className="bg-rose-50 border border-rose-250 p-4 rounded-xl space-y-1.5 shadow-sm">
+                    <span className="text-xs text-rose-700 font-bold uppercase tracking-normal flex items-center gap-1.5">
+                      <AlertTriangle size={14} className="text-rose-600" /> Cảnh báo Rủi ro Loại (Disqualification Risks)
+                    </span>
+                    <ul className="list-disc pl-5 space-y-1 text-rose-800 text-xs font-medium">
+                      {aiInsight.disqualification_risks.map((risk: string, i: number) => (
+                        <li key={i}>{risk}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 {/* Overall Historical Synthesis */}
                 <div className="space-y-2">
@@ -285,6 +301,36 @@ export default function JudgeTeamActivity() {
                   </p>
                 </div>
 
+                {/* Minimum Acceptance Check */}
+                {Array.isArray(aiInsight.minimum_acceptance) && aiInsight.minimum_acceptance.length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-xs text-slate-700 font-bold uppercase tracking-normal flex items-center gap-1.5">
+                      <CheckCircle2 size={13} className="text-[#F27024]" /> Kiểm tra Nghiệm thu Tối thiểu ({aiInsight.minimum_acceptance.filter((m: any) => m.status === 'pass' || m.status === 'implemented').length}/{aiInsight.minimum_acceptance.length} Đạt)
+                    </span>
+                    <div className="grid grid-cols-1 gap-2">
+                      {aiInsight.minimum_acceptance.map((m: any, i: number) => {
+                        const isPass = m.status === 'pass' || m.status === 'implemented';
+                        const isPartial = m.status === 'partial';
+                        return (
+                          <div key={i} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 text-xs">
+                            <div className="space-y-0.5">
+                              <p className="font-bold text-slate-800 text-[11px]">{m.requirement}</p>
+                              {m.evidence && <p className="text-slate-500 text-[10px] font-sans">{m.evidence}</p>}
+                            </div>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-normal shrink-0 ${
+                              isPass ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                              isPartial ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                              'bg-rose-50 text-rose-700 border border-rose-200'
+                            }`}>
+                              {m.status}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Qualitative Ratings & Rubric Scores */}
                 <div className="space-y-3">
                   <span className="text-xs text-slate-500 font-bold uppercase tracking-normal block">Đánh giá tiêu chí Rubric</span>
@@ -292,18 +338,18 @@ export default function JudgeTeamActivity() {
                     {Object.entries(aiInsight.criteria_comments || {}).map(([key, value]: [string, any]) => (
                       <div key={key} className="bg-slate-50 p-3 rounded-xl border border-slate-150 flex flex-col gap-1 shadow-sm hover:border-slate-350 transition-colors">
                         <div className="flex justify-between items-center">
-                          <span className="font-bold text-slate-700 uppercase tracking-normal text-[10px]">{key}</span>
+                          <span className="font-bold text-slate-700 uppercase tracking-normal text-[10px]">[{key}]</span>
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-normal ${
                             value.grade === 'Xuất sắc' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
                             value.grade === 'Tốt' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
                             value.grade === 'Khá' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
                             value.grade === 'Trung bình' ? 'bg-slate-100 text-slate-600 border border-slate-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
                           }`}>
-                            {value.suggested_score !== undefined ? `${value.suggested_score}đ - ` : ''}{value.grade}
+                            {value.suggested_score !== undefined ? `${value.suggested_score}đ / 5đ — ` : ''}{value.grade}
                           </span>
                         </div>
                         {value.comment && (
-                          <p className="text-slate-600 text-[11px] line-clamp-2 mt-0.5">
+                          <p className="text-slate-600 text-[11px] line-clamp-3 mt-0.5">
                             {value.comment}
                           </p>
                         )}
@@ -330,13 +376,41 @@ export default function JudgeTeamActivity() {
 
                 {/* Improvement Priorities */}
                 {Array.isArray(aiInsight.improvement_priorities) && aiInsight.improvement_priorities.length > 0 && (
-                  <div className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <span className="text-xs font-bold text-slate-700 uppercase tracking-normal block">Ưu tiên cải thiện đề xuất</span>
-                    <ul className="list-disc pl-5 space-y-1 text-slate-600 text-xs">
-                      {aiInsight.improvement_priorities.map((item: string, idx: number) => (
-                        <li key={idx}>{item}</li>
-                      ))}
-                    </ul>
+                  <div className="space-y-2">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-normal flex items-center gap-1.5">
+                      <Target size={13} className="text-[#F27024]" /> Danh sách Ưu tiên Cải thiện
+                    </span>
+                    <div className="space-y-2">
+                      {aiInsight.improvement_priorities.map((item: any, idx: number) => {
+                        const isObj = typeof item === 'object' && item !== null;
+                        const priority = isObj ? item.priority : (typeof item === 'string' && item.startsWith('P0') ? 'P0' : item.startsWith('P1') ? 'P1' : 'P2');
+                        const text = isObj ? `${item.requirement_gap ? `[${item.requirement_gap}] ` : ''}${item.actionable_step || ''}` : item;
+                        return (
+                          <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-start gap-2.5 text-xs">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-black shrink-0 ${
+                              priority === 'P0' ? 'bg-rose-500 text-white' :
+                              priority === 'P1' ? 'bg-amber-500 text-white' :
+                              'bg-blue-500 text-white'
+                            }`}>
+                              {priority}
+                            </span>
+                            <p className="text-slate-700 leading-relaxed font-medium">{text}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Final Summary */}
+                {aiInsight.final_summary && (
+                  <div className="bg-amber-50/60 border border-amber-250 p-4 rounded-xl space-y-1.5 shadow-sm">
+                    <span className="text-xs font-bold text-[#F27024] uppercase tracking-normal flex items-center gap-1.5">
+                      <Sparkles size={13} className="text-[#F27024]" /> Tổng kết Đánh giá từ Agent 2
+                    </span>
+                    <p className="text-slate-700 text-xs leading-relaxed font-medium">
+                      {aiInsight.final_summary}
+                    </p>
                   </div>
                 )}
 

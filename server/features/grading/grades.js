@@ -150,18 +150,14 @@ router.post('/suggestion', authenticateToken, async (req, res) => {
       await snapshot.save();
     }
 
-    // 4. Agent 2 runs only from this explicit judge action. It evaluates the
-    // saved Agent 1 evidence against the rubric assigned to the selected round.
+    // 4. Agent 2 evaluates saved Agent 1 evidence (if any) along with commit history
+    // against the active rubric assigned to the selected round.
     const priorReviews = await AiAnalysis.find({
       teamId,
       repositoryId: repo._id,
       analysisType: 'commit_review',
       status: 'completed'
     }).sort({ createdAt: -1 }).limit(10);
-
-    if (priorReviews.length === 0) {
-      return res.status(409).json({ message: 'No completed Agent 1 analyses are available for this repository yet.' });
-    }
 
     const aggregateResult = await aiService.analyzeTeamAggregate(
       teamId,

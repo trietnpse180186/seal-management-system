@@ -489,7 +489,10 @@ export default function JudgeScoringScreen({ route, navigation }) {
     (r) => r.analysisType === 'commit_review' && r.status === 'completed'
   );
   const teamAggregateReview = allAiAnalyses.find(
-    (r) => r.analysisType === 'repository_review' && r.status === 'completed'
+    (r) =>
+      r.analysisType === 'repository_review' &&
+      r.status === 'completed' &&
+      String(r.roundId || '') === String(roundId || '')
   );
   const commitReviews = allAiAnalyses.filter(
     (r) => r.analysisType === 'commit_review' && r.status === 'completed'

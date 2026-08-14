@@ -80,6 +80,45 @@ const promptsRegistry = {
         "level": "Basic | Advanced | Agentic-RAG",
         "features_detected": ["e.g. hybrid_search", "rerank", "metadata_filtering"]
       },
+      "system_identity": {
+        "project_about": "",
+        "detected_track": "Smart Home | Smart Agriculture | Smart Factory | Unknown",
+        "target_personas": [],
+        "primary_user_value": "",
+        "current_focus": ""
+      },
+      "multi_agent_architecture": {
+        "agent_count_observed": 0,
+        "agents_and_roles": [],
+        "handoff_mechanism": "",
+        "multi_agent_task_evidence": "",
+        "is_multi_agent_substantive": false
+      },
+      "iot_integration": {
+        "mqtt_connection_and_topic": "",
+        "payload_handling": "",
+        "devices_observed": [],
+        "decision_influence": "",
+        "reconnect_and_invalid_data_handling": ""
+      },
+      "tools_and_verification": {
+        "read_tools": [],
+        "state_changing_tools": [],
+        "verification_mechanism": "",
+        "idempotency_and_retry": ""
+      },
+      "rubric_evidence": {
+        "R1_01": {"status":"implemented|partial|missing|not_observable_in_diff","evidence":[],"gaps":[]},
+        "R1_02": {"status":"implemented|partial|missing|not_observable_in_diff","evidence":[],"gaps":[]},
+        "R1_03": {"status":"implemented|partial|missing|not_observable_in_diff","evidence":[],"gaps":[]},
+        "R1_04": {"status":"implemented|partial|missing|not_observable_in_diff","evidence":[],"gaps":[]},
+        "R1_05": {"status":"implemented|partial|missing|not_observable_in_diff","evidence":[],"gaps":[]},
+        "R2_01": {"status":"implemented|partial|missing|not_observable_in_diff","evidence":[],"gaps":[]},
+        "R2_02": {"status":"implemented|partial|missing|not_observable_in_diff","evidence":[],"gaps":[]},
+        "R2_03": {"status":"implemented|partial|missing|not_observable_in_diff","evidence":[],"gaps":[]},
+        "R2_04": {"status":"implemented|partial|missing|not_observable_in_diff","evidence":[],"gaps":[]},
+        "R2_05": {"status":"implemented|partial|missing|not_observable_in_diff","evidence":[],"gaps":[]}
+      },
       "overall_picture": {
         "project_about": "Brief description of what this project does",
         "tools_plain_bullets": "- Tool 1\\n- Tool 2",
@@ -102,7 +141,8 @@ const promptsRegistry = {
       "suggested_prompt_refinement": "Refinement suggestions for their LLM prompts"
     }
 
-    IMPORTANT: You MUST write all descriptive fields (especially suggested_questions_for_team, overall_picture.push_summary, overall_picture.current_focus, overall_picture.project_about, assessment.advantages, assessment.disadvantages, assessment.improvement_areas, and suggested_test_cases) entirely in fluent, professional Vietnamese.
+    IMPORTANT: You MUST write all descriptive fields (especially suggested_questions_for_team, overall_picture.push_summary, overall_picture.current_focus, overall_picture.project_about, assessment.advantages, assessment.disadvantages, assessment.improvement_areas, rubric_evidence, and suggested_test_cases) entirely in fluent, professional Vietnamese.
+    Agent 1 never assigns scores. It only records repository evidence and gaps for all SU26 R1/R2 criteria. Demo-only claims must be marked not_observable_in_diff instead of invented.
   `,
 
   repository_review: (teamId, commitSummaries, reviewSummaries, criteriaPrompt, trackName) => `
@@ -124,6 +164,14 @@ const promptsRegistry = {
     
     Rate the team qualitatively for the following criteria defined in the active Rubric. All qualitative grades MUST choose from ["Xuất sắc", "Tốt", "Khá", "Trung bình", "Yếu"]:
     ${criteriaPrompt}
+
+    The criteria listed above are the active rubric assigned to the selected round and are the sole source of truth.
+    Include exactly one criteria_comments entry for every listed criterion code, with no extra or inferred criteria.
+    This rubric uses levels 5, 4, 3, 2, 1 as scoring anchors. Match evidence against the two nearest gradingLevels descriptions.
+    Each entry must be an object: {"grade":"Xuất sắc|Tốt|Khá|Trung bình|Yếu","suggested_score":4.5,"comment":"Vietnamese evidence-based comment"}.
+    suggested_score may be decimal within [1, maxScore], with at most 2 decimal places, when evidence falls between two adjacent anchors. The comment must explain the interpolation; never exceed the rubric range.
+    Keep grade consistent with score: [4.5,5] Xuất sắc; [3.5,4.5) Tốt; [2.5,3.5) Khá; [1.5,2.5) Trung bình; [1,1.5) Yếu.
+    Base the assessment on the saved per-push evidence reviews. Missing runtime evidence must lower confidence and be stated as a gap; never invent evidence.
     
     IMPORTANT: You MUST write the detailed assessment comments, overall pictures, evolution notes, reasoning processes, and SMB Advisories entirely in fluent, professional Vietnamese.
     Also compile an SMB Scale Advisory (system_identity_recap, summary, tech_and_architecture, cost_for_smb, throughput_and_reliability, observability_and_operations, data_and_integrations).
@@ -132,7 +180,7 @@ const promptsRegistry = {
     {
       "criteria_comments": {
         // You MUST include exactly one entry for each criterion code listed above.
-        // Format: "CODE": {"grade": "Tốt|Xuất sắc|...", "comment": "detailed review comment in Vietnamese explaining the grade based on code commits"}
+        // Format: "CODE": {"grade": "Tốt|Xuất sắc|...", "suggested_score": 1.0..5.0, "comment": "detailed Vietnamese evidence-based comment; explain decimal interpolation when used"}
       },
       "smb_scale_advisory": {
         "system_identity_recap": "system identity recap in Vietnamese",

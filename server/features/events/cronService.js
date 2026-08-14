@@ -527,37 +527,11 @@ async function syncRepo(repoId) {
         patch: aggregatedDiff
       }];
 
-      // Perform a single combined AI analysis call (only 1 n8n/AI request!)
+      // Agent 1 runs automatically for every synchronized push batch.
+      // Agent 2 is intentionally excluded from cron and only runs on a judge request.
       try {
-        console.log(`[SYNC] Running combined sync AI analysis (commit + team aggregate) for team: ${repo.teamId}...`);
-        
-        // Fetch up to 40 commits for the team
-        const allTeamCommits = await Commit.find({ teamId: repo.teamId, message: { $not: /initial commit/i } }).sort({ committedAt: 1 }).limit(40);
-        // Fetch up to 10 prior reviews
-        const priorReviews = await AiAnalysis.find({
-          teamId: repo.teamId,
-          analysisType: 'commit_review',
-          status: 'completed'
-        }).sort({ createdAt: -1 }).limit(10);
-
-        const combinedResult = await aiService.analyzeCommitAndAggregate(
-          batchCommit,
-          batchFiles,
-          repo.teamId,
-          allTeamCommits,
-          priorReviews
-        );
-
-        const aiResult = combinedResult.commit_review;
-        const aggResult = combinedResult.repository_review;
-        const hardConstraints = combinedResult.hard_constraints_validation;
-
-        if (aiResult && hardConstraints) {
-          aiResult.hard_constraints_validation = hardConstraints;
-        }
-        if (aggResult && hardConstraints) {
-          aggResult.hard_constraints_validation = hardConstraints;
-        }
+        console.log(`[SYNC] Running Agent 1 per-push evidence analysis for team: ${repo.teamId}...`);
+        const aiResult = await aiService.analyzeCommit(batchCommit, batchFiles);
 
         // 1. Save Per-Push Commit Review
         if (aiResult) {
@@ -573,8 +547,8 @@ async function syncRepo(repoId) {
             teamId: repo.teamId,
             commitId: latestCommit._id,
             analysisType: 'commit_review',
-            provider: combinedResult._provider || aiResult._provider || 'Google Gemini',
-            model: combinedResult._model || aiResult._model || 'gemini-3.1-flash-lite',
+            provider: aiResult._provider || 'Google Gemini',
+            model: aiResult._model || 'gemini-3.1-flash-lite',
             result: aiResult,
             status: 'completed',
             completedAt: new Date()
@@ -627,31 +601,8 @@ ${aiResult.assessment?.improvement_areas || 'Không có thông tin.'}
           }
         }
 
-        // 2. Save Team Aggregate Review
-        if (aggResult) {
-          // Delete any existing failed repository reviews for this team before saving
-          await AiAnalysis.deleteMany({
-            teamId: repo.teamId,
-            analysisType: 'repository_review',
-            status: 'failed'
-          });
-
-          const aggAnalysis = new AiAnalysis({
-            repositoryId: repo._id,
-            teamId: repo.teamId,
-            analysisType: 'repository_review', // Maps to team_aggregate
-            provider: combinedResult._provider || aggResult._provider || 'Google Gemini',
-            model: combinedResult._model || aggResult._model || 'gemini-3.1-flash-lite',
-            result: aggResult,
-            status: 'completed',
-            completedAt: new Date()
-          });
-          await aggAnalysis.save();
-          console.log(`[SYNC] Completed Team Aggregate AI review successfully.`);
-        }
-
       } catch (aiErr) {
-        console.error(`[SYNC] Combined AI sync analysis failed:`, aiErr.message);
+        console.error(`[SYNC] Agent 1 per-push analysis failed:`, aiErr.message);
         
         // Save failed records for troubleshooting
         try {
@@ -668,18 +619,6 @@ ${aiResult.assessment?.improvement_areas || 'Không có thông tin.'}
           console.error(`[SYNC] Failed saving error log for commit review:`, dbErr.message);
         }
 
-        try {
-          const aggAnalysisFailed = new AiAnalysis({
-            repositoryId: repo._id,
-            teamId: repo.teamId,
-            analysisType: 'repository_review',
-            status: 'failed',
-            errorMessage: aiErr.message
-          });
-          await aggAnalysisFailed.save();
-        } catch (dbErr) {
-          console.error(`[SYNC] Failed saving error log for team aggregate review:`, dbErr.message);
-        }
       }
     }
 

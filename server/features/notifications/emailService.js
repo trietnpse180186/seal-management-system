@@ -526,100 +526,6 @@ async function sendEventCreationNotification(email, fullName, eventName, semeste
 }
 
 /**
- * Sends a notification email to a member when track topics/materials are distributed.
- * @param {string} email - Recipient email
- * @param {string} fullName - Recipient full name
- * @param {string} trackName - Name of the track
- * @param {Array} attachments - List of attachments with fileName and fileUrl
- * @returns {Promise<boolean>}
- */
-async function sendTrackTopicDistribution(email, fullName, trackName, attachments) {
-  const fileLinks = attachments.map((att, idx) => {
-    return `<li style="margin: 8px 0;"><a href="${att.fileUrl}" style="color: #F27024; text-decoration: underline; font-weight: 600;" target="_blank">${att.fileName || `Tài liệu đính kèm ${idx + 1}`}</a></li>`;
-  }).join('');
-
-  const contentHtml = `
-    <p style="margin-top: 0;">Kính gửi <strong>${fullName}</strong>,</p>
-    <p>Thời gian làm bài thi của bảng đấu <strong style="color: #F27024;">"${trackName}"</strong> đã chính thức bắt đầu. Ban Tổ chức đã mở liên kết đề bài và các tài liệu hướng dẫn.</p>
-    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 24px 0;">
-      <p style="margin: 0 0 12px 0; font-weight: 700; color: #0f172a;">Danh sách tài liệu đính kèm:</p>
-      <ul style="margin: 0; padding-left: 20px;">
-        ${fileLinks || '<li style="color: #64748b;">Không có liên kết tài liệu đính kèm nào.</li>'}
-      </ul>
-    </div>
-    <p>Bạn cũng có thể đăng nhập vào hệ thống để truy cập bảng điều khiển và nộp bài làm:</p>
-    <div style="text-align: center; margin: 32px 0;">
-      <a href="${process.env.CLIENT_URL || 'https://seal-management-staging.vercel.app'}" style="background-color: #F27024; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 8px 20px rgba(242,112,36,0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">VÀO DASHBOARD LÀM BÀI</a>
-    </div>
-  `;
-
-  const mailOptions = {
-    from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
-    to: email,
-    subject: `[SEAL Hackathon] Thông báo công bố đề thi bảng đấu "${trackName}"`,
-    html: buildBaseEmailTemplate({
-      headerTitle: 'Đề Thi & Tài Liệu Đã Mở',
-      contentHtml
-    })
-  };
-
-  if (isMock) {
-    console.log('\n--- [EMAIL MOCK SERVICE: TOPIC DISTRIBUTION] ---');
-    console.log(`To: ${email}`);
-    console.log(`Subject: ${mailOptions.subject}`);
-    console.log('----------------------------------------------\n');
-    return true;
-  }
-
-  try {
-    const info = await sendMailHelper(mailOptions);
-    console.log(`Topic email sent to ${email}: ${info.messageId}`);
-    return true;
-  } catch (error) {
-    console.error(`Error sending topic email to ${email}:`, error);
-    throw error;
-  }
-}
-
-async function sendRoundExamOpened(email, fullName, roundName) {
-  const clientUrl = process.env.CLIENT_URL || 'https://seal-management-staging.vercel.app';
-  const contentHtml = `
-    <p style="margin-top: 0;">Kính gửi <strong>${fullName}</strong>,</p>
-    <p>Vòng thi <strong style="color: #F27024;">"${roundName}"</strong> đã chính thức được mở. Vui lòng đăng nhập vào hệ thống SEAL, truy cập mục <strong>Khu vực đội</strong> và chọn <strong>Mở đề & tài liệu</strong> để tải về đề thi.</p>
-    <div style="text-align: center; margin: 32px 0;">
-      <a href="${clientUrl}/team-area" style="background-color: #F27024; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; display: inline-block; box-shadow: 0 8px 20px rgba(242,112,36,0.25); text-transform: uppercase; font-size: 13px; letter-spacing: 0.8px;">TRUY CẬP KHU VỰC ĐỘI</a>
-    </div>
-    <div style="font-size: 13px; color: #64748b; line-height: 1.6; border: 1px solid #e2e8f0; padding: 16px; background-color: #f8fafc; border-radius: 10px;">
-      <strong>Lưu ý:</strong> Bạn cần đăng nhập tài khoản Google bằng đúng địa chỉ email đã đăng ký trên hệ thống để có quyền xem các tài liệu lưu trữ trên Google Drive.
-    </div>
-  `;
-
-  const mailOptions = {
-    from: process.env.EMAIL_FROM || '"SEAL Hackathon" <no-reply@domain.com>',
-    to: email,
-    subject: `[SEAL Hackathon] Thông báo mở đề thi vòng "${roundName}"`,
-    html: buildBaseEmailTemplate({
-      headerTitle: 'Đề Thi Vòng Mới Đã Mở',
-      contentHtml
-    })
-  };
-
-  if (isMock) {
-    console.log(`\n--- [EMAIL MOCK: ROUND EXAM OPENED] To: ${email} ---\n`);
-    return true;
-  }
-
-  try {
-    const info = await sendMailHelper(mailOptions);
-    console.log(`Round exam email sent to ${email}: ${info.messageId}`);
-    return true;
-  } catch (error) {
-    console.error(`Error sending round exam email to ${email}:`, error);
-    throw error;
-  }
-}
-
-/**
  * Send Seminar Invitation with Google Meet Link to contestant
  */
 async function sendSeminarInvitation(email, recipientName, eventName, seminarData, eventId) {
@@ -845,8 +751,6 @@ module.exports = {
   sendTeamInvitation,
   sendEmailVerification,
   sendEventCreationNotification,
-  sendTrackTopicDistribution,
-  sendRoundExamOpened,
   sendSeminarInvitation,
   sendAccountProvisionEmail,
   sendPasswordResetEmail,

@@ -547,11 +547,18 @@ export default function JudgeScoring() {
     r => r.analysisType === 'commit_review' && r.status === 'completed'
   );
 
-  // Find team aggregate review (repository_review)
+  // Find team aggregate review (repository_review) with fallback
   const teamAggregateReview = allAiAnalyses.find(
     r => r.analysisType === 'repository_review' &&
       r.status === 'completed' &&
-      String(r.roundId || '') === String(selectedRoundId || '')
+      selectedRoundId &&
+      String(r.roundId?._id || r.roundId || '') === String(selectedRoundId)
+  ) || allAiAnalyses.find(
+    r => r.analysisType === 'repository_review' &&
+      r.status === 'completed' &&
+      !r.roundId
+  ) || allAiAnalyses.find(
+    r => r.analysisType === 'repository_review' && r.status === 'completed'
   );
 
   // Filter commit reviews (per-push reviews)
@@ -1340,9 +1347,13 @@ export default function JudgeScoring() {
                           <AlertTriangle size={14} className="text-rose-600" /> Cảnh báo Rủi ro Loại (Disqualification Risks)
                         </span>
                         <ul className="list-disc pl-5 space-y-1 text-rose-800 text-xs font-medium">
-                          {teamAggregateReview.result.disqualification_risks.map((risk: string, i: number) => (
-                            <li key={i}>{risk}</li>
-                          ))}
+                          {teamAggregateReview.result.disqualification_risks.map((item: any, i: number) => {
+                            const isObj = typeof item === 'object' && item !== null;
+                            const text = isObj
+                              ? `${item.risk ? `[${item.risk}] ` : ''}${item.description || item.message || item.detail || JSON.stringify(item)}`
+                              : String(item);
+                            return <li key={i}>{text}</li>;
+                          })}
                         </ul>
                       </div>
                     )}
@@ -1353,7 +1364,11 @@ export default function JudgeScoring() {
                         <BookOpen size={12} className="text-[#F27024]" /> Tóm tắt lịch sử phát triển
                       </span>
                       <p className="text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-100 leading-relaxed font-sans shadow-sm text-xs sm:text-sm">
-                        {teamAggregateReview.result.historical_synthesis?.evolution_summary || teamAggregateReview.result.overall_picture?.historical_synthesis}
+                        {typeof teamAggregateReview.result.historical_synthesis === 'object' && teamAggregateReview.result.historical_synthesis !== null
+                          ? teamAggregateReview.result.historical_synthesis.evolution_summary || teamAggregateReview.result.historical_synthesis.current_focus || 'Đã tổng hợp lịch sử phát triển.'
+                          : typeof teamAggregateReview.result.overall_picture?.historical_synthesis === 'string'
+                            ? teamAggregateReview.result.overall_picture.historical_synthesis
+                            : String(teamAggregateReview.result.historical_synthesis || 'Đã tổng hợp lịch sử phát triển.')}
                       </p>
                     </div>
 
@@ -1562,7 +1577,9 @@ export default function JudgeScoring() {
                           <Sparkles size={13} className="text-[#F27024]" /> Tổng kết Đánh giá Toàn diện từ Agent 2
                         </span>
                         <p className="text-slate-700 text-xs sm:text-sm leading-relaxed font-medium">
-                          {teamAggregateReview.result.final_summary}
+                          {typeof teamAggregateReview.result.final_summary === 'object'
+                            ? JSON.stringify(teamAggregateReview.result.final_summary)
+                            : String(teamAggregateReview.result.final_summary)}
                         </p>
                       </div>
                     )}

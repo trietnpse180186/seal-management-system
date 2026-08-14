@@ -9,7 +9,7 @@ Tài liệu này chi tiết các thành phần đã triển khai trong hệ th�
 Hệ thống được phát triển theo mô hình Client-Server độc lập:
 
 ### Backend (server/)
-- **Database (Mongoose - 20 Models)**: Được ánh xạ 100% từ file thiết kế `schema.dbml`. Xem chi tiết các model trong thư mục [server/models/](file:///c:/Users/Triet/MyProject/seal-management-system/server/models/).
+- **Database (Mongoose - 20 Models)**: Được ánh xạ 100% từ file thiết kế [schema.dbml](file:///c:/Users/Triet/MyProject/seal-management-system/docs/database/schema.dbml). Xem chi tiết các model trong thư mục [server/models/](file:///c:/Users/Triet/MyProject/seal-management-system/server/models/).
 - **Services (server/services/)**:
   - `emailService.js`: Gửi mail mời & OTP xác nhận.
   - `githubService.js`: Tạo repo Org private & thêm collaborators.

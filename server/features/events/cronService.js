@@ -530,8 +530,15 @@ async function syncRepo(repoId) {
       // Agent 1 runs automatically for every synchronized push batch.
       // Agent 2 is intentionally excluded from cron and only runs on a judge request.
       try {
-        console.log(`[SYNC] Running Agent 1 per-push evidence analysis for team: ${repo.teamId}...`);
-        const aiResult = await aiService.analyzeCommit(batchCommit, batchFiles);
+        const extraContext = {
+          teamId: repo.teamId,
+          repoName: repo.repoName,
+          repositoryId: repo._id,
+          commitCount: syncedCommits.length,
+          cronBatchReview: true,
+          batchedCommitShas: syncedCommits.map(s => s.commitRecord?.commitSha).filter(Boolean).join(', ')
+        };
+        const aiResult = await aiService.analyzeCommit(batchCommit, batchFiles, extraContext);
 
         // 1. Save Per-Push Commit Review
         if (aiResult) {

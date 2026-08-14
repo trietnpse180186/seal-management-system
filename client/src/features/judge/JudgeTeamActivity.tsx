@@ -8,7 +8,9 @@ import {
   Sparkles,
   AlertCircle,
   Calendar,
-  Award
+  Award,
+  RefreshCw,
+  CheckCircle2
 } from 'lucide-react';
 
 export default function JudgeTeamActivity() {
@@ -22,6 +24,26 @@ export default function JudgeTeamActivity() {
   const [aiQuestions, setAiQuestions] = useState<string[]>([]);
   
   const [loading, setLoading] = useState(true);
+  const [triggerLoading, setTriggerLoading] = useState(false);
+  const [triggerMessage, setTriggerMessage] = useState<{ type: string; text: string }>({ type: '', text: '' });
+
+  const fetchAiData = () => {
+    if (!teamId) return;
+    axios.get(`http://localhost:5000/api/ai-analyses/team/${teamId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then((res: any) => {
+        const agg = res.data.find((r: any) => r.analysisType === 'repository_review' && r.status === 'completed');
+        setAiInsight(agg ? agg.result : null);
+
+        const commitReview = res.data.find((r: any) => r.analysisType === 'commit_review' && r.status === 'completed');
+        const questions = agg?.result?.suggested_questions_for_team || commitReview?.result?.suggested_questions_for_team || [];
+        setAiQuestions(questions);
+      })
+      .catch((err: any) => {
+        console.error(err);
+      });
+  };
 
   // Fetch specific team info directly
   useEffect(() => {
@@ -50,22 +72,58 @@ export default function JudgeTeamActivity() {
       .then((res: any) => setCommits(res.data))
       .catch((err: any) => console.error(err));
 
-    axios.get(`http://localhost:5000/api/ai-analyses/team/${teamId}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then((res: any) => {
-        const agg = res.data.find((r: any) => r.analysisType === 'repository_review' && r.status === 'completed');
-        setAiInsight(agg ? agg.result : null);
-
-        const commitReview = res.data.find((r: any) => r.analysisType === 'commit_review' && r.status === 'completed');
-        setAiQuestions(commitReview?.result?.suggested_questions_for_team || []);
-      })
-      .catch((err: any) => {
-        console.error(err);
-        setAiInsight(null);
-        setAiQuestions([]);
-      });
+    fetchAiData();
   }, [teamId, token]);
+
+  const handleTriggerAgent2 = async () => {
+    if (!teamId) return;
+    setTriggerLoading(true);
+    setTriggerMessage({ type: '', text: '' });
+
+    try {
+      // 1. Get active round and rubric
+      const activeContestRes = await axios.get("http://localhost:5000/api/events/judge/active-contest", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const roundId = activeContestRes.data?.currentRound?._id || team?.currentRoundId;
+      if (!roundId) {
+        throw new Error('Chưa xác định được vòng thi hiện tại của sự kiện.');
+      }
+
+      const rubricRes = await axios.get(`http://localhost:5000/api/rubrics/round/${roundId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const rubricId = rubricRes.data?._id;
+      if (!rubricId) {
+        throw new Error('Chưa tìm thấy Rubric active được gán cho vòng thi này.');
+      }
+
+      // 2. Trigger Agent 2 manual aggregate review
+      const res = await axios.post(`http://localhost:5000/api/ai-analyses/team/${teamId}/aggregate`, {
+        roundId,
+        rubricId
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.data?.analysis?.result) {
+        setAiInsight(res.data.analysis.result);
+        const questions = res.data.analysis.result.suggested_questions_for_team || [];
+        if (questions.length > 0) {
+          setAiQuestions(questions);
+        }
+      } else {
+        fetchAiData();
+      }
+
+      setTriggerMessage({ type: 'success', text: 'Agent 2 đã hoàn tất phân tích tổng hợp lịch sử đội thi theo Rubric!' });
+    } catch (err: any) {
+      const errMsg = err?.response?.data?.message || err.message || 'Lỗi khi kích hoạt Agent 2.';
+      setTriggerMessage({ type: 'error', text: errMsg });
+    } finally {
+      setTriggerLoading(false);
+    }
+  };
 
   const getSyncTimeElapsed = (dateStr: string) => {
     if (!dateStr) return '';
@@ -99,74 +157,68 @@ export default function JudgeTeamActivity() {
             <span>Dashboard</span>
           </button>
           <span className="text-slate-300">/</span>
-          <span className="text-slate-800 text-sm font-bold">Hoạt động: {team.name}</span>
+          <span className="text-slate-700 font-bold text-sm">Chi tiết hoạt động</span>
         </div>
 
-        <button
-          onClick={() => navigate(`/expert/score/${team._id}`)}
-          className="flex items-center gap-2 bg-[#F27024] hover:bg-[#d95f1f] text-white font-bold text-xs px-6 py-3 rounded-xl transition-all uppercase shrink-0 shadow-sm"
-        >
-          <Award size={14} />
-          <span>Vào Bàn Chấm Điểm</span>
-        </button>
-      </div>
-
-      {/* Team Profile Banner */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <span className="text-[10px] text-[#F27024] font-bold uppercase bg-[#F27024]/10 border border-[#F27024]/20 px-2.5 py-1 rounded-md shadow-sm">
-              Tổng quan dự án của đội
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-normal">Đội:</span>
+          <span className="bg-[#F27024]/10 text-[#F27024] font-black px-3 py-1 rounded-xl text-sm border border-[#F27024]/20 shadow-sm">
+            {team.teamName || team.name}
+          </span>
+          {team.trackId && (
+            <span className="bg-slate-100 text-slate-700 font-bold px-3 py-1 rounded-xl text-xs border border-slate-200">
+              {team.trackId.name}
             </span>
-            <h2 className="text-2xl font-bold text-slate-800 mt-3">{team.name}</h2>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* Main 2-Column Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* Main Grid Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Left Column: Git Repo Commit History */}
+        {/* Left Column: Repository Commits Stream */}
         <div className="lg:col-span-6 space-y-6">
-          <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm flex flex-col">
-            <h3 className="text-sm font-bold text-slate-800 uppercase flex items-center gap-2 border-b border-slate-100 pb-4 mb-4">
-              <GitBranch size={16} className="text-[#F27024]" />
-              <span>Lịch sử hoạt động Git Repo ({commits.length})</span>
-            </h3>
+          <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm flex flex-col space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+              <h3 className="text-sm font-bold text-slate-800 uppercase flex items-center gap-2">
+                <GitBranch size={16} className="text-[#F27024]" />
+                <span>Nhật ký Commit Đồng bộ ({commits.length})</span>
+              </h3>
+              <span className="text-xs font-medium text-slate-450">Tự động đối soát định kỳ</span>
+            </div>
 
-            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
-              {commits.map((c: any, idx: number) => (
-                <div 
-                  key={c._id || idx} 
-                  className="bg-slate-50 border border-slate-150 p-4 rounded-xl space-y-2 hover:border-slate-350 transition-colors shadow-sm"
-                >
-                  <div className="flex justify-between items-start gap-4">
-                    <p className="font-bold text-slate-800 text-sm leading-relaxed">{c.message}</p>
-                    <span className="text-xs text-slate-450 font-mono shrink-0">
-                      {c.commitSha?.slice(0, 8)}
+            <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+              {commits.map((c: any, index: number) => (
+                <div key={index} className="p-4 rounded-xl border border-slate-150 bg-slate-50 hover:bg-white hover:border-[#F27024]/40 transition-all shadow-sm flex flex-col space-y-2">
+                  <div className="flex justify-between items-start">
+                    <span className="font-mono text-xs font-bold text-[#F27024] bg-[#F27024]/10 px-2 py-0.5 rounded border border-[#F27024]/20">
+                      {c.commitSha ? c.commitSha.substring(0, 7) : 'Commit'}
                     </span>
+                    <div className="flex items-center gap-1.5 text-slate-450 text-[11px] font-medium">
+                      <Calendar size={12} />
+                      <span>{getSyncTimeElapsed(c.committedAt)}</span>
+                    </div>
                   </div>
 
-                  <div className="flex justify-between items-center text-xs text-slate-500 font-sans pt-1">
-                    <div className="flex items-center gap-1">
-                      <span className="font-bold text-[#F27024]">@{c.authorGithubUsername || c.authorName}</span>
-                    </div>
-                    <div className="flex items-center gap-3 font-mono text-[11px] sm:text-xs">
-                      <span className="text-emerald-600 font-bold">+{c.additions} lines</span>
-                      <span className="text-rose-600 font-bold">-{c.deletions} lines</span>
-                      <span className="text-slate-450 flex items-center gap-1 font-sans">
-                        <Calendar size={10} />
-                        {getSyncTimeElapsed(c.committedAt)}
+                  <p className="text-slate-800 text-xs font-semibold leading-relaxed">
+                    {c.message}
+                  </p>
+
+                  <div className="flex justify-between items-center text-[11px] text-slate-500 pt-1 border-t border-slate-100">
+                    <span>Tác giả: <strong className="text-slate-700">{c.authorName || c.authorGithubUsername || 'N/A'}</strong></span>
+                    {c.diffSummary && (
+                      <span className="text-emerald-600 font-bold flex items-center gap-1">
+                        <Award size={12} /> Đã kiểm toán bằng chứng
                       </span>
-                    </div>
+                    )}
                   </div>
                 </div>
               ))}
 
               {commits.length === 0 && (
-                <p className="text-xs text-slate-450 italic text-center py-12">
-                  Chưa có hoạt động Git nào được ghi nhận.
-                </p>
+                <div className="text-center py-12 text-slate-400 text-xs italic">
+                  Chưa có commit nào được đồng bộ cho đội thi này.
+                </div>
               )}
             </div>
           </div>
@@ -175,44 +227,86 @@ export default function JudgeTeamActivity() {
         {/* Right Column: AI Analysis & Preview Panel */}
         <div className="lg:col-span-6 space-y-6">
           <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm flex flex-col space-y-5">
-            <h3 className="text-sm font-bold text-slate-800 uppercase flex items-center gap-2 border-b border-slate-100 pb-4">
-              <Sparkles size={16} className="text-[#F27024]" />
-              <span>Phân tích và Nhận định Tổng quan từ AI</span>
-            </h3>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-4">
+              <h3 className="text-sm font-bold text-slate-800 uppercase flex items-center gap-2">
+                <Sparkles size={16} className="text-[#F27024]" />
+                <span>Đánh giá Tổng quan từ AI (Agent 2)</span>
+              </h3>
+
+              {/* Action Button to Trigger Agent 2 */}
+              <button
+                type="button"
+                onClick={handleTriggerAgent2}
+                disabled={triggerLoading}
+                className="flex items-center gap-1.5 bg-[#F27024] hover:bg-[#d95f1f] text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm hover:shadow cursor-pointer disabled:opacity-50"
+              >
+                <RefreshCw size={13} className={triggerLoading ? 'animate-spin' : ''} />
+                <span>{triggerLoading ? 'Agent 2 đang chạy...' : 'Chạy Agent 2 Phân tích'}</span>
+              </button>
+            </div>
+
+            {/* Notification message */}
+            {triggerMessage.text && (
+              <div className={`p-3 rounded-xl text-xs font-medium flex items-center gap-2 ${
+                triggerMessage.type === 'success' 
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
+                  : 'bg-rose-50 text-rose-800 border border-rose-200'
+              }`}>
+                {triggerMessage.type === 'success' ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
+                <span>{triggerMessage.text}</span>
+              </div>
+            )}
 
             {aiInsight ? (
               <div className="space-y-6">
-                {/* RAG level indicator */}
-                <div className="bg-[#F27024]/5 p-4 rounded-xl border border-[#F27024]/20 shadow-sm">
-                  <span className="text-xs text-[#F27024] font-bold uppercase tracking-normal block">Phân cấp kiến trúc RAG</span>
-                  <p className="text-[#F27024] font-black mt-1 text-sm">
-                    {aiInsight.smb_scale_advisory?.system_identity_recap?.includes('Agentic') ? 'Agentic RAG System' : 'Advanced RAG System'}
+                {/* System Identity & Track */}
+                <div className="bg-[#F27024]/5 p-4 rounded-xl border border-[#F27024]/20 shadow-sm space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-[#F27024] font-bold uppercase tracking-normal block">Nhận diện Hệ thống</span>
+                    <span className="text-[11px] bg-[#F27024]/10 text-[#F27024] font-bold px-2 py-0.5 rounded">
+                      {aiInsight.team_system_identity?.detected_track || aiInsight.system_identity?.detected_track || 'Track Auto-detect'}
+                    </span>
+                  </div>
+                  <p className="text-slate-800 font-bold text-xs mt-1">
+                    {aiInsight.team_system_identity?.project_about || aiInsight.smb_scale_advisory?.system_identity_recap || aiInsight.overall_picture?.project_about || 'Hệ thống Multi-Agent AI × IoT'}
                   </p>
+                  {aiInsight.team_system_identity?.primary_user_value && (
+                    <p className="text-slate-600 text-[11px] mt-1 italic">
+                      Giá trị: {aiInsight.team_system_identity.primary_user_value}
+                    </p>
+                  )}
                 </div>
 
                 {/* Overall Historical Synthesis */}
                 <div className="space-y-2">
-                  <span className="text-xs text-slate-500 font-bold uppercase tracking-normal block">Tóm tắt đánh giá dự án</span>
+                  <span className="text-xs text-slate-500 font-bold uppercase tracking-normal block">Tổng hợp lịch sử phát triển</span>
                   <p className="text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-100 text-xs leading-relaxed font-sans shadow-sm">
-                    {aiInsight.overall_picture?.historical_synthesis}
+                    {aiInsight.historical_synthesis?.evolution_summary || aiInsight.overall_picture?.historical_synthesis || 'Chưa có tóm tắt lịch sử.'}
                   </p>
                 </div>
 
-                {/* Qualitative Ratings */}
+                {/* Qualitative Ratings & Rubric Scores */}
                 <div className="space-y-3">
-                  <span className="text-xs text-slate-500 font-bold uppercase tracking-normal block">Đánh giá định tính (Rubric Stitch R1-R2)</span>
+                  <span className="text-xs text-slate-500 font-bold uppercase tracking-normal block">Đánh giá tiêu chí Rubric</span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     {Object.entries(aiInsight.criteria_comments || {}).map(([key, value]: [string, any]) => (
-                      <div key={key} className="bg-slate-50 p-3 rounded-xl border border-slate-150 flex justify-between items-center shadow-sm hover:border-slate-350 transition-colors">
-                        <span className="font-bold text-slate-700 uppercase tracking-normal text-[10px]">{key}</span>
-                        <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-normal ${
-                          value.grade === 'Xuất sắc' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                          value.grade === 'Tốt' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
-                          value.grade === 'Khá' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                          value.grade === 'Trung bình' ? 'bg-slate-100 text-slate-600 border border-slate-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
-                        }`}>
-                          {value.grade}
-                        </span>
+                      <div key={key} className="bg-slate-50 p-3 rounded-xl border border-slate-150 flex flex-col gap-1 shadow-sm hover:border-slate-350 transition-colors">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-slate-700 uppercase tracking-normal text-[10px]">{key}</span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-normal ${
+                            value.grade === 'Xuất sắc' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                            value.grade === 'Tốt' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                            value.grade === 'Khá' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                            value.grade === 'Trung bình' ? 'bg-slate-100 text-slate-600 border border-slate-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
+                          }`}>
+                            {value.suggested_score !== undefined ? `${value.suggested_score}đ - ` : ''}{value.grade}
+                          </span>
+                        </div>
+                        {value.comment && (
+                          <p className="text-slate-600 text-[11px] line-clamp-2 mt-0.5">
+                            {value.comment}
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -234,11 +328,24 @@ export default function JudgeTeamActivity() {
                   </ul>
                 </div>
 
+                {/* Improvement Priorities */}
+                {Array.isArray(aiInsight.improvement_priorities) && aiInsight.improvement_priorities.length > 0 && (
+                  <div className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-normal block">Ưu tiên cải thiện đề xuất</span>
+                    <ul className="list-disc pl-5 space-y-1 text-slate-600 text-xs">
+                      {aiInsight.improvement_priorities.map((item: string, idx: number) => (
+                        <li key={idx}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
               </div>
             ) : (
-              <div className="text-center py-16 bg-slate-50 rounded-xl border border-slate-200 shadow-sm">
-                <AlertCircle size={28} className="mx-auto text-slate-400 mb-2" />
-                <p className="text-xs text-slate-450 italic">Chưa có dữ liệu đánh giá AI phân tích cho dự án này.</p>
+              <div className="text-center py-16 bg-slate-50 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                <AlertCircle size={28} className="mx-auto text-slate-400" />
+                <p className="text-xs text-slate-500 font-medium">Chưa có dữ liệu đánh giá tổng hợp từ Agent 2 cho đội này.</p>
+                <p className="text-[11px] text-slate-400">Nhấn nút "Chạy Agent 2 Phân tích" ở góc trên để kích hoạt ngay.</p>
               </div>
             )}
           </div>

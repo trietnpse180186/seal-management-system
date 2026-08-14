@@ -487,7 +487,8 @@ export default function JudgeScoring() {
       setOverallComment('Gợi ý AI được tạo từ bằng chứng các đợt push và rubric của vòng đang chọn. Giám khảo cần kiểm tra lại trước khi gửi điểm.');
       setMessage({ type: 'success', text: 'Agent 2 đã phân tích và tạo điểm gợi ý theo rubric của vòng!' });
     } catch (err: any) {
-      setMessage({ type: 'error', text: 'Không thể tạo gợi ý điểm tự động từ AI.' });
+      const errMsg = err?.response?.data?.message || 'Không thể tạo gợi ý điểm tự động từ AI.';
+      setMessage({ type: 'error', text: errMsg });
     } finally {
       setAiLoading(false);
     }
@@ -797,7 +798,7 @@ export default function JudgeScoring() {
                     className="flex items-center gap-1.5 bg-[#F27024]/5 hover:bg-[#F27024]/10 text-[#F27024] border border-[#F27024]/20 px-5 rounded-xl text-xs font-bold transition-all h-12 cursor-pointer shadow-sm"
                   >
                     <Sparkles size={12} className={aiLoading ? 'animate-spin' : 'text-[#F27024]'} />
-                    <span>{aiLoading ? 'AI đang phân tích...' : 'Lấy gợi ý AI'}</span>
+                    <span>{aiLoading ? 'Agent 2 đang phân tích...' : 'Lấy gợi ý AI (Agent 2)'}</span>
                   </button>
                 )}
               </div>

@@ -10,6 +10,106 @@ const hitlManager = require('../../harness/telemetry/hitlManager');
 // Local tools for database saving
 const dbTools = require('./tools/dbTools');
 
+const ALLOWED_QUALITATIVE_GRADES = new Set(['Xuất sắc', 'Tốt', 'Khá', 'Trung bình', 'Yếu']);
+const GRADE_TO_RUBRIC_SCORE = {
+  'Xuất sắc': 5,
+  'Tốt': 4,
+  'Khá': 3,
+  'Trung bình': 2,
+  'Yếu': 1
+};
+
+function qualitativeGradeForScore(score) {
+  if (score >= 4.5) return 'Xuất sắc';
+  if (score >= 3.5) return 'Tốt';
+  if (score >= 2.5) return 'Khá';
+  if (score >= 1.5) return 'Trung bình';
+  return 'Yếu';
+}
+
+function normalizeCommitReviewV2(result) {
+  const normalized = { ...result };
+  normalized.schema_version = '2.0';
+  normalized.analysis_type = 'commit_review';
+  normalized.system_identity = normalized.system_identity || {
+    project_about: normalized.overall_picture?.project_about || '',
+    detected_track: 'Unknown',
+    target_personas: [],
+    primary_user_value: '',
+    current_focus: normalized.overall_picture?.current_focus || ''
+  };
+  normalized.technology_inventory = normalized.technology_inventory || {
+    llm_models_and_apis: normalized.inventory_exhaustive?.llm_models_and_apis || [],
+    agent_frameworks: normalized.tech_stack?.agent_frameworks || [],
+    mqtt_and_iot: [],
+    external_tools_and_apis: normalized.inventory_exhaustive?.third_party_integrations || [],
+    frameworks_and_runtimes: normalized.inventory_exhaustive?.frameworks_and_runtimes || [],
+    storage_and_infrastructure: normalized.tech_stack?.vector_db || []
+  };
+  normalized.multi_agent_architecture = normalized.multi_agent_architecture || {};
+  normalized.iot_integration = normalized.iot_integration || {};
+  normalized.tools_and_verification = normalized.tools_and_verification || {};
+  normalized.safety_transparency_and_ux = normalized.safety_transparency_and_ux || {};
+  normalized.rubric_evidence = normalized.rubric_evidence || {};
+  schemaValidator.validateSchema(normalized, [
+    'tech_stack', 'inventory_exhaustive', 'agent_intelligence', 'rag_maturity',
+    'assessment', 'overall_picture', 'suggested_test_cases', 'suggested_questions_for_team'
+  ]);
+  return normalized;
+}
+
+function normalizeAggregateReviewV2(result, criteria = []) {
+  const normalized = { ...result };
+  normalized.schema_version = '2.0';
+  normalized.analysis_type = 'repository_review';
+  schemaValidator.validateSchema(normalized, ['criteria_comments', 'overall_picture']);
+
+  const comments = {};
+  const suggestedScores = {};
+  for (const criterion of criteria) {
+    const entry = normalized.criteria_comments?.[criterion.code];
+    if (!entry || typeof entry !== 'object') {
+      throw new Error(`Agent 2 output is missing criterion "${criterion.code}".`);
+    }
+    if (!ALLOWED_QUALITATIVE_GRADES.has(entry.grade)) {
+      throw new Error(`Agent 2 returned an invalid grade for criterion "${criterion.code}".`);
+    }
+    const suggestedScore = Number(entry.suggested_score ?? GRADE_TO_RUBRIC_SCORE[entry.grade]);
+    const rubricMinimums = (criterion.gradingLevels || [])
+      .map(level => Number(level.minScore))
+      .filter(Number.isFinite);
+    const rubricMinimum = rubricMinimums.length > 0 ? Math.min(...rubricMinimums) : 1;
+    const hasAtMostTwoDecimals = Math.abs(suggestedScore * 100 - Math.round(suggestedScore * 100)) < 1e-8;
+    if (!Number.isFinite(suggestedScore) || !hasAtMostTwoDecimals || suggestedScore < rubricMinimum || suggestedScore > criterion.maxScore) {
+      throw new Error(`Agent 2 returned an out-of-range score for criterion "${criterion.code}".`);
+    }
+    if (entry.grade !== qualitativeGradeForScore(suggestedScore)) {
+      throw new Error(`Agent 2 returned an inconsistent grade and score for criterion "${criterion.code}".`);
+    }
+    suggestedScores[criterion.code] = suggestedScore;
+    comments[criterion.code] = {
+      grade: entry.grade,
+      suggested_score: suggestedScore,
+      comment: entry.comment || ''
+    };
+  }
+  normalized.criteria_comments = comments;
+  normalized.rubric_scores = Object.fromEntries(criteria.map(criterion => [criterion.code, {
+    criterion_id: criterion._id,
+    suggested_score: suggestedScores[criterion.code],
+    max_score: criterion.maxScore,
+    weight: criterion.weight,
+    weighted_points: null,
+    calculation_source: 'backend',
+    confidence: normalized.rubric_scores?.[criterion.code]?.confidence || 'low',
+    evidence: normalized.rubric_scores?.[criterion.code]?.evidence || [],
+    gaps: normalized.rubric_scores?.[criterion.code]?.gaps || [],
+    demo_checks: normalized.rubric_scores?.[criterion.code]?.demo_checks || []
+  }]));
+  normalized.smb_scale_advisory = normalized.smb_scale_advisory || {};
+  return normalized;
+}
+
 /**
  * Filter criteria comments to keep only the active ones for the round
  */
@@ -155,7 +255,7 @@ async function analyzeCommit(commit, files) {
     if (hitlManager.requiresHumanApproval(n8nResult)) {
       n8nResult._requires_approval = true;
     }
-    return n8nResult;
+    return normalizeCommitReviewV2(n8nResult);
   }
 
   // 2. Mock service fallback (when n8n is bypassed or fails)
@@ -240,7 +340,7 @@ async function analyzeCommit(commit, files) {
     if (hitlManager.requiresHumanApproval(mockResult)) {
       mockResult._requires_approval = true;
     }
-    return mockResult;
+    return normalizeCommitReviewV2(mockResult);
   }
 
   throw new Error("Gọi webhook n8n thất bại hoặc hết hạn phản hồi (timeout). Vui lòng kiểm tra lại dịch vụ n8n và quota của API Gemini.");
@@ -249,15 +349,21 @@ async function analyzeCommit(commit, files) {
 /**
  * Performs a deep historical aggregate analysis for the team.
  */
-async function analyzeTeamAggregate(teamId, commits, priorReviews) {
+async function analyzeTeamAggregate(teamId, commits, priorReviews, options = {}) {
   // Load State Context from Global Context Store
   const context = await contextStore.loadTeamAggregateContext(teamId);
+  const activeCriteria = Array.isArray(options.criteria) && options.criteria.length > 0
+    ? options.criteria
+    : context.roundCriteria;
+  const criteriaPrompt = activeCriteria.length > 0
+    ? activeCriteria.map(c => `- ${c.code}: ${c.name} (criterionId: ${c._id}, description: ${c.description || 'N/A'}, weight: ${c.weight}, maxScore: ${c.maxScore}, gradingLevels: ${JSON.stringify(c.gradingLevels || [])})`).join('\n')
+    : context.criteriaPrompt;
 
   const prompt = promptsManager.promptsRegistry.repository_review(
     teamId,
     context.commitSummaries,
     context.reviewSummaries,
-    context.criteriaPrompt,
+    criteriaPrompt,
     context.trackName
   );
 
@@ -265,6 +371,17 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
   const n8nResult = await callN8nWebhook({
     analysisType: 'repository_review',
     teamId,
+    roundId: options.roundId,
+    rubricId: options.rubricId,
+    activeRubric: activeCriteria.map(c => ({
+      criterionId: c._id,
+      code: c.code,
+      name: c.name,
+      description: c.description,
+      weight: c.weight,
+      maxScore: c.maxScore,
+      gradingLevels: c.gradingLevels || []
+    })),
     commits: commits.map(c => ({
       commitSha: c.commitSha,
       message: c.message,
@@ -280,7 +397,7 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
   if (n8nResult) {
     n8nResult._provider = 'n8n-gemini';
     n8nResult._model = 'gemini-2.5-flash (via n8n)';
-    return n8nResult;
+    return normalizeAggregateReviewV2(filterCriteriaComments(n8nResult, activeCriteria), activeCriteria);
   }
 
   // 2. Mock service fallback (when n8n is bypassed or fails)
@@ -289,7 +406,7 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
     await new Promise(resolve => setTimeout(resolve, 800));
 
     const commentsMap = {};
-    const defaultCodes = context.roundCriteria.length > 0 ? context.roundCriteria.map(c => c.code) : ["R1_01", "R1_02", "R1_03", "R1_04", "R1_05", "R2_01", "R2_02", "R2_03", "R2_04", "R2_05"];
+    const defaultCodes = activeCriteria.length > 0 ? activeCriteria.map(c => c.code) : ["R1_01", "R1_02", "R1_03", "R1_04", "R1_05", "R2_01", "R2_02", "R2_03", "R2_04", "R2_05"];
     
     defaultCodes.forEach(code => {
       let commentText = `Nhóm thực hiện tốt tiêu chí này, cấu trúc code sạch sẽ và rõ ràng.`;
@@ -307,7 +424,7 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
       commentsMap[code] = { grade, comment: commentText };
     });
 
-    return {
+    return normalizeAggregateReviewV2({
       criteria_comments: commentsMap,
       smb_scale_advisory: {
         system_identity_recap: "Hệ thống RAG và trợ lý số hỗ trợ thông quan tờ khai hải quan logistics.",
@@ -324,7 +441,7 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews) {
       },
       _provider: 'Mock Service',
       _model: 'mock-model'
-    };
+    }, activeCriteria);
   }
 }
 
@@ -335,17 +452,11 @@ async function generateScoringSuggestion(repositorySnapshot, commits, criteria) 
   const AiAnalysis = require('mongoose').model('AiAnalysis');
   const latestAggReview = await AiAnalysis.findOne({
     teamId: repositorySnapshot.teamId,
+    roundId: repositorySnapshot.roundId,
+    repositorySnapshotId: repositorySnapshot._id,
     analysisType: 'repository_review',
     status: { $in: ['completed', 'approved'] }
   }).sort({ createdAt: -1 });
-
-  const gradeToScoreFactor = {
-    "Xuất sắc": 0.95,
-    "Tốt": 0.82,
-    "Khá": 0.68,
-    "Trung bình": 0.50,
-    "Yếu": 0.30
-  };
 
   let cleanResult = null;
   if (latestAggReview && latestAggReview.result) {
@@ -354,20 +465,7 @@ async function generateScoringSuggestion(repositorySnapshot, commits, criteria) 
   const hasAgg = cleanResult && cleanResult.criteria_comments;
 
   return criteria.map(c => {
-    let critCode = c.code;
-    if (!critCode.startsWith('R1_') && !critCode.startsWith('R2_')) {
-      if (c.code.toLowerCase().includes('prob') || c.code.toLowerCase().includes('fit')) critCode = 'R1_01';
-      else if (c.code.toLowerCase().includes('data') || c.code.toLowerCase().includes('pipe')) critCode = 'R1_02';
-      else if (c.code.toLowerCase().includes('retriev') || c.code.toLowerCase().includes('cite')) critCode = 'R1_03';
-      else if (c.code.toLowerCase().includes('prompt') || c.code.toLowerCase().includes('intent')) critCode = 'R1_04';
-      else if (c.code.toLowerCase().includes('doc') || c.code.toLowerCase().includes('clean')) critCode = 'R1_05';
-      else if (c.code.toLowerCase().includes('agent') || c.code.toLowerCase().includes('hop')) critCode = 'R2_01';
-      else if (c.code.toLowerCase().includes('resource') || c.code.toLowerCase().includes('token')) critCode = 'R2_02';
-      else if (c.code.toLowerCase().includes('prod') || c.code.toLowerCase().includes('operation')) critCode = 'R2_03';
-      else if (c.code.toLowerCase().includes('extend') || c.code.toLowerCase().includes('creat')) critCode = 'R2_04';
-      else critCode = 'R2_05';
-    }
-
+    const critCode = c.code;
     let grade = "Tốt";
     let comment = "Nhóm thể hiện tiến độ làm việc ổn định, có commit giải quyết tiêu chí này.";
 
@@ -381,8 +479,10 @@ async function generateScoringSuggestion(repositorySnapshot, commits, criteria) 
       }
     }
 
-    const factor = gradeToScoreFactor[grade] || 0.8;
-    const score = Math.round(c.maxScore * factor * 10) / 10;
+    const agentScore = Number(cleanResult?.rubric_scores?.[c.code]?.suggested_score);
+    const score = Number.isFinite(agentScore) && agentScore >= 1 && agentScore <= c.maxScore
+      ? agentScore
+      : Math.min(c.maxScore, GRADE_TO_RUBRIC_SCORE[grade] || 3);
 
     return {
       criterionCode: c.code,

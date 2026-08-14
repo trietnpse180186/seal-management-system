@@ -463,8 +463,9 @@ export default function JudgeScoring() {
     setMessage({ type: '', text: '' });
 
     try {
-      const res = await axios.get(
-        `http://localhost:5000/api/grades/suggestion?teamId=${teamId}&roundId=${selectedRoundId}&rubricId=${rubric._id}`,
+      const res = await axios.post(
+        'http://localhost:5000/api/grades/suggestion',
+        { teamId, roundId: selectedRoundId, rubricId: rubric._id },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -478,8 +479,13 @@ export default function JudgeScoring() {
         }
       });
       setScores(updated);
-      setOverallComment('Ý kiến gợi ý tổng quan từ Gemini AI: Nhóm có sự phối hợp git rất tốt, các commit mang tính chất tăng trưởng rõ ràng, logic code vững vàng.');
-      setMessage({ type: 'success', text: 'Tải thành công điểm số gợi ý từ Gemini AI!' });
+      const analysesResponse = await axios.get(
+        `http://localhost:5000/api/ai-analyses/team/${teamId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setAllAiAnalyses(analysesResponse.data || []);
+      setOverallComment('Gợi ý AI được tạo từ bằng chứng các đợt push và rubric của vòng đang chọn. Giám khảo cần kiểm tra lại trước khi gửi điểm.');
+      setMessage({ type: 'success', text: 'Agent 2 đã phân tích và tạo điểm gợi ý theo rubric của vòng!' });
     } catch (err: any) {
       setMessage({ type: 'error', text: 'Không thể tạo gợi ý điểm tự động từ AI.' });
     } finally {
@@ -537,7 +543,9 @@ export default function JudgeScoring() {
 
   // Find team aggregate review (repository_review)
   const teamAggregateReview = allAiAnalyses.find(
-    r => r.analysisType === 'repository_review' && r.status === 'completed'
+    r => r.analysisType === 'repository_review' &&
+      r.status === 'completed' &&
+      String(r.roundId || '') === String(selectedRoundId || '')
   );
 
   // Filter commit reviews (per-push reviews)

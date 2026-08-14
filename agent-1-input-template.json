@@ -1,0 +1,58 @@
+{
+  "schema_version": "2.0",
+  "analysis_type": "commit_review",
+  "team_id": "",
+  "team_code": "TEAM_01",
+  "repository_id": "",
+  "repo_name": "repository-name",
+  "round_id": "",
+  "track_id": "",
+  "declared_track": {
+    "name": "Unknown",
+    "source": "team.trackId | event configuration | unknown"
+  },
+  "commit_id": "",
+  "commit_sha": "",
+  "commit_count": 1,
+  "cron_batch_review": false,
+  "batched_commit_shas": [],
+  "activity_log": [
+    {
+      "sha": "",
+      "message": "",
+      "author_name": "",
+      "author_github_username": "",
+      "committed_at": "",
+      "additions": 0,
+      "deletions": 0,
+      "changed_files_count": 0
+    }
+  ],
+  "files": [
+    {
+      "filename": "",
+      "status": "modified | added | removed | renamed",
+      "additions": 0,
+      "deletions": 0,
+      "patch": "",
+      "patch_truncated": false
+    }
+  ],
+  "repository_context": {
+    "readme": "",
+    "package_and_dependencies": "",
+    "agent_configuration": "",
+    "architecture_description": "",
+    "relevant_config_files": [
+      {
+        "path": "",
+        "content": "",
+        "content_truncated": false
+      }
+    ]
+  },
+  "limits": {
+    "max_single_file_patch_size": 3000,
+    "max_aggregated_diff_size": 50000
+  }
+}

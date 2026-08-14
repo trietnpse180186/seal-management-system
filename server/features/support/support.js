@@ -7,6 +7,8 @@ const SupportRequest = mongoose.model('SupportRequest');
 const EventRole = mongoose.model('EventRole');
 const User = mongoose.model('User');
 const Notification = mongoose.model('Notification');
+const TeamMember = mongoose.model('TeamMember');
+const Team = mongoose.model('Team');
 const { sendSupportReplyEmail } = require('../notifications/emailService');
 const guestRequestTimes = new Map();
 
@@ -36,6 +38,113 @@ async function emailGuest(request, message = '', statusLabel = '') {
     await sendSupportReplyEmail(request.guestEmail, request.guestName, request.requestCode, request.title, message, statusLabel);
   } catch (error) {
     console.error('[SUPPORT] Guest email failed:', error.message);
+  }
+}
+
+async function resolveUserTeamAndEvent(userId) {
+  if (!userId) return { team: null, event: null };
+  try {
+    const member = await TeamMember.findOne({
+      userId,
+      confirmStatus: { $in: ['confirmed', 'pending'] }
+    })
+      .sort({ confirmStatus: 1, createdAt: -1 })
+      .populate('teamId', 'name')
+      .populate('eventId', 'name');
+
+    if (member?.teamId) {
+      return {
+        team: member.teamId,
+        event: member.eventId
+      };
+    }
+
+    const leaderTeam = await Team.findOne({ leaderId: userId })
+      .sort({ createdAt: -1 })
+      .populate('eventId', 'name');
+
+    if (leaderTeam) {
+      return {
+        team: { _id: leaderTeam._id, name: leaderTeam.name },
+        event: leaderTeam.eventId
+      };
+    }
+  } catch (err) {
+    console.error('[SUPPORT] Error resolving user team/event:', err.message);
+  }
+  return { team: null, event: null };
+}
+
+async function populateMissingTeamInfo(requests) {
+  if (!requests) return requests;
+  const isArray = Array.isArray(requests);
+  const list = isArray ? requests : [requests];
+
+  const needsLookup = list.filter((r) => (!r.teamId || !r.teamId.name) && r.requesterId);
+  if (!needsLookup.length) return requests;
+
+  const requesterIds = [...new Set(needsLookup.map((r) => {
+    const id = r.requesterId?._id || r.requesterId;
+    return id ? id.toString() : null;
+  }).filter(Boolean))];
+
+  if (!requesterIds.length) return requests;
+
+  try {
+    const [memberships, leaderTeams] = await Promise.all([
+      TeamMember.find({
+        userId: { $in: requesterIds },
+        confirmStatus: { $in: ['confirmed', 'pending'] }
+      })
+        .populate('teamId', 'name')
+        .populate('eventId', 'name')
+        .sort({ confirmStatus: 1, createdAt: -1 }),
+      Team.find({
+        leaderId: { $in: requesterIds }
+      })
+        .populate('eventId', 'name')
+        .sort({ createdAt: -1 })
+    ]);
+
+    const userTeamMap = new Map();
+
+    for (const m of memberships) {
+      const uid = m.userId?.toString();
+      if (uid && m.teamId && !userTeamMap.has(uid)) {
+        userTeamMap.set(uid, {
+          teamId: { _id: m.teamId._id, name: m.teamId.name },
+          eventId: m.eventId ? { _id: m.eventId._id, name: m.eventId.name } : null
+        });
+      }
+    }
+
+    for (const t of leaderTeams) {
+      const uid = t.leaderId?.toString();
+      if (uid && !userTeamMap.has(uid)) {
+        userTeamMap.set(uid, {
+          teamId: { _id: t._id, name: t.name },
+          eventId: t.eventId ? { _id: t.eventId._id, name: t.eventId.name } : null
+        });
+      }
+    }
+
+    const enriched = list.map((item) => {
+      const obj = item.toObject ? item.toObject() : { ...item };
+      if (!obj.teamId || !obj.teamId.name) {
+        const uid = (obj.requesterId?._id || obj.requesterId)?.toString();
+        if (uid && userTeamMap.has(uid)) {
+          const info = userTeamMap.get(uid);
+          if (!obj.teamId) obj.teamId = info.teamId;
+          if (!obj.eventId && info.eventId) obj.eventId = info.eventId;
+        }
+      }
+      return obj;
+    });
+
+    return isArray ? enriched : enriched[0];
+  } catch (err) {
+    console.error('[SUPPORT] Error populating team info:', err.message);
+    return requests;
   }
 }
 
@@ -87,8 +196,18 @@ function emitSupportUpdate(userIds, request, action) {
 router.post('/requests', authenticateToken, async (req, res) => {
   try {
     const { category, title, description } = req.body;
+    let { eventId, teamId } = req.body;
+
+    if (!teamId || !eventId) {
+      const resolved = await resolveUserTeamAndEvent(req.user._id);
+      if (!teamId && resolved.team) teamId = resolved.team._id;
+      if (!eventId && resolved.event) eventId = resolved.event._id || resolved.event;
+    }
+
     const request = await SupportRequest.create({
       requesterId: req.user._id,
+      eventId: eventId || null,
+      teamId: teamId || null,
       category,
       title,
       description,
@@ -100,7 +219,8 @@ router.post('/requests', authenticateToken, async (req, res) => {
       metadata: { supportRequestId: request._id }
     });
     emitSupportUpdate(coordinators, request, 'created');
-    res.status(201).json(request);
+    const populated = await populateMissingTeamInfo(request);
+    res.status(201).json(populated);
   } catch (error) {
     res.status(400).json({ message: error.message || 'Không thể tạo yêu cầu hỗ trợ.' });
   }
@@ -108,8 +228,9 @@ router.post('/requests', authenticateToken, async (req, res) => {
 
 router.get('/requests/my', authenticateToken, async (req, res) => {
   const requests = await SupportRequest.find({ requesterId: req.user._id })
-    .populate('requesterId', 'fullName').populate('teamId', 'name').populate('eventId', 'name').sort({ updatedAt: -1 });
-  res.json(requests);
+    .populate('requesterId', 'fullName email').populate('teamId', 'name').populate('eventId', 'name').sort({ updatedAt: -1 });
+  const result = await populateMissingTeamInfo(requests);
+  res.json(result);
 });
 
 router.get('/coordinator/requests', authenticateToken, async (req, res) => {
@@ -118,19 +239,22 @@ router.get('/coordinator/requests', authenticateToken, async (req, res) => {
   if (req.query.status && req.query.status !== 'all') filter.status = req.query.status;
   const requests = await SupportRequest.find(filter).populate('requesterId', 'fullName email')
     .populate('teamId', 'name').populate('eventId', 'name').sort({ updatedAt: -1 });
-  res.json(requests);
+  const result = await populateMissingTeamInfo(requests);
+  res.json(result);
 });
 
 router.get('/requests/:id', authenticateToken, async (req, res) => {
   const request = await SupportRequest.findById(req.params.id).populate('requesterId', 'fullName email')
-    .populate('teamId', 'name').populate('eventId', 'name').populate('replies.senderId', 'fullName');
+    .populate('teamId', 'name').populate('eventId', 'name').populate('replies.senderId', 'fullName email');
   if (!request) return res.status(404).json({ message: 'Không tìm thấy yêu cầu.' });
   if (!(await canAccess(request, req.user))) return res.status(403).json({ message: 'Bạn không có quyền xem yêu cầu này.' });
-  res.json(request);
+  const result = await populateMissingTeamInfo(request);
+  res.json(result);
 });
 
 router.post('/requests/:id/replies', authenticateToken, async (req, res) => {
   const content = String(req.body.content || '').trim();
+  const sendEmail = req.body.sendEmail === true;
   if (!content) return res.status(400).json({ message: 'Nội dung phản hồi không được để trống.' });
   const request = await SupportRequest.findById(req.params.id);
   if (!request) return res.status(404).json({ message: 'Không tìm thấy yêu cầu.' });
@@ -147,18 +271,42 @@ router.post('/requests/:id/replies', authenticateToken, async (req, res) => {
     request.status = 'processing';
   }
   await request.save();
+
+  const labels = { pending: 'Chờ xử lý', processing: 'Đang xử lý', waiting_for_candidate: 'Chờ thí sinh', resolved: 'Đã giải quyết', reopened: 'Đã mở lại', closed: 'Đã đóng' };
+  const statusLabel = labels[request.status] || request.status;
+
   if (coordinator) {
     if (request.requesterId) {
       await notifyUsers([request.requesterId], { type: 'support_reply', title: 'Coordinator đã phản hồi', body: request.title, metadata: { supportRequestId: request._id } });
       emitSupportUpdate([request.requesterId], request, 'replied');
+      if (sendEmail) {
+        try {
+          const requester = await User.findById(request.requesterId, 'fullName email');
+          if (requester?.email) {
+            await sendSupportReplyEmail(requester.email, requester.fullName, request.requestCode, request.title, content, statusLabel);
+          }
+        } catch (emailErr) {
+          console.error('[SUPPORT] Candidate reply email failed:', emailErr.message);
+        }
+      }
+    } else if (request.guestEmail) {
+      if (sendEmail) {
+        await emailGuest(request, content, statusLabel);
+      }
     }
-    await emailGuest(request, content, 'Đang xử lý');
   } else {
     const coordinators = await coordinatorUserIds();
     await notifyUsers(coordinators, { type: 'support_reply', title: 'Thí sinh đã phản hồi', body: request.title, metadata: { supportRequestId: request._id } });
     emitSupportUpdate(coordinators, request, 'replied');
   }
-  res.json(request);
+
+  const populated = await SupportRequest.findById(request._id)
+    .populate('requesterId', 'fullName email')
+    .populate('teamId', 'name')
+    .populate('eventId', 'name')
+    .populate('replies.senderId', 'fullName email');
+  const result = await populateMissingTeamInfo(populated);
+  res.json(result);
 });
 
 router.patch('/requests/:id/status', authenticateToken, async (req, res) => {
@@ -177,7 +325,13 @@ router.patch('/requests/:id/status', authenticateToken, async (req, res) => {
     emitSupportUpdate([request.requesterId], request, 'status_changed');
   }
   await emailGuest(request, '', request.status);
-  res.json(request);
+  const populated = await SupportRequest.findById(request._id)
+    .populate('requesterId', 'fullName email')
+    .populate('teamId', 'name')
+    .populate('eventId', 'name')
+    .populate('replies.senderId', 'fullName email');
+  const result = await populateMissingTeamInfo(populated);
+  res.json(result);
 });
 
 router.patch('/requests/:id/reopen', authenticateToken, async (req, res) => {
@@ -191,7 +345,14 @@ router.patch('/requests/:id/reopen', authenticateToken, async (req, res) => {
   const coordinators = await coordinatorUserIds();
   await notifyUsers(coordinators, { type: 'support_status', title: 'Yêu cầu hỗ trợ được mở lại', body: request.title, metadata: { supportRequestId: request._id } });
   emitSupportUpdate(coordinators, request, 'reopened');
-  res.json(request);
+  const populated = await SupportRequest.findById(request._id)
+    .populate('requesterId', 'fullName email')
+    .populate('teamId', 'name')
+    .populate('eventId', 'name')
+    .populate('replies.senderId', 'fullName email');
+  const result = await populateMissingTeamInfo(populated);
+  res.json(result);
 });
 
 module.exports = router;
+

@@ -3,9 +3,10 @@ import { useOutletContext } from "react-router-dom";
 import axios from "axios";
 import * as XLSX from "xlsx";
 import XLSXStyle from "xlsx-js-style";
-import { BriefcaseBusiness, CheckCircle2, Download, FileSpreadsheet, Pencil, RefreshCw, Save, ShieldCheck, Trash2, Upload, UserRoundCheck, X } from "lucide-react";
+import { BriefcaseBusiness, CheckCircle2, Download, FileSpreadsheet, Loader2, Pencil, RefreshCw, Save, ShieldCheck, Trash2, Upload, UserRoundCheck, X } from "lucide-react";
 import { toast } from "sonner";
 import { useConform } from "../shared/ModalConform";
+import CustomSelect from "../shared/CustomSelect";
 
 type PersonnelRow = {
   fullName: string;
@@ -21,10 +22,25 @@ type PersonnelRow = {
   note: string;
 };
 
+const statusMap: Record<string, string> = {
+  draft: "Bản nháp",
+  registration: "Mở đăng ký",
+  prepare: "Chuẩn bị",
+  ongoing: "Đang diễn ra",
+  closed: "Đã kết thúc",
+  archived: "Lưu trữ",
+};
+
 export default function PersonnelManagement() {
   const conform = useConform();
-  const { readOnly = false } = useOutletContext<{ readOnly?: boolean }>();
+  const { readOnly = false, roles: userRoles = [], user } = useOutletContext<{
+    readOnly?: boolean;
+    roles?: any[];
+    user?: any;
+  }>();
   const token = localStorage.getItem("token");
+  const [events, setEvents] = useState<any[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<string>("");
   const [event, setEvent] = useState<any>(null);
   const [roles, setRoles] = useState<any[]>([]);
   const [rounds, setRounds] = useState<any[]>([]);
@@ -38,49 +54,105 @@ export default function PersonnelManagement() {
   const [editingPersonnelId, setEditingPersonnelId] = useState<string | null>(null);
   const [personnelDraft, setPersonnelDraft] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const loadPersonnel = async () => {
+  const loadEvents = async () => {
     try {
       setLoading(true);
       const eventsRes = await axios.get("http://localhost:5000/api/events", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const PERSONNEL_ALLOWED_STATUSES = ["draft", "registration", "prepare", "ongoing"];
-      const activeEvent = eventsRes.data.find(
-        (item: any) => PERSONNEL_ALLOWED_STATUSES.includes(item.status) && !item.isArchived,
-      );
-      setEvent(activeEvent || null);
-      if (!activeEvent) {
-        setRoles([]);
-        setRounds([]);
-        return;
+      let availableEvents = eventsRes.data || [];
+      if (!user?.isSystemAdmin && (readOnly || userRoles.length > 0)) {
+        const assignedIds = new Set(
+          userRoles.map((role: any) => String(role.eventId?._id || role.eventId))
+        );
+        availableEvents = availableEvents.filter((e: any) => assignedIds.has(String(e._id)));
       }
-      const [rolesRes, invitationsRes, eventDetailsRes] = await Promise.all([
-        axios.get(`http://localhost:5000/api/events/${activeEvent._id}/roles`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        axios.get(`http://localhost:5000/api/personnel-invitations/event/${activeEvent._id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        axios.get(`http://localhost:5000/api/events/${activeEvent._id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
-      setRoles(rolesRes.data.filter((item: any) => ["judge", "mentor"].includes(item.role)));
-      setInvitations(invitationsRes.data);
-      setRounds(eventDetailsRes.data.rounds || []);
-      setTracks(eventDetailsRes.data.tracks || []);
+      setEvents(availableEvents);
+
+      setSelectedEventId((prev) => {
+        if (prev && availableEvents.some((e: any) => e._id === prev)) {
+          return prev;
+        }
+        const PERSONNEL_ALLOWED_STATUSES = ["draft", "registration", "prepare", "ongoing"];
+        const activeEvent = availableEvents.find(
+          (item: any) => PERSONNEL_ALLOWED_STATUSES.includes(item.status) && !item.isArchived,
+        );
+        return activeEvent?._id || availableEvents[0]?._id || "";
+      });
     } catch (error) {
-      console.error("Load personnel error", error);
-      toast.error("Không thể tải danh sách nhân sự sự kiện.");
+      console.error("Load events error", error);
+      toast.error("Không thể tải danh sách sự kiện.");
     } finally {
       setLoading(false);
     }
   };
 
+  const loadPersonnelData = async (eventId: string) => {
+    if (!eventId) {
+      setEvent(null);
+      setRoles([]);
+      setInvitations([]);
+      setRounds([]);
+      setTracks([]);
+      return;
+    }
+    try {
+      setIsRefreshing(true);
+      const [rolesRes, invitationsRes, eventDetailsRes] = await Promise.all([
+        axios.get(`http://localhost:5000/api/events/${eventId}/roles`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        axios.get(`http://localhost:5000/api/personnel-invitations/event/${eventId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        axios.get(`http://localhost:5000/api/events/${eventId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+      const eventData = eventDetailsRes.data?.event || eventDetailsRes.data;
+      setEvent(eventData);
+      setRoles(rolesRes.data.filter((item: any) => ["judge", "mentor"].includes(item.role)));
+      setInvitations(invitationsRes.data || []);
+      setRounds(eventDetailsRes.data?.rounds || eventData?.rounds || []);
+      setTracks(eventDetailsRes.data?.tracks || eventData?.tracks || []);
+    } catch (error) {
+      console.error("Load personnel data error", error);
+      toast.error("Không thể tải danh sách nhân sự sự kiện.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   useEffect(() => {
-    loadPersonnel();
-  }, []);
+    loadEvents();
+  }, [readOnly, userRoles, user?.isSystemAdmin]);
+
+  useEffect(() => {
+    if (selectedEventId) {
+      loadPersonnelData(selectedEventId);
+    }
+  }, [selectedEventId]);
+
+  const handleEventChange = (newEventId: string) => {
+    setSelectedEventId(newEventId);
+    setPreview([]);
+    setFileName("");
+    setIsPreviewConfirmed(false);
+    setEditingPersonnelId(null);
+    setPersonnelDraft(null);
+  };
+
+  const eventOptions = useMemo(() => {
+    return events.map((e: any) => {
+      const statusText = statusMap[e.status] || e.status;
+      return {
+        value: e._id,
+        label: `${e.name} · ${e.semester} ${e.year} (${statusText})`,
+      };
+    });
+  }, [events]);
 
   const downloadTemplate = () => {
     if (!event) {
@@ -266,7 +338,7 @@ export default function PersonnelManagement() {
     const workbook = XLSXStyle.utils.book_new();
     XLSXStyle.utils.book_append_sheet(workbook, worksheet, "NHÂN SỰ");
 
-    const cleanEventName = (event.name || "SEAL_HACKATHON")
+    const cleanEventName = (event?.name || "SEAL_HACKATHON")
       .replace(/[^a-zA-Z0-9_ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂẾỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲỴÝỶỸ\s]/g, "")
       .replace(/\s+/g, "_");
 
@@ -444,7 +516,11 @@ export default function PersonnelManagement() {
       toast.error(`Còn ${invalidRows.length} dòng có email hoặc mật khẩu không hợp lệ.`);
       return;
     }
-    if (!event) return;
+    const currentEventId = selectedEventId || event?._id;
+    if (!currentEventId) {
+      toast.error("Vui lòng chọn một cuộc thi hợp lệ trước khi nhập danh sách.");
+      return;
+    }
     const personnelToImport = preview.filter((item) => !item.existingStatus);
     const existingChiefJudge = preview.find((item) => item.existingInvitationId && item.isChiefJudge);
     if (!personnelToImport.length && !existingChiefJudge) {
@@ -464,7 +540,7 @@ export default function PersonnelManagement() {
       }
       if (personnelToImport.length) {
         const response = await axios.post(
-          `http://localhost:5000/api/personnel-invitations/event/${event._id}/import`,
+          `http://localhost:5000/api/personnel-invitations/event/${currentEventId}/import`,
           { personnel: personnelToImport },
           { headers: { Authorization: `Bearer ${token}` } },
         );
@@ -474,7 +550,7 @@ export default function PersonnelManagement() {
       setFileName("");
       setIsPreviewConfirmed(false);
       toast.success(successMessage);
-      await loadPersonnel();
+      await loadPersonnelData(selectedEventId);
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Không thể nhập danh sách nhân sự.");
     } finally {
@@ -524,7 +600,7 @@ export default function PersonnelManagement() {
         { headers: { Authorization: `Bearer ${token}` } },
       );
       toast.success(response.data.message || successFallback);
-      await loadPersonnel();
+      await loadPersonnelData(selectedEventId);
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Không thể cập nhật quyền nhân sự.");
     } finally {
@@ -551,7 +627,7 @@ export default function PersonnelManagement() {
         { headers: { Authorization: `Bearer ${token}` } },
       );
       toast.success(response.data.message || "Đã xóa nhân sự.");
-      await loadPersonnel();
+      await loadPersonnelData(selectedEventId);
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Không thể xóa nhân sự.");
     } finally {
@@ -568,7 +644,7 @@ export default function PersonnelManagement() {
         { headers: { Authorization: `Bearer ${token}` } },
       );
       toast.success(response.data.message || "Đã gửi lại lời mời.");
-      await loadPersonnel();
+      await loadPersonnelData(selectedEventId);
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Không thể gửi lại lời mời.");
     } finally {
@@ -602,7 +678,7 @@ export default function PersonnelManagement() {
         { headers: { Authorization: `Bearer ${token}` } },
       );
       toast.success(response.data.message || "Đã cập nhật track.");
-      await loadPersonnel();
+      await loadPersonnelData(selectedEventId);
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Không thể cập nhật track.");
     } finally {
@@ -647,7 +723,7 @@ export default function PersonnelManagement() {
       toast.success(response.data.message || "Đã cập nhật nhân sự.");
       setEditingPersonnelId(null);
       setPersonnelDraft(null);
-      await loadPersonnel();
+      await loadPersonnelData(selectedEventId);
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Không thể cập nhật nhân sự.");
     } finally {
@@ -661,26 +737,49 @@ export default function PersonnelManagement() {
 
   return (
     <div className="space-y-6 text-slate-800">
-      <header className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+      <header className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-[#F27024]/20 bg-[#F27024]/10 text-[#F27024]">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#F27024]/20 bg-[#F27024]/10 text-[#F27024]">
             <BriefcaseBusiness size={24} />
           </div>
           <div>
-            <h1 className="text-xl font-extrabold tracking-wide">Quản lý nhân sự</h1>
+            <h1 className="text-xl font-extrabold tracking-wide text-slate-900">Quản lý nhân sự</h1>
             <p className="mt-1 text-xs text-slate-500">
-              {event ? `Sự kiện đang hoạt động: ${event.name}` : "Hiện chưa có sự kiện đang hoạt động"}
+              Phân công và cấp quyền Ban Giám Khảo (Judge) và Cố vấn (Mentor) theo từng cuộc thi.
             </p>
           </div>
         </div>
-        <button type="button" onClick={loadPersonnel} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#F27024]/30">
-          <RefreshCw size={14} /> Tải lại
-        </button>
+
+        <div className="flex w-full flex-col gap-1.5 sm:w-auto sm:min-w-[320px]">
+          <label htmlFor="personnel-event-select" className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            Cuộc thi / Sự kiện
+          </label>
+          <div className="flex items-center gap-2">
+            <CustomSelect
+              value={selectedEventId}
+              onChange={handleEventChange}
+              options={eventOptions}
+              placeholder="Chọn cuộc thi..."
+              className="flex-1"
+            />
+            <button
+              type="button"
+              onClick={() => loadPersonnelData(selectedEventId)}
+              disabled={!selectedEventId || isRefreshing}
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:border-orange-200 hover:bg-orange-50 hover:text-[#F27024] focus:outline-none focus:ring-2 focus:ring-[#F27024]/30 disabled:cursor-not-allowed disabled:opacity-50"
+              title="Tải lại dữ liệu sự kiện"
+            >
+              {isRefreshing ? <Loader2 size={16} className="animate-spin text-[#F27024]" /> : <RefreshCw size={16} />}
+            </button>
+          </div>
+        </div>
       </header>
 
       {!event ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
-          Tab nhân sự chỉ mở dữ liệu khi có sự kiện mang trạng thái “Bản nháp”, “Mở đăng ký”, “Chuẩn bị” hoặc “Đang diễn ra”.
+          {events.length === 0
+            ? "Hiện tại không có cuộc thi nào trong hệ thống hoặc bạn chưa được phân quyền quản lý cuộc thi."
+            : "Vui lòng chọn một cuộc thi từ danh sách phía trên để bắt đầu quản lý nhân sự."}
         </div>
       ) : (
         <>
@@ -774,9 +873,9 @@ export default function PersonnelManagement() {
             <div className="flex flex-col gap-3 border-b border-slate-100 p-5 lg:flex-row lg:items-center lg:justify-between">
               <div><h2 className="text-sm font-bold">Danh sách nhân sự đã nhập</h2><p className="mt-1 text-xs text-slate-500">Theo dõi phân công và trạng thái cấp quyền của nhân sự.</p></div>
               <div className="flex flex-wrap gap-2">
-                <button type="button" disabled={isAccountActionLoading || !invitations.some((item) => item.status === "accepted" && item.accountStatus !== "provisioned")} onClick={() => runAccountAction(`event/${event._id}/provision-all`, "Đã cấp tài khoản.")} className="rounded-lg bg-[#F27024] px-3 py-2 text-xs font-bold text-white hover:bg-[#d95f1f] disabled:opacity-50">Cấp tất cả đã chấp thuận</button>
-                <button type="button" disabled={isAccountActionLoading || !invitations.some((item) => item.accountStatus === "provisioned")} onClick={() => runAccountAction(`event/${event._id}/revoke-all`, "Đã thu hồi tất cả.", true)} className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50">Thu hồi tất cả</button>
-                <button type="button" onClick={loadPersonnel} className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50" aria-label="Tải lại trạng thái"><RefreshCw size={15} /></button>
+                <button type="button" disabled={isAccountActionLoading || !invitations.some((item) => item.status === "accepted" && item.accountStatus !== "provisioned")} onClick={() => runAccountAction(`event/${selectedEventId || event?._id}/provision-all`, "Đã cấp tài khoản.")} className="rounded-lg bg-[#F27024] px-3 py-2 text-xs font-bold text-white hover:bg-[#d95f1f] disabled:opacity-50">Cấp tất cả đã chấp thuận</button>
+                <button type="button" disabled={isAccountActionLoading || !invitations.some((item) => item.accountStatus === "provisioned")} onClick={() => runAccountAction(`event/${selectedEventId || event?._id}/revoke-all`, "Đã thu hồi tất cả.", true)} className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50">Thu hồi tất cả</button>
+                <button type="button" onClick={() => loadPersonnelData(selectedEventId)} disabled={isRefreshing} className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 disabled:opacity-50" aria-label="Tải lại trạng thái"><RefreshCw size={15} className={isRefreshing ? "animate-spin text-[#F27024]" : ""} /></button>
               </div>
             </div>
             {invitations.length ? (

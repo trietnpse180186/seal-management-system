@@ -20,7 +20,7 @@ const GLOBAL_SCOPE_CONFIG = {
 
   DESIGN_CONSTRAINTS: {
     NO_3D_COLORED_ICONS: true,
-    RULE: 'Never use 3D-styled colored emoji/icon assets (such as 📥, 📤) in code or UI. Always use flat, outline, vector-based SVG icons.'
+    RULE: 'Never use 3D-styled colored emoji/icon assets in code or UI. Always use flat, outline, vector-based SVG icons.'
   }
 };
 
@@ -114,6 +114,16 @@ YÊU CẦU CẦN KIỂM TRA
 - Có hành động Tool/API ngoài và verification sau hành động.
 - Có audit trace và UI nhận yêu cầu/hiển thị kết quả.
 - Không publish lên MQTT Broker BTC.
+
+PHÂN TÍCH CHUYÊN SÂU HỆ THỐNG (BẮT BUỘC TRONG ASSESSMENT):
+- Điểm mạnh (advantages): Phân tích chi tiết các thế mạnh nổi bật về mặt kiến trúc Multi-Agent, xử lý dữ liệu IoT/MQTT thời gian thực, độ tin cậy khi gọi Tool/API, cơ chế Read-Back Verification, an toàn với Human Approval, tính sáng tạo và chất lượng hoàn thiện của mã nguồn.
+- Điểm yếu (disadvantages): Phân tích chi tiết các điểm hạn chế, lỗ hổng logic, tính năng chưa hoàn thiện, sự thiếu thực chất trong phối hợp agent (ví dụ: chỉ gọi tuần tự, IF/ELSE ngụy trang agent), hoặc trải nghiệm người dùng (UX) chưa tối ưu.
+- Các lỗi có thể xảy ra trong repo (potential_errors): Phân tích rõ ràng và cảnh báo các lỗi tiềm ẩn có thể phát sinh khi chạy/vận hành repo thực tế, bao gồm:
+  + Lỗi runtime crash: Unhandled exception / JSON parse error khi payload MQTT đột ngột thay đổi, thiếu trường metrics hoặc dữ liệu null/undefined.
+  + Lỗi bất đồng bộ & bộ nhớ: Race conditions trong async/await, memory leak do tích lũy sliding window mảng không có cơ chế giải phóng/giới hạn dung lượng.
+  + Lỗi tương tác ngoài: Tool/API bên ngoài bị timeout, lỗi mạng, mất kết nối MQTT broker dẫn đến block event loop; lỗi thiếu idempotency key khi retry gây duplicate action/lệnh kép.
+  + Lỗi bảo mật & an toàn: Hardcoded secret/API key, prompt injection qua input hoặc payload IoT, thiếu kiểm soát quyền Tool khiến agent thực thi hành vi không mong muốn.
+- Đề xuất cải tiến (improvement_areas): Đưa ra các giải pháp khắc phục cụ thể và khả thi cho repo.
 
 ÁNH XẠ RUBRIC (Chỉ ghi evidence, gaps và status; không chấm điểm)
 - R1_01: MQTT/IoT như nguồn quan sát và ngữ cảnh quyết định.
@@ -233,8 +243,9 @@ OUTPUT JSON FORMAT (Chỉ trả về JSON thuần túy, không có markdown wrap
     "R2_05": {"status": "implemented | partial | missing | not_observable_in_diff", "evidence": [], "gaps": []}
   },
   "assessment": {
-    "advantages": "",
-    "disadvantages": "",
+    "advantages": "Phân tích chi tiết các điểm mạnh nổi bật của hệ thống và mã nguồn...",
+    "disadvantages": "Phân tích chi tiết các điểm yếu, hạn chế hoặc phần chưa hoàn thiện...",
+    "potential_errors": "Phân tích các lỗi có thể xảy ra trong repo (runtime crash, lỗi parse MQTT, race condition, timeout, duplicate action do thiếu idempotency, unhandled exceptions...)",
     "improvement_areas": "",
     "context_and_fit": "",
     "completeness": "",
@@ -304,7 +315,11 @@ B1 — Nhận diện hệ thống (Domain, persona, bài toán, luồng giá tr�
 B2 — Hợp nhất bằng chứng lịch sử (Dedupe công nghệ/tính năng, tiến hóa, củng cố, thoái lui).
 B3 — Kiểm tra nghiệm thu và rủi ro loại (Đánh dấu pass/partial/fail/unverified).
 B4 — Chấm rubric (Chỉ đánh giá các tiêu chí có trong active_rubric.criteria; dùng đúng code, criterion_id, weight, max_score và grading_levels).
-B5 — Chuẩn bị demo và phản biện (Test Given/When/Then theo biến thể JUDGE; câu hỏi phản biện 10-15 câu; cải thiện P0/P1/P2).
+B5 — Đánh giá Điểm mạnh, Điểm yếu và Lỗi tiềm ẩn của Hệ thống (advantages, disadvantages, potential_errors):
+     * Điểm mạnh (advantages): Tổng kết các ưu điểm cốt lõi của toàn bộ giải pháp (kiến trúc, agent coordination, IoT integration, verification, UX).
+     * Điểm yếu (disadvantages): Tổng kết các mặt còn thiếu sót, điểm nghẽn hoặc rủi ro trong thiết kế.
+     * Các lỗi có thể xảy ra trong repo (potential_errors): Liệt kê và phân tích các nguy cơ sụp đổ hệ thống (failure modes), unhandled exceptions, deadlock, race condition, tràn bộ nhớ, mất kết nối MQTT hoặc lỗi trùng lặp dữ liệu do thiếu idempotency khi demo/vận hành.
+B6 — Chuẩn bị demo và phản biện (Test Given/When/Then theo biến thể JUDGE; câu hỏi phản biện 10-15 câu; cải thiện P0/P1/P2).
 
 YÊU CẦU OUTPUT
 - criteria_comments và rubric_scores phải có đúng các code trong active_rubric.criteria, không thiếu và không thêm code.
@@ -395,8 +410,9 @@ OUTPUT JSON FORMAT (Chỉ trả về JSON thuần túy, không có markdown wrap
     "data_and_integrations": ""
   },
   "assessment": {
-    "advantages": "",
-    "disadvantages": "",
+    "advantages": "Tổng hợp điểm mạnh nổi bật của toàn bộ hệ thống...",
+    "disadvantages": "Tổng hợp điểm yếu và hạn chế cốt lõi của bài làm...",
+    "potential_errors": "Phân tích toàn diện các lỗi có thể xảy ra trong repo khi chạy/demo (crash runtime, bất đồng bộ, mất kết nối MQTT, tràn bộ nhớ, lỗi idempotency, bảo mật...)",
     "completeness": "",
     "security_and_safety": "",
     "runtime_resilience": "",
@@ -418,7 +434,6 @@ const promptsRegistry = {
    * Agent 1: Per-Push Evidence Review Prompt
    */
   commit_review: (inputData, fallbackUsername, fallbackMessage, fallbackSummaries) => {
-    // Support object parameter or positional arguments
     let context = {};
     if (typeof inputData === 'object' && inputData !== null) {
       context = inputData;
@@ -486,7 +501,6 @@ ${limits}
    * Agent 2: Team Aggregate Judge Prompt
    */
   repository_review: (inputData, fallbackCommits, fallbackReviews, fallbackCriteria, fallbackTrack) => {
-    // Support object parameter or positional arguments
     let context = {};
     if (typeof inputData === 'object' && inputData !== null) {
       context = inputData;

@@ -24,7 +24,7 @@ Với chủ đề **"AI-Driven Smart Operations: Turning Real-Time IoT Data into
 5. **PRESS** (Máy dập): Đo áp suất (pressure).
 6. **PROBE** (Đầu dò): Đo nhiệt độ.
 
-👉 **Simulator của BTC** sẽ liên tục đẩy (Publish) dữ liệu của 6 thiết bị này lên Broker mỗi giây 1 lần. Đội thi đăng ký nhận (Subscribe) để thu thập dữ liệu này, đưa vào mô hình AI để phân tích, phát hiện bất thường (anomalies) và hiển thị lên Dashboard.
+👉 **Simulator của BTC** sẽ liên tục đẩy (Publish) dữ liệu của 6 thiết bị này lên Broker mỗi 0.5 giây (500ms) 1 lần. Đội thi đăng ký nhận (Subscribe) để thu thập dữ liệu này, đưa vào mô hình AI để phân tích, phát hiện bất thường (anomalies) và hiển thị lên Dashboard.
 
 ---
 
@@ -43,7 +43,7 @@ sequenceDiagram
     Note over Admin, TeamApp: Bước 2: Phát dữ liệu thử nghiệm (Replay)
     Admin->>Sim: Kích hoạt bộ kịch bản phát dữ liệu (VD: Rung động mạnh, Rò rỉ khí...)
     
-    loop Mỗi 1 giây (1s/lần)
+    loop Mỗi 0.5 giây (500ms/lần)
         Sim->>Broker: Publish telemetry data lên topic "hackathon/{team_code}/test/telemetry"
         Broker->>TeamApp: Đẩy dữ liệu thời gian thực (Real-time payload JSON)
     end
@@ -87,7 +87,7 @@ BTC đã cung cấp sẵn một công cụ HTML để test tại: [team-mqtt-tes
 
 ## 4. Định dạng dữ liệu Sensor nhận được (JSON Payload)
 
-Mỗi giây, hệ thống sẽ đẩy xuống một bản tin JSON chứa danh sách các thiết bị cảm biến đang hoạt động cùng các thông số đo lường (metrics).
+Mỗi 0.5 giây (500ms), hệ thống sẽ đẩy xuống một bản tin JSON chứa danh sách các thiết bị cảm biến đang hoạt động cùng các thông số đo lường (metrics).
 
 **Cấu trúc dữ liệu mẫu:**
 ```json

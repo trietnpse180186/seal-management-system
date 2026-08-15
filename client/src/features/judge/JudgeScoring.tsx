@@ -164,7 +164,7 @@ export default function JudgeScoring() {
       .catch((err: any) => console.error('Error fetching scenarios:', err));
   }, [token]);
 
-  // Poll live telemetry data
+  // Poll live telemetry data (Tần suất phát từ Simulator: 0.5s / 500ms)
   useEffect(() => {
     if (!liveDialogOpen) {
       setLiveData(null);
@@ -172,8 +172,8 @@ export default function JudgeScoring() {
       return;
     }
 
-    const maxPoints = 30;
-    let lastEpoch = 0;
+    const maxPoints = 40;
+    let lastIdentifier = '';
 
     const fetchLive = () => {
       axios.get(`http://localhost:5000/api/teams/judge/live?teamId=${teamId}`, {
@@ -181,13 +181,17 @@ export default function JudgeScoring() {
       })
         .then((res: any) => {
           const data = res.data;
-          if (!data) return;
+          if (!data || !Array.isArray(data.devices)) return;
           setLiveData(data);
 
-          if (data.epoch === lastEpoch) return;
-          lastEpoch = data.epoch;
+          const currentId = data.timestamp || (data.epoch ? String(data.epoch) : '');
+          if (currentId && currentId === lastIdentifier) return;
+          if (currentId) lastIdentifier = currentId;
 
-          const label = new Date(data.epoch * 1000).toLocaleTimeString('vi-VN', {
+          const dateObj = data.timestamp
+            ? new Date(data.timestamp)
+            : (data.epoch ? new Date(data.epoch * 1000) : new Date());
+          const label = dateObj.toLocaleTimeString('vi-VN', {
             hour12: false
           });
 
@@ -209,7 +213,7 @@ export default function JudgeScoring() {
     };
 
     fetchLive();
-    const interval = setInterval(fetchLive, 1500);
+    const interval = setInterval(fetchLive, 500);
     return () => clearInterval(interval);
   }, [liveDialogOpen, token]);
 

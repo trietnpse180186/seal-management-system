@@ -290,8 +290,8 @@ export default function JudgeScoringScreen({ route, navigation }) {
       return;
     }
 
-    let lastEpoch = 0;
-    const maxPoints = 30;
+    let lastIdentifier = '';
+    const maxPoints = 40;
 
     const fetchLive = async () => {
       try {
@@ -299,7 +299,7 @@ export default function JudgeScoringScreen({ route, navigation }) {
         const res = await api.get(`/teams/judge/live?teamId=${targetId}`);
         const data = res.data;
 
-        if (!data || !data.devices) {
+        if (!data || !Array.isArray(data.devices)) {
           setLiveError('Chưa nhận được dữ liệu thiết bị từ Simulator.');
           return;
         }
@@ -307,10 +307,15 @@ export default function JudgeScoringScreen({ route, navigation }) {
         setLiveError(null);
         setLiveData(data);
 
-        if (data.epoch && data.epoch === lastEpoch) return;
-        if (data.epoch) lastEpoch = data.epoch;
+        const currentId = data.timestamp || (data.epoch ? String(data.epoch) : '');
+        if (currentId && currentId === lastIdentifier) return;
+        if (currentId) lastIdentifier = currentId;
 
-        const label = new Date((data.epoch || Date.now() / 1000) * 1000).toLocaleTimeString('vi-VN', {
+        const dateObj = data.timestamp
+          ? new Date(data.timestamp)
+          : (data.epoch ? new Date(data.epoch * 1000) : new Date());
+
+        const label = dateObj.toLocaleTimeString('vi-VN', {
           hour12: false,
           minute: '2-digit',
           second: '2-digit',
@@ -337,7 +342,7 @@ export default function JudgeScoringScreen({ route, navigation }) {
     };
 
     fetchLive();
-    pollIntervalRef.current = setInterval(fetchLive, 1500);
+    pollIntervalRef.current = setInterval(fetchLive, 500);
 
     return () => {
       if (pollIntervalRef.current) {

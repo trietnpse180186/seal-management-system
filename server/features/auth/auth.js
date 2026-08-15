@@ -544,7 +544,7 @@ router.post('/assign-role', authenticateToken, requireSystemAdmin, async (req, r
         });
         if (isStudentAssistant) {
           return res.status(400).json({
-            message: 'Tài khoản này đang là Cộng tác viên của sự kiện mở đăng ký, không thể phân công làm Giám khảo hoặc Mentor.'
+            message: 'Tài khoản này đang là Công tác sinh viên của sự kiện mở đăng ký, không thể phân công làm Giám khảo hoặc Mentor.'
           });
         }
       }
@@ -1422,13 +1422,7 @@ router.post('/users', authenticateToken, requireAdminOrAssistant, async (req, re
       return res.status(400).json({ message: 'Tài khoản với email này đã tồn tại.' });
     }
 
-    if (isStudentAssistant) {
-      const Event = mongoose.model('Event');
-      const activeEvent = await Event.findOne({ status: { $in: ['registration', 'ongoing'] } });
-      if (!activeEvent) {
-        return res.status(400).json({ message: 'Chỉ được phép tạo Cộng tác viên khi có sự kiện đang diễn ra hoặc mở đăng ký.' });
-      }
-    }
+    // Note: Student Assistant role can be assigned anytime without active events
 
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(effectivePassword, salt);
@@ -1687,40 +1681,38 @@ router.post('/users/:id/toggle-student-assistant', authenticateToken, requireSys
     if (nextVal) {
       const Event = mongoose.model('Event');
       const activeEvents = await Event.find({ status: { $in: ['registration', 'ongoing'] } });
-      if (!activeEvents || activeEvents.length === 0) {
-        return res.status(400).json({ message: 'Chỉ được phép cấp quyền Cộng tác viên khi có sự kiện đang diễn ra hoặc mở đăng ký.' });
-      }
+      if (activeEvents && activeEvents.length > 0) {
+        const activeEventIds = activeEvents.map(e => e._id);
 
-      const activeEventIds = activeEvents.map(e => e._id);
-
-      const hasOtherRole = await EventRole.findOne({
-        userId,
-        eventId: { $in: activeEventIds },
-        role: { $in: ['judge', 'mentor'] },
-        status: 'active'
-      });
-      if (hasOtherRole) {
-        const roleNameMap = { judge: 'Giám khảo', mentor: 'Mentor' };
-        const roleTitle = roleNameMap[hasOtherRole.role] || hasOtherRole.role;
-        return res.status(400).json({ message: `Tài khoản này đang có vai trò ${roleTitle} trong sự kiện, không thể cấp quyền Cộng tác viên.` });
-      }
-
-      // Check if they are a participant and are in a team (contestant)
-      const isParticipant = await EventRole.findOne({
-        userId,
-        eventId: { $in: activeEventIds },
-        role: 'participant',
-        status: 'active'
-      });
-      if (isParticipant) {
-        const TeamMember = mongoose.model('TeamMember');
-        const isTeamMember = await TeamMember.findOne({
+        const hasOtherRole = await EventRole.findOne({
           userId,
           eventId: { $in: activeEventIds },
-          confirmStatus: 'confirmed'
+          role: { $in: ['judge', 'mentor'] },
+          status: 'active'
         });
-        if (isTeamMember) {
-          return res.status(400).json({ message: 'Tài khoản này đang là Thí sinh chính thức trong sự kiện, không thể cấp quyền Cộng tác viên.' });
+        if (hasOtherRole) {
+          const roleNameMap = { judge: 'Giám khảo', mentor: 'Mentor' };
+          const roleTitle = roleNameMap[hasOtherRole.role] || hasOtherRole.role;
+          return res.status(400).json({ message: `Tài khoản này đang có vai trò ${roleTitle} trong sự kiện, không thể cấp quyền Công tác sinh viên.` });
+        }
+
+        // Check if they are a participant and are in a team (contestant)
+        const isParticipant = await EventRole.findOne({
+          userId,
+          eventId: { $in: activeEventIds },
+          role: 'participant',
+          status: 'active'
+        });
+        if (isParticipant) {
+          const TeamMember = mongoose.model('TeamMember');
+          const isTeamMember = await TeamMember.findOne({
+            userId,
+            eventId: { $in: activeEventIds },
+            confirmStatus: 'confirmed'
+          });
+          if (isTeamMember) {
+            return res.status(400).json({ message: 'Tài khoản này đang là Thí sinh chính thức trong sự kiện, không thể cấp quyền Công tác sinh viên.' });
+          }
         }
       }
     }
@@ -1730,7 +1722,7 @@ router.post('/users/:id/toggle-student-assistant', authenticateToken, requireSys
 
     if (!nextVal) {
       await EventRole.deleteMany({ userId, role: 'student_assistant' });
-      return res.json({ message: 'Đã thu hồi quyền Cộng tác viên Sinh viên!', isStudentAssistant: false });
+      return res.json({ message: 'Đã thu hồi quyền Công tác sinh viên!', isStudentAssistant: false });
     } else {
       const Event = mongoose.model('Event');
       const activeEvents = await Event.find({ status: { $in: ['registration', 'ongoing'] } });
@@ -1743,9 +1735,9 @@ router.post('/users/:id/toggle-student-assistant', authenticateToken, requireSys
           );
         }
         const eventNames = activeEvents.map(e => e.name || e.semester).filter(Boolean).join(', ');
-        return res.json({ message: `Đã cấp quyền Cộng tác viên cho sự kiện: ${eventNames}!`, isStudentAssistant: true });
+        return res.json({ message: `Đã cấp quyền Công tác sinh viên cho sự kiện: ${eventNames}!`, isStudentAssistant: true });
       }
-      return res.json({ message: 'Đã cấp quyền Cộng tác viên Sinh viên thành công!', isStudentAssistant: true });
+      return res.json({ message: 'Đã cấp quyền Công tác sinh viên thành công!', isStudentAssistant: true });
     }
   } catch (error) {
     console.error('Toggle Student Assistant Error:', error.message);

@@ -224,15 +224,32 @@ async function checkAndSyncDueRepositories() {
         }
       }
     } else {
-      console.log(`[CRON] Redis queue not active. Executing syncRepo sequentially with 12s cooldown...`);
-      for (const repo of dueRepos) {
-        try {
-          await syncRepo(repo._id);
-          console.log('[CRON] Cooldown sleep for 12 seconds...');
-          await new Promise(resolve => setTimeout(resolve, 12000));
-        } catch (err) {
-          console.error(`[CRON ERROR] Failed syncing repo ID ${repo._id}:`, err.message);
-        }
+      console.log(`[CRON] Redis queue not active. Executing batch sync with concurrency fallback...`);
+      await syncRepositoriesInBatches(dueRepos);
+    }
+  }
+}
+
+/**
+ * Helper to sync repositories in parallel chunks when Redis is not available
+ */
+async function syncRepositoriesInBatches(repos, batchSize = 3) {
+  const fallbackBatchSize = parseInt(process.env.GITHUB_AI_FALLBACK_BATCH_SIZE, 10) || batchSize;
+  console.log(`[CRON] Executing fallback batch sync for ${repos.length} repos (Batch size: ${fallbackBatchSize})...`);
+  
+  for (let i = 0; i < repos.length; i += fallbackBatchSize) {
+    const batch = repos.slice(i, i + fallbackBatchSize);
+    console.log(`[CRON] Starting batch ${Math.floor(i / fallbackBatchSize) + 1}/${Math.ceil(repos.length / fallbackBatchSize)} (${batch.length} repos)...`);
+    
+    await Promise.allSettled(batch.map(repo => syncRepo(repo._id).catch(err => {
+      console.error(`[CRON ERROR] Failed syncing repo ID ${repo._id}:`, err.message);
+    })));
+    
+    // Brief cooldown between batches if more remain
+    if (i + fallbackBatchSize < repos.length) {
+      const cooldownMs = process.env.GITHUB_AI_COOLDOWN_MS ? parseInt(process.env.GITHUB_AI_COOLDOWN_MS, 10) : 2000;
+      if (cooldownMs > 0) {
+        await new Promise(resolve => setTimeout(resolve, cooldownMs));
       }
     }
   }
@@ -289,7 +306,7 @@ async function syncAllRepositories(eventId = null, repositoryIds = null) {
   console.log(`[CRON] Syncing ${activeRepos.length} repository/repositories (eventId: ${eventId || 'none'}, repos: ${repositoryIds ? repositoryIds.length : 'all'})...`);
 
   if (githubAiQueue.isQueueAvailable()) {
-    // If BullMQ queue is active, enqueue all sync jobs. The sequential worker will throttle execution.
+    // If BullMQ queue is active, enqueue all sync jobs. The worker will handle concurrency.
     for (const repo of activeRepos) {
       try {
         await githubAiQueue.addSyncJob(repo._id.toString());
@@ -298,16 +315,8 @@ async function syncAllRepositories(eventId = null, repositoryIds = null) {
       }
     }
   } else {
-    // Fallback sequential execution with a 12-second cooldown to stay under Gemini 5 RPM rate limit
-    for (const repo of activeRepos) {
-      try {
-        await syncRepo(repo._id);
-        console.log('[CRON] Fallback sync cooldown sleep for 12 seconds...');
-        await new Promise(resolve => setTimeout(resolve, 12000));
-      } catch (err) {
-        console.error(`[CRON ERROR] Failed syncing repo ID ${repo._id}:`, err.message);
-      }
-    }
+    // Fallback parallel batch execution
+    await syncRepositoriesInBatches(activeRepos);
   }
 
   console.log('[CRON] All repositories sync processes completed.');

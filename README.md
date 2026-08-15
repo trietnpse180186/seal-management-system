@@ -16,14 +16,19 @@ Hệ thống quản lý cuộc thi **SEAL Hackathon** toàn diện dành cho cá
 
 ```text
 seal-management-system/
-├── client/                 # Mã nguồn Frontend (React + Vite)
-├── server/                 # Mã nguồn Backend (NodeJS + Express)
-├── docs/                   # Thư mục chứa tài liệu hệ thống
-│   ├── guides/             # Hướng dẫn phát triển & cài đặt (SETUP, DEVELOPER_GUIDE, SYSTEM_HARNESS_GUIDE, MQTT_GUIDE)
-│   ├── deployment/         # Hướng dẫn triển khai production (PRODUCTION_GUIDE)
-│   └── process/            # Quy trình nghiệp vụ, quy định đánh giá & API bên ngoài
-├── schema.dbml             # File thiết kế Database chuẩn (20 bảng)
-└── README.md               # Hướng dẫn này (ở root)
+├── client/                 # Mã nguồn Frontend (React + Vite + TailwindCSS)
+├── server/                 # Mã nguồn Backend (NodeJS + Express + MongoDB)
+├── mobile/                 # Mã nguồn ứng dụng Mobile (React Native / Expo)
+├── test-tools/             # Bộ công cụ kiểm thử & giả lập (MQTT Tester, Seeding, Stress)
+├── docs/                   # Thư mục tài liệu kỹ thuật & tài nguyên
+│   ├── guides/             # Hướng dẫn phát triển (DEVELOPER_GUIDE, SYSTEM_HARNESS_GUIDE, MQTT_GUIDE)
+│   ├── database/           # Thiết kế cơ sở dữ liệu (schema.dbml)
+│   ├── ai-prompts/         # Đặc tả kiến trúc AI Agent Prompts & Benchmarks
+│   ├── templates/          # Biểu mẫu Excel & Rubrics cuộc thi
+│   ├── deployment/         # Hướng dẫn triển khai Production
+│   └── process/            # Quy trình nghiệp vụ & Phân phối đề thi
+├── harness.js              # Công cụ CLI quản trị Harness hệ thống
+└── README.md               # Hướng dẫn tổng quan dự án
 ```
 
 ---

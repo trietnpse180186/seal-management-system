@@ -11,7 +11,7 @@
 ## Code Style & Architecture
 - **Backend (NodeJS/Express/MongoDB)**:
   - Use Mongoose for database schemas.
-  - Follow the 20 models defined in `schema.dbml`.
+  - Follow the 20 models defined in `docs/database/schema.dbml`.
   - Use modular route files in `/routes` and service classes in `/services`.
   - Handle asynchronous tasks like GitHub repository creation and AI commit analysis using node-cron.
 - **Frontend (ReactJS/TypeScript/TailwindCSS v4)**:

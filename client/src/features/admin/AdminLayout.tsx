@@ -253,7 +253,7 @@ export default function AdminLayout({
                   : isCoordinator
                   ? "Admin"
                   : isAssistant
-                  ? "Cộng tác viên"
+                  ? "Công tác sinh viên"
                   : isAdminView
                   ? "Người xem"
                   : "Admin"}

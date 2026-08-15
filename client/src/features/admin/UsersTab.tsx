@@ -9,6 +9,7 @@ import {
   Edit2,
   CheckCircle,
   Eye,
+  EyeOff,
   Shirt,
   Download,
   History,
@@ -151,6 +152,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
 
   // Form state for creation / editing
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [editingUser, setEditingUser] = useState<any | null>(null);
   const [formData, setFormData] = useState({
     email: "",
@@ -161,8 +163,6 @@ export const UsersTab: React.FC<UsersTabProps> = ({
     isActive: true,
     isStudentAssistant: false,
   });
-
-  const [hasRegistrationEvent, setHasRegistrationEvent] = useState(false);
 
   const fetchUsers = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -200,11 +200,6 @@ export const UsersTab: React.FC<UsersTabProps> = ({
           headers: { Authorization: `Bearer ${token}` },
         })
         .then((res) => {
-          setHasRegistrationEvent(
-            res.data.some((e: any) =>
-              ["registration", "ongoing"].includes(e.status),
-            ),
-          );
           if (!savedId) {
             const activeEvent =
               res.data.find((e: any) =>
@@ -231,13 +226,14 @@ export const UsersTab: React.FC<UsersTabProps> = ({
     setEditingUser(null);
     setFormData({
       email: "",
-      password: "password123",
+      password: "",
       fullName: "",
       studentId: "",
       university: "",
       isActive: true,
       isStudentAssistant: false,
     });
+    setShowPassword(false);
     setIsModalOpen(true);
   };
 
@@ -252,6 +248,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
       isActive: user.isActive !== undefined ? !!user.isActive : true,
       isStudentAssistant: !!user.isStudentAssistant,
     });
+    setShowPassword(false);
     setIsModalOpen(true);
   };
 
@@ -302,7 +299,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
           `${API_BASE}/api/auth/users`,
           {
             email: formData.email,
-            password: formData.password,
+            password: formData.password || undefined,
             fullName: formData.fullName,
             studentId: formData.studentId,
             university: formData.university,
@@ -358,7 +355,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
     } catch (err: any) {
       toast.error(
         err.response?.data?.message ||
-          "Lỗi khi cập nhật quyền cộng tác viên sinh viên.",
+          "Lỗi khi cập nhật quyền công tác sinh viên.",
       );
     }
   };
@@ -766,7 +763,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                                     className="flex flex-col gap-0.5 items-start"
                                   >
                                     <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 select-none whitespace-nowrap">
-                                      Cộng tác viên
+                                      Công tác sinh viên
                                     </span>
                                     {eventName && (
                                       <span
@@ -862,6 +859,24 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                               return null;
                             })
                             .filter(Boolean);
+
+                          if (
+                            u.isStudentAssistant &&
+                            !openEventRoles.some(
+                              (r: any) => r.role === "student_assistant",
+                            )
+                          ) {
+                            renderedBadges.unshift(
+                              <div
+                                key="global-ctsv"
+                                className="flex flex-col gap-0.5 items-start"
+                              >
+                                <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 select-none whitespace-nowrap">
+                                  Công tác sinh viên
+                                </span>
+                              </div>,
+                            );
+                          }
 
                           return (
                             <div className="flex flex-wrap items-center gap-2">
@@ -1005,6 +1020,13 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                       {!isAssistant && (
                         <td className="p-4 text-center">
                           {(() => {
+                            const isCtsv = Boolean(
+                              u.isStudentAssistant ||
+                                (u.roles &&
+                                  u.roles.some(
+                                    (r: any) => r.role === "student_assistant",
+                                  )),
+                            );
                             const openEventRoles = u.roles
                               ? u.roles.filter(
                                   (r: any) =>
@@ -1014,9 +1036,6 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                                     ),
                                 )
                               : [];
-                            const hasStudentAssistant = openEventRoles.some(
-                              (r: any) => r.role === "student_assistant",
-                            );
                             const hasOtherRole = openEventRoles.some(
                               (r: any) =>
                                 ["judge", "mentor"].includes(r.role) ||
@@ -1037,19 +1056,19 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                                       ? "cursor-not-allowed opacity-50"
                                       : "cursor-pointer"
                                   } ${
-                                    hasStudentAssistant
+                                    isCtsv
                                       ? "bg-orange-500"
                                       : "bg-slate-200 hover:bg-slate-300"
                                   }`}
                                   title={
-                                    hasStudentAssistant
-                                      ? "Thu hồi quyền CTSV"
-                                      : "Cấp quyền CTSV"
+                                    isCtsv
+                                      ? "Thu hồi quyền Công tác sinh viên"
+                                      : "Cấp quyền Công tác sinh viên"
                                   }
                                 >
                                   <span
                                     className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform shadow-sm ${
-                                      hasStudentAssistant
+                                      isCtsv
                                         ? "translate-x-5"
                                         : "translate-x-1"
                                     }`}
@@ -1305,25 +1324,48 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                   />
                 </div>
 
-                {editingUser && (
-                  <div>
-                    <label className="block font-bold text-slate-300 mb-1">
-                      Mật khẩu{" "}
-                      <span className="text-slate-500 font-normal">
-                        (Để trống nếu không đổi)
-                      </span>
-                    </label>
+                <div>
+                  <label className="block font-bold text-slate-300 mb-1">
+                    {editingUser ? (
+                      <>
+                        Mật khẩu{" "}
+                        <span className="text-slate-500 font-normal">
+                          (Để trống nếu không đổi)
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        Mật khẩu{" "}
+                        <span className="text-slate-500 font-normal">
+                          (Mặc định: password123 nếu để trống)
+                        </span>
+                      </>
+                    )}
+                  </label>
+                  <div className="relative">
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       value={formData.password}
                       onChange={(e) =>
                         setFormData({ ...formData, password: e.target.value })
                       }
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500 font-mono"
-                      placeholder="••••••••"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 pr-10 text-white focus:outline-none focus:border-cyan-500 font-mono"
+                      placeholder={
+                        editingUser
+                          ? "••••••••"
+                          : "Nhập mật khẩu (hoặc để trống)"
+                      }
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer"
+                      title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
                   </div>
-                )}
+                </div>
 
                 <div>
                   <label className="block font-bold text-slate-300 mb-1">
@@ -1390,7 +1432,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                     </span>
                   </label>
 
-                  {!editingUser && hasRegistrationEvent && (
+                  {!editingUser && (
                     <label className="flex items-center gap-2 cursor-pointer text-slate-300 pt-1">
                       <input
                         type="checkbox"
@@ -1406,7 +1448,7 @@ export const UsersTab: React.FC<UsersTabProps> = ({
                       <span>
                         Vai trò{" "}
                         <strong className="text-slate-400 font-bold">
-                          Cộng tác viên (Student Assistant)
+                          Công tác sinh viên (Student Assistant)
                         </strong>
                       </span>
                     </label>

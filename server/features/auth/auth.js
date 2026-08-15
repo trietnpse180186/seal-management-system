@@ -64,7 +64,7 @@ function normalizeUniversityName(name) {
 
 const JWT_SECRET = process.env.JWT_SECRET || 'seal_hackathon_secret_key_2026';
 
-async function mapUserRoles(roles) {
+async function mapUserRoles(roles, user = null) {
   const mapped = [];
   const RoundModel = mongoose.model('Round');
   const TrackModel = mongoose.model('Track');
@@ -73,8 +73,8 @@ async function mapUserRoles(roles) {
     const roleObj = r.toObject ? r.toObject() : r;
     let roleName = roleObj.role;
 
-    // If the event is completed or cancelled, demote role to participant since contest has ended
-    if (roleObj.eventId && (roleObj.eventId.status === 'completed' || roleObj.eventId.status === 'cancelled')) {
+    // If the event is completed or cancelled, demote role to participant since contest has ended (CTSV remains intact)
+    if (roleObj.role !== 'student_assistant' && roleObj.eventId && (roleObj.eventId.status === 'completed' || roleObj.eventId.status === 'cancelled')) {
       roleName = 'participant';
     }
 
@@ -96,6 +96,18 @@ async function mapUserRoles(roles) {
       eventStatus: roleObj.eventId?.status || null,
       role: roleName,
       trackId: roleObj.trackId ? (roleObj.trackId._id || roleObj.trackId) : null
+    });
+  }
+
+  // If user has global isStudentAssistant flag and roles don't contain student_assistant, add system-level student_assistant role
+  if (user && user.isStudentAssistant && !mapped.some(r => r.role === 'student_assistant')) {
+    mapped.push({
+      id: 'global-ctsv',
+      eventId: null,
+      eventName: 'Hệ thống',
+      eventStatus: 'active',
+      role: 'student_assistant',
+      trackId: null
     });
   }
 
@@ -211,6 +223,7 @@ router.post('/register', async (req, res) => {
         email: user.email,
         fullName: user.fullName,
         isSystemAdmin: user.isSystemAdmin,
+        isStudentAssistant: !!user.isStudentAssistant,
         githubUsername: user.githubUsername
       }
     });
@@ -296,12 +309,13 @@ router.post('/login', async (req, res) => {
         email: user.email,
         fullName: user.fullName,
         isSystemAdmin: user.isSystemAdmin,
+        isStudentAssistant: !!user.isStudentAssistant,
         githubUsername: user.githubUsername,
         height: user.height,
         weight: user.weight,
         avatarUrl: user.avatarUrl
       },
-      roles: await mapUserRoles(roles)
+      roles: await mapUserRoles(roles, user)
     });
 
   } catch (error) {
@@ -336,9 +350,10 @@ router.get('/me', authenticateToken, async (req, res) => {
         githubUsername: req.user.githubUsername,
         height: req.user.height,
         weight: req.user.weight,
-        isSystemAdmin: req.user.isSystemAdmin
+        isSystemAdmin: req.user.isSystemAdmin,
+        isStudentAssistant: !!req.user.isStudentAssistant
       },
-      roles: await mapUserRoles(roles)
+      roles: await mapUserRoles(roles, req.user)
     });
   } catch (error) {
     console.error('Fetch Profile Error:', error.message);
@@ -449,9 +464,10 @@ router.put('/profile', authenticateToken, async (req, res) => {
         height: user.height,
         weight: user.weight,
         isSystemAdmin: user.isSystemAdmin,
+        isStudentAssistant: !!user.isStudentAssistant,
         avatarUrl: user.avatarUrl
       },
-      roles: await mapUserRoles(roles)
+      roles: await mapUserRoles(roles, user)
     });
   } catch (error) {
     console.error('Update Profile Error:', error.message);
@@ -544,7 +560,7 @@ router.post('/assign-role', authenticateToken, requireSystemAdmin, async (req, r
         });
         if (isStudentAssistant) {
           return res.status(400).json({
-            message: 'Tài khoản này đang là Cộng tác viên của sự kiện mở đăng ký, không thể phân công làm Giám khảo hoặc Mentor.'
+            message: 'Tài khoản này đang là Công tác sinh viên của sự kiện mở đăng ký, không thể phân công làm Giám khảo hoặc Mentor.'
           });
         }
       }
@@ -1422,13 +1438,7 @@ router.post('/users', authenticateToken, requireAdminOrAssistant, async (req, re
       return res.status(400).json({ message: 'Tài khoản với email này đã tồn tại.' });
     }
 
-    if (isStudentAssistant) {
-      const Event = mongoose.model('Event');
-      const activeEvent = await Event.findOne({ status: { $in: ['registration', 'ongoing'] } });
-      if (!activeEvent) {
-        return res.status(400).json({ message: 'Chỉ được phép tạo Cộng tác viên khi có sự kiện đang diễn ra hoặc mở đăng ký.' });
-      }
-    }
+    // Note: Student Assistant role can be assigned anytime without active events
 
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(effectivePassword, salt);
@@ -1687,40 +1697,38 @@ router.post('/users/:id/toggle-student-assistant', authenticateToken, requireSys
     if (nextVal) {
       const Event = mongoose.model('Event');
       const activeEvents = await Event.find({ status: { $in: ['registration', 'ongoing'] } });
-      if (!activeEvents || activeEvents.length === 0) {
-        return res.status(400).json({ message: 'Chỉ được phép cấp quyền Cộng tác viên khi có sự kiện đang diễn ra hoặc mở đăng ký.' });
-      }
+      if (activeEvents && activeEvents.length > 0) {
+        const activeEventIds = activeEvents.map(e => e._id);
 
-      const activeEventIds = activeEvents.map(e => e._id);
-
-      const hasOtherRole = await EventRole.findOne({
-        userId,
-        eventId: { $in: activeEventIds },
-        role: { $in: ['judge', 'mentor'] },
-        status: 'active'
-      });
-      if (hasOtherRole) {
-        const roleNameMap = { judge: 'Giám khảo', mentor: 'Mentor' };
-        const roleTitle = roleNameMap[hasOtherRole.role] || hasOtherRole.role;
-        return res.status(400).json({ message: `Tài khoản này đang có vai trò ${roleTitle} trong sự kiện, không thể cấp quyền Cộng tác viên.` });
-      }
-
-      // Check if they are a participant and are in a team (contestant)
-      const isParticipant = await EventRole.findOne({
-        userId,
-        eventId: { $in: activeEventIds },
-        role: 'participant',
-        status: 'active'
-      });
-      if (isParticipant) {
-        const TeamMember = mongoose.model('TeamMember');
-        const isTeamMember = await TeamMember.findOne({
+        const hasOtherRole = await EventRole.findOne({
           userId,
           eventId: { $in: activeEventIds },
-          confirmStatus: 'confirmed'
+          role: { $in: ['judge', 'mentor'] },
+          status: 'active'
         });
-        if (isTeamMember) {
-          return res.status(400).json({ message: 'Tài khoản này đang là Thí sinh chính thức trong sự kiện, không thể cấp quyền Cộng tác viên.' });
+        if (hasOtherRole) {
+          const roleNameMap = { judge: 'Giám khảo', mentor: 'Mentor' };
+          const roleTitle = roleNameMap[hasOtherRole.role] || hasOtherRole.role;
+          return res.status(400).json({ message: `Tài khoản này đang có vai trò ${roleTitle} trong sự kiện, không thể cấp quyền Công tác sinh viên.` });
+        }
+
+        // Check if they are a participant and are in a team (contestant)
+        const isParticipant = await EventRole.findOne({
+          userId,
+          eventId: { $in: activeEventIds },
+          role: 'participant',
+          status: 'active'
+        });
+        if (isParticipant) {
+          const TeamMember = mongoose.model('TeamMember');
+          const isTeamMember = await TeamMember.findOne({
+            userId,
+            eventId: { $in: activeEventIds },
+            confirmStatus: 'confirmed'
+          });
+          if (isTeamMember) {
+            return res.status(400).json({ message: 'Tài khoản này đang là Thí sinh chính thức trong sự kiện, không thể cấp quyền Công tác sinh viên.' });
+          }
         }
       }
     }
@@ -1730,7 +1738,7 @@ router.post('/users/:id/toggle-student-assistant', authenticateToken, requireSys
 
     if (!nextVal) {
       await EventRole.deleteMany({ userId, role: 'student_assistant' });
-      return res.json({ message: 'Đã thu hồi quyền Cộng tác viên Sinh viên!', isStudentAssistant: false });
+      return res.json({ message: 'Đã thu hồi quyền Công tác sinh viên!', isStudentAssistant: false });
     } else {
       const Event = mongoose.model('Event');
       const activeEvents = await Event.find({ status: { $in: ['registration', 'ongoing'] } });
@@ -1743,9 +1751,9 @@ router.post('/users/:id/toggle-student-assistant', authenticateToken, requireSys
           );
         }
         const eventNames = activeEvents.map(e => e.name || e.semester).filter(Boolean).join(', ');
-        return res.json({ message: `Đã cấp quyền Cộng tác viên cho sự kiện: ${eventNames}!`, isStudentAssistant: true });
+        return res.json({ message: `Đã cấp quyền Công tác sinh viên cho sự kiện: ${eventNames}!`, isStudentAssistant: true });
       }
-      return res.json({ message: 'Đã cấp quyền Cộng tác viên Sinh viên thành công!', isStudentAssistant: true });
+      return res.json({ message: 'Đã cấp quyền Công tác sinh viên thành công!', isStudentAssistant: true });
     }
   } catch (error) {
     console.error('Toggle Student Assistant Error:', error.message);

@@ -69,11 +69,11 @@ Tại trang **Khu vực đội thi (Team Portal)**, hệ thống có một card 
      - **Judge Topic (Dành cho việc chấm bài):** `hackathon/{team_code}/judge/telemetry`
 
 ### Bước 2: Sử dụng công cụ Test mẫu (Team MQTT Tester)
-BTC đã cung cấp sẵn một công cụ HTML để test tại: [team-mqtt-tester.html](file:///d:/Hackathon-UI/seal-management-system/team-mqtt-tester.html) (hoặc nằm trong thư mục `server/public/team-mqtt-tester.html`).
+BTC đã cung cấp sẵn một công cụ HTML để test tại: [team-mqtt-tester.html](file:///c:/Users/Triet/MyProject/seal-management-system/test-tools/team-mqtt-tester.html) (hoặc nằm trong thư mục `server/public/team-mqtt-tester.html`).
 
 **Cách sử dụng để test kết nối local:**
 1. Khởi động server backend của bạn (chạy cổng `http://localhost:5000`).
-2. Mở file [team-mqtt-tester.html](file:///d:/Hackathon-UI/seal-management-system/team-mqtt-tester.html) bằng trình duyệt web.
+2. Mở file [team-mqtt-tester.html](file:///c:/Users/Triet/MyProject/seal-management-system/test-tools/team-mqtt-tester.html) bằng trình duyệt web.
 3. Nhập các thông tin:
    - **Backend URL:** `http://localhost:5000` (để gọi API điều khiển Replay).
    - **MQTT WebSocket URL:** `wss://mqtt-hackathon.lexatek.vn:8084/mqtt` (địa chỉ websocket của broker).

@@ -53,17 +53,11 @@ const { addEmailJob, isQueueAvailable } = require('../notifications/notification
 async function downgradeEventRolesToParticipant(eventId) {
   const targetRoles = await EventRole.find({
     eventId,
-    role: { $in: ['judge', 'mentor', 'student_assistant'] },
+    role: { $in: ['judge', 'mentor'] },
     status: 'active'
   });
 
-  const User = mongoose.model('User');
   for (const roleRecord of targetRoles) {
-    // If it was a student assistant, also revoke their global CTSV flag
-    if (roleRecord.role === 'student_assistant') {
-      await User.updateOne({ _id: roleRecord.userId }, { $set: { isStudentAssistant: false } });
-    }
-
     const participantExists = await EventRole.findOne({
       userId: roleRecord.userId,
       eventId: roleRecord.eventId,

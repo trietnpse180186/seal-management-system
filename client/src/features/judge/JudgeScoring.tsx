@@ -1314,12 +1314,25 @@ export default function JudgeScoring() {
 
               {/* Card 1: Team Aggregate Review (repository_review) */}
               <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
-                <div className="border-b border-slate-100 pb-4">
-                  <h3 className="text-sm font-bold text-slate-800 uppercase flex items-center gap-2">
-                    <Activity size={16} className="text-[#F27024]" />
-                    <span>Tổng hợp phân tích & Đánh giá cấp Team</span>
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-1">Phân tích sâu toàn bộ lịch sử commits và cấu trúc mã nguồn đối chiếu với rubric.</p>
+                <div className="border-b border-slate-100 pb-4 flex flex-wrap justify-between items-center gap-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800 uppercase flex items-center gap-2">
+                      <Activity size={16} className="text-[#F27024]" />
+                      <span>Tổng hợp phân tích & Đánh giá cấp Team</span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">Phân tích sâu toàn bộ lịch sử commits và cấu trúc mã nguồn đối chiếu với rubric.</p>
+                  </div>
+                  {!isRoundLocked && rubric && (
+                    <button
+                      type="button"
+                      onClick={handleGetAiSuggestion}
+                      disabled={aiLoading}
+                      className="flex items-center gap-1.5 bg-[#F27024]/10 hover:bg-[#F27024]/20 text-[#F27024] border border-[#F27024]/30 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm disabled:opacity-50"
+                    >
+                      <Sparkles size={13} className={aiLoading ? 'animate-spin' : ''} />
+                      <span>{aiLoading ? 'Agent 2 đang phân tích...' : (teamAggregateReview ? 'Phân tích lại cấp Team' : 'Chạy Phân Tích Cấp Team')}</span>
+                    </button>
+                  )}
                 </div>
 
                 {teamAggregateReview ? (
@@ -1401,6 +1414,68 @@ export default function JudgeScoring() {
                               </div>
                             );
                           })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Assessment (Advantages, Disadvantages, Potential Errors) */}
+                    {teamAggregateReview.result.assessment && (
+                      <div className="space-y-3">
+                        <span className="text-xs text-slate-700 font-bold uppercase tracking-normal flex items-center gap-1.5">
+                          <Activity size={13} className="text-[#F27024]" /> Đánh giá Điểm mạnh, Điểm yếu & Lỗi tiềm ẩn (Agent 2)
+                        </span>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1.5 bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 text-slate-700 shadow-sm">
+                            <span className="text-xs text-emerald-700 font-bold uppercase tracking-normal flex items-center gap-1">
+                              <CheckCircle2 size={13} className="text-emerald-600" /> Ưu điểm giải pháp (Strengths):
+                            </span>
+                            <p className="text-xs sm:text-sm leading-relaxed">{teamAggregateReview.result.assessment.advantages || 'Không có ghi nhận.'}</p>
+                          </div>
+                          <div className="space-y-1.5 bg-rose-50/50 p-4 rounded-xl border border-rose-100 text-slate-700 shadow-sm">
+                            <span className="text-xs text-rose-700 font-bold uppercase tracking-normal flex items-center gap-1">
+                              <XCircle size={13} className="text-rose-600" /> Hạn chế cốt lõi (Weaknesses):
+                            </span>
+                            <p className="text-xs sm:text-sm leading-relaxed">{teamAggregateReview.result.assessment.disadvantages || 'Không có ghi nhận.'}</p>
+                          </div>
+                        </div>
+
+                        {teamAggregateReview.result.assessment.potential_errors && (
+                          <div className="space-y-1.5 bg-amber-50/60 p-4 rounded-xl border border-amber-200/80 text-slate-700 shadow-sm">
+                            <span className="text-xs text-amber-800 font-bold uppercase tracking-normal flex items-center gap-1.5">
+                              <AlertTriangle size={13} className="text-amber-600 shrink-0" />
+                              Các lỗi & Rủi ro có thể phát sinh trong repo (Potential Errors / Failure Modes):
+                            </span>
+                            <p className="text-xs sm:text-sm leading-relaxed text-amber-950 font-medium">{teamAggregateReview.result.assessment.potential_errors}</p>
+                          </div>
+                        )}
+
+                        {/* Additional Assessment Metrics */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs">
+                          {teamAggregateReview.result.assessment.completeness && (
+                            <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-150">
+                              <span className="text-[10px] text-slate-500 font-bold uppercase block">Độ hoàn thiện:</span>
+                              <span className="font-semibold text-slate-800">{teamAggregateReview.result.assessment.completeness}</span>
+                            </div>
+                          )}
+                          {teamAggregateReview.result.assessment.demo_readiness && (
+                            <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-150">
+                              <span className="text-[10px] text-slate-500 font-bold uppercase block">Sẵn sàng Demo:</span>
+                              <span className="font-semibold text-slate-800">{teamAggregateReview.result.assessment.demo_readiness}</span>
+                            </div>
+                          )}
+                          {teamAggregateReview.result.assessment.runtime_resilience && (
+                            <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-150">
+                              <span className="text-[10px] text-slate-500 font-bold uppercase block">Chống chịu lỗi:</span>
+                              <span className="font-semibold text-slate-800">{teamAggregateReview.result.assessment.runtime_resilience}</span>
+                            </div>
+                          )}
+                          {teamAggregateReview.result.assessment.source_structure && (
+                            <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-150">
+                              <span className="text-[10px] text-slate-500 font-bold uppercase block">Cấu trúc Code:</span>
+                              <span className="font-semibold text-slate-800">{teamAggregateReview.result.assessment.source_structure}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
@@ -1589,9 +1664,22 @@ export default function JudgeScoring() {
                     )}
                   </div>
                 ) : (
-                  <div className="py-8 text-center text-slate-400 italic text-xs flex items-center justify-center gap-1 bg-slate-50 rounded-xl border border-slate-100">
-                    <AlertCircle size={12} className="text-slate-400" />
-                    <span>Chưa có dữ liệu phân tích tổng hợp cấp team từ Gemini AI.</span>
+                  <div className="py-8 text-center text-slate-400 italic text-xs flex flex-col items-center justify-center gap-3 bg-slate-50 rounded-xl border border-slate-100 p-6">
+                    <div className="flex items-center gap-1.5 text-slate-500 font-medium">
+                      <AlertCircle size={14} className="text-slate-400" />
+                      <span>Chưa có dữ liệu phân tích tổng hợp cấp team từ Gemini AI cho vòng thi này.</span>
+                    </div>
+                    {!isRoundLocked && rubric && (
+                      <button
+                        type="button"
+                        onClick={handleGetAiSuggestion}
+                        disabled={aiLoading}
+                        className="flex items-center gap-1.5 bg-[#F27024] hover:bg-[#d95f1f] text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                      >
+                        <Sparkles size={13} className={aiLoading ? 'animate-spin' : ''} />
+                        <span>{aiLoading ? 'Agent 2 đang phân tích toàn diện...' : 'Kích hoạt Phân tích Toàn diện & Gợi ý điểm (Agent 2)'}</span>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

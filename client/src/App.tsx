@@ -207,6 +207,7 @@ function AppContent({
             element={
               user ? (
                 user.isSystemAdmin ||
+                user.isStudentAssistant ||
                 roles.some(
                   (r: any) =>
                     r.role === "admin_view" || r.role === "student_assistant",

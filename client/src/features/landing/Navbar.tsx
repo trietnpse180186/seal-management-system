@@ -288,11 +288,12 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
 
   const isSystemAdmin = user?.isSystemAdmin;
   const isCoordinator = !!isSystemAdmin || roles?.some((r) => r.role === "admin_view");
+  const isAssistant = !isCoordinator && (user?.isStudentAssistant || roles?.some((r) => r.role === "student_assistant"));
   const isJudge = roles?.some((r) => r.role === "judge") || isSystemAdmin;
   const isMentor = roles?.some((r) => r.role === "mentor");
   const isParticipant =
     roles?.some((r) => r.role === "participant") ||
-    (!isSystemAdmin && !isCoordinator && !isJudge && !isMentor);
+    (!isSystemAdmin && !isCoordinator && !isJudge && !isMentor && !isAssistant);
 
 
   const isActive = (path: string) => location.pathname === path;
@@ -430,6 +431,14 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
                     <span>Xem chi tiết điểm</span>
                   </Link>
                 </>
+              )}
+
+              {/* Student Assistant Links */}
+              {isAssistant && !isCoordinator && (
+                <Link to="/admin" className={linkClass("/admin")}>
+                  <ShieldAlert size={16} />
+                  <span>Công tác sinh viên</span>
+                </Link>
               )}
 
               {/* Expert Portal Links */}
@@ -587,9 +596,10 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
                       if (isSystemAdmin) return "Quản trị viên Hệ thống";
                       const rolesList = [];
                       if (roles?.some((r: any) => r.role === "coordinator" || r.role === "admin_view")) rolesList.push("Admin");
+                      if (user?.isStudentAssistant || roles?.some((r: any) => r.role === "student_assistant")) rolesList.push("Công tác sinh viên");
                       if (roles?.some((r: any) => r.role === "judge")) rolesList.push("Giám khảo");
                       if (roles?.some((r: any) => r.role === "mentor")) rolesList.push("Mentor");
-                      if (roles?.some((r: any) => r.role === "participant")) rolesList.push("Thí sinh");
+                      if (roles?.some((r: any) => r.role === "participant") && rolesList.length === 0) rolesList.push("Thí sinh");
                       return rolesList.length > 0 ? rolesList.join(" & ") : "Thí sinh";
                     })()}
                   </p>
@@ -614,6 +624,19 @@ export default function Navbar({ user, roles, onLogout, onOpenProfile }: NavbarP
                           : "bg-[#0c1322] border-cyan-500/30 text-slate-200 shadow-[0_0_20px_rgba(6,182,212,0.15)]"
                         }`}
                     >
+                      {(isCoordinator || isAssistant) && (
+                        <Link
+                          to="/admin"
+                          onClick={() => setShowUserMenu(false)}
+                          className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg text-left transition-colors cursor-pointer ${usesLightShell
+                              ? "hover:bg-slate-100 text-slate-700"
+                              : "hover:bg-cyan-950/30 text-slate-300 hover:text-cyan-400"
+                            }`}
+                        >
+                          <ShieldAlert size={14} className={usesLightShell ? "text-[#F27024]" : "text-cyan-400"} />
+                          <span>{isCoordinator ? "Trang Quản trị" : "Trang Công tác sinh viên"}</span>
+                        </Link>
+                      )}
                       <button
                         onClick={() => {
                           setShowUserMenu(false);

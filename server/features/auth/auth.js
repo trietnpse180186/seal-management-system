@@ -64,7 +64,7 @@ function normalizeUniversityName(name) {
 
 const JWT_SECRET = process.env.JWT_SECRET || 'seal_hackathon_secret_key_2026';
 
-async function mapUserRoles(roles) {
+async function mapUserRoles(roles, user = null) {
   const mapped = [];
   const RoundModel = mongoose.model('Round');
   const TrackModel = mongoose.model('Track');
@@ -73,8 +73,8 @@ async function mapUserRoles(roles) {
     const roleObj = r.toObject ? r.toObject() : r;
     let roleName = roleObj.role;
 
-    // If the event is completed or cancelled, demote role to participant since contest has ended
-    if (roleObj.eventId && (roleObj.eventId.status === 'completed' || roleObj.eventId.status === 'cancelled')) {
+    // If the event is completed or cancelled, demote role to participant since contest has ended (CTSV remains intact)
+    if (roleObj.role !== 'student_assistant' && roleObj.eventId && (roleObj.eventId.status === 'completed' || roleObj.eventId.status === 'cancelled')) {
       roleName = 'participant';
     }
 
@@ -96,6 +96,18 @@ async function mapUserRoles(roles) {
       eventStatus: roleObj.eventId?.status || null,
       role: roleName,
       trackId: roleObj.trackId ? (roleObj.trackId._id || roleObj.trackId) : null
+    });
+  }
+
+  // If user has global isStudentAssistant flag and roles don't contain student_assistant, add system-level student_assistant role
+  if (user && user.isStudentAssistant && !mapped.some(r => r.role === 'student_assistant')) {
+    mapped.push({
+      id: 'global-ctsv',
+      eventId: null,
+      eventName: 'Hệ thống',
+      eventStatus: 'active',
+      role: 'student_assistant',
+      trackId: null
     });
   }
 
@@ -211,6 +223,7 @@ router.post('/register', async (req, res) => {
         email: user.email,
         fullName: user.fullName,
         isSystemAdmin: user.isSystemAdmin,
+        isStudentAssistant: !!user.isStudentAssistant,
         githubUsername: user.githubUsername
       }
     });
@@ -296,12 +309,13 @@ router.post('/login', async (req, res) => {
         email: user.email,
         fullName: user.fullName,
         isSystemAdmin: user.isSystemAdmin,
+        isStudentAssistant: !!user.isStudentAssistant,
         githubUsername: user.githubUsername,
         height: user.height,
         weight: user.weight,
         avatarUrl: user.avatarUrl
       },
-      roles: await mapUserRoles(roles)
+      roles: await mapUserRoles(roles, user)
     });
 
   } catch (error) {
@@ -336,9 +350,10 @@ router.get('/me', authenticateToken, async (req, res) => {
         githubUsername: req.user.githubUsername,
         height: req.user.height,
         weight: req.user.weight,
-        isSystemAdmin: req.user.isSystemAdmin
+        isSystemAdmin: req.user.isSystemAdmin,
+        isStudentAssistant: !!req.user.isStudentAssistant
       },
-      roles: await mapUserRoles(roles)
+      roles: await mapUserRoles(roles, req.user)
     });
   } catch (error) {
     console.error('Fetch Profile Error:', error.message);
@@ -449,9 +464,10 @@ router.put('/profile', authenticateToken, async (req, res) => {
         height: user.height,
         weight: user.weight,
         isSystemAdmin: user.isSystemAdmin,
+        isStudentAssistant: !!user.isStudentAssistant,
         avatarUrl: user.avatarUrl
       },
-      roles: await mapUserRoles(roles)
+      roles: await mapUserRoles(roles, user)
     });
   } catch (error) {
     console.error('Update Profile Error:', error.message);

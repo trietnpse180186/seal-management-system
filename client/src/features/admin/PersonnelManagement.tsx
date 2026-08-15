@@ -111,11 +111,12 @@ export default function PersonnelManagement() {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
-      setEvent(eventDetailsRes.data);
+      const eventData = eventDetailsRes.data?.event || eventDetailsRes.data;
+      setEvent(eventData);
       setRoles(rolesRes.data.filter((item: any) => ["judge", "mentor"].includes(item.role)));
       setInvitations(invitationsRes.data || []);
-      setRounds(eventDetailsRes.data.rounds || []);
-      setTracks(eventDetailsRes.data.tracks || []);
+      setRounds(eventDetailsRes.data?.rounds || eventData?.rounds || []);
+      setTracks(eventDetailsRes.data?.tracks || eventData?.tracks || []);
     } catch (error) {
       console.error("Load personnel data error", error);
       toast.error("Không thể tải danh sách nhân sự sự kiện.");
@@ -337,7 +338,7 @@ export default function PersonnelManagement() {
     const workbook = XLSXStyle.utils.book_new();
     XLSXStyle.utils.book_append_sheet(workbook, worksheet, "NHÂN SỰ");
 
-    const cleanEventName = (event.name || "SEAL_HACKATHON")
+    const cleanEventName = (event?.name || "SEAL_HACKATHON")
       .replace(/[^a-zA-Z0-9_ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂẾỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪỬỮỰỲỴÝỶỸ\s]/g, "")
       .replace(/\s+/g, "_");
 
@@ -515,7 +516,11 @@ export default function PersonnelManagement() {
       toast.error(`Còn ${invalidRows.length} dòng có email hoặc mật khẩu không hợp lệ.`);
       return;
     }
-    if (!event) return;
+    const currentEventId = selectedEventId || event?._id;
+    if (!currentEventId) {
+      toast.error("Vui lòng chọn một cuộc thi hợp lệ trước khi nhập danh sách.");
+      return;
+    }
     const personnelToImport = preview.filter((item) => !item.existingStatus);
     const existingChiefJudge = preview.find((item) => item.existingInvitationId && item.isChiefJudge);
     if (!personnelToImport.length && !existingChiefJudge) {
@@ -535,7 +540,7 @@ export default function PersonnelManagement() {
       }
       if (personnelToImport.length) {
         const response = await axios.post(
-          `http://localhost:5000/api/personnel-invitations/event/${event._id}/import`,
+          `http://localhost:5000/api/personnel-invitations/event/${currentEventId}/import`,
           { personnel: personnelToImport },
           { headers: { Authorization: `Bearer ${token}` } },
         );
@@ -868,8 +873,8 @@ export default function PersonnelManagement() {
             <div className="flex flex-col gap-3 border-b border-slate-100 p-5 lg:flex-row lg:items-center lg:justify-between">
               <div><h2 className="text-sm font-bold">Danh sách nhân sự đã nhập</h2><p className="mt-1 text-xs text-slate-500">Theo dõi phân công và trạng thái cấp quyền của nhân sự.</p></div>
               <div className="flex flex-wrap gap-2">
-                <button type="button" disabled={isAccountActionLoading || !invitations.some((item) => item.status === "accepted" && item.accountStatus !== "provisioned")} onClick={() => runAccountAction(`event/${event._id}/provision-all`, "Đã cấp tài khoản.")} className="rounded-lg bg-[#F27024] px-3 py-2 text-xs font-bold text-white hover:bg-[#d95f1f] disabled:opacity-50">Cấp tất cả đã chấp thuận</button>
-                <button type="button" disabled={isAccountActionLoading || !invitations.some((item) => item.accountStatus === "provisioned")} onClick={() => runAccountAction(`event/${event._id}/revoke-all`, "Đã thu hồi tất cả.", true)} className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50">Thu hồi tất cả</button>
+                <button type="button" disabled={isAccountActionLoading || !invitations.some((item) => item.status === "accepted" && item.accountStatus !== "provisioned")} onClick={() => runAccountAction(`event/${selectedEventId || event?._id}/provision-all`, "Đã cấp tài khoản.")} className="rounded-lg bg-[#F27024] px-3 py-2 text-xs font-bold text-white hover:bg-[#d95f1f] disabled:opacity-50">Cấp tất cả đã chấp thuận</button>
+                <button type="button" disabled={isAccountActionLoading || !invitations.some((item) => item.accountStatus === "provisioned")} onClick={() => runAccountAction(`event/${selectedEventId || event?._id}/revoke-all`, "Đã thu hồi tất cả.", true)} className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50">Thu hồi tất cả</button>
                 <button type="button" onClick={() => loadPersonnelData(selectedEventId)} disabled={isRefreshing} className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 disabled:opacity-50" aria-label="Tải lại trạng thái"><RefreshCw size={15} className={isRefreshing ? "animate-spin text-[#F27024]" : ""} /></button>
               </div>
             </div>

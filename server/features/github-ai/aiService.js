@@ -292,69 +292,91 @@ function filterCriteriaComments(result, roundCriteria) {
 }
 
 /**
- * Call n8n webhook workflow asynchronously or synchronously.
+ * Call n8n webhook workflow asynchronously or synchronously with retry support.
  */
-async function callN8nWebhook(payload) {
+async function callN8nWebhook(payload, maxRetries = 2) {
   const n8nUrl = process.env.N8N_WEBHOOK_URL;
   if (!n8nUrl) return null;
-  
-  const startTime = Date.now();
-  console.log(`[N8N] Calling n8n webhook: ${n8nUrl} for ${payload.analysisType}...`);
-  
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 300000); // 300s (5 min) timeout
 
-  try {
-    const response = await fetch(n8nUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal
-    });
+  const timeoutMs = process.env.N8N_TIMEOUT_MS ? parseInt(process.env.N8N_TIMEOUT_MS, 10) : 180000;
+  
+  for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+    const startTime = Date.now();
+    console.log(`[N8N] Calling n8n webhook (Attempt ${attempt}/${maxRetries + 1}): ${n8nUrl} for ${payload.analysisType}...`);
     
-    clearTimeout(timeoutId);
-    
-    if (!response.ok) {
-      throw new Error(`n8n returned status ${response.status}: ${response.statusText}`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(n8nUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        // Retry on 429 Rate Limit, 502/503/504 Gateway errors if attempts remain
+        const retryableStatuses = [429, 502, 503, 504];
+        if (retryableStatuses.includes(response.status) && attempt <= maxRetries) {
+          const backoffDelay = attempt * 5000;
+          console.warn(`[N8N] Received status ${response.status} from n8n. Retrying in ${backoffDelay / 1000}s...`);
+          await new Promise(resolve => setTimeout(resolve, backoffDelay));
+          continue;
+        }
+        throw new Error(`n8n returned status ${response.status}: ${response.statusText}`);
+      }
+      
+      const text = await response.text();
+      let resultJson = resilienceEngine.autoFixJsonString(text);
+      if (!resultJson) {
+        throw new Error(`Failed to parse/fix n8n response as JSON: ${text.substring(0, 200)}`);
+      }
+      
+      // Normalize response if wrapped in array
+      if (Array.isArray(resultJson)) {
+        resultJson = resultJson[0];
+      }
+      
+      // Extract nested data if n8n returns standard wrappers
+      if (resultJson && resultJson.output) {
+        resultJson = resultJson.output;
+      } else if (resultJson && resultJson.result && typeof resultJson.result === 'object') {
+        resultJson = resultJson.result;
+      } else if (resultJson && resultJson.data && typeof resultJson.data === 'object') {
+        resultJson = resultJson.data;
+      }
+      
+      const latency = Date.now() - startTime;
+      hitlManager.recordTelemetry(latency, 0, true);
+      console.log(`[N8N] Received successful response from n8n in ${(latency / 1000).toFixed(1)}s.`);
+      return schemaValidator.parseAiResult(resultJson);
+    } catch (error) {
+      clearTimeout(timeoutId);
+      const latency = Date.now() - startTime;
+      hitlManager.recordTelemetry(latency, 0, false);
+      
+      if (error.name === 'AbortError') {
+        console.error(`[N8N] Webhook call timed out after ${timeoutMs / 1000}s.`);
+      } else {
+        console.error(`[N8N] Webhook call failed (Attempt ${attempt}/${maxRetries + 1}):`, error.message);
+      }
+
+      if (attempt <= maxRetries && error.name !== 'AbortError') {
+        const backoffDelay = attempt * 5000;
+        console.log(`[N8N] Retrying webhook in ${backoffDelay / 1000}s...`);
+        await new Promise(resolve => setTimeout(resolve, backoffDelay));
+      } else {
+        return null;
+      }
     }
-    
-    const text = await response.text();
-    let resultJson = resilienceEngine.autoFixJsonString(text);
-    if (!resultJson) {
-      throw new Error(`Failed to parse/fix n8n response as JSON: ${text.substring(0, 200)}`);
-    }
-    
-    // Normalize response if wrapped in array
-    if (Array.isArray(resultJson)) {
-      resultJson = resultJson[0];
-    }
-    
-    // Extract nested data if n8n returns standard wrappers
-    if (resultJson && resultJson.output) {
-      resultJson = resultJson.output;
-    } else if (resultJson && resultJson.result && typeof resultJson.result === 'object') {
-      resultJson = resultJson.result;
-    } else if (resultJson && resultJson.data && typeof resultJson.data === 'object') {
-      resultJson = resultJson.data;
-    }
-    
-    const latency = Date.now() - startTime;
-    hitlManager.recordTelemetry(latency, 0, true);
-    console.log(`[N8N] Received successful response from n8n.`);
-    return schemaValidator.parseAiResult(resultJson);
-  } catch (error) {
-    clearTimeout(timeoutId);
-    const latency = Date.now() - startTime;
-    hitlManager.recordTelemetry(latency, 0, false);
-    if (error.name === 'AbortError') {
-      console.error(`[N8N] Webhook call timed out after 300 seconds (5 min).`);
-    } else {
-      console.error(`[N8N] Webhook call failed:`, error.message);
-    }
-    return null;
   }
+
+  return null;
 }
 
 /**

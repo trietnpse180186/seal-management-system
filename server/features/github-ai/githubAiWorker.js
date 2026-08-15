@@ -45,16 +45,19 @@ function startWorker() {
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);
         console.log(`[GITHUB AI WORKER] Job #${jobId} completed successfully in ${duration}s.`);
         
-        // Cooldown delay of 12 seconds to throttle AI requests under 5 RPM Gemini limits
-        console.log('[GITHUB AI WORKER] Cooldown sleep for 12 seconds...');
-        await sleep(12000);
+        // Optional dynamic cooldown delay if rate limiting is needed (default 0ms when concurrency queue is active)
+        const cooldownMs = process.env.GITHUB_AI_COOLDOWN_MS ? parseInt(process.env.GITHUB_AI_COOLDOWN_MS, 10) : 0;
+        if (cooldownMs > 0) {
+          console.log(`[GITHUB AI WORKER] Cooldown sleep for ${cooldownMs / 1000}s...`);
+          await sleep(cooldownMs);
+        }
       } else {
         console.warn(`[GITHUB AI WORKER] Unknown job type: ${jobName}`);
       }
     },
     {
       connection: workerConnection,
-      concurrency: 1, // Process 1 repo at a time to stay under Gemini rate limits
+      concurrency: parseInt(process.env.GITHUB_AI_CONCURRENCY, 10) || 3, // Process multiple repos in parallel
     }
   );
 

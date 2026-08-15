@@ -1675,15 +1675,27 @@ export default function JudgeScoring() {
                             )}
 
                             {resObj.assessment && (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                                <div className="space-y-1.5 bg-emerald-50/50 p-3 rounded-xl border border-emerald-100 text-slate-700">
-                                  <span className="text-xs text-emerald-700 font-bold uppercase tracking-normal">Ưu điểm thiết kế:</span>
-                                  <p className="text-xs sm:text-sm leading-relaxed">{resObj.assessment.advantages || 'Không có.'}</p>
+                              <div className="space-y-3 pt-2">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="space-y-1.5 bg-emerald-50/50 p-3 rounded-xl border border-emerald-100 text-slate-700">
+                                    <span className="text-xs text-emerald-700 font-bold uppercase tracking-normal">Ưu điểm thiết kế:</span>
+                                    <p className="text-xs sm:text-sm leading-relaxed">{resObj.assessment.advantages || 'Không có.'}</p>
+                                  </div>
+                                  <div className="space-y-1.5 bg-rose-50/50 p-3 rounded-xl border border-rose-100 text-slate-700">
+                                    <span className="text-xs text-rose-700 font-bold uppercase tracking-normal">Hạn chế & Rủi ro:</span>
+                                    <p className="text-xs sm:text-sm leading-relaxed">{resObj.assessment.disadvantages || 'Không có.'}</p>
+                                  </div>
                                 </div>
-                                <div className="space-y-1.5 bg-rose-50/50 p-3 rounded-xl border border-rose-100 text-slate-700">
-                                  <span className="text-xs text-rose-700 font-bold uppercase tracking-normal">Hạn chế & Rủi ro:</span>
-                                  <p className="text-xs sm:text-sm leading-relaxed">{resObj.assessment.disadvantages || 'Không có.'}</p>
-                                </div>
+
+                                {resObj.assessment.potential_errors && (
+                                  <div className="space-y-1.5 bg-amber-50/60 p-3 rounded-xl border border-amber-200/80 text-slate-700">
+                                    <span className="text-xs text-amber-800 font-bold uppercase tracking-normal flex items-center gap-1.5">
+                                      <AlertTriangle size={13} className="text-amber-600 shrink-0" />
+                                      Các lỗi & Rủi ro có thể xảy ra trong repo:
+                                    </span>
+                                    <p className="text-xs sm:text-sm leading-relaxed text-amber-950/90">{resObj.assessment.potential_errors}</p>
+                                  </div>
+                                )}
                               </div>
                             )}
 

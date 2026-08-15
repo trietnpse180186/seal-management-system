@@ -140,6 +140,7 @@ function normalizeCommitReviewV2(result) {
   normalized.assessment = normalized.assessment || {
     advantages: '',
     disadvantages: '',
+    potential_errors: '',
     improvement_areas: '',
     context_and_fit: '',
     completeness: '',
@@ -555,6 +556,7 @@ async function analyzeCommit(commit, files, extraContext = {}) {
       assessment: {
         advantages: "Kiến trúc Multi-Agent phân tách rõ ràng. Cơ chế read-back verification sau khi gọi Tool giúp đảm bảo tính toàn vẹn.",
         disadvantages: "Cần bổ sung thêm cơ chế giới hạn tần suất cảnh báo (throttling) để tránh làm phiền người dùng.",
+        potential_errors: "Nguy cơ unhandled exception khi payload MQTT thiếu trường devices hoặc metric đột ngột bị null. Cần try-catch và gán default an toàn khi parse.",
         improvement_areas: "Thêm biểu đồ trực quan hóa cửa sổ trượt telemetry và hoàn thiện kịch bản xử lý khi approval bị từ chối.",
         context_and_fit: "Bám sát đề bài Smart Home của Hackathon Multi-Agent AI × IoT 2026.",
         completeness: "Đã hoàn thành phần lớn các yêu cầu nghiệm thu tối thiểu.",
@@ -787,6 +789,7 @@ async function analyzeTeamAggregate(teamId, commits, priorReviews, options = {})
       assessment: {
         advantages: "Kiến trúc Multi-Agent bài bản, có sự kiểm tra chéo (verification) và an toàn (approval).",
         disadvantages: "Cần cải thiện thêm trải nghiệm responsive trên mobile.",
+        potential_errors: "Nguy cơ memory leak nếu duy trì mảng sliding window telemetry không giới hạn độ dài trong suốt quá trình demo dài hạn. Cần áp dụng circular buffer hoặc dọn dẹp theo thời gian.",
         completeness: "Đầy đủ các chức năng cốt lõi theo yêu cầu đề thi.",
         security_and_safety: "Bảo mật tốt, không rò rỉ secret, tuân thủ nguyên tắc an toàn dữ liệu.",
         runtime_resilience: "Có cơ chế reconnect MQTT và retry có idempotency.",

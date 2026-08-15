@@ -123,6 +123,16 @@ TÌNH HUỐNG JUDGE DÙNG ĐỂ SINH TEST
 - Có audit trace và UI nhận yêu cầu/hiển thị kết quả.
 - Không publish lên MQTT Broker BTC.
 
+PHÂN TÍCH CHUYÊN SÂU HỆ THỐNG (BẮT BUỘC TRONG ASSESSMENT):
+- Điểm mạnh (advantages): Phân tích chi tiết các thế mạnh nổi bật về mặt kiến trúc Multi-Agent, xử lý dữ liệu IoT/MQTT thời gian thực, độ tin cậy khi gọi Tool/API, cơ chế Read-Back Verification, an toàn với Human Approval, tính sáng tạo và chất lượng hoàn thiện của mã nguồn.
+- Điểm yếu (disadvantages): Phân tích chi tiết các điểm hạn chế, lỗ hổng logic, tính năng chưa hoàn thiện, sự thiếu thực chất trong phối hợp agent (ví dụ: chỉ gọi tuần tự, IF/ELSE ngụy trang agent), hoặc trải nghiệm người dùng (UX) chưa tối ưu.
+- Các lỗi có thể xảy ra trong repo (potential_errors): Phân tích rõ ràng và cảnh báo các lỗi tiềm ẩn có thể phát sinh khi chạy/vận hành repo thực tế, bao gồm:
+  + Lỗi runtime crash: Unhandled exception / JSON parse error khi payload MQTT đột ngột thay đổi, thiếu trường metrics hoặc dữ liệu null/undefined.
+  + Lỗi bất đồng bộ & bộ nhớ: Race conditions trong async/await, memory leak do tích lũy sliding window mảng không có cơ chế giải phóng/giới hạn dung lượng.
+  + Lỗi tương tác ngoài: Tool/API bên ngoài bị timeout, lỗi mạng, mất kết nối MQTT broker dẫn đến block event loop; lỗi thiếu idempotency key khi retry gây duplicate action/lệnh kép.
+  + Lỗi bảo mật & an toàn: Hardcoded secret/API key, prompt injection qua input hoặc payload IoT, thiếu kiểm soát quyền Tool khiến agent thực thi hành vi không mong muốn.
+- Đề xuất cải tiến (improvement_areas): Đưa ra các giải pháp khắc phục cụ thể và khả thi cho repo.
+
 DẤU HIỆU KHÔNG HỢP LỆ
 - Một chatbot làm toàn bộ công việc.
 - Agent chỉ khác tên, không khác vai trò/quyền/handoff.
@@ -253,6 +263,7 @@ OUTPUT JSON
   "assessment": {
     "advantages": "",
     "disadvantages": "",
+    "potential_errors": "",
     "improvement_areas": "",
     "context_and_fit": "",
     "completeness": "",

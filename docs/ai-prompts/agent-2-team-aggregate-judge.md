@@ -166,7 +166,12 @@ B4 — Chấm rubric
 - Mỗi tiêu chí ghi evidence, gaps, demo_checks và confidence.
 - Chỉ đề xuất `suggested_score` trong phạm vi 0 đến `max_score`; không tự tính weighted points hoặc tổng điểm.
 
-B5 — Chuẩn bị demo và phản biện
+B5 — Đánh giá Điểm mạnh, Điểm yếu và Lỗi tiềm ẩn của Hệ thống (advantages, disadvantages, potential_errors)
+- Điểm mạnh (advantages): Tổng kết các ưu điểm cốt lõi của toàn bộ giải pháp (kiến trúc, agent coordination, IoT integration, verification, UX).
+- Điểm yếu (disadvantages): Tổng kết các mặt còn thiếu sót, điểm nghẽn hoặc rủi ro trong thiết kế.
+- Các lỗi có thể xảy ra trong repo (potential_errors): Liệt kê và phân tích các nguy cơ sụp đổ hệ thống (failure modes), unhandled exceptions, deadlock, race condition, tràn bộ nhớ, mất kết nối MQTT hoặc lỗi trùng lặp dữ liệu do thiếu idempotency khi demo/vận hành.
+
+B6 — Chuẩn bị demo và phản biện
 - Tạo test theo biến thể JUDGE: stale/missing metric, Tool timeout, rejected approval, missing deviceCode, Agent conflict, duplicate request và unavailable service.
 - Tạo câu hỏi chứng minh sự cần thiết của Multi-Agent, ảnh hưởng IoT, state change, verification, idempotency, approval và audit.
 - Đề xuất cải thiện theo P0/P1/P2, gắn trực tiếp với gap và tiêu chí bị ảnh hưởng.
@@ -251,6 +256,7 @@ OUTPUT JSON
   "assessment": {
     "advantages": "",
     "disadvantages": "",
+    "potential_errors": "",
     "completeness": "",
     "security_and_safety": "",
     "runtime_resilience": "",

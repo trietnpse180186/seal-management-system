@@ -1208,6 +1208,7 @@ export default function TeamArea() {
                             [MÔI TRƯỜNG CHẤM THI ĐANG BẬT]
                           </span>
 
+                          {/* JUDGE API Key */}
                           <div className="space-y-1 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
                             <span className="text-[10px] text-emerald-600 font-bold block uppercase tracking-wider">
                               JUDGE API Key
@@ -1227,6 +1228,43 @@ export default function TeamArea() {
                                 title="Sao chép JUDGE API Key"
                               >
                                 {copiedField === "JUDGE API Key" ? (
+                                  <CheckCircle
+                                    size={14}
+                                    className="text-emerald-500"
+                                  />
+                                ) : (
+                                  <Copy size={14} />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* JUDGE Topic/Path */}
+                          <div className="space-y-1 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                            <span className="text-[10px] text-emerald-600 font-bold block uppercase tracking-wider">
+                              JUDGE Topic/Path
+                            </span>
+                            <div className="flex justify-between items-center text-emerald-700 font-mono">
+                              <span className="truncate max-w-[85%]">
+                                {team.judgeTopic ||
+                                  (team.externalTeamCode
+                                    ? `hackathon/${team.externalTeamCode.toLowerCase()}/judge/telemetry`
+                                    : "---")}
+                              </span>
+                              <button
+                                onClick={() =>
+                                  handleCopy(
+                                    team.judgeTopic ||
+                                      (team.externalTeamCode
+                                        ? `hackathon/${team.externalTeamCode.toLowerCase()}/judge/telemetry`
+                                        : ""),
+                                    "JUDGE Topic/Path",
+                                  )
+                                }
+                                className="text-slate-400 hover:text-emerald-600 cursor-pointer p-1"
+                                title="Sao chép JUDGE Topic/Path"
+                              >
+                                {copiedField === "JUDGE Topic/Path" ? (
                                   <CheckCircle
                                     size={14}
                                     className="text-emerald-500"

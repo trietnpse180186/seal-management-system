@@ -1579,12 +1579,17 @@ router.get("/my-team", authenticateToken, async (req, res) => {
             : null;
         if (info) {
           isJudgeActive = true;
+          if (info.judgeApiKey) teamPlain.judgeApiKey = info.judgeApiKey;
+          if (info.judgeTopic) teamPlain.judgeTopic = info.judgeTopic;
         }
       } catch (err) {
         console.warn(
           "[SIMULATOR] Failed to fetch active judge status for my-team:",
           err.message,
         );
+      }
+      if (!teamPlain.judgeTopic && teamPlain.externalTeamCode) {
+        teamPlain.judgeTopic = `hackathon/${teamPlain.externalTeamCode.toLowerCase()}/judge/telemetry`;
       }
     }
     teamPlain.isJudgeActive = isJudgeActive;

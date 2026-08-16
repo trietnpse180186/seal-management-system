@@ -53,8 +53,20 @@ interface MentorChatProps {
 
 const ENDED_EVENT_STATUSES = ['completed', 'cancelled'];
 
+function decodeHTML(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2F;/g, '/');
+}
+
 export default function MentorChat({ roles = [], isSystemAdmin = false }: MentorChatProps) {
   const confirm = useConfirm();
+  const apiBase = import.meta.env.VITE_API_URL || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.origin : 'http://localhost:5000');
   const [isOpen, setIsOpen] = useState(false);
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null);
@@ -69,10 +81,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
     fileType: string;
   } | null>(null);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const uploadAttachedFile = async (file: File) => {
     if (file.size > 20 * 1024 * 1024) {
       toast.error("Tệp đính kèm không được vượt quá 20MB.");
       return;
@@ -85,7 +94,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
     const token = localStorage.getItem('token');
 
     try {
-      const res = await axios.post("http://localhost:5000/api/chat/upload", formData, {
+      const res = await axios.post(`${apiBase}/api/chat/upload`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
           Authorization: `Bearer ${token}`,
@@ -103,6 +112,25 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
       toast.error(err.response?.data?.message || "Lỗi tải lên tệp đính kèm.");
     } finally {
       setUploadingFile(false);
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadAttachedFile(file);
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          const renamedFile = new File([file], `Screenshot_${Date.now()}.png`, { type: file.type });
+          await uploadAttachedFile(renamedFile);
+        }
+      }
     }
   };
 
@@ -195,7 +223,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-      const resRooms = await axios.get(`http://localhost:5000/api/chat/rooms`, {
+      const resRooms = await axios.get(`${apiBase}/api/chat/rooms`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -226,7 +254,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
       try {
         const token = localStorage.getItem('token');
         if (token) {
-          const res = await axios.get('http://localhost:5000/api/auth/me', {
+          const res = await axios.get(`${apiBase}/api/auth/me`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           setCurrentUser(res.data.user);
@@ -239,7 +267,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
       try {
         const token = localStorage.getItem('token');
         if (token) {
-          const res = await axios.get('http://localhost:5000/api/chat/mentor/teams', {
+          const res = await axios.get(`${apiBase}/api/chat/mentor/teams`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           setMentorTeams(res.data || []);
@@ -263,7 +291,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
     const token = localStorage.getItem('token');
     if (!token || !currentUser) return;
 
-    const socketUrl = import.meta.env.VITE_API_URL || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.origin : 'http://localhost:5000');
+    const socketUrl = apiBase;
     const newSocket = io(socketUrl, {
       auth: { token }
     });
@@ -339,17 +367,25 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
       socket.on('error', (err: any) => console.error("Socket error:", err));
 
       socket.on('new_message', (message: Message) => {
+        const decodedMessage = {
+          ...message,
+          content: decodeHTML(message.content),
+          replyTo: message.replyTo ? {
+            ...message.replyTo,
+            content: decodeHTML(message.replyTo.content)
+          } : undefined
+        };
         const activeR = selectedRoomRef.current;
-        if (activeR && message.roomId === activeR._id) {
+        if (activeR && decodedMessage.roomId === activeR._id) {
           setMessages(prev => {
-            if (prev.find(m => m._id === message._id)) return prev;
-            return [...prev, message];
+            if (prev.find(m => m._id === decodedMessage._id)) return prev;
+            return [...prev, decodedMessage];
           });
 
           const isMsgFromMe = currentUserRef.current && (
-            currentUserRef.current.userId === message.senderId ||
-            currentUserRef.current._id === message.senderId ||
-            currentUserRef.current.id === message.senderId
+            currentUserRef.current.userId === decodedMessage.senderId ||
+            currentUserRef.current._id === decodedMessage.senderId ||
+            currentUserRef.current.id === decodedMessage.senderId
           );
           if (!isMsgFromMe) {
             playNotificationSound();
@@ -360,24 +396,24 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
           }, 100);
         } else {
           const isMsgFromMe = currentUserRef.current && (
-            currentUserRef.current.userId === message.senderId ||
-            currentUserRef.current._id === message.senderId ||
-            currentUserRef.current.id === message.senderId
+            currentUserRef.current.userId === decodedMessage.senderId ||
+            currentUserRef.current._id === decodedMessage.senderId ||
+            currentUserRef.current.id === decodedMessage.senderId
           );
           if (!isMsgFromMe) {
             setUnreadCounts(prev => ({
               ...prev,
-              [message.roomId]: (prev[message.roomId] || 0) + 1
+              [decodedMessage.roomId]: (prev[decodedMessage.roomId] || 0) + 1
             }));
             playNotificationSound();
-            showDesktopNotification(message);
+            showDesktopNotification(decodedMessage);
           }
         }
       });
 
       socket.on('message_recalled', (data: { messageId: string; roomId: string; content: string }) => {
         setMessages(prev => prev.map(m =>
-          m._id === data.messageId ? { ...m, isRecalled: true, content: data.content } : m
+          m._id === data.messageId ? { ...m, isRecalled: true, content: decodeHTML(data.content) } : m
         ));
       });
     }
@@ -397,21 +433,31 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
     try {
       setLoadingMessages(true);
       const token = localStorage.getItem('token');
-      const resMsgs = await axios.get(`http://localhost:5000/api/chat/rooms/${roomId}/messages?page=${pageNum}&limit=50`, {
+      const resMsgs = await axios.get(`${apiBase}/api/chat/rooms/${roomId}/messages?page=${pageNum}&limit=50`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
+      const rawMsgs = resMsgs.data || [];
+      const decodedMsgs = rawMsgs.map((m: any) => ({
+        ...m,
+        content: decodeHTML(m.content),
+        replyTo: m.replyTo ? {
+          ...m.replyTo,
+          content: decodeHTML(m.replyTo.content)
+        } : undefined
+      }));
+
       if (pageNum === 1) {
-        setMessages(resMsgs.data);
-        setHasMore(resMsgs.data.length === 50);
+        setMessages(decodedMsgs);
+        setHasMore(decodedMsgs.length === 50);
         setPage(1);
         setTimeout(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
         }, 100);
       } else {
         const prevScrollHeight = messagesContainerRef.current?.scrollHeight || 0;
-        setMessages(prev => [...resMsgs.data, ...prev]);
-        setHasMore(resMsgs.data.length === 50);
+        setMessages(prev => [...decodedMsgs, ...prev]);
+        setHasMore(decodedMsgs.length === 50);
         setPage(pageNum);
         setTimeout(() => {
           if (messagesContainerRef.current) {
@@ -503,7 +549,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-      const res = await axios.post('http://localhost:5000/api/chat/rooms/team', { teamId }, {
+      const res = await axios.post(`${apiBase}/api/chat/rooms/team`, { teamId }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const room = res.data;
@@ -704,8 +750,8 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                               </div>
 
                               {/* Message bubble */}
-                              <div className="relative group/bubble flex items-center">
-                                <div className={`px-3 py-1.5 rounded-xl text-xs ${isRecalled
+                              <div className="relative group/bubble flex items-center min-w-0 max-w-full">
+                                <div className={`px-3 py-1.5 rounded-xl text-xs min-w-0 max-w-full ${isRecalled
                                   ? isMe
                                     ? 'border border-[#F27024]/10 bg-[#F27024]/5 text-slate-400 italic rounded-br-sm'
                                     : 'border border-slate-200 bg-slate-100 text-slate-400 italic rounded-bl-sm'
@@ -726,12 +772,15 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                                     <div className="text-[9px] font-bold text-[#F27024] mb-0.5">{msg.senderName}</div>
                                   )}
 
-                                  <div className="break-words whitespace-pre-wrap leading-relaxed">{msg.content}</div>
+                                  <div className="break-words break-all whitespace-pre-wrap leading-relaxed">{msg.content}</div>
 
                                   {msg.fileUrl && !isRecalled && (() => {
-                                    const fileUrlResolved = msg.fileUrl.startsWith("http://") || msg.fileUrl.startsWith("https://")
-                                      ? msg.fileUrl
-                                      : `http://localhost:5000${msg.fileUrl}`;
+                                    let fileUrlResolved = msg.fileUrl;
+                                    if (fileUrlResolved.startsWith("http://localhost:5000")) {
+                                      fileUrlResolved = fileUrlResolved.replace("http://localhost:5000", apiBase);
+                                    } else if (!fileUrlResolved.startsWith("http://") && !fileUrlResolved.startsWith("https://")) {
+                                      fileUrlResolved = `${apiBase}${fileUrlResolved.startsWith('/') ? '' : '/'}${fileUrlResolved}`;
+                                    }
                                     
                                     return /(\.png|\.jpg|\.jpeg|\.gif)$/i.test(msg.fileUrl) ? (
                                       <div className="mt-1.5 rounded-lg overflow-hidden border border-black/5 max-w-xs bg-slate-100">
@@ -927,6 +976,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                           type="text"
                           value={newMessage}
                           onChange={(e) => setNewMessage(e.target.value)}
+                          onPaste={handlePaste}
                           placeholder="Nhập tin nhắn..."
                           className="flex-1 chat-input-light border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 font-medium transition-all"
                         />

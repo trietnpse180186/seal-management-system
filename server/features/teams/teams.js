@@ -1410,7 +1410,7 @@ router.get("/my-team", authenticateToken, async (req, res) => {
       const foundTeam = await Team.findById(record.teamId)
         .populate(
           "eventId",
-          "name semester year status contestStart contestEnd registrationOpen registrationClose seminar commitSyncInterval zaloUrl",
+          "name semester year status contestStart contestEnd registrationOpen registrationClose seminar commitSyncInterval zaloUrl locationAnnouncement",
         )
         .populate("mentorId", "fullName email")
         .populate({
@@ -3449,6 +3449,27 @@ router.get("/all/:eventId", authenticateToken, async (req, res) => {
       .populate("leaderId", "fullName email")
       .populate("mentorId", "fullName email");
 
+    const Commit = mongoose.models.Commit || mongoose.model("Commit");
+    const teamIds = teams.map((t) => t._id);
+    const commitCountsAgg = await Commit.aggregate([
+      {
+        $match: {
+          teamId: { $in: teamIds },
+          message: { $not: /initial commit/i },
+        },
+      },
+      {
+        $group: {
+          _id: "$teamId",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+    const commitCountMap = {};
+    commitCountsAgg.forEach((item) => {
+      commitCountMap[item._id.toString()] = item.count;
+    });
+
     const detailedTeams = await Promise.all(
       teams.map(async (t) => {
         const members = await TeamMember.find({ teamId: t._id }).populate(
@@ -3465,6 +3486,7 @@ router.get("/all/:eventId", authenticateToken, async (req, res) => {
           ...obj,
           members,
           repository: repo,
+          commitCount: commitCountMap[t._id.toString()] || 0,
           rankings: rankings || [],
         };
       }),
@@ -3681,10 +3703,17 @@ router.get("/:teamId", authenticateToken, async (req, res) => {
       }
     }
 
+    const Commit = mongoose.models.Commit || mongoose.model("Commit");
+    const commitCount = await Commit.countDocuments({
+      teamId: team._id,
+      message: { $not: /initial commit/i },
+    });
+
     const responseData = {
       ...teamPlain,
       members,
       repository: repo,
+      commitCount: commitCount || 0,
     };
 
     res.json({

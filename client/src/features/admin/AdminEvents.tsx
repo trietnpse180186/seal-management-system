@@ -28,6 +28,8 @@ import {
   Megaphone,
   Layout,
   ScrollText,
+  RotateCcw,
+  EyeOff,
 } from "lucide-react";
 import TeamsTab from "./TeamsTab";
 import TracksTab from "./TracksTab";
@@ -291,12 +293,13 @@ export default function AdminEvents({
   const [editPhase1Description, setEditPhase1Description] = useState("");
   const [editPhase2Description, setEditPhase2Description] = useState("");
   const [editPhase3Description, setEditPhase3Description] = useState("");
+  const [editLocationAnnouncement, setEditLocationAnnouncement] = useState("");
   const [editRules, setEditRules] = useState<any[]>([]);
   const [editCustomTimeline, setEditCustomTimeline] = useState<any[]>([]);
   const [editPrizes, setEditPrizes] = useState<any[]>([]);
   const [editSpecialPrizes, setEditSpecialPrizes] = useState<any[]>([]);
   const [portalSubTab, setPortalSubTab] = useState<
-    "candidate" | "timeline" | "prizes" | null
+    "candidate" | "timeline" | "prizes" | "announcement" | null
   >(null);
   const [newMilestoneTime, setNewMilestoneTime] = useState("");
   const [newMilestoneTitle, setNewMilestoneTitle] = useState("");
@@ -1156,6 +1159,20 @@ export default function AdminEvents({
     setEditPhase3Description(
       draft?.editPhase3Description !== undefined ? draft.editPhase3Description : (eventObj.phase3Description || "Dừng cổng nộp bài, đóng repository. Các đội thi chuẩn bị báo cáo dự án trước hội đồng giám khảo và nhận kết quả xếp hạng chung cuộc từ hệ thống.")
     );
+    const defaultAnnouncement = `THÔNG BÁO KHU VỰC VÒNG SƠ LOẠI:.
+
+- Track A: Seminar 1 Thư viện.
+
+- Track B: Tầng G Thư viện.
+
+- Track C: LB24 tầng 2 Thư viện.`;
+    setEditLocationAnnouncement(
+      draft?.editLocationAnnouncement !== undefined
+        ? draft.editLocationAnnouncement
+        : (eventObj.locationAnnouncement !== undefined
+            ? eventObj.locationAnnouncement
+            : defaultAnnouncement)
+    );
     setEditRules(
       eventObj.rules || [
         {
@@ -1439,6 +1456,7 @@ export default function AdminEvents({
           phase1Description: editPhase1Description,
           phase2Description: editPhase2Description,
           phase3Description: editPhase3Description,
+          locationAnnouncement: editLocationAnnouncement,
           rules: editRules,
         },
         { headers: { Authorization: `Bearer ${token}` } },
@@ -1461,6 +1479,45 @@ export default function AdminEvents({
         text:
           err.response?.data?.message ||
           "Lỗi khi cập nhật nội dung Guest Portal.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveAnnouncement = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!selectedEvent) return;
+
+    setLoading(true);
+    setMessage({ type: "", text: "" });
+
+    try {
+      const res = await axios.put(
+        `http://localhost:5000/api/events/${selectedEvent._id}`,
+        {
+          locationAnnouncement: editLocationAnnouncement,
+        },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      setSelectedEvent(res.data.event);
+      toast.success("Đã cập nhật thông báo Khu vực đội thi thành công!");
+      setMessage({
+        type: "success",
+        text: "Đã cập nhật thông báo Khu vực đội thi thành công!",
+      });
+    } catch (err: any) {
+      console.error(err);
+      toast.error(
+        err.response?.data?.message ||
+        "Lỗi khi cập nhật thông báo Khu vực đội thi.",
+      );
+      setMessage({
+        type: "error",
+        text:
+          err.response?.data?.message ||
+          "Lỗi khi cập nhật thông báo Khu vực đội thi.",
       });
     } finally {
       setLoading(false);
@@ -1932,6 +1989,7 @@ export default function AdminEvents({
         editPhase1Description,
         editPhase2Description,
         editPhase3Description,
+        editLocationAnnouncement,
       };
       sessionStorage.setItem(`event_draft_${selectedEvent._id}`, JSON.stringify(draftData));
     }
@@ -1956,6 +2014,7 @@ export default function AdminEvents({
     editPhase1Description,
     editPhase2Description,
     editPhase3Description,
+    editLocationAnnouncement,
   ]);
 
   useEffect(() => {
@@ -3756,6 +3815,15 @@ export default function AdminEvents({
                     >
                       Cơ cấu giải thưởng
                     </button>
+                    <button
+                      onClick={() => setPortalSubTab("announcement")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${portalSubTab === "announcement"
+                        ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
+                        : "bg-slate-900/60 text-slate-400 hover:text-white border border-slate-800"
+                        }`}
+                    >
+                      Thông báo Khu vực đội thi
+                    </button>
                   </div>
                 </div>
               )}
@@ -3766,7 +3834,7 @@ export default function AdminEvents({
                   <h3 className="text-xs font-bold text-slate-400 mb-8 uppercase tracking-wider font-mono text-center">
                     -- Vui lòng chọn nội dung cấu hình hiển thị --
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
                     {/* Card 1: Candidate Portal */}
                     <div
                       onClick={() => setPortalSubTab("candidate")}
@@ -3776,7 +3844,7 @@ export default function AdminEvents({
                         <Info size={32} />
                       </div>
                       <h4 className="text-md font-bold text-white mb-2 font-mono group-hover:text-cyan-400 transition-colors">
-                        Nội dung hiển thị trong trang thí sinh
+                        Nội dung hiển thị trang thí sinh
                       </h4>
                       <p className="text-slate-400 text-xs leading-relaxed max-w-xs">
                         Chỉnh sửa thông tin chung, mục tiêu, quy định và mô tả
@@ -3814,6 +3882,22 @@ export default function AdminEvents({
                       </h4>
                       <p className="text-slate-400 text-xs leading-relaxed max-w-xs">
                         Tùy chỉnh các mốc giải thưởng, giá trị số tiền và quyền lợi hiển thị trên Landing Page.
+                      </p>
+                    </div>
+
+                    {/* Card 4: Team Location Announcement */}
+                    <div
+                      onClick={() => setPortalSubTab("announcement")}
+                      className="glass p-8 rounded-2xl border border-slate-800 hover:border-emerald-500/50 hover:shadow-[0_0_30px_rgba(16,185,129,0.15)] transition-all duration-300 cursor-pointer group text-center flex flex-col items-center justify-center min-h-[220px]"
+                    >
+                      <div className="w-16 h-16 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <Megaphone size={32} />
+                      </div>
+                      <h4 className="text-md font-bold text-white mb-2 font-mono group-hover:text-emerald-400 transition-colors">
+                        Thông báo Khu vực đội thi
+                      </h4>
+                      <p className="text-slate-400 text-xs leading-relaxed max-w-xs">
+                        Chỉnh sửa thông báo nổi bật (vị trí các Track, phòng thi) ghim ở trang Khu vực đội thi của thí sinh.
                       </p>
                     </div>
                   </div>
@@ -3957,6 +4041,27 @@ export default function AdminEvents({
                             }
                             className="w-full bg-slate-900/80 border border-slate-700 hover:border-cyan-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500/80 transition-all font-mono disabled:opacity-60 disabled:cursor-not-allowed"
                             placeholder="Mô tả giai đoạn tổng kết..."
+                            disabled={readOnly}
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between items-center mb-1.5">
+                            <label className="block text-[10px] font-bold uppercase text-emerald-400 tracking-wider font-mono">
+                              Thông báo nổi bật Khu vực đội thi
+                            </label>
+                            <span className="text-[10px] text-slate-500 font-mono">
+                              (Để trống nếu muốn ẩn)
+                            </span>
+                          </div>
+                          <textarea
+                            rows={4}
+                            value={editLocationAnnouncement}
+                            onChange={(e) =>
+                              setEditLocationAnnouncement(e.target.value)
+                            }
+                            className="w-full bg-slate-900/80 border border-slate-700 hover:border-emerald-500/50 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500/80 transition-all font-mono leading-relaxed disabled:opacity-60 disabled:cursor-not-allowed"
+                            placeholder="Nội dung thông báo nổi bật... (Để trống nếu muốn ẩn ở trang thí sinh)"
                             disabled={readOnly}
                           />
                         </div>
@@ -4492,6 +4597,149 @@ export default function AdminEvents({
                           className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all uppercase tracking-wider cursor-pointer shadow-lg shadow-amber-500/20 active:scale-95 flex items-center gap-2"
                         >
                           {loading ? "Đang lưu..." : "Lưu cơ cấu giải thưởng"}
+                        </button>
+                      )}
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* 4. Edit Team Area Announcement */}
+              {portalSubTab === "announcement" && (
+                <div>
+                  <div className="flex justify-between items-center mb-6">
+                    <div>
+                      <h3 className="text-md font-bold text-white flex items-center gap-2 font-mono">
+                        <Megaphone size={18} className="text-emerald-400" />
+                        <span>Thông báo nổi bật Khu vực đội thi:</span>
+                      </h3>
+                      <p className="text-slate-400 text-xs mt-1">
+                        Tùy chỉnh thông báo ghim nổi bật xuất hiện ở đầu trang Khu vực đội thi của thí sinh (phân chia địa điểm, phòng thi các Track).
+                      </p>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleSaveAnnouncement} className="space-y-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Left: Input Editor */}
+                      <div className="space-y-4">
+                        <div>
+                          <div className="flex justify-between items-center mb-1.5">
+                            <label className="block text-[10px] font-bold uppercase text-slate-400 tracking-wider font-mono">
+                              Nội dung thông báo (Hiển thị cho thí sinh)
+                            </label>
+                            <span className="text-[10px] text-slate-500 font-mono">
+                              Hỗ trợ xuống dòng &amp; gạch đầu dòng
+                            </span>
+                          </div>
+                          <textarea
+                            rows={8}
+                            value={editLocationAnnouncement}
+                            onChange={(e) =>
+                              setEditLocationAnnouncement(e.target.value)
+                            }
+                            className="w-full bg-slate-900/80 border border-slate-700 hover:border-emerald-500/50 rounded-xl p-4 text-xs text-white focus:outline-none focus:border-emerald-500/80 transition-all font-mono leading-relaxed disabled:opacity-60 disabled:cursor-not-allowed"
+                            placeholder="Nhập nội dung thông báo... (Để trống nếu muốn ẩn hoàn toàn khu vực thông báo này ở trang thí sinh)"
+                            disabled={readOnly}
+                          />
+                        </div>
+
+                        {/* Helper info alert */}
+                        <div className="p-3.5 bg-slate-900/60 border border-slate-800 rounded-xl flex items-start gap-3">
+                          <Info size={16} className="text-cyan-400 shrink-0 mt-0.5" />
+                          <div className="text-[11px] text-slate-400 leading-relaxed font-sans">
+                            <strong className="text-slate-300">Lưu ý hiển thị:</strong> Nếu ô nội dung để trống hoặc xóa hết ký tự, khối thông báo này sẽ <span className="text-amber-400 font-bold">tự động ẩn hoàn toàn</span> trên giao diện của tất cả thí sinh.
+                          </div>
+                        </div>
+
+                        {/* Quick Action Buttons */}
+                        {!readOnly && (
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const defaultNotice = `THÔNG BÁO KHU VỰC VÒNG SƠ LOẠI:.\n\n- Track A: Seminar 1 Thư viện.\n\n- Track B: Tầng G Thư viện.\n\n- Track C: LB24 tầng 2 Thư viện.`;
+                                setEditLocationAnnouncement(defaultNotice);
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono font-medium transition-all cursor-pointer flex items-center gap-1.5"
+                            >
+                              <RotateCcw size={12} />
+                              Khôi phục mẫu mặc định
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditLocationAnnouncement("")}
+                              className="px-3 py-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/40 text-rose-300 text-xs font-mono font-medium transition-all cursor-pointer flex items-center gap-1.5"
+                            >
+                              <Trash2 size={12} />
+                              Xóa thông báo (Ẩn với thí sinh)
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right: Live Preview */}
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold uppercase text-slate-400 tracking-wider font-mono">
+                          Xem trước hiển thị (Live Preview phía Thí sinh)
+                        </label>
+                        {editLocationAnnouncement.trim().length > 0 ? (
+                          <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800 space-y-3">
+                            <span className="text-[10px] text-slate-500 font-mono block">
+                              Mô phỏng giao diện trang Khu vực đội thi:
+                            </span>
+                            <div className="relative overflow-hidden bg-gradient-to-r from-orange-500/[0.08] via-amber-500/[0.04] to-slate-900/60 p-5 rounded-2xl border-2 border-[#F27024]/30 shadow-sm">
+                              <div className="flex items-start gap-4">
+                                <div className="p-3 bg-[#F27024]/15 text-[#F27024] rounded-xl border border-[#F27024]/30 shrink-0 shadow-inner">
+                                  <Megaphone size={22} className="animate-pulse" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-2.5 flex-wrap">
+                                    <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase font-mono tracking-wider px-2.5 py-0.5 rounded-md bg-[#F27024] text-white shadow-sm shadow-orange-500/20">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                                      Thông báo từ BTC
+                                    </span>
+                                    <span className="text-[11px] text-slate-400 font-mono font-bold">
+                                      Khu vực thi &amp; Địa điểm
+                                    </span>
+                                  </div>
+                                  <div className="text-xs text-slate-200 leading-relaxed font-sans font-medium whitespace-pre-line break-words">
+                                    {editLocationAnnouncement}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-slate-950/60 p-8 rounded-2xl border border-dashed border-slate-800 text-center flex flex-col items-center justify-center min-h-[180px]">
+                            <EyeOff size={28} className="text-slate-600 mb-2" />
+                            <p className="text-xs text-slate-500 font-mono">
+                              Thông báo hiện đang để trống.
+                            </p>
+                            <p className="text-[11px] text-slate-600 font-sans mt-1">
+                              Khối thông báo sẽ bị ẩn hoàn toàn trên giao diện của thí sinh.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Action Bar */}
+                    <div className="flex gap-3 pt-4 border-t border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setPortalSubTab(null)}
+                        className="px-5 py-2.5 border border-slate-700 hover:border-slate-500 text-slate-300 rounded-xl text-xs font-bold font-mono transition-all cursor-pointer"
+                      >
+                        Quay lại lựa chọn
+                      </button>
+                      {!readOnly && (
+                        <button
+                          type="submit"
+                          disabled={loading}
+                          className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all uppercase tracking-wider cursor-pointer shadow-lg shadow-emerald-600/20 active:scale-95 flex items-center gap-2 font-mono"
+                        >
+                          {loading ? "Đang lưu..." : "Lưu thông báo khu vực thi"}
                         </button>
                       )}
                     </div>

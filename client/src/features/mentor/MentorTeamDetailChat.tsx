@@ -26,7 +26,19 @@ interface Props {
   token: string | null;
 }
 
+function decodeHTML(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2F;/g, '/');
+}
+
 export default function MentorTeamDetailChat({ team, token }: Props) {
+  const apiBase = import.meta.env.VITE_API_URL || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.origin : 'http://localhost:5000');
   const [room, setRoom] = useState<ChatRoom | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -46,7 +58,7 @@ export default function MentorTeamDetailChat({ team, token }: Props) {
       try {
         // Ensure chat room exists for this team
         const roomRes = await axios.post(
-          'http://localhost:5000/api/chat/rooms/team',
+          `${apiBase}/api/chat/rooms/team`,
           { teamId: team._id },
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -55,10 +67,19 @@ export default function MentorTeamDetailChat({ team, token }: Props) {
 
         // Fetch messages history
         const msgRes = await axios.get(
-          `http://localhost:5000/api/chat/rooms/${activeRoom._id}/messages?limit=50`,
+          `${apiBase}/api/chat/rooms/${activeRoom._id}/messages?limit=50`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        setMessages(msgRes.data.messages || []);
+        const rawMessages = Array.isArray(msgRes.data) ? msgRes.data : (msgRes.data.messages || []);
+        const decodedMsgs = rawMessages.map((m: any) => ({
+          ...m,
+          content: decodeHTML(m.content),
+          replyTo: m.replyTo ? {
+            ...m.replyTo,
+            content: decodeHTML(m.replyTo.content)
+          } : undefined
+        }));
+        setMessages(decodedMsgs);
       } catch (err: any) {
         console.error('Failed to initialize team chat:', err);
         toast.error(err.response?.data?.message || 'Không thể tải lịch sử trò chuyện.');
@@ -74,7 +95,7 @@ export default function MentorTeamDetailChat({ team, token }: Props) {
   useEffect(() => {
     if (!room || !token) return;
 
-    const socketUrl = import.meta.env.VITE_API_URL || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? window.location.origin : 'http://localhost:5000');
+    const socketUrl = apiBase;
     const newSocket = io(socketUrl, {
       auth: { token }
     });
@@ -92,9 +113,17 @@ export default function MentorTeamDetailChat({ team, token }: Props) {
 
     newSocket.on('new_message', (message: Message) => {
       if (message.roomId === room._id) {
+        const decodedMessage = {
+          ...message,
+          content: decodeHTML(message.content),
+          replyTo: message.replyTo ? {
+            ...message.replyTo,
+            content: decodeHTML(message.replyTo.content)
+          } : undefined
+        };
         setMessages(prev => {
-          if (prev.find(m => m._id === message._id)) return prev;
-          return [...prev, message];
+          if (prev.find(m => m._id === decodedMessage._id)) return prev;
+          return [...prev, decodedMessage];
         });
       }
     });
@@ -102,7 +131,7 @@ export default function MentorTeamDetailChat({ team, token }: Props) {
     newSocket.on('message_recalled', (data: { messageId: string; roomId: string; content: string }) => {
       if (data.roomId === room._id) {
         setMessages(prev => prev.map(m =>
-          m._id === data.messageId ? { ...m, isRecalled: true, content: data.content } : m
+          m._id === data.messageId ? { ...m, isRecalled: true, content: decodeHTML(data.content) } : m
         ));
       }
     });
@@ -188,7 +217,7 @@ export default function MentorTeamDetailChat({ team, token }: Props) {
                     </div>
 
                     {/* Bubble */}
-                    <div className={`px-3 py-2 rounded-xl text-xs leading-relaxed ${
+                    <div className={`px-3 py-2 rounded-xl text-xs leading-relaxed min-w-0 max-w-full ${
                       msg.isRecalled
                         ? 'border border-slate-200 bg-slate-100 text-slate-400 italic rounded-bl-sm'
                         : isMe
@@ -198,7 +227,7 @@ export default function MentorTeamDetailChat({ team, token }: Props) {
                       {!isMe && !msg.isRecalled && (
                         <div className="text-[10px] font-bold text-[#F27024] mb-0.5">{msg.senderName}</div>
                       )}
-                      <div className="break-words whitespace-pre-wrap">{msg.content}</div>
+                      <div className="break-words break-all whitespace-pre-wrap">{msg.content}</div>
                     </div>
                   </div>
                   <span className="text-[10px] text-slate-400 mt-1">

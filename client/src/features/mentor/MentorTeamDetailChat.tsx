@@ -12,6 +12,11 @@ interface Message {
   content: string;
   createdAt: string;
   isRecalled?: boolean;
+  replyTo?: {
+    messageId: string;
+    senderName: string;
+    content: string;
+  };
 }
 
 interface ChatRoom {

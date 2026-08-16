@@ -81,10 +81,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
     fileType: string;
   } | null>(null);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const uploadAttachedFile = async (file: File) => {
     if (file.size > 20 * 1024 * 1024) {
       toast.error("Tệp đính kèm không được vượt quá 20MB.");
       return;
@@ -115,6 +112,25 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
       toast.error(err.response?.data?.message || "Lỗi tải lên tệp đính kèm.");
     } finally {
       setUploadingFile(false);
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadAttachedFile(file);
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          const renamedFile = new File([file], `Screenshot_${Date.now()}.png`, { type: file.type });
+          await uploadAttachedFile(renamedFile);
+        }
+      }
     }
   };
 
@@ -960,6 +976,7 @@ export default function MentorChat({ roles = [], isSystemAdmin = false }: Mentor
                           type="text"
                           value={newMessage}
                           onChange={(e) => setNewMessage(e.target.value)}
+                          onPaste={handlePaste}
                           placeholder="Nhập tin nhắn..."
                           className="flex-1 chat-input-light border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 font-medium transition-all"
                         />

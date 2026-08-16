@@ -140,9 +140,9 @@ module.exports = {
             return;
           }
 
-          // [CRITICAL] XSS Mitigation: Escape input message content
-          const cleanContent = escapeHTML(finalContent.trim());
-          const cleanReplyToContent = replyTo ? escapeHTML(replyTo.content) : undefined;
+          // [CRITICAL] XSS Mitigation: React automatically escapes on client side, keep content raw in DB to support code snippets / URLs
+          const cleanContent = finalContent.trim();
+          const cleanReplyToContent = replyTo ? replyTo.content : undefined;
 
           const newMessage = new ChatMessage({
             roomId,

@@ -12,6 +12,7 @@ const Criterion = mongoose.model('Criterion');
 const aiService = require('./aiService');
 const { parseAiResult } = require('./aiService');
 const { authenticateToken } = require('../auth/authMiddleware');
+const { projectAnalysisForMentor } = require('./mentorAiProjection');
 
 /**
  * @route   GET /api/ai-analyses/team/:teamId
@@ -67,6 +68,53 @@ router.get('/stats', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Fetch review stats error:', error.message);
     res.status(500).json({ message: 'Server error fetching stats.' });
+  }
+});
+
+/**
+ * @route   GET /api/ai-analyses/mentor/team/:teamId
+ * @desc    Read-only technical projection of completed Judge AI reviews for a mentor's track
+ * @access  Private (mentor in the same event and track, or system admin)
+ */
+router.get('/mentor/team/:teamId', authenticateToken, async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.teamId)) {
+      return res.status(400).json({ message: 'teamId không hợp lệ.' });
+    }
+    const team = await Team.findById(req.params.teamId).select('eventId trackId name').lean();
+    if (!team) return res.status(404).json({ message: 'Không tìm thấy đội thi.' });
+
+    if (!req.user.isSystemAdmin) {
+      if (!team.trackId) return res.status(409).json({ message: 'Đội thi chưa được phân vào bảng đấu.' });
+      const EventRole = mongoose.model('EventRole');
+      const mentorRole = await EventRole.exists({
+        userId: req.user._id,
+        eventId: team.eventId,
+        trackId: team.trackId,
+        role: 'mentor',
+        status: 'active'
+      });
+      if (!mentorRole) {
+        return res.status(403).json({ message: 'Bạn không có quyền xem AI review của đội thuộc bảng đấu này.' });
+      }
+    }
+
+    const analyses = await AiAnalysis.find({
+      teamId: team._id,
+      analysisType: { $in: ['commit_review', 'repository_review'] },
+      status: 'completed'
+    })
+      .populate('commitId', 'message commitSha committedAt authorGithubUsername authorName')
+      .sort({ completedAt: -1, createdAt: -1 })
+      .limit(30);
+
+    res.json({
+      team: { id: team._id, name: team.name },
+      reviews: analyses.map(projectAnalysisForMentor)
+    });
+  } catch (error) {
+    console.error('Fetch mentor AI review projection error:', error.message);
+    res.status(500).json({ message: 'Không thể tải AI review kỹ thuật.' });
   }
 });
 

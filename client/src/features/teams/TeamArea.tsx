@@ -17,6 +17,7 @@ import {
   Edit3,
   ExternalLink,
   AlertTriangle,
+  Megaphone,
 } from "lucide-react";
 import RegisterTeam from "./RegisterTeam";
 import { useConform } from "../shared/ModalConform";
@@ -953,6 +954,32 @@ export default function TeamArea() {
             </div>
           );
         })()}
+
+        {/* Prominent Team Area Announcement (Location / Preliminary Round Notice) */}
+        {team?.eventId?.locationAnnouncement &&
+          team.eventId.locationAnnouncement.trim().length > 0 && (
+            <div className="relative overflow-hidden bg-gradient-to-r from-orange-500/[0.08] via-amber-500/[0.04] to-slate-50/80 p-5 sm:p-6 rounded-2xl border-2 border-[#F27024]/30 shadow-sm transition-all hover:border-[#F27024]/50">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-[#F27024]/15 text-[#F27024] rounded-xl border border-[#F27024]/30 shrink-0 shadow-inner">
+                  <Megaphone size={22} className="animate-pulse" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-2.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase font-mono tracking-wider px-2.5 py-0.5 rounded-md bg-[#F27024] text-white shadow-sm shadow-orange-500/20">
+                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                      Thông báo từ BTC
+                    </span>
+                    <span className="text-[11px] text-slate-500 font-mono font-bold">
+                      Khu vực thi &amp; Địa điểm
+                    </span>
+                  </div>
+                  <div className="text-xs sm:text-sm text-slate-800 leading-relaxed font-sans font-medium whitespace-pre-line break-words">
+                    {team.eventId.locationAnnouncement}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
         {/* Seminar Widget */}
         {team?.eventId?.seminar?.scheduledAt &&

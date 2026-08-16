@@ -106,6 +106,16 @@ const EventSchema = new Schema({
       { title: 'HẠNG MỤC ĐẶC BIỆT', description: 'Vinh danh dành cho thí sinh đồng hành trọn vẹn 3 mùa giải (Fall 2025, Spring 2026, Summer 2026).' },
       { title: 'GIẤY CHỨNG NHẬN', description: 'Tất cả các thí sinh tham gia cuộc thi đều nhận giấy chứng nhận.' }
     ]
+  },
+  locationAnnouncement: {
+    type: String,
+    default: `THÔNG BÁO KHU VỰC VÒNG SƠ LOẠI:.
+
+- Track A: Seminar 1 Thư viện.
+
+- Track B: Tầng G Thư viện.
+
+- Track C: LB24 tầng 2 Thư viện.`
   }
 }, {
   timestamps: true

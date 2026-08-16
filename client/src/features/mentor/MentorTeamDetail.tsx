@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { ArrowLeft, Users, FileText, MessageSquare, GitCommit, ListChecks } from "lucide-react";
+import { ArrowLeft, Users, FileText, MessageSquare, GitCommit, ListChecks, Bot } from "lucide-react";
 import MentorTeamDetailChat from "./MentorTeamDetailChat";
+import MentorJudgeAiReviewTab from "./MentorJudgeAiReviewTab";
 
 export default function MentorTeamDetail() {
   const { teamId } = useParams();
@@ -89,6 +90,7 @@ export default function MentorTeamDetail() {
           { id: "overview", icon: Users, label: "Tổng quan & Đề thi" },
           { id: "chat", icon: MessageSquare, label: "Chat" },
           { id: "commits", icon: GitCommit, label: "Lịch sử Code" },
+          { id: "ai-review", icon: Bot, label: "AI Review" },
           { id: "rubric", icon: ListChecks, label: "Tiêu chí chấm điểm" },
         ].map(tab => (
           <button
@@ -207,6 +209,11 @@ export default function MentorTeamDetail() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Read-only technical projection of Judge AI reviews */}
+        {activeTab === "ai-review" && (
+          <MentorJudgeAiReviewTab teamId={teamId!} token={token} />
         )}
 
         {/* Rubric Tab */}

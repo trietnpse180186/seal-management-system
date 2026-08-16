@@ -999,9 +999,8 @@ export default function TeamArea() {
             {/* Left: Exam & Materials Card */}
             {isExamVisible && (
               <div
-                className={`${
-                  showMqttCard ? "lg:col-span-4" : "lg:col-span-6"
-                } bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-slate-800 relative overflow-hidden flex flex-col justify-between`}
+                className={`${showMqttCard ? "lg:col-span-4" : "lg:col-span-6"
+                  } bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-slate-800 relative overflow-hidden flex flex-col justify-between`}
               >
                 <div className="flex flex-col justify-between h-full">
                   <div className="flex justify-between items-center border-b border-slate-100 pb-3 mb-5">
@@ -1221,7 +1220,7 @@ export default function TeamArea() {
                         </span>
                         <div className="flex justify-between items-center text-slate-700 font-mono">
                           <span className="truncate max-w-[85%]">
-                            mqtt-hackthon.lexatek.vn
+                            mqtt-hackathon.lexatek.vn
                           </span>
                           <button
                             onClick={() =>

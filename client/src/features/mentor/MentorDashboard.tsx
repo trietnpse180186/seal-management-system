@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
-import { Users, ExternalLink } from "lucide-react";
+import { Users, ExternalLink, GitCommit } from "lucide-react";
 import CustomSelect from "../shared/CustomSelect";
 
 export default function MentorDashboard({ user, roles }: any) {
@@ -110,12 +110,19 @@ export default function MentorDashboard({ user, roles }: any) {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {teams.map((team) => (
                   <div key={team._id} className="bg-white border border-slate-200 rounded-2xl p-5 hover:border-[#F27024]/50 transition-all shadow-sm hover:shadow-md flex flex-col h-full">
-                    <div className="flex justify-between items-start mb-3">
+                    <div className="flex justify-between items-start gap-2 mb-3">
                       <div>
                         <h3 className="text-base font-bold text-slate-800 mb-1">{team.name}</h3>
                         <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full border border-slate-200">
                           Bảng: {team.trackId?.name || "Chưa rõ"}
                         </span>
+                      </div>
+                      <div 
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-50/80 text-[#F27024] border border-orange-200/70 rounded-xl text-xs font-semibold shrink-0 shadow-xs"
+                        title={`Số lượng commit: ${team.commitCount || 0}`}
+                      >
+                        <GitCommit size={14} className="text-[#F27024]" />
+                        <span>{team.commitCount || 0} commit{(team.commitCount || 0) === 1 ? "" : "s"}</span>
                       </div>
                     </div>
 
@@ -151,7 +158,7 @@ export default function MentorDashboard({ user, roles }: any) {
                             rel="noreferrer"
                             className="flex items-center justify-center gap-1.5 w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold transition-colors"
                           >
-                            Repository
+                            Repository ({team.commitCount || 0})
                           </a>
                         ) : (
                           <div className="flex items-center justify-center gap-1.5 w-full py-2 bg-slate-50 text-slate-400 border border-dashed border-slate-200 rounded-xl text-xs cursor-not-allowed">

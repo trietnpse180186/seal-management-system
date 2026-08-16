@@ -1214,6 +1214,62 @@ export default function TeamArea() {
                         </div>
                       )}
 
+                      {/* Host */}
+                      <div className="space-y-1 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">
+                          Host
+                        </span>
+                        <div className="flex justify-between items-center text-slate-700 font-mono">
+                          <span className="truncate max-w-[85%]">
+                            mqtt-hackthon.lexatek.vn
+                          </span>
+                          <button
+                            onClick={() =>
+                              handleCopy("mqtt-hackthon.lexatek.vn", "Host")
+                            }
+                            className="text-slate-400 hover:text-[#F27024] cursor-pointer p-1"
+                            title="Sao chép Host"
+                          >
+                            {copiedField === "Host" ? (
+                              <CheckCircle
+                                size={14}
+                                className="text-emerald-500"
+                              />
+                            ) : (
+                              <Copy size={14} />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Port */}
+                      <div className="space-y-1 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">
+                          Port
+                        </span>
+                        <div className="flex justify-between items-center text-slate-700 font-mono">
+                          <span className="truncate max-w-[85%]">
+                            443
+                          </span>
+                          <button
+                            onClick={() =>
+                              handleCopy("443", "Port")
+                            }
+                            className="text-slate-400 hover:text-[#F27024] cursor-pointer p-1"
+                            title="Sao chép Port"
+                          >
+                            {copiedField === "Port" ? (
+                              <CheckCircle
+                                size={14}
+                                className="text-emerald-500"
+                              />
+                            ) : (
+                              <Copy size={14} />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
                       {/* TEST Key */}
                       <div className="space-y-1 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
                         <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">
@@ -1242,10 +1298,10 @@ export default function TeamArea() {
                         </div>
                       </div>
 
-                      {/* TEST Topic */}
+                      {/* TEST Topic/Path */}
                       <div className="space-y-1 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
                         <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">
-                          TEST Topic
+                          TEST Topic/Path
                         </span>
                         <div className="flex justify-between items-center text-slate-700 font-mono">
                           <span className="truncate max-w-[85%]">
@@ -1253,12 +1309,12 @@ export default function TeamArea() {
                           </span>
                           <button
                             onClick={() =>
-                              handleCopy(team.testTopic || "", "TEST Topic")
+                              handleCopy(team.testTopic || "", "TEST Topic/Path")
                             }
                             className="text-slate-400 hover:text-[#F27024] cursor-pointer p-1"
-                            title="Sao chép TEST Topic"
+                            title="Sao chép TEST Topic/Path"
                           >
-                            {copiedField === "TEST Topic" ? (
+                            {copiedField === "TEST Topic/Path" ? (
                               <CheckCircle
                                 size={14}
                                 className="text-emerald-500"

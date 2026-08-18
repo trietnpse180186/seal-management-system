@@ -1,111 +1,1985 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scrollbar-gutter: stable;
+}
+
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+  --font-display: 'Roboto', sans-serif;
+  --font-sans: 'Roboto', sans-serif;
+  --font-mono: 'Roboto Mono', monospace;
+  --fpt-orange: #f27024;
 }
 
 body {
-  margin: 0;
+  font-family: var(--font-sans);
+  background-color: #0a141d;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  color: #dae3f0;
+  overflow-x: hidden;
+  min-height: 100vh;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+/* Premium Visual Elements */
+.glass {
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
+.liquid-glass {
+  background: rgba(255, 255, 255, 0.025);
+  background-blend-mode: luminosity;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.12),
+    0 12px 40px rgba(0, 0, 0, 0.24);
+  position: relative;
+  overflow: hidden;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
+.liquid-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.4) 0%,
+    rgba(255, 255, 255, 0.08) 25%,
+    rgba(255, 255, 255, 0) 50%,
+    rgba(255, 255, 255, 0.08) 75%,
+    rgba(255, 255, 255, 0.25) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.glass-light {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-nav {
+  background: rgba(9, 13, 22, 0.95);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.glow-purple {
+  box-shadow: 0 0 50px -10px rgba(139, 92, 246, 0.2);
+}
+
+.glow-blue {
+  box-shadow: 0 0 50px -10px rgba(14, 165, 233, 0.2);
+}
+
+.text-gradient-purple-blue {
+  background: linear-gradient(135deg, #a78bfa 0%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-emerald-cyan {
+  background: linear-gradient(135deg, #34d399 0%, #22d3ee 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.bg-gradient-premium {
+  background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+}
+
+.bg-gradient-dark {
+  background: radial-gradient(circle at top right, #1e1b4b 0%, #090d16 60%);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #ffffff !important;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1 !important;
+  border-radius: 9999px !important;
+  border: 1px solid #ffffff !important;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8 !important;
+}
+
+/* Input Styles */
+input, select, textarea {
+  background-color: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+  transition: all 0.2s ease-in-out;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #00f0ff;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 240, 255, 0.15), 0 0 10px rgba(0, 240, 255, 0.2);
+  background-color: rgba(15, 23, 42, 0.8);
+}
+
+/* Chat Input Light Mode Fix - Prevents global input:focus dark background override */
+.chat-input-light,
+.chat-input-light:focus,
+.chat-input-light:active,
+.chat-input-light:focus-visible {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 0 0 2px rgba(242, 112, 36, 0.25) !important;
+  outline: none !important;
+}
+
+/* Font Utility */
+.font-mono-tech {
+  font-family: var(--font-mono);
+}
+
+/* Cyberpunk HUD elements */
+.border-hud {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.border-hud-active {
+  border-color: #00f0ff;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.15);
+}
+
+/* Electric Cyan Glow */
+.glow-cyan {
+  box-shadow: 0 0 40px -10px rgba(0, 240, 255, 0.15);
+}
+.text-cyan-glow {
+  color: #00f0ff;
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+}
+.bg-cyan-glow {
+  background-color: #00f0ff;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
+}
+
+/* Laser Scanning Line Animation */
+@keyframes laser-scan {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 0.8; }
+  90% { opacity: 0.8; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+.laser-scan-effect {
+  position: relative;
+  overflow: hidden;
+}
+.laser-scan-effect::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00f0ff, transparent);
+  animation: laser-scan 3s infinite linear;
+  pointer-events: none;
+}
+
+/* Glass Panel from mockup */
+.glass-panel {
+  background-color: rgba(10, 20, 29, 0.85);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(0, 240, 255, 0.05);
+  transition: all 0.3s ease;
+}
+
+.glass-panel:hover, .glass-panel:focus-within {
+  border-color: #00f0ff;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.6), inset 0 0 30px rgba(0, 240, 255, 0.1);
+}
+
+/* Cyber Input Wrapper */
+.cyber-input-wrapper {
+  position: relative;
+  z-index: 1;
+}
+
+.cyber-input-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
   border-radius: 4px;
-  color: var(--text-h);
+  background: conic-gradient(from 0deg, transparent 70%, #00f0ff 100%);
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s;
+  animation: rotateScan 2s linear infinite;
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+.cyber-input-wrapper::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  background: #172129;
+  z-index: -1;
+  transition: background 0.3s;
 }
+
+.cyber-input-wrapper:focus-within::before {
+  opacity: 1;
+}
+
+.cyber-input-wrapper:focus-within::after {
+  background: rgba(0, 20, 30, 0.8);
+}
+
+@keyframes rotateScan {
+  100% { transform: rotate(360deg); }
+}
+
+.cyber-input {
+  background-color: rgba(23, 33, 41, 0.4) !important;
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  color: #dae3f0;
+  transition: all 0.3s ease;
+}
+
+.cyber-input:focus {
+  border-color: transparent;
+  outline: none;
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
+}
+
+.scanline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: #00f0ff;
+  opacity: 0;
+  transform: translateY(-100%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.cyber-input-wrapper:focus-within .scanline {
+  animation: scan 1.5s ease-out infinite;
+}
+
+@keyframes scan {
+  0% { transform: translateY(0); opacity: 0.8; }
+  100% { transform: translateY(40px); opacity: 0; }
+}
+
+.btn-primary {
+  background-color: transparent;
+  color: #00f0ff;
+  border: 1px solid #00f0ff;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  text-shadow: 0 0 5px rgba(0, 240, 255, 0.5);
+  box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.1);
+}
+
+.btn-primary:hover {
+  background-color: #00f0ff;
+  color: #000;
+  box-shadow: 0 0 20px #00f0ff;
+  text-shadow: none;
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: #dae3f0;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+  border-color: #00f0ff;
+  color: #00f0ff;
+}
+
+.chip {
+  display: inline-block;
+  border: 1px solid #00f0ff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+  text-shadow: 0 0 5px rgba(0, 240, 255, 0.5);
+}
+
+.terminal-prompt::before {
+  content: ">_";
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #00f0ff;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 14px;
+  z-index: 2;
+}
+
+.logo-glow {
+  animation: pulseGlow 4s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { filter: drop-shadow(0 0 15px rgba(0, 240, 255, 0.4)); }
+  50% { filter: drop-shadow(0 0 25px rgba(0, 240, 255, 0.7)); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+/* FPT Light Mode & Orange Utilities */
+.glass-nav-light {
+  background: #ffffff;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.btn-fpt {
+  background-color: transparent;
+  color: #f27024;
+  border: 1px solid #f27024;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  text-shadow: 0 0 5px rgba(242, 112, 36, 0.3);
+  box-shadow: inset 0 0 10px rgba(242, 112, 36, 0.08);
+}
+
+.btn-fpt:hover {
+  background-color: #f27024;
+  color: #ffffff;
+  box-shadow: 0 0 20px rgba(242, 112, 36, 0.4);
+  text-shadow: none;
+  transform: translateY(-2px);
+}
+
+.glow-orange {
+  box-shadow: 0 0 40px -10px rgba(242, 112, 36, 0.25);
+}
+
+.text-orange-glow {
+  color: #f27024;
+  text-shadow: 0 0 8px rgba(242, 112, 36, 0.4);
+}
+
+.bg-orange-glow {
+  background-color: #f27024;
+  box-shadow: 0 0 12px rgba(242, 112, 36, 0.35);
+}
+
+/* Participant Pages - Light Theme & FPT Orange Styling */
+.team-area-light {
+  background-color: #faf9f6 !important; /* Milk white / Trắng sữa background */
+  color: #1e293b !important;
+}
+
+.team-area-light .text-white {
+  color: #0f172a !important;
+}
+
+.team-area-light .text-slate-200 {
+  color: #1e293b !important;
+}
+
+.team-area-light .text-slate-300 {
+  color: #334155 !important;
+}
+
+.team-area-light .text-slate-350 {
+  color: #334155 !important;
+}
+
+.team-area-light .text-slate-355 {
+  color: #334155 !important;
+}
+
+.team-area-light .text-slate-400 {
+  color: #475569 !important;
+}
+
+.team-area-light .text-slate-450 {
+  color: #475569 !important;
+}
+
+.team-area-light .text-slate-455 {
+  color: #475569 !important;
+}
+
+.team-area-light .text-slate-500 {
+  color: #64748b !important;
+}
+
+.team-area-light .text-slate-550 {
+  color: #64748b !important;
+}
+
+.team-area-light .text-cyan-400 {
+  color: #f27024 !important;
+}
+
+.team-area-light .text-cyan-glow {
+  text-shadow: 0 0 8px rgba(242, 112, 36, 0.4) !important;
+}
+
+.team-area-light .bg-cyan-950 {
+  background-color: rgba(242, 112, 36, 0.1) !important;
+}
+
+.team-area-light .bg-cyan-950\/50 {
+  background-color: rgba(242, 112, 36, 0.1) !important;
+}
+
+.team-area-light .bg-cyan-950\/40 {
+  background-color: rgba(242, 112, 36, 0.1) !important;
+}
+
+.team-area-light .bg-cyan-950\/25 {
+  background-color: rgba(242, 112, 36, 0.08) !important;
+}
+
+.team-area-light .bg-cyan-950\/20 {
+  background-color: rgba(242, 112, 36, 0.05) !important;
+}
+
+.team-area-light .border-cyan-500\/30 {
+  border-color: rgba(242, 112, 36, 0.3) !important;
+}
+
+.team-area-light .border-cyan-500\/40 {
+  border-color: rgba(242, 112, 36, 0.4) !important;
+}
+
+.team-area-light .border-cyan-500\/20 {
+  border-color: rgba(242, 112, 36, 0.2) !important;
+}
+
+.team-area-light .border-cyan-800\/30 {
+  border-color: rgba(242, 112, 36, 0.2) !important;
+}
+
+.team-area-light .border-cyan-800\/60 {
+  border-color: rgba(242, 112, 36, 0.4) !important;
+}
+
+.team-area-light .bg-cyan-400 {
+  background-color: #f27024 !important;
+}
+
+.team-area-light .text-cyan-300 {
+  color: #f27024 !important;
+}
+
+.team-area-light .bg-cyan-600 {
+  background-color: #f27024 !important;
+  border-color: #f27024 !important;
+  color: white !important;
+}
+
+.team-area-light .bg-cyan-600:hover {
+  background-color: #e05e1b !important;
+  box-shadow: 0 0 15px rgba(242, 112, 36, 0.4) !important;
+}
+
+.team-area-light .shadow-cyan-600\/25 {
+  box-shadow: 0 10px 15px -3px rgba(242, 112, 36, 0.1), 0 4px 6px -4px rgba(242, 112, 36, 0.1) !important;
+}
+
+.team-area-light .bg-slate-900\/10 {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.team-area-light .bg-slate-900\/30 {
+  background-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.team-area-light .bg-slate-900\/40 {
+  background-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.team-area-light .bg-slate-900\/60 {
+  background-color: rgba(255, 255, 255, 0.55) !important;
+}
+
+.team-area-light .glass {
+  background: rgba(253, 251, 247, 0.95) !important; /* Warm milk white card background */
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02) !important;
+}
+
+.team-area-light .glass:hover {
+  border-color: rgba(242, 112, 36, 0.3) !important;
+  box-shadow: 0 10px 30px rgba(242, 112, 36, 0.05) !important;
+}
+
+.team-area-light .border-slate-800 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.team-area-light .border-slate-850 {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+.team-area-light .border-slate-900 {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+.team-area-light .bg-slate-950 {
+  background-color: #faf9f6 !important; /* Soft milk white background */
+}
+
+.team-area-light .bg-slate-955 {
+  background-color: #ffffff !important;
+}
+
+.team-area-light .bg-slate-955\/80 {
+  background-color: rgba(15, 23, 42, 0.45) !important;
+}
+
+.team-area-light .bg-slate-950\/70 {
+  background-color: #faf9f6 !important;
+}
+
+.team-area-light .bg-slate-955\/30 {
+  background-color: #faf9f6 !important;
+}
+
+.team-area-light .bg-slate-950\/60 {
+  background-color: #faf9f6 !important;
+}
+
+.team-area-light .bg-slate-950\/40 {
+  background-color: #faf9f6 !important;
+}
+
+.team-area-light .bg-slate-950\/30 {
+  background-color: #faf9f6 !important;
+}
+
+.team-area-light .bg-slate-900 {
+  background-color: #ffffff !important;
+}
+
+.team-area-light .border-slate-800\/80 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.team-area-light .border-slate-800\/60 {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+.team-area-light .bg-indigo-500\/5 {
+  background-color: rgba(242, 112, 36, 0.02) !important;
+}
+
+.team-area-light .bg-cyan-500\/5 {
+  background-color: rgba(242, 112, 36, 0.03) !important;
+}
+
+.team-area-light .bg-cyan-500\/10 {
+  background-color: rgba(242, 112, 36, 0.08) !important;
+}
+
+.team-area-light .border-cyan-500\/35 {
+  border-color: rgba(242, 112, 36, 0.25) !important;
+}
+
+.team-area-light .bg-cyan-950\/80 {
+  background-color: #ffffff !important;
+}
+
+.team-area-light .bg-gradient-to-r {
+  background: linear-gradient(to right, rgba(242, 112, 36, 0.04), rgba(255, 255, 255, 0.8), rgba(242, 112, 36, 0.04)) !important;
+}
+
+.team-area-light .bg-gradient-to-br {
+  background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.9), rgba(242, 112, 36, 0.03)) !important;
+}
+
+.team-area-light .shadow-cyan-900\/20 {
+  box-shadow: 0 4px 12px rgba(242, 112, 36, 0.1) !important;
+}
+
+.team-area-light .bg-gradient-to-r.from-cyan-600 {
+  background: linear-gradient(to right, #f27024, #e05e1b) !important;
+}
+.team-area-light .text-slate-550 {
+  color: #64748b !important;
+}
+
+.team-area-light .text-cyan-400 {
+  color: #f27024 !important;
+}
+
+.team-area-light .text-cyan-glow {
+  text-shadow: 0 0 8px rgba(242, 112, 36, 0.4) !important;
+}
+
+.team-area-light .bg-cyan-950 {
+  background-color: rgba(242, 112, 36, 0.1) !important;
+}
+
+.team-area-light .bg-cyan-950\/50 {
+  background-color: rgba(242, 112, 36, 0.1) !important;
+}
+
+.team-area-light .bg-cyan-950\/40 {
+  background-color: rgba(242, 112, 36, 0.1) !important;
+}
+
+.team-area-light .bg-cyan-950\/25 {
+  background-color: rgba(242, 112, 36, 0.08) !important;
+}
+
+.team-area-light .bg-cyan-950\/20 {
+  background-color: rgba(242, 112, 36, 0.05) !important;
+}
+
+.team-area-light .border-cyan-500\/30 {
+  border-color: rgba(242, 112, 36, 0.3) !important;
+}
+
+.team-area-light .border-cyan-500\/40 {
+  border-color: rgba(242, 112, 36, 0.4) !important;
+}
+
+.team-area-light .border-cyan-500\/20 {
+  border-color: rgba(242, 112, 36, 0.2) !important;
+}
+
+.team-area-light .border-cyan-800\/30 {
+  border-color: rgba(242, 112, 36, 0.2) !important;
+}
+
+.team-area-light .border-cyan-800\/60 {
+  border-color: rgba(242, 112, 36, 0.4) !important;
+}
+
+.team-area-light .bg-cyan-400 {
+  background-color: #f27024 !important;
+}
+
+.team-area-light .text-cyan-300 {
+  color: #f27024 !important;
+}
+
+.team-area-light .bg-cyan-600 {
+  background-color: #f27024 !important;
+  border-color: #f27024 !important;
+  color: white !important;
+}
+
+.team-area-light .bg-cyan-600:hover {
+  background-color: #e05e1b !important;
+  box-shadow: 0 0 15px rgba(242, 112, 36, 0.4) !important;
+}
+
+.team-area-light .shadow-cyan-600\/25 {
+  box-shadow: 0 10px 15px -3px rgba(242, 112, 36, 0.1), 0 4px 6px -4px rgba(242, 112, 36, 0.1) !important;
+}
+
+.team-area-light .bg-slate-900\/10 {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.team-area-light .bg-slate-900\/30 {
+  background-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.team-area-light .bg-slate-900\/40 {
+  background-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.team-area-light .bg-slate-900\/60 {
+  background-color: rgba(255, 255, 255, 0.55) !important;
+}
+
+.team-area-light .glass {
+  background: rgba(253, 251, 247, 0.95) !important; /* Warm milk white card background */
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02) !important;
+}
+
+.team-area-light .glass:hover {
+  border-color: rgba(242, 112, 36, 0.3) !important;
+  box-shadow: 0 10px 30px rgba(242, 112, 36, 0.05) !important;
+}
+
+.team-area-light .border-slate-800 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.team-area-light .border-slate-850 {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+.team-area-light .border-slate-900 {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+.team-area-light .bg-slate-950 {
+  background-color: #faf9f6 !important; /* Soft milk white background */
+}
+
+.team-area-light .bg-slate-955 {
+  background-color: #ffffff !important;
+}
+
+.team-area-light .bg-slate-955\/80 {
+  background-color: rgba(15, 23, 42, 0.45) !important;
+}
+
+.team-area-light .bg-slate-950\/70 {
+  background-color: #faf9f6 !important;
+}
+
+.team-area-light .bg-slate-955\/30 {
+  background-color: #faf9f6 !important;
+}
+
+.team-area-light .bg-slate-950\/60 {
+  background-color: #faf9f6 !important;
+}
+
+.team-area-light .bg-slate-950\/40 {
+  background-color: #faf9f6 !important;
+}
+
+.team-area-light .bg-slate-950\/30 {
+  background-color: #faf9f6 !important;
+}
+
+.team-area-light .bg-slate-900 {
+  background-color: #ffffff !important;
+}
+
+.team-area-light .border-slate-800\/80 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.team-area-light .border-slate-800\/60 {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+.team-area-light .bg-indigo-500\/5 {
+  background-color: rgba(242, 112, 36, 0.02) !important;
+}
+
+.team-area-light .bg-cyan-500\/5 {
+  background-color: rgba(242, 112, 36, 0.03) !important;
+}
+
+.team-area-light .bg-cyan-500\/10 {
+  background-color: rgba(242, 112, 36, 0.08) !important;
+}
+
+.team-area-light .border-cyan-500\/35 {
+  border-color: rgba(242, 112, 36, 0.25) !important;
+}
+
+.team-area-light .bg-cyan-950\/80 {
+  background-color: #ffffff !important;
+}
+
+.team-area-light .bg-gradient-to-r {
+  background: linear-gradient(to right, rgba(242, 112, 36, 0.04), rgba(255, 255, 255, 0.8), rgba(242, 112, 36, 0.04)) !important;
+}
+
+.team-area-light .bg-gradient-to-br {
+  background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.9), rgba(242, 112, 36, 0.03)) !important;
+}
+
+.team-area-light .shadow-cyan-900\/20 {
+  box-shadow: 0 4px 12px rgba(242, 112, 36, 0.1) !important;
+}
+
+.team-area-light .bg-gradient-to-r.from-cyan-600 {
+  background: linear-gradient(to right, #f27024, #e05e1b) !important;
+}
+
+.team-area-light .bg-gradient-to-r.from-cyan-600:hover {
+  background: linear-gradient(to right, #e05e1b, #c64c12) !important;
+}
+
+/* Autocomplete / inputs inside light team area */
+.team-area-light input, 
+.team-area-light select, 
+.team-area-light textarea {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  color: #0f172a !important;
+}
+
+.team-area-light input:focus, 
+.team-area-light select:focus, 
+.team-area-light textarea:focus {
+  border-color: #f27024 !important;
+  box-shadow: 0 0 0 2px rgba(242, 112, 36, 0.15), 0 0 10px rgba(242, 112, 36, 0.2) !important;
+}
+
+/* Support form uses the same light palette as the participant team area. */
+.support-light input,
+.support-light select,
+.support-light textarea,
+.support-light select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+  color-scheme: light;
+}
+
+.support-light input:focus,
+.support-light select:focus,
+.support-light select:active,
+.support-light textarea:focus {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #f27024 !important;
+  box-shadow: 0 0 0 2px rgba(242, 112, 36, 0.15) !important;
+}
+
+.team-area-light .glow-cyan,
+.team-area-light .glow-blue {
+  box-shadow: 0 0 20px rgba(242, 112, 36, 0.06) !important;
+}
+
+/* Hover effects */
+.team-area-light .hover\:border-cyan-500\/30:hover {
+  border-color: rgba(242, 112, 36, 0.4) !important;
+}
+
+.team-area-light .btn-primary {
+  background-color: #f27024 !important;
+  border-color: #f27024 !important;
+  color: white !important;
+}
+
+.team-area-light .btn-primary:hover {
+  background-color: #e05e1b !important;
+  box-shadow: 0 0 20px rgba(242, 112, 36, 0.4) !important;
+}
+
+.team-area-light .border-rose-500\/20 {
+  border-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+.team-area-light .text-amber-400.bg-amber-500\/10 {
+  color: #b45309 !important; /* amber-700 */
+  background-color: rgba(245, 158, 11, 0.1) !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+
+.team-area-light .border-slate-800\/80 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Custom Select & Button Overflow Protections */
+select, input, textarea {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+select {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+button {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Tăng thêm 1.5px cho dễ đọc theo yêu cầu */
+body {
+  font-size: 1.0625rem; /* ~17px base body */
+}
+
+.text-xs {
+  font-size: 0.90625rem !important; /* ~14.5px */
+}
+
+.text-sm {
+  font-size: 1.0rem !important; /* ~16px */
+}
+
+.text-base {
+  font-size: 1.125rem !important; /* ~18px */
+}
+
+/* Profile Modal Light Theme overrides to fix dark background when focused */
+.profile-modal-light input {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+.profile-modal-light input:focus {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #f27024 !important;
+  box-shadow: 0 0 0 2px rgba(242, 112, 36, 0.15), 0 0 10px rgba(242, 112, 36, 0.2) !important;
+}
+
+.profile-modal-light input:disabled {
+  background-color: #f8fafc !important;
+  color: #64748b !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* ==========================================================================
+   COORDINATOR / ADMIN LIGHT THEME OVERRIDES
+   ========================================================================== */
+/* Body background adjustment for light theme pages */
+body:has(.coordinator-light-theme),
+body:has(.team-area-light) {
+  background-color: #faf9f6 !important;
+  background-image: linear-gradient(rgba(0, 0, 0, 0.012) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.012) 1px, transparent 1px) !important;
+}
+
+.coordinator-light-theme {
+  background-color: #faf9f6 !important;
+  color: #334155 !important;
+}
+
+/* Base text overrides */
+.coordinator-light-theme h1.text-white,
+.coordinator-light-theme h2.text-white,
+.coordinator-light-theme h3.text-white,
+.coordinator-light-theme h4.text-white,
+.coordinator-light-theme h5.text-white,
+.coordinator-light-theme h6.text-white,
+.coordinator-light-theme div.text-white,
+.coordinator-light-theme p.text-white {
+  color: #1e293b !important;
+}
+
+.coordinator-light-theme button.text-white,
+.coordinator-light-theme a.text-white,
+.coordinator-light-theme span.text-white {
+  color: #ffffff !important;
+}
+
+.coordinator-light-theme .text-slate-350,
+.coordinator-light-theme .text-slate-300 {
+  color: #334155 !important;
+}
+
+.coordinator-light-theme .text-slate-400 {
+  color: #475569 !important;
+}
+
+.coordinator-light-theme .text-slate-500 {
+  color: #64748b !important;
+}
+
+.coordinator-light-theme .text-cyan-400,
+.coordinator-light-theme .text-cyan-300,
+.coordinator-light-theme .text-cyan-glow {
+  color: #f27024 !important;
+  text-shadow: none !important;
+}
+
+/* Sidebar styling */
+.coordinator-light-theme aside {
+  background-color: #ffffff !important;
+  border-right: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.02) !important;
+}
+
+.coordinator-light-theme aside * {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+.coordinator-light-theme aside h4 {
+  color: #1e293b !important;
+}
+
+.coordinator-light-theme aside .text-cyan-400 {
+  color: #f27024 !important;
+}
+
+.coordinator-light-theme aside .bg-gradient-to-br {
+  background: linear-gradient(135deg, #f27024, #ff8c42) !important;
+  box-shadow: 0 0 10px rgba(242, 112, 36, 0.25) !important;
+}
+
+/* Sidebar Nav Links */
+.coordinator-light-theme aside nav a {
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  font-family: var(--font-sans) !important;
+  font-size: 1.0rem !important; /* ~16px */
+  font-weight: 500 !important;
+  padding: 0.5rem 1.0rem !important; /* py-2 px-4 */
+  border-radius: 0.5rem !important; /* rounded-lg */
+  transition: all 0.2s ease-in-out !important;
+  color: #334155 !important; /* text-slate-700 */
+  border: 1px solid transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.coordinator-light-theme aside nav a div.absolute {
+  display: none !important;
+}
+
+.coordinator-light-theme aside nav a:hover {
+  color: #f27024 !important; /* hover:text-[#F27024] */
+  background-color: #f1f5f9 !important; /* hover:bg-slate-100 */
+  border-color: transparent !important;
+}
+
+.coordinator-light-theme aside nav a.bg-cyan-500\/10 {
+  background-color: rgba(242, 112, 36, 0.1) !important; /* bg-[#F27024]/10 */
+  color: #f27024 !important; /* text-[#F27024] */
+  border: 1px solid rgba(242, 112, 36, 0.2) !important; /* border-[#F27024]/20 */
+  box-shadow: 0 0 15px -3px rgba(242, 112, 36, 0.2) !important;
+}
+
+.coordinator-light-theme aside nav a.bg-cyan-500\/10:hover {
+  background-color: rgba(242, 112, 36, 0.15) !important;
+  color: #f27024 !important;
+}
+
+.coordinator-light-theme aside nav a svg {
+  color: #64748b !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.coordinator-light-theme aside nav a:hover svg {
+  color: #f27024 !important;
+}
+
+.coordinator-light-theme aside nav a.bg-cyan-500\/10 svg {
+  color: #f27024 !important;
+}
+
+/* Top App Bar */
+.coordinator-light-theme header {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02) !important;
+}
+
+.coordinator-light-theme header span.text-cyan-300 {
+  color: #f27024 !important;
+  text-shadow: none !important;
+}
+
+.coordinator-light-theme header button {
+  color: #475569 !important;
+}
+
+.coordinator-light-theme header button:hover {
+  color: #f27024 !important;
+  background-color: rgba(242, 112, 36, 0.08) !important;
+}
+
+/* Grid overlay */
+.coordinator-light-theme .absolute.pointer-events-none {
+  background-image: linear-gradient(rgba(0, 0, 0, 0.012) 1px, transparent 1px), linear-gradient(95deg, rgba(0, 0, 0, 0.012) 1px, transparent 1px) !important;
+}
+
+/* Cards & containers */
+.coordinator-light-theme .bg-slate-900\/30,
+.coordinator-light-theme .bg-slate-900\/40,
+.coordinator-light-theme .bg-slate-950\/40,
+.coordinator-light-theme .bg-slate-900\/20,
+.coordinator-light-theme .bg-slate-950\/20,
+.coordinator-light-theme .bg-slate-900\/50,
+.coordinator-light-theme .bg-\[\#0c1322\],
+.coordinator-light-theme .bg-slate-950\/60,
+.coordinator-light-theme button.w-full.text-left {
+  background-color: #ffffff !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02), 0 2px 8px rgba(0, 0, 0, 0.01) !important;
+}
+
+.coordinator-light-theme .border-slate-800,
+.coordinator-light-theme .border-slate-800\/40,
+.coordinator-light-theme .border-slate-700,
+.coordinator-light-theme .border-white\/5,
+.coordinator-light-theme .border-white\/10 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.coordinator-light-theme .hover\:border-slate-700:hover,
+.coordinator-light-theme button.w-full.text-left:hover {
+  border-color: rgba(242, 112, 36, 0.3) !important;
+}
+
+/* Buttons */
+.coordinator-light-theme button.bg-cyan-500,
+.coordinator-light-theme button.bg-cyan-600,
+.coordinator-light-theme a.bg-cyan-500,
+.coordinator-light-theme .btn-primary {
+  background-color: #f27024 !important;
+  border-color: rgba(242, 112, 36, 0.1) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(242, 112, 36, 0.2) !important;
+}
+
+.coordinator-light-theme button.bg-cyan-500:hover,
+.coordinator-light-theme button.bg-cyan-600:hover,
+.coordinator-light-theme a.bg-cyan-500:hover {
+  background-color: #e05e1b !important;
+}
+
+.coordinator-light-theme .bg-cyan-500\/10,
+.coordinator-light-theme .bg-cyan-500\/5 {
+  background-color: rgba(242, 112, 36, 0.08) !important;
+}
+
+/* Badges & tags */
+.coordinator-light-theme span.bg-cyan-500\/10,
+.coordinator-light-theme span.bg-cyan-500\/5,
+.coordinator-light-theme .text-cyan-400.bg-cyan-500\/5,
+.coordinator-light-theme span.bg-slate-955,
+.coordinator-light-theme span.bg-slate-950 {
+  color: #f27024 !important;
+  background-color: rgba(242, 112, 36, 0.08) !important;
+  border-color: rgba(242, 112, 36, 0.2) !important;
+}
+
+.coordinator-light-theme span.bg-slate-950 strong.text-cyan-300,
+.coordinator-light-theme span.bg-slate-950 strong {
+  color: #f27024 !important;
+}
+
+.coordinator-light-theme span.bg-slate-950 span.text-slate-400 {
+  color: #64748b !important;
+}
+
+/* All cyan text and icons in coordinator light theme mapped to primary orange */
+.coordinator-light-theme svg[class*="text-cyan"],
+.coordinator-light-theme [class*="text-cyan"],
+.coordinator-light-theme [class*="group-hover:text-cyan"] {
+  color: #f27024 !important;
+}
+
+/* Light theme action button hover fixes */
+.coordinator-light-theme button:hover.hover\:bg-slate-800\/80,
+.coordinator-light-theme button:hover.hover\:bg-slate-800,
+.coordinator-light-theme button:hover.hover\:bg-slate-900\/40,
+.coordinator-light-theme button:hover.hover\:bg-slate-900 {
+  background-color: rgba(242, 112, 36, 0.1) !important;
+  color: #f27024 !important;
+}
+
+.coordinator-light-theme button:hover.hover\:bg-rose-950\/60,
+.coordinator-light-theme button:hover.hover\:bg-rose-950\/40,
+.coordinator-light-theme button:hover.hover\:bg-rose-900\/60 {
+  background-color: rgba(244, 63, 94, 0.1) !important;
+  color: #f43f5e !important;
+}
+
+.coordinator-light-theme button.hover\:bg-orange-500\/10:hover {
+  background-color: rgba(242, 112, 36, 0.1) !important;
+}
+
+.coordinator-light-theme button.hover\:bg-rose-500\/10:hover {
+  background-color: rgba(244, 63, 94, 0.1) !important;
+}
+
+/* Criteria & Team title color in light theme */
+.coordinator-light-theme .bg-slate-900\/30 span.font-bold,
+.coordinator-light-theme .bg-slate-900\/30 span.text-slate-900,
+.coordinator-light-theme .bg-slate-900\/30 span.text-slate-100,
+.coordinator-light-theme .bg-cyan-500\/10 span.font-bold,
+.coordinator-light-theme .bg-cyan-500\/20 span.font-bold,
+.coordinator-light-theme button span.font-bold {
+  color: #0f172a !important;
+}
+
+.coordinator-light-theme .bg-slate-900\/30 p.text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Drive file name in light theme */
+.coordinator-light-theme div.bg-emerald-500\/10 p.font-black,
+.coordinator-light-theme div.bg-emerald-500\/10 p.text-slate-900,
+.coordinator-light-theme div.bg-emerald-950\/30 p.font-black {
+  color: #0f172a !important;
+}
+
+/* Track and Round cards light theme overrides */
+.coordinator-light-theme div.bg-white,
+.coordinator-light-theme button.bg-white {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+.coordinator-light-theme .border-slate-200 {
+  border-color: #e2e8f0 !important;
+}
+
+.coordinator-light-theme .border-slate-800\/80 {
+  border-color: #e2e8f0 !important;
+}
+
+.coordinator-light-theme .bg-slate-900\/10 {
+  background-color: #ffffff !important;
+}
+
+/* Track & Round card title pure black text override */
+.coordinator-light-theme .text-track-title,
+.coordinator-light-theme strong.text-track-title,
+.coordinator-light-theme span.text-track-title,
+.coordinator-light-theme button .text-track-title,
+.coordinator-light-theme div .text-track-title {
+  color: #0f172a !important;
+  font-weight: 900 !important;
+}
+
+/* Form Inputs */
+.coordinator-light-theme input,
+.coordinator-light-theme select,
+.coordinator-light-theme textarea {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.coordinator-light-theme input:focus,
+.coordinator-light-theme select:focus,
+.coordinator-light-theme textarea:focus {
+  border-color: #f27024 !important;
+  box-shadow: 0 0 0 2px rgba(242, 112, 36, 0.15), 0 0 10px rgba(242, 112, 36, 0.2) !important;
+  background-color: #ffffff !important;
+}
+
+.coordinator-light-theme input:disabled,
+.coordinator-light-theme select:disabled,
+.coordinator-light-theme textarea:disabled {
+  background-color: #f8fafc !important;
+  color: #64748b !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Tables styling */
+.coordinator-light-theme table {
+  background-color: #ffffff !important;
+  color: #334155 !important;
+}
+
+.coordinator-light-theme th {
+  background-color: #f8fafc !important;
+  color: #1e293b !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+.coordinator-light-theme td {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+  color: #475569 !important;
+}
+
+.coordinator-light-theme tr:hover td {
+  background-color: rgba(0, 0, 0, 0.01) !important;
+}
+
+/* Notifications Dropdown for coordinator-light-theme */
+.coordinator-light-theme .absolute.right-0.mt-2.w-80 {
+  background-color: #faf9f6 !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+.coordinator-light-theme .absolute.right-0.mt-2.w-80 .sticky {
+  background-color: rgba(250, 249, 246, 0.95) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+.coordinator-light-theme .absolute.right-0.mt-2.w-80 h4 {
+  color: #0f172a !important;
+}
+
+.coordinator-light-theme .absolute.right-0.mt-2.w-80 button.text-cyan-400 {
+  color: #f27024 !important;
+}
+
+.coordinator-light-theme .absolute.right-0.mt-2.w-80 button.text-cyan-400:hover {
+  color: #e05e1b !important;
+}
+
+.coordinator-light-theme .absolute.right-0.mt-2.w-80 .cursor-pointer {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+.coordinator-light-theme .absolute.right-0.mt-2.w-80 .cursor-pointer:hover {
+  background-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+.coordinator-light-theme .absolute.right-0.mt-2.w-80 .bg-cyan-950\/20 {
+  background-color: rgba(242, 112, 36, 0.05) !important;
+}
+
+.coordinator-light-theme .absolute.right-0.mt-2.w-80 .bg-cyan-950\/20:hover {
+  background-color: rgba(242, 112, 36, 0.08) !important;
+}
+
+.coordinator-light-theme .absolute.right-0.mt-2.w-80 .text-cyan-300 {
+  color: #f27024 !important;
+}
+
+/* Glass logs panel overrides */
+.coordinator-light-theme .glass {
+  background: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02) !important;
+}
+
+/* Log items & timeline override */
+.coordinator-light-theme .text-slate-200 {
+  color: #334155 !important; /* slate-700 for logs */
+}
+
+.coordinator-light-theme span.bg-slate-800 {
+  background-color: #cbd5e1 !important; /* timeline line color */
+}
+
+.coordinator-light-theme .h-8.w-8.rounded-full.bg-slate-950 {
+  background-color: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 0 0 8px rgba(0, 0, 0, 0.02) !important;
+}
+
+.coordinator-light-theme .ring-slate-900\/50 {
+  --tw-ring-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+.coordinator-light-theme .hover\:bg-slate-800\/30:hover {
+  background-color: rgba(242, 112, 36, 0.04) !important; /* light orange hover tint */
+}
+
+/* Inactive filter buttons wrapper in logs */
+.coordinator-light-theme .flex.bg-slate-900\/60.p-0\.5 {
+  background-color: #f1f5f9 !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+.coordinator-light-theme .flex.bg-slate-900\/60.p-0\.5 button {
+  color: #64748b !important; /* slate-500 */
+}
+
+.coordinator-light-theme .flex.bg-slate-900\/60.p-0\.5 button:hover {
+  color: #1e293b !important; /* slate-800 */
+}
+
+/* Sidebar log out button override */
+.coordinator-light-theme aside button.bg-rose-500\/10 {
+  background-color: rgba(239, 68, 68, 0.08) !important;
+  color: #ef4444 !important;
+  border-color: rgba(239, 68, 68, 0.15) !important;
+  box-shadow: none !important;
+}
+
+.coordinator-light-theme aside button.bg-rose-500\/10:hover {
+  background-color: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+/* Log Category Badges */
+.coordinator-light-theme .bg-rose-500\/10 {
+  background-color: rgba(239, 68, 68, 0.08) !important;
+  color: #dc2626 !important;
+  border-color: rgba(239, 68, 68, 0.2) !important;
+  box-shadow: none !important;
+}
+
+.coordinator-light-theme .bg-purple-500\/10 {
+  background-color: rgba(168, 85, 247, 0.08) !important;
+  color: #7c3aed !important;
+  border-color: rgba(168, 85, 247, 0.2) !important;
+  box-shadow: none !important;
+}
+
+.coordinator-light-theme .bg-amber-500\/10 {
+  background-color: rgba(245, 158, 11, 0.08) !important;
+  color: #b45309 !important;
+  border-color: rgba(245, 158, 11, 0.2) !important;
+  box-shadow: none !important;
+}
+
+.coordinator-light-theme .bg-emerald-500\/10 {
+  background-color: rgba(16, 185, 129, 0.08) !important;
+  color: #059669 !important;
+  border-color: rgba(16, 185, 129, 0.2) !important;
+  box-shadow: none !important;
+}
+
+/* Reload button style override */
+.coordinator-light-theme button.bg-slate-900 {
+  background-color: #ffffff !important;
+  color: #f27024 !important;
+  border: 1px solid rgba(242, 112, 36, 0.25) !important;
+  box-shadow: 0 2px 10px rgba(242, 112, 36, 0.05) !important;
+}
+
+.coordinator-light-theme button.bg-slate-900:hover {
+  background-color: rgba(242, 112, 36, 0.08) !important;
+  color: #e05e1b !important;
+}
+
+/* Dark alerts / note blocks override */
+.coordinator-light-theme .bg-slate-955\/80,
+.coordinator-light-theme .bg-slate-950\/80,
+.coordinator-light-theme .bg-slate-955 {
+  background-color: #f8fafc !important; /* light slate background */
+  border-color: #cbd5e1 !important;
+  color: #475569 !important; /* slate-600 */
+}
+
+.coordinator-light-theme .bg-slate-955\/80 .text-slate-300,
+.coordinator-light-theme .bg-slate-950\/80 .text-slate-300,
+.coordinator-light-theme .bg-slate-955 .text-slate-350,
+.coordinator-light-theme .bg-slate-955\/80 .text-slate-400,
+.coordinator-light-theme .bg-slate-955\/80 div,
+.coordinator-light-theme .bg-slate-950\/80 .text-slate-400 {
+  color: #334155 !important;
+}
+
+/* Inactive track items in TracksTab */
+.coordinator-light-theme .border-slate-800\/80.bg-slate-900\/10 {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+.coordinator-light-theme .border-slate-800\/80.bg-slate-900\/10:hover {
+  border-color: rgba(242, 112, 36, 0.3) !important;
+  background-color: #f8fafc !important;
+}
+
+.coordinator-light-theme .border-slate-800\/80.bg-slate-900\/10 button span {
+  color: #334155 !important;
+}
+
+.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50,
+.coordinator-light-theme button.bg-cyan-500\/10.border-cyan-500\/50 {
+  background-color: rgba(242, 112, 36, 0.08) !important;
+  border-color: rgba(242, 112, 36, 0.5) !important;
+  color: #f27024 !important;
+}
+
+.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50 p,
+.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50 span,
+.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50 div {
+  color: #0f172a !important;
+}
+
+.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50 p.text-cyan-300,
+.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50 span.text-cyan-300,
+.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50 p.font-bold {
+  color: #f27024 !important;
+}
+
+.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50 p.text-slate-400,
+.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50 p.text-slate-500 {
+  color: #64748b !important;
+}
+
+.coordinator-light-theme .bg-cyan-500\/10.border-cyan-500\/50 svg {
+  color: #f27024 !important;
+}
+
+/* Warning / info boxes (Drive warnings) */
+.coordinator-light-theme .bg-amber-955\/20,
+.coordinator-light-theme .bg-amber-950\/20 {
+  background-color: rgba(245, 158, 11, 0.08) !important; /* soft amber background */
+  border-color: rgba(245, 158, 11, 0.25) !important;
+}
+
+.coordinator-light-theme .bg-amber-955\/20 p.text-amber-400,
+.coordinator-light-theme .bg-amber-950\/20 p.text-amber-400 {
+  color: #b45309 !important; /* dark amber text */
+}
+
+/* Pending team card in TeamsTab */
+.coordinator-light-theme .bg-slate-900\/10.border-slate-800\/40 {
+  background-color: #f1f5f9 !important; /* light slate background for pending */
+  border-color: #cbd5e1 !important;
+}
+
+.coordinator-light-theme .bg-slate-900\/10.border-slate-800\/40 h5.text-slate-400 {
+  color: #334155 !important; /* dark text for team name */
+}
+
+.coordinator-light-theme .bg-slate-900\/10.border-slate-800\/40 span.bg-slate-800 {
+  background-color: #e2e8f0 !important;
+  color: #64748b !important;
+}
+
+.coordinator-light-theme .bg-slate-900\/10.border-slate-800\/40 span.text-slate-400 {
+  color: #475569 !important;
+}
+
+/* Confirmed team cards border */
+.coordinator-light-theme .border-slate-800 {
+  border-color: #cbd5e1 !important;
+}
+
+.coordinator-light-theme .border-slate-800\/80 {
+  border-color: #cbd5e1 !important;
+}
+
+.coordinator-light-theme .hover\:border-slate-700:hover {
+  border-color: rgba(242, 112, 36, 0.4) !important;
+}
+
+/* General bg-slate-900/60 and slate-950/40 overrides for panels (Cron jobs etc.) */
+.coordinator-light-theme .bg-slate-900\/60,
+.coordinator-light-theme .bg-slate-900\/40,
+.coordinator-light-theme .bg-slate-900\/20 {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+.coordinator-light-theme .bg-slate-950\/40,
+.coordinator-light-theme .bg-slate-955\/40,
+.coordinator-light-theme .bg-slate-950\/60 {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+.coordinator-light-theme .bg-slate-900\/60 span,
+.coordinator-light-theme .bg-slate-900\/60 div {
+  color: #334155 !important;
+}
+
+/* Ensure the time/countdown values inside the cron box are readable */
+.coordinator-light-theme .bg-slate-955\/40 div,
+.coordinator-light-theme .bg-slate-950\/40 div.text-emerald-400 {
+  color: #059669 !important;
+}
+
+/* White background + green text/border for Import/Export buttons */
+.coordinator-light-theme .btn-import-export {
+  background-color: #ffffff !important;
+  color: #059669 !important;
+  border: 1px solid rgba(5, 150, 105, 0.3) !important;
+  box-shadow: 0 2px 10px rgba(5, 150, 105, 0.05) !important;
+}
+
+.coordinator-light-theme .btn-import-export:hover {
+  background-color: rgba(5, 150, 105, 0.06) !important;
+  color: #047857 !important;
+  border-color: rgba(5, 150, 105, 0.5) !important;
+}
+
+.coordinator-light-theme .btn-import-export svg {
+  color: #059669 !important;
+}
+
+.coordinator-light-theme .btn-import-export:hover svg {
+  color: #047857 !important;
+}
+
+.coordinator-light-theme .btn-import-export span {
+  color: #059669 !important;
+}
+
+.coordinator-light-theme .btn-import-export:hover span {
+  color: #047857 !important;
+}
+
+/* Non-import/export action buttons sync styling (e.g. Random track division button) */
+.coordinator-light-theme button.bg-slate-800:not(.btn-import-export):not(.btn-sync-repo) {
+  background-color: #ffffff !important;
+  color: #f27024 !important;
+  border: 1px solid rgba(242, 112, 36, 0.25) !important;
+}
+
+.coordinator-light-theme button.bg-slate-800:not(.btn-import-export):not(.btn-sync-repo):hover {
+  background-color: rgba(242, 112, 36, 0.08) !important;
+  color: #e05e1b !important;
+}
+
+/* Force white text on buttons that should have white text in light theme */
+.coordinator-light-theme button.text-white,
+.coordinator-light-theme button.bg-cyan-500,
+.coordinator-light-theme button.bg-cyan-600,
+.coordinator-light-theme button.bg-amber-600,
+.coordinator-light-theme button.bg-\[\#F27024\],
+.coordinator-light-theme button.bg-rose-600,
+.coordinator-light-theme button.bg-emerald-600,
+.coordinator-light-theme button.btn-primary {
+  color: #ffffff !important;
+}
+
+/* White background + rose/red text/border for delete and lock contest buttons */
+.coordinator-light-theme .btn-delete-contest,
+.coordinator-light-theme .btn-lock-contest {
+  background-color: #ffffff !important;
+  color: #ef4444 !important; /* rose/red text */
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+  box-shadow: 0 2px 10px rgba(239, 68, 68, 0.05) !important;
+}
+
+.coordinator-light-theme .btn-delete-contest:hover,
+.coordinator-light-theme .btn-lock-contest:hover {
+  background-color: rgba(239, 68, 68, 0.06) !important;
+  color: #dc2626 !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+}
+
+.coordinator-light-theme .btn-delete-contest svg,
+.coordinator-light-theme .btn-lock-contest svg {
+  color: #ef4444 !important;
+}
+
+.coordinator-light-theme .btn-delete-contest:hover svg,
+.coordinator-light-theme .btn-lock-contest:hover svg {
+  color: #dc2626 !important;
+}
+
+/* White background + orange text/border for sync repo and reload logs buttons */
+.coordinator-light-theme .btn-sync-repo,
+.coordinator-light-theme .btn-reload-logs {
+  background-color: #ffffff !important;
+  color: #f27024 !important;
+  border: 1px solid rgba(242, 112, 36, 0.25) !important;
+  box-shadow: 0 2px 10px rgba(242, 112, 36, 0.05) !important;
+}
+
+.coordinator-light-theme .btn-sync-repo:hover,
+.coordinator-light-theme .btn-reload-logs:hover {
+  background-color: rgba(242, 112, 36, 0.08) !important;
+  color: #e05e1b !important;
+  border-color: rgba(242, 112, 36, 0.4) !important;
+}
+
+.coordinator-light-theme .btn-sync-repo svg,
+.coordinator-light-theme .btn-reload-logs svg {
+  color: #f27024 !important;
+}
+
+.coordinator-light-theme .btn-sync-repo:hover svg,
+.coordinator-light-theme .btn-reload-logs:hover svg {
+  color: #e05e1b !important;
+}
+
+/* Overriding grey boxes to beautiful light orange (cam nhạt) under light theme */
+.coordinator-light-theme .bg-slate-955\/60,
+.coordinator-light-theme .bg-slate-955\/80,
+.coordinator-light-theme .bg-slate-950\/60,
+.coordinator-light-theme .bg-slate-955\/40,
+.coordinator-light-theme .bg-slate-950\/40,
+.coordinator-light-theme .bg-slate-955\/30,
+.coordinator-light-theme .bg-slate-950\/30 {
+  background-color: rgba(242, 112, 36, 0.04) !important;
+  border-color: rgba(242, 112, 36, 0.15) !important;
+}
+
+.coordinator-light-theme .bg-slate-950\/60 span.text-slate-400,
+.coordinator-light-theme .bg-slate-955\/60 span.text-slate-400,
+.coordinator-light-theme .bg-slate-950\/60 span.text-slate-550,
+.coordinator-light-theme .bg-slate-955\/60 span.text-slate-550,
+.coordinator-light-theme .bg-slate-950\/40 span.text-slate-400,
+.coordinator-light-theme .bg-slate-955\/40 span.text-slate-400,
+.coordinator-light-theme .bg-slate-950\/40 span.text-slate-500,
+.coordinator-light-theme .bg-slate-955\/40 span.text-slate-500,
+.coordinator-light-theme .bg-slate-950\/30 p,
+.coordinator-light-theme .bg-slate-955\/30 p,
+.coordinator-light-theme .bg-slate-950\/30 span,
+.coordinator-light-theme .bg-slate-950\/30 strong {
+  color: #475569 !important;
+}
+
+.coordinator-light-theme .bg-slate-955\/30 strong,
+.coordinator-light-theme .bg-slate-955\/30 span {
+  color: #334155 !important;
+}
+
+.coordinator-light-theme .bg-slate-955\/60 span.text-slate-500,
+.coordinator-light-theme .bg-slate-955\/60 span.text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Force white text on buttons that should have white text in light theme, including all children */
+.coordinator-light-theme button.bg-cyan-500,
+.coordinator-light-theme button.bg-cyan-500 *,
+.coordinator-light-theme button.bg-cyan-600,
+.coordinator-light-theme button.bg-cyan-600 *,
+.coordinator-light-theme button.bg-amber-600,
+.coordinator-light-theme button.bg-amber-600 *,
+.coordinator-light-theme button.bg-rose-600,
+.coordinator-light-theme button.bg-rose-600 *,
+.coordinator-light-theme button.bg-emerald-600,
+.coordinator-light-theme button.bg-emerald-600 *,
+.coordinator-light-theme button.bg-\[\#F27024\],
+.coordinator-light-theme button.bg-\[\#F27024\] *,
+.coordinator-light-theme button.bg-\[rgba\(242\2c 112\2c 36\2c 1\)\],
+.coordinator-light-theme button.bg-\[rgba\(242\2c 112\2c 36\2c 1\)\] *,
+.coordinator-light-theme button.btn-primary,
+.coordinator-light-theme button.btn-primary * {
+  color: #ffffff !important;
+}
+
+/* Delete button in account management - white background, rose border/text */
+.coordinator-light-theme .btn-delete-user {
+  background-color: #ffffff !important;
+  color: #ef4444 !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.05) !important;
+}
+
+.coordinator-light-theme .btn-delete-user:hover {
+  background-color: rgba(239, 68, 68, 0.06) !important;
+  color: #dc2626 !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+}
+
+.coordinator-light-theme .btn-delete-user svg {
+  color: #ef4444 !important;
+}
+
+.coordinator-light-theme .btn-delete-user:hover svg {
+  color: #dc2626 !important;
+}
+
+/* Style all slate-950 and slate-900 inputs to have white background and slate borders */
+.coordinator-light-theme input.bg-slate-950,
+.coordinator-light-theme textarea.bg-slate-950,
+.coordinator-light-theme input.bg-slate-900,
+.coordinator-light-theme textarea.bg-slate-900,
+.coordinator-light-theme input.bg-slate-955,
+.coordinator-light-theme textarea.bg-slate-955,
+.coordinator-light-theme input.bg-slate-850,
+.coordinator-light-theme textarea.bg-slate-850 {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
+.coordinator-light-theme input.bg-slate-950:focus,
+.coordinator-light-theme textarea.bg-slate-950:focus,
+.coordinator-light-theme input.bg-slate-900:focus,
+.coordinator-light-theme textarea.bg-slate-900:focus {
+  border-color: #f27024 !important;
+  box-shadow: 0 0 10px rgba(242, 112, 36, 0.15) !important;
+}
+
+/* Modals with bg-slate-900 and border-slate-800 - white background, slate borders */
+.coordinator-light-theme .bg-slate-900.border-slate-800,
+.coordinator-light-theme .bg-slate-900.border {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+.coordinator-light-theme .bg-slate-900.border-slate-800 h3,
+.coordinator-light-theme .bg-slate-900.border-slate-800 span,
+.coordinator-light-theme .bg-slate-900.border-slate-800 label {
+  color: #334155 !important;
+}
+
+.coordinator-light-theme .bg-slate-900.border-slate-800 .border-slate-800 {
+  border-color: #e2e8f0 !important;
+}
+
+/* Tables and list rows overrides */
+.coordinator-light-theme thead.bg-slate-950\/80,
+.coordinator-light-theme thead.bg-slate-900 {
+  background-color: #f8fafc !important;
+  border-bottom-color: #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+.coordinator-light-theme tbody tr:hover,
+.coordinator-light-theme tr.hover\:bg-slate-900\/40:hover {
+  background-color: #f1f5f9 !important;
+}
+
+.coordinator-light-theme .divide-slate-800\/60 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #e2e8f0 !important;
+}
+
+.coordinator-light-theme td.p-4 div.font-bold.text-white,
+.coordinator-light-theme td.p-4 span.text-white {
+  color: #1e293b !important;
+}
+
+/* Input placeholder light color */
+.coordinator-light-theme input::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Custom styling for bg-slate-950 under coordinator light theme to be light orange */
+.coordinator-light-theme .bg-slate-950 {
+  background-color: rgba(242, 112, 36, 0.04) !important;
+  border-color: rgba(242, 112, 36, 0.15) !important;
+  box-shadow: none !important; /* Bỏ đổ bóng */
+}
+
+/* Selected active team items inside live view lists */
+.coordinator-light-theme .bg-slate-900\/60 {
+  background-color: rgba(242, 112, 36, 0.08) !important;
+  border-color: rgba(242, 112, 36, 0.4) !important;
+}
+
+.coordinator-light-theme .bg-slate-955\/40,
+.coordinator-light-theme .bg-slate-950\/40,
+.coordinator-light-theme .bg-slate-900\/40,
+.coordinator-light-theme .bg-slate-900\/10 {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Styling for live view bảng đấu tags */
+.coordinator-light-theme .bg-cyan-950\/40,
+.coordinator-light-theme .bg-cyan-950\/20,
+.coordinator-light-theme .bg-cyan-955,
+.coordinator-light-theme .bg-cyan-950 {
+  background-color: rgba(242, 112, 36, 0.1) !important;
+  color: #f27024 !important;
+  border-color: rgba(242, 112, 36, 0.2) !important;
+}
+
+.coordinator-light-theme .bg-cyan-950\/40 span,
+.coordinator-light-theme .bg-cyan-950\/20 span,
+.coordinator-light-theme .bg-cyan-955 span,
+.coordinator-light-theme .bg-cyan-950 span {
+  color: #f27024 !important;
+}
+
+/* Remove general shadows under light theme for a flatter, cleaner design */
+.coordinator-light-theme .shadow-2xl,
+.coordinator-light-theme .shadow-xl,
+.coordinator-light-theme .shadow-lg {
+  box-shadow: none !important;
+}
+
+/* White backdrop blur overlay for modals, confirm dialogs and popups in light theme */
+.coordinator-light-theme div.fixed.inset-0[class*="bg-slate-"],
+.coordinator-light-theme div.fixed.inset-0[class*="bg-black"],
+.coordinator-light-theme div.fixed.inset-0[class*="bg-opacity-"] {
+  background-color: rgba(15, 23, 42, 0.4) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* UniversityCombobox Dropdown Strict Light Theme Styling */
+.uni-combobox-dropdown {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+.uni-combobox-dropdown button {
+  color: #334155 !important;
+}
+
+.uni-combobox-dropdown button span.text-slate-800,
+.uni-combobox-dropdown button span.text-slate-900 {
+  color: #334155 !important;
+  font-weight: 700 !important;
+}
+
+.uni-combobox-dropdown button span.text-slate-400,
+.uni-combobox-dropdown button span.text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+.uni-combobox-dropdown button:hover {
+  background-color: rgba(242, 112, 36, 0.08) !important;
+  color: #f27024 !important;
+}
+
+.uni-combobox-dropdown button.bg-orange-500\/10,
+.uni-combobox-dropdown button.bg-orange-500\/15 {
+  background-color: rgba(242, 112, 36, 0.1) !important;
+  border-color: rgba(242, 112, 36, 0.25) !important;
+  color: #f27024 !important;
+}
+
+.uni-combobox-dropdown button.bg-orange-500\/10 span,
+.uni-combobox-dropdown button.bg-orange-500\/15 span {
+  color: #f27024 !important;
+}
+
+/* Light theme custom scrollbars for dropdown and light shell */
+.coordinator-light-theme ::-webkit-scrollbar-track,
+.team-area-light ::-webkit-scrollbar-track,
+.uni-combobox-dropdown ::-webkit-scrollbar-track,
+.uni-combobox-dropdown div::-webkit-scrollbar-track {
+  background: #f8fafc !important;
+}
+
+.coordinator-light-theme ::-webkit-scrollbar-thumb,
+.team-area-light ::-webkit-scrollbar-thumb,
+.uni-combobox-dropdown ::-webkit-scrollbar-thumb,
+.uni-combobox-dropdown div::-webkit-scrollbar-thumb {
+  background: #cbd5e1 !important;
+  border-radius: 4px !important;
+}
+
+.coordinator-light-theme ::-webkit-scrollbar-thumb:hover,
+.team-area-light ::-webkit-scrollbar-thumb:hover,
+.uni-combobox-dropdown ::-webkit-scrollbar-thumb:hover,
+.uni-combobox-dropdown div::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8 !important;
+}
+
+/* Dark translucent backdrop blur overlay for all modals, confirm dialogs and popups across all themes */
+div.fixed.inset-0[class*="bg-slate-"],
+div.fixed.inset-0[class*="bg-black"],
+div.fixed.inset-0[class*="bg-opacity-"],
+.coordinator-light-theme div.fixed.inset-0[class*="bg-slate-"],
+.coordinator-light-theme div.fixed.inset-0[class*="bg-black"],
+.coordinator-light-theme div.fixed.inset-0[class*="bg-opacity-"],
+.coordinator-light-theme div.fixed.inset-0.bg-black\/70,
+.coordinator-light-theme div.fixed.inset-0.bg-slate-955\/80,
+.coordinator-light-theme div.fixed.inset-0.bg-slate-950\/80 {
+  background-color: rgba(0, 0, 0, 0.65) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+/* Force white text on all Cancel ("Hủy", "Hủy bỏ") buttons */
+.btn-cancel,
+button.btn-cancel,
+.coordinator-light-theme .btn-cancel,
+.coordinator-light-theme button.btn-cancel,
+.coordinator-light-theme button.bg-slate-800.btn-cancel {
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(148, 163, 184, 0.25) !important;
+}
+
+.btn-cancel:hover,
+button.btn-cancel:hover,
+.coordinator-light-theme .btn-cancel:hover,
+.coordinator-light-theme button.btn-cancel:hover {
+  background-color: #334155 !important;
+  color: #ffffff !important;
+}
+

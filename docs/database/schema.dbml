@@ -1,0 +1,908 @@
+// =====================================================
+// SEAL Hackathon Management System
+// Updated DBML: Scoring through GitHub Repository
+// =====================================================
+
+
+// =======================
+// ENUMS
+// =======================
+
+Enum semester_type {
+  Spring
+  Summer
+  Fall
+}
+
+Enum event_status {
+  draft
+  registration
+  ongoing
+  completed
+  cancelled
+}
+
+Enum round_status {
+  pending
+  active
+  scoring
+  completed
+}
+
+Enum team_status {
+  pending_confirm
+  confirmed
+  disqualified
+}
+
+Enum team_member_role {
+  leader
+  member
+}
+
+Enum confirm_status {
+  pending
+  confirmed
+  rejected
+}
+
+Enum event_role_type {
+  participant
+  mentor
+  judge
+  coordinator
+}
+
+Enum judge_type {
+  internal
+  guest
+}
+
+Enum event_role_status {
+  active
+  removed
+}
+
+Enum repo_visibility {
+  private
+  public
+}
+
+Enum repo_sync_status {
+  not_synced
+  syncing
+  success
+  failed
+}
+
+Enum score_status {
+  draft
+  submitted
+  locked
+}
+
+Enum ai_analysis_type {
+  commit_review
+  repository_review
+  readme_summary
+  scoring_suggestion
+}
+
+Enum ai_analysis_status {
+  pending
+  processing
+  completed
+  failed
+}
+
+Enum notification_channel {
+  email
+  in_app
+}
+
+Enum notification_status {
+  pending
+  sent
+  failed
+}
+
+
+// =======================
+// USERS
+// =======================
+
+Table users {
+  _id varchar [pk]
+
+  email varchar [unique, not null]
+  passwordHash varchar [not null]
+  fullName varchar [not null]
+
+  studentId varchar
+  university varchar
+
+  githubUsername varchar
+  githubAccessTokenEncrypted text
+  avatarUrl varchar
+
+  isSystemAdmin boolean [default: false]
+  isApproved boolean [default: false]
+  isActive boolean [default: true]
+
+  notificationPrefs json
+
+  createdAt datetime
+  updatedAt datetime
+
+  Note: '''
+  users stores account and profile information.
+  Event-specific roles are stored in event_roles.
+  '''
+}
+
+
+// =======================
+// EVENTS
+// =======================
+
+Table events {
+  _id varchar [pk]
+
+  name varchar [not null]
+  semester semester_type [not null]
+  year int [not null]
+
+  description text
+  bannerUrl varchar
+
+  registrationOpen datetime
+  registrationClose datetime
+  maxTeams int
+
+  status event_status [default: 'draft']
+
+  githubOrgName varchar
+  githubOrgCreated boolean [default: false]
+
+  attachments json
+
+  createdAt datetime
+  updatedAt datetime
+
+  indexes {
+    (semester, year) [unique]
+    status
+  }
+}
+
+
+// =======================
+// TRACKS
+// =======================
+
+Table tracks {
+  _id varchar [pk]
+
+  eventId varchar [not null]
+
+  name varchar [not null]
+  description text
+
+  maxTeams int
+  topicSubmissionOpen boolean [default: false]
+
+  attachments json
+
+  createdAt datetime
+  updatedAt datetime
+
+  indexes {
+    (eventId, name) [unique]
+  }
+
+  Note: '''
+  Track means competition category, for example Web, Mobile, AI.
+  '''
+}
+
+
+// =======================
+// ROUNDS
+// =======================
+
+Table rounds {
+  _id varchar [pk]
+
+  eventId varchar [not null]
+  trackId varchar [not null]
+
+  name varchar [not null]
+  order int [not null]
+
+  submissionDeadline datetime
+  advanceTopN int
+
+  status round_status [default: 'pending']
+
+  createdAt datetime
+  updatedAt datetime
+
+  indexes {
+    (eventId, trackId, order) [unique]
+  }
+}
+
+
+// =======================
+// EVENT ROLES
+// =======================
+
+Table event_roles {
+  _id varchar [pk]
+
+  userId varchar [not null]
+  eventId varchar [not null]
+
+  trackId varchar
+  roundId varchar
+
+  role event_role_type [not null]
+  judgeType judge_type
+
+  status event_role_status [default: 'active']
+
+  assignedBy varchar
+  assignedAt datetime
+
+  createdAt datetime
+  updatedAt datetime
+
+  indexes {
+    (userId, eventId, trackId, roundId, role) [unique]
+    (eventId, role)
+    (eventId, trackId, role)
+    (eventId, roundId, role)
+  }
+
+  Note: '''
+  Official role assignment table.
+  Example:
+  - participant in event/track
+  - mentor in event/track
+  - judge in event/track/round
+  - coordinator in event
+  '''
+}
+
+
+// =======================
+// RUBRICS
+// =======================
+
+Table rubrics {
+  _id varchar [pk]
+
+  eventId varchar [not null]
+  trackId varchar [not null]
+  roundId varchar [not null]
+
+  name varchar [not null]
+  description text
+
+  totalWeight int [default: 100]
+  maxCriterionScore float [default: 10.0]
+
+  version int [default: 1]
+  isActive boolean [default: true]
+  isLocked boolean [default: false]
+
+  createdBy varchar
+  lockedBy varchar
+
+  createdAt datetime
+  updatedAt datetime
+  lockedAt datetime
+
+  indexes {
+    (roundId, version) [unique]
+    (eventId, trackId, roundId)
+  }
+
+  Note: '''
+  One rubric belongs to one round.
+  A rubric contains many criteria.
+  Total criteria weight should equal 100%.
+  '''
+}
+
+
+// =======================
+// CRITERIA
+// =======================
+
+Table criteria {
+  _id varchar [pk]
+
+  rubricId varchar [not null]
+
+  code varchar [not null]
+  name varchar [not null]
+  description text
+
+  weight int [not null]
+  maxScore float [default: 10.0]
+
+  excellentDescription text
+  goodDescription text
+  passedDescription text
+  failedDescription text
+
+  order int
+
+  createdAt datetime
+  updatedAt datetime
+
+  indexes {
+    (rubricId, code) [unique]
+    rubricId
+  }
+
+  Note: '''
+  Each criterion has weight in 100% total rubric weight.
+  Each criterion is scored from 0 to 10.
+  Example:
+  R1_01 - Functional correctness - weight 30
+  R1_02 - AI application - weight 25
+  '''
+}
+
+
+// =======================
+// TEAMS
+// =======================
+
+Table teams {
+  _id varchar [pk]
+
+  eventId varchar [not null]
+  trackId varchar [not null]
+  leaderId varchar [not null]
+
+  currentRoundId varchar
+
+  name varchar [not null]
+
+  status team_status [default: 'pending_confirm']
+  disqualifyReason text
+
+  topicSubmission json
+
+  createdAt datetime
+  updatedAt datetime
+
+  indexes {
+    (eventId, trackId, name) [unique]
+    leaderId
+    status
+  }
+}
+
+
+// =======================
+// TEAM MEMBERS
+// =======================
+
+Table team_members {
+  _id varchar [pk]
+
+  teamId varchar [not null]
+  userId varchar [not null]
+
+  role team_member_role [not null]
+
+  confirmStatus confirm_status [default: 'pending']
+  confirmTokenHash varchar
+  confirmTokenExpiry datetime
+
+  confirmedAt datetime
+  invitedAt datetime
+
+  createdAt datetime
+  updatedAt datetime
+
+  indexes {
+    (teamId, userId) [unique]
+    userId
+  }
+}
+
+
+// =======================
+// GITHUB REPOSITORIES
+// =======================
+
+Table github_repositories {
+  _id varchar [pk]
+
+  eventId varchar [not null]
+  trackId varchar [not null]
+  teamId varchar [not null]
+
+  orgName varchar
+  repoName varchar [not null]
+  repoUrl varchar
+  githubRepoId varchar
+
+  defaultBranch varchar [default: 'main']
+  visibility repo_visibility [default: 'private']
+
+  createdBySystem boolean [default: true]
+  createdBy varchar
+
+  createdAtGithub datetime
+
+  lastSyncedAt datetime
+  lastCommitSha varchar
+
+  syncStatus repo_sync_status [default: 'not_synced']
+  syncErrorMessage text
+
+  isArchived boolean [default: false]
+
+  createdAt datetime
+  updatedAt datetime
+
+  indexes {
+    teamId [unique]
+    githubRepoId [unique]
+    (eventId, trackId)
+    (syncStatus, lastSyncedAt)
+  }
+
+  Note: '''
+  This is the official project artifact for a team.
+  Judges score teams based on their GitHub repository, not submissions.
+  '''
+}
+
+
+// =======================
+// REPOSITORY SNAPSHOTS
+// =======================
+
+Table repository_snapshots {
+  _id varchar [pk]
+
+  repositoryId varchar [not null]
+  teamId varchar [not null]
+  roundId varchar [not null]
+
+  commitSha varchar [not null]
+  branch varchar [default: 'main']
+
+  capturedReason varchar
+  // submission_deadline, manual_capture, before_scoring
+
+  capturedBy varchar
+  capturedAt datetime
+
+  createdAt datetime
+
+  indexes {
+    (repositoryId, roundId, commitSha) [unique]
+    (teamId, roundId)
+  }
+
+  Note: '''
+  Snapshot of the repository version used for judging.
+  This prevents scoring a moving repository after new commits are pushed.
+  '''
+}
+
+
+// =======================
+// COMMITS
+// =======================
+
+Table commits {
+  _id varchar [pk]
+
+  repositoryId varchar [not null]
+  teamId varchar [not null]
+
+  commitSha varchar [not null]
+  branch varchar
+
+  authorGithubUsername varchar
+  authorName varchar
+  authorEmail varchar
+
+  message text
+  commitUrl varchar
+
+  additions int
+  deletions int
+  changedFilesCount int
+
+  committedAt datetime
+  pulledAt datetime
+
+  diffFetched boolean [default: false]
+  diffSummary text
+
+  createdAt datetime
+
+  indexes {
+    (repositoryId, commitSha) [unique]
+    (teamId, committedAt)
+    repositoryId
+  }
+}
+
+
+// =======================
+// COMMIT FILES
+// =======================
+
+Table commit_files {
+  _id varchar [pk]
+
+  commitId varchar [not null]
+  repositoryId varchar [not null]
+
+  filename varchar [not null]
+  status varchar
+  // added, modified, removed, renamed
+
+  additions int
+  deletions int
+  changes int
+
+  patch text
+  rawUrl varchar
+  blobUrl varchar
+
+  createdAt datetime
+
+  indexes {
+    commitId
+    repositoryId
+  }
+
+  Note: '''
+  Stores changed files and diff/patch of each commit.
+  Used as input for AI technical analysis.
+  '''
+}
+
+
+// =======================
+// AI ANALYSES
+// =======================
+
+Table ai_analyses {
+  _id varchar [pk]
+
+  repositoryId varchar [not null]
+  teamId varchar [not null]
+  roundId varchar
+
+  commitId varchar
+  repositorySnapshotId varchar
+
+  analysisType ai_analysis_type [not null]
+
+  provider varchar
+  // google_vertex_ai, gemini, openai, claude
+
+  model varchar
+
+  prompt text
+  inputSummary json
+  result json
+
+  status ai_analysis_status [default: 'pending']
+  errorMessage text
+
+  createdAt datetime
+  completedAt datetime
+
+  indexes {
+    repositoryId
+    teamId
+    roundId
+    commitId
+    repositorySnapshotId
+  }
+
+  Note: '''
+  Stores AI technical analysis.
+  For this project, Google Vertex AI can analyze commit diffs for each push.
+  '''
+}
+
+
+// =======================
+// SCORES
+// =======================
+
+Table scores {
+  _id varchar [pk]
+
+  teamId varchar [not null]
+  repositoryId varchar [not null]
+  repositorySnapshotId varchar
+
+  eventId varchar [not null]
+  trackId varchar [not null]
+  roundId varchar [not null]
+
+  rubricId varchar [not null]
+  judgeId varchar [not null]
+
+  totalRawScore float
+  totalWeightedScore float
+
+  overallComment text
+
+  status score_status [default: 'draft']
+
+  submittedAt datetime
+  lockedAt datetime
+
+  createdAt datetime
+  updatedAt datetime
+
+  indexes {
+    (teamId, roundId, judgeId) [unique]
+    (repositoryId, roundId, judgeId) [unique]
+    (roundId, judgeId)
+    (teamId, roundId)
+  }
+
+  Note: '''
+  One score record is one judge's score sheet for one team in one round.
+  Scoring is based on the team's GitHub repository/repository snapshot.
+  '''
+}
+
+
+// =======================
+// SCORE DETAILS
+// =======================
+
+Table score_details {
+  _id varchar [pk]
+
+  scoreId varchar [not null]
+  criterionId varchar [not null]
+
+  scoreValue float [not null]
+  weightedScore float
+
+  comment text
+
+  createdAt datetime
+  updatedAt datetime
+
+  indexes {
+    (scoreId, criterionId) [unique]
+    criterionId
+  }
+
+  Note: '''
+  Stores score per criterion.
+  scoreValue is from 0 to 10.
+  weightedScore = scoreValue / 10 * criterion.weight.
+  '''
+}
+
+
+// =======================
+// RANKINGS
+// =======================
+
+Table rankings {
+  _id varchar [pk]
+
+  eventId varchar [not null]
+  trackId varchar [not null]
+  roundId varchar [not null]
+  teamId varchar [not null]
+  repositoryId varchar
+
+  averageScore float
+  finalScore float
+
+  judgeCount int
+  rank int
+
+  isAdvanced boolean [default: false]
+
+  status varchar
+  // draft, published
+
+  calculatedAt datetime
+  publishedAt datetime
+
+  createdAt datetime
+  updatedAt datetime
+
+  indexes {
+    (eventId, trackId, roundId, rank)
+    (roundId, teamId) [unique]
+  }
+}
+
+
+// =======================
+// PRIZES
+// =======================
+
+Table prizes {
+  _id varchar [pk]
+
+  eventId varchar [not null]
+  trackId varchar
+  roundId varchar
+  teamId varchar
+
+  rank int
+
+  title varchar
+  description text
+  value varchar
+
+  announcedAt datetime
+
+  createdAt datetime
+  updatedAt datetime
+
+  indexes {
+    (eventId, trackId, roundId, rank)
+  }
+}
+
+
+// =======================
+// NOTIFICATIONS
+// =======================
+
+Table notifications {
+  _id varchar [pk]
+
+  userId varchar [not null]
+
+  type varchar
+  title varchar
+  body text
+  metadata json
+
+  channel notification_channel
+  status notification_status [default: 'pending']
+
+  sentAt datetime
+  createdAt datetime
+
+  indexes {
+    (userId, status, createdAt)
+  }
+}
+
+
+// =======================
+// AUDIT LOGS
+// =======================
+
+Table audit_logs {
+  _id varchar [pk]
+
+  actorId varchar
+
+  action varchar [not null]
+
+  targetType varchar
+  targetId varchar
+
+  before json
+  after json
+
+  reason text
+
+  createdAt datetime
+
+  indexes {
+    (actorId, createdAt)
+    (targetType, targetId)
+  }
+}
+
+
+// =======================
+// RELATIONSHIPS
+// =======================
+
+// Events / Tracks / Rounds
+Ref: tracks.eventId > events._id
+Ref: rounds.eventId > events._id
+Ref: rounds.trackId > tracks._id
+
+// Users
+Ref: notifications.userId > users._id
+Ref: audit_logs.actorId > users._id
+
+// Event Roles
+Ref: event_roles.userId > users._id
+Ref: event_roles.eventId > events._id
+Ref: event_roles.trackId > tracks._id
+Ref: event_roles.roundId > rounds._id
+Ref: event_roles.assignedBy > users._id
+
+// Rubrics / Criteria
+Ref: rubrics.eventId > events._id
+Ref: rubrics.trackId > tracks._id
+Ref: rubrics.roundId > rounds._id
+Ref: rubrics.createdBy > users._id
+Ref: rubrics.lockedBy > users._id
+Ref: criteria.rubricId > rubrics._id
+
+// Teams
+Ref: teams.eventId > events._id
+Ref: teams.trackId > tracks._id
+Ref: teams.leaderId > users._id
+Ref: teams.currentRoundId > rounds._id
+
+// Team Members
+Ref: team_members.teamId > teams._id
+Ref: team_members.userId > users._id
+
+// GitHub Repositories
+Ref: github_repositories.eventId > events._id
+Ref: github_repositories.trackId > tracks._id
+Ref: github_repositories.teamId > teams._id
+Ref: github_repositories.createdBy > users._id
+
+// Repository Snapshots
+Ref: repository_snapshots.repositoryId > github_repositories._id
+Ref: repository_snapshots.teamId > teams._id
+Ref: repository_snapshots.roundId > rounds._id
+Ref: repository_snapshots.capturedBy > users._id
+
+// Commits / Commit Files
+Ref: commits.repositoryId > github_repositories._id
+Ref: commits.teamId > teams._id
+Ref: commit_files.commitId > commits._id
+Ref: commit_files.repositoryId > github_repositories._id
+
+// AI Analyses
+Ref: ai_analyses.repositoryId > github_repositories._id
+Ref: ai_analyses.teamId > teams._id
+Ref: ai_analyses.roundId > rounds._id
+Ref: ai_analyses.commitId > commits._id
+Ref: ai_analyses.repositorySnapshotId > repository_snapshots._id
+
+// Scores / Score Details
+Ref: scores.teamId > teams._id
+Ref: scores.repositoryId > github_repositories._id
+Ref: scores.repositorySnapshotId > repository_snapshots._id
+Ref: scores.eventId > events._id
+Ref: scores.trackId > tracks._id
+Ref: scores.roundId > rounds._id
+Ref: scores.rubricId > rubrics._id
+Ref: scores.judgeId > users._id
+
+Ref: score_details.scoreId > scores._id
+Ref: score_details.criterionId > criteria._id
+
+// Rankings
+Ref: rankings.eventId > events._id
+Ref: rankings.trackId > tracks._id
+Ref: rankings.roundId > rounds._id
+Ref: rankings.teamId > teams._id
+Ref: rankings.repositoryId > github_repositories._id
+
+// Prizes
+Ref: prizes.eventId > events._id
+Ref: prizes.trackId > tracks._id
+Ref: prizes.roundId > rounds._id
+Ref: prizes.teamId > teams._id

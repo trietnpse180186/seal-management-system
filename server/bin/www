@@ -4,28 +4,44 @@
  * Module dependencies.
  */
 
-var app = require('../app');
-var debug = require('debug')('server:server');
-var http = require('http');
+const app = require('../app');
+const debug = require('debug')('server:server');
+const http = require('http');
+const cronService = require('../features/events/cronService');
 
 /**
  * Get port from environment and store in Express.
  */
 
-var port = normalizePort(process.env.PORT || '3000');
+const port = normalizePort(process.env.PORT || '5000');
 app.set('port', port);
 
 /**
  * Create HTTP server.
  */
 
-var server = http.createServer(app);
+const server = http.createServer(app);
+
+/**
+ * Initialize Socket.io
+ */
+const socketIo = require('../features/chat/socket');
+socketIo.init(server);
 
 /**
  * Listen on provided port, on all network interfaces.
  */
 
-server.listen(port);
+server.listen(port, async () => {
+  console.log(`Server successfully started on port ${port}`);
+  try {
+    const { validateDriveConnection } = require('../features/events/driveAccessService');
+    await validateDriveConnection();
+  } catch (e) {
+    console.error('[DRIVE] Config check skipped:', e.message);
+  }
+  cronService.startCronJobs();
+});
 server.on('error', onError);
 server.on('listening', onListening);
 

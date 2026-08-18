@@ -1,0 +1,14 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <path d="M50 10 L90 30 L90 70 L50 90 L10 70 L10 30 Z" fill="none" stroke="#00F0FF" stroke-width="2" filter="url(#glow)" />
+  <path d="M50 25 L75 40 L75 60 L50 75 L25 60 L25 40 Z" fill="#00F0FF" opacity="0.2" />
+  <text x="50" y="55" font-family="JetBrains Mono, monospace" font-size="12" fill="#FFFFFF" text-anchor="middle" font-weight="bold">SEAL</text>
+</svg>

@@ -1,0 +1,12 @@
+{
+  "name": "seal-management-system-root",
+  "version": "1.0.0",
+  "description": "Root package.json for automated monorepo deployment on Railway/Render",
+  "scripts": {
+    "preinstall": "cd server && npm install",
+    "start": "cd server && npm start"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

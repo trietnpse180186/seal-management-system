@@ -183,6 +183,9 @@ export default function JudgeScoring() {
           const data = res.data;
           if (!data || !Array.isArray(data.devices)) return;
           setLiveData(data);
+          if (data.environment || data.environmentCode) {
+            setEnvironmentCode((prev) => prev || data.environment || data.environmentCode);
+          }
 
           const currentId = data.timestamp || (data.epoch ? String(data.epoch) : '');
           if (currentId && currentId === lastIdentifier) return;
@@ -327,8 +330,14 @@ export default function JudgeScoring() {
         const data = res.data || [];
         setAllAiAnalyses(data);
 
-        const repoReview = data.find((r: any) => r.analysisType === 'repository_review' && r.status === 'completed');
-        const commitReviews = data.filter((r: any) => r.analysisType === 'commit_review' && r.status === 'completed');
+        const repoReview = data.find((r: any) =>
+          (r.analysisType === 'repository_review' || r.analysisType === 'team_aggregate') &&
+          ['completed', 'done', 'approved'].includes(r.status)
+        );
+        const commitReviews = data.filter((r: any) =>
+          (r.analysisType === 'commit_review' || r.analysisType === 'per_push') &&
+          ['completed', 'done', 'approved'].includes(r.status)
+        );
         const questions = repoReview?.result?.suggested_questions_for_team?.length
           ? repoReview.result.suggested_questions_for_team
           : (commitReviews[0]?.result?.suggested_questions_for_team || []);
@@ -494,8 +503,14 @@ export default function JudgeScoring() {
       );
       const data = analysesResponse.data || [];
       setAllAiAnalyses(data);
-      const repoReview = data.find((r: any) => r.analysisType === 'repository_review' && r.status === 'completed');
-      const commitReviews = data.filter((r: any) => r.analysisType === 'commit_review' && r.status === 'completed');
+      const repoReview = data.find((r: any) =>
+        (r.analysisType === 'repository_review' || r.analysisType === 'team_aggregate') &&
+        ['completed', 'done', 'approved'].includes(r.status)
+      );
+      const commitReviews = data.filter((r: any) =>
+        (r.analysisType === 'commit_review' || r.analysisType === 'per_push') &&
+        ['completed', 'done', 'approved'].includes(r.status)
+      );
       const questions = repoReview?.result?.suggested_questions_for_team?.length
         ? repoReview.result.suggested_questions_for_team
         : (commitReviews[0]?.result?.suggested_questions_for_team || []);
@@ -555,29 +570,98 @@ export default function JudgeScoring() {
 
   // Find latest commit review for tech stack / RAG / Agent intelligence cards
   const latestCommitReview = allAiAnalyses.find(
-    r => r.analysisType === 'commit_review' && r.status === 'completed'
+    r => (r.analysisType === 'commit_review' || r.analysisType === 'per_push') &&
+      ['completed', 'done', 'approved'].includes(r.status)
   );
 
-  // Find team aggregate review (repository_review) with fallback
+  // Find team aggregate review (repository_review or team_aggregate) with fallback
   const teamAggregateReview = allAiAnalyses.find(
-    r => r.analysisType === 'repository_review' &&
-      r.status === 'completed' &&
+    r => (r.analysisType === 'repository_review' || r.analysisType === 'team_aggregate') &&
+      ['completed', 'done', 'approved'].includes(r.status) &&
       selectedRoundId &&
       String(r.roundId?._id || r.roundId || '') === String(selectedRoundId)
   ) || allAiAnalyses.find(
-    r => r.analysisType === 'repository_review' &&
-      r.status === 'completed' &&
+    r => (r.analysisType === 'repository_review' || r.analysisType === 'team_aggregate') &&
+      ['completed', 'done', 'approved'].includes(r.status) &&
       !r.roundId
   ) || allAiAnalyses.find(
-    r => r.analysisType === 'repository_review' && r.status === 'completed'
+    r => (r.analysisType === 'repository_review' || r.analysisType === 'team_aggregate') &&
+      ['completed', 'done', 'approved'].includes(r.status)
   );
 
   // Filter commit reviews (per-push reviews)
   const commitReviews = allAiAnalyses.filter(
-    r => r.analysisType === 'commit_review' && r.status === 'completed'
+    r => (r.analysisType === 'commit_review' || r.analysisType === 'per_push') &&
+      ['completed', 'done', 'approved'].includes(r.status)
   );
 
   const hardConstraints = teamAggregateReview?.result?.hard_constraints_validation || latestCommitReview?.result?.hard_constraints_validation;
+
+  // Derive environment code and available scenarios with fallbacks for final round
+  const effectiveEnvironmentCode = useMemo(() => {
+    if (environmentCode) return environmentCode;
+    if (liveData?.environment || liveData?.environmentCode) {
+      return liveData.environment || liveData.environmentCode;
+    }
+    if (team?.environmentCode) return team.environmentCode;
+    if (team?.originalTrackId?.environmentId) {
+      // If we have original track info
+      const trackName = team.originalTrackId.name || '';
+      if (trackName.toLowerCase().includes('nông nghiệp') || trackName.toLowerCase().includes('agri') || trackName.toLowerCase().includes('track a')) return 'AGRI';
+      if (trackName.toLowerCase().includes('smart home') || trackName.toLowerCase().includes('nhà thông minh') || trackName.toLowerCase().includes('track b')) return 'SMART_HOME';
+      if (trackName.toLowerCase().includes('y tế') || trackName.toLowerCase().includes('health') || trackName.toLowerCase().includes('track c')) return 'HEALTH';
+    }
+    if (liveData?.devices && Array.isArray(liveData.devices) && liveData.devices.length > 0) {
+      const devCodes = liveData.devices.map((d: any) => d.deviceCode || '');
+      if (devCodes.some((code: string) => code.startsWith('PH_') || code.startsWith('SOIL_') || code.startsWith('PUMP_') || code.startsWith('SUN_'))) {
+        return 'AGRI';
+      }
+      if (devCodes.some((code: string) => code.startsWith('AC_') || code.startsWith('SENSOR_') || code.startsWith('METER_') || code.startsWith('CO2_'))) {
+        return 'SMART_HOME';
+      }
+      if (devCodes.some((code: string) => code.startsWith('SPO2_') || code.startsWith('ECG_') || code.startsWith('TEMP_') || code.startsWith('HR_'))) {
+        return 'HEALTH';
+      }
+    }
+    return '';
+  }, [environmentCode, liveData, team]);
+
+  const availableScenarios = useMemo(() => {
+    if (!scenariosMap || Object.keys(scenariosMap).length === 0) return [];
+    if (effectiveEnvironmentCode && scenariosMap[effectiveEnvironmentCode]?.length > 0) {
+      return scenariosMap[effectiveEnvironmentCode];
+    }
+    if (effectiveEnvironmentCode) {
+      const matchKey = Object.keys(scenariosMap).find(
+        k => k.toLowerCase() === effectiveEnvironmentCode.toLowerCase()
+      );
+      if (matchKey && scenariosMap[matchKey]?.length > 0) {
+        return scenariosMap[matchKey];
+      }
+    }
+    // Fallback: Check if device-based matching yields options
+    if (liveData?.devices?.length > 0) {
+      const devCodes = liveData.devices.map((d: any) => d.deviceCode || '');
+      if (devCodes.some((c: string) => c.startsWith('PH_') || c.startsWith('SOIL_') || c.startsWith('PUMP_') || c.startsWith('SUN_'))) {
+        const k = Object.keys(scenariosMap).find(key => key.includes('AGRI') || key.includes('01'));
+        if (k && scenariosMap[k]?.length > 0) return scenariosMap[k];
+      }
+      if (devCodes.some((c: string) => c.startsWith('AC_') || c.startsWith('SENSOR_') || c.startsWith('METER_') || c.startsWith('CO2_'))) {
+        const k = Object.keys(scenariosMap).find(key => key.includes('SMART') || key.includes('02'));
+        if (k && scenariosMap[k]?.length > 0) return scenariosMap[k];
+      }
+      if (devCodes.some((c: string) => c.startsWith('SPO2_') || c.startsWith('ECG_') || c.startsWith('TEMP_') || c.startsWith('HR_'))) {
+        const k = Object.keys(scenariosMap).find(key => key.includes('HEALTH') || key.includes('03'));
+        if (k && scenariosMap[k]?.length > 0) return scenariosMap[k];
+      }
+    }
+    // If only 1 environment list in map, return it
+    const allKeys = Object.keys(scenariosMap);
+    if (allKeys.length === 1 && scenariosMap[allKeys[0]]?.length > 0) {
+      return scenariosMap[allKeys[0]];
+    }
+    return [];
+  }, [scenariosMap, effectiveEnvironmentCode, liveData]);
 
   const renderStatusIcon = (status: string) => {
     switch (status) {
@@ -811,18 +895,6 @@ export default function JudgeScoring() {
                       <span className="text-xs text-slate-450 font-bold font-mono">/{averageCalc.averageMax}đ</span>
                     </div>
                   </div>
-                )}
-
-                {!isRoundLocked && rubric && (
-                  <button
-                    type="button"
-                    onClick={handleGetAiSuggestion}
-                    disabled={aiLoading}
-                    className="flex items-center gap-1.5 bg-[#F27024]/5 hover:bg-[#F27024]/10 text-[#F27024] border border-[#F27024]/20 px-5 rounded-xl text-xs font-bold transition-all h-12 cursor-pointer shadow-sm"
-                  >
-                    <Sparkles size={12} className={aiLoading ? 'animate-spin' : 'text-[#F27024]'} />
-                    <span>{aiLoading ? 'Agent 2 đang phân tích...' : 'Lấy gợi ý từ AI'}</span>
-                  </button>
                 )}
               </div>
             </div>
@@ -1988,9 +2060,9 @@ export default function JudgeScoring() {
               <div>
                 <h3 className="text-base font-bold text-slate-800 uppercase tracking-normal flex items-center gap-2 flex-wrap">
                   <span>SỐ LIỆU LIVE — {team.name} ({team.externalTeamCode || "Chưa sync"})</span>
-                  {environmentCode && (
+                  {effectiveEnvironmentCode && (
                     <span className="rounded-lg bg-orange-100 border border-orange-200 px-2.5 py-0.5 text-xs font-bold text-[#F27024] font-mono">
-                      ENV: {environmentCode}
+                      ENV: {effectiveEnvironmentCode}
                     </span>
                   )}
                 </h3>
@@ -2015,9 +2087,9 @@ export default function JudgeScoring() {
                 <span className="text-xs font-bold text-slate-600">BỘ DATA:</span>
                 <CustomSelect
                   value={currentScenario}
-                  disabled={changingScenario || !(scenariosMap[environmentCode] && scenariosMap[environmentCode].length > 0)}
+                  disabled={changingScenario || availableScenarios.length === 0}
                   onChange={handleChangeScenario}
-                  options={(scenariosMap[environmentCode] || []).map((s) => ({
+                  options={availableScenarios.map((s) => ({
                     value: s.code,
                     label: s.name
                   }))}

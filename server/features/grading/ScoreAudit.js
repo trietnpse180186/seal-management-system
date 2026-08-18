@@ -10,7 +10,7 @@ const ScoreAuditSchema = new Schema({
   actorRole: { type: String },
   action: {
     type: String,
-    enum: ['submit_score', 'regrade_score', 'blocked_regrade'],
+    enum: ['submit_score', 'regrade_score', 'blocked_regrade', 'bulk_import', 'bulk_update'],
     required: true,
   },
   summary: { type: String },

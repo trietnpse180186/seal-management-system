@@ -229,41 +229,96 @@ router.post('/n8n-callback', async (req, res) => {
     return res.status(401).json({ message: 'Unauthorized callback. Invalid X-API-Key.' });
   }
 
-  const { analysisId, repositoryId, teamId, commitId, analysisType, result, status, provider, model } = req.body;
+  let { analysisId, repositoryId, teamId, commitId, commitSha, commit_sha, analysisType, review_kind, result, structured_output, output, status, provider, model } = req.body;
 
-  if (!repositoryId || !teamId || !analysisType || !result) {
-    return res.status(400).json({ message: 'Missing required fields: repositoryId, teamId, analysisType, result.' });
+  // Map review_kind to standard analysisType
+  let mappedType = analysisType || review_kind;
+  if (mappedType === 'team_aggregate' || mappedType === 'aggregate_review') {
+    mappedType = 'repository_review';
+  } else if (mappedType === 'per_push' || mappedType === 'commit') {
+    mappedType = 'commit_review';
+  }
+
+  const rawResult = result || structured_output || output || req.body.json || req.body.data;
+
+  if (!mappedType || !rawResult) {
+    return res.status(400).json({ message: 'Missing required fields: analysisType (or review_kind), result (or structured_output).' });
   }
 
   try {
-    const parsedResult = parseAiResult(result);
+    const parsedResult = parseAiResult(rawResult);
+
+    // Resolve teamId if externalTeamCode or name is provided
+    let resolvedTeamId = teamId || req.body.team_id || req.body.teamCode;
+    if (resolvedTeamId && !mongoose.Types.ObjectId.isValid(resolvedTeamId)) {
+      const foundTeam = await Team.findOne({
+        $or: [
+          { externalTeamCode: resolvedTeamId },
+          { name: new RegExp(`^${resolvedTeamId}$`, 'i') },
+          { code: resolvedTeamId }
+        ]
+      });
+      if (foundTeam) resolvedTeamId = foundTeam._id;
+    }
+
+    // Resolve repositoryId if repoName is provided or lookup by teamId
+    let resolvedRepoId = repositoryId || req.body.repository_id || req.body.repoName;
+    if (resolvedRepoId && !mongoose.Types.ObjectId.isValid(resolvedRepoId)) {
+      const foundRepo = await GithubRepository.findOne({
+        $or: [
+          { repoName: resolvedRepoId },
+          { teamId: resolvedTeamId }
+        ]
+      });
+      if (foundRepo) resolvedRepoId = foundRepo._id;
+    } else if (!resolvedRepoId && resolvedTeamId) {
+      const foundRepo = await GithubRepository.findOne({ teamId: resolvedTeamId });
+      if (foundRepo) resolvedRepoId = foundRepo._id;
+    }
+
+    // Resolve commitId if commitSha is provided
+    const targetSha = commitSha || commit_sha;
+    let resolvedCommitId = commitId || req.body.commit_id;
+    if (!resolvedCommitId && targetSha && resolvedTeamId) {
+      const foundCommit = await Commit.findOne({ teamId: resolvedTeamId, commitSha: targetSha });
+      if (foundCommit) resolvedCommitId = foundCommit._id;
+    }
+
+    // Normalize status
+    let normalizedStatus = status || 'completed';
+    if (normalizedStatus === 'done' || normalizedStatus === 'success') normalizedStatus = 'completed';
+
     let aiAnalysis;
     if (analysisId) {
       aiAnalysis = await AiAnalysis.findById(analysisId);
     }
 
-    if (!aiAnalysis && commitId) {
-      aiAnalysis = await AiAnalysis.findOne({ commitId, analysisType });
+    if (!aiAnalysis && resolvedCommitId && mappedType === 'commit_review') {
+      aiAnalysis = await AiAnalysis.findOne({ commitId: resolvedCommitId, analysisType: mappedType });
+    }
+
+    if (!aiAnalysis && resolvedTeamId && mappedType === 'repository_review') {
+      aiAnalysis = await AiAnalysis.findOne({ teamId: resolvedTeamId, analysisType: mappedType }).sort({ createdAt: -1 });
     }
 
     if (aiAnalysis) {
       aiAnalysis.result = parsedResult;
-      aiAnalysis.status = status || 'completed';
+      aiAnalysis.status = normalizedStatus;
       if (provider) aiAnalysis.provider = provider;
       if (model) aiAnalysis.model = model;
       aiAnalysis.completedAt = new Date();
       await aiAnalysis.save();
       console.log(`[N8N CALLBACK] Updated existing AiAnalysis record: ${aiAnalysis._id}`);
-    } else {
+    } else if (resolvedRepoId && resolvedTeamId) {
       aiAnalysis = new AiAnalysis({
-        repositoryId,
-        teamId,
-        commitId,
-        analysisType,
+        repositoryId: resolvedRepoId,
+        teamId: resolvedTeamId,
+        commitId: resolvedCommitId,
+        analysisType: mappedType,
         provider: provider || 'n8n-gemini',
         model: model || 'n8n-workflow',
         result: parsedResult,
-        status: status || 'completed',
+        status: normalizedStatus,
         completedAt: new Date()
       });
       await aiAnalysis.save();
@@ -271,9 +326,8 @@ router.post('/n8n-callback', async (req, res) => {
     }
 
     // If it's a commit review, update the commit message diff summary
-    if (analysisType === 'commit_review' && commitId) {
-      const Commit = mongoose.model('Commit');
-      const commit = await Commit.findById(commitId);
+    if (mappedType === 'commit_review' && resolvedCommitId) {
+      const commit = await Commit.findById(resolvedCommitId);
       if (commit) {
         commit.diffSummary = parsedResult.overall_picture?.push_summary || parsedResult.summary || '';
         await commit.save();

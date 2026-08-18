@@ -8,11 +8,13 @@ import {
   RefreshCw,
   Radio,
   Download,
+  Upload,
   Trophy,
   Check,
 } from "lucide-react";
 import CustomSelect from "../shared/CustomSelect";
 import TeamDetailDrawer from "./TeamDetailDrawer";
+import BulkImportScoresModal from "../grading/BulkImportScoresModal";
 import { toast } from "sonner";
 import { useConfirm } from "../shared/ConfirmDialog";
 
@@ -125,6 +127,7 @@ export default function Leaderboard({
 
   const [exportingCert, setExportingCert] = useState(false);
   const [sendingEmailCert, setSendingEmailCert] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const handleExportCertZip = async () => {
     if (!selectedEventId) return;
@@ -520,16 +523,29 @@ export default function Leaderboard({
               )}
 
               {isCoordinator && (
-                <button
-                  onClick={() => handleExportGradingSheet(false)}
-                  disabled={exporting}
-                  className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Download size={12} className="text-cyan-400" />
-                  <span>
-                    {exporting ? "Đang xuất..." : "Xuất Điểm Tổng Hợp"}
-                  </span>
-                </button>
+                <>
+                  {activeTrackId && (
+                    <button
+                      onClick={() => setIsImportModalOpen(true)}
+                      className="flex items-center gap-1.5 bg-[#F27024] hover:bg-[#d95d16] text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-[0.98] cursor-pointer"
+                      title="Import điểm cho toàn bộ đội trong bảng đấu"
+                    >
+                      <Upload size={12} className="text-white" />
+                      <span>Import Điểm Bảng</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => handleExportGradingSheet(false)}
+                    disabled={exporting}
+                    className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Download size={12} className="text-cyan-400" />
+                    <span>
+                      {exporting ? "Đang xuất..." : "Xuất Điểm Tổng Hợp"}
+                    </span>
+                  </button>
+                </>
               )}
               {isFinalRound && standings.length > 0 && isAssistant && (
                 <>
@@ -954,6 +970,21 @@ export default function Leaderboard({
           isCoordinator={isCoordinator}
           isJudge={isJudge}
           onClose={() => setSelectedTeamForDrawer(null)}
+        />
+      )}
+
+      {/* Bulk Import Scores Modal */}
+      {isImportModalOpen && selectedRoundId && activeTrackId && (
+        <BulkImportScoresModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          roundId={selectedRoundId}
+          roundName={selectedRound?.name || ''}
+          trackId={activeTrackId}
+          trackName={standingsByTrack.find((g: any) => g.trackId === activeTrackId)?.trackName || ''}
+          onSuccess={() => {
+            fetchRankings();
+          }}
         />
       )}
     </div>

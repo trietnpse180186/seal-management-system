@@ -10,9 +10,12 @@ import {
   RefreshCw,
   ExternalLink,
   MessageSquare,
-  Download
+  Download,
+  Upload
 } from 'lucide-react';
+import { toast } from 'sonner';
 import CustomSelect from '../shared/CustomSelect';
+import BulkImportScoresModal from '../grading/BulkImportScoresModal';
 
 interface AdminGradesViewProps {
   user?: any;
@@ -31,6 +34,8 @@ export default function AdminGradesView({ user, roles = [] }: AdminGradesViewPro
   const [selectedTrackId, setSelectedTrackId] = useState('');
   const [exportingSummary, setExportingSummary] = useState(false);
   const [exportingJudge, setExportingJudge] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [downloadingBulkTemplate, setDownloadingBulkTemplate] = useState(false);
 
   // Compute active round document based on selectedRoundName
   const selectedRound = rounds.find((r: any) => r.name === selectedRoundName) || null;
@@ -323,6 +328,45 @@ export default function AdminGradesView({ user, roles = [] }: AdminGradesViewPro
     }
   };
 
+  const handleDownloadBulkTemplate = async () => {
+    if (!selectedRoundId || !selectedTrackId) {
+      toast.error('Vui lòng chọn Vòng thi và Bảng đấu để tải form mẫu chấm điểm.');
+      return;
+    }
+    const currentTrack = tracks.find((t: any) => t._id === selectedTrackId);
+    setDownloadingBulkTemplate(true);
+    try {
+      const response = await axios.get(
+        `http://localhost:5000/api/grades/track/${selectedTrackId}/round/${selectedRoundId}/import-template`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: 'blob'
+        }
+      );
+      const cleanTrackName = (currentTrack?.name || 'Track').replace(/[^a-zA-Z0-9_\-\u00C0-\u024F\u1EA0-\u1EF9]/g, '_');
+      const cleanRoundName = (selectedRoundName || 'Round').replace(/[^a-zA-Z0-9_\-\u00C0-\u024F\u1EA0-\u1EF9]/g, '_');
+      const filename = `Form_Cham_Diem_${cleanTrackName}_${cleanRoundName}.xlsx`;
+
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Đã tải về form mẫu chấm điểm của bảng thành công!');
+    } catch (err: any) {
+      console.error('Download bulk template error:', err);
+      toast.error(err.response?.data?.message || 'Lỗi khi tải form mẫu chấm điểm.');
+    } finally {
+      setDownloadingBulkTemplate(false);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6 animate-fadeIn">
       {/* Header */}
@@ -336,13 +380,35 @@ export default function AdminGradesView({ user, roles = [] }: AdminGradesViewPro
           </p>
         </div>
 
-        {/* Export Buttons */}
+        {/* Action & Export Buttons */}
         {!isAssistant && (
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2.5 items-center">
+            {/* Download Template Button */}
+            <button
+              onClick={handleDownloadBulkTemplate}
+              disabled={!selectedRoundId || !selectedTrackId || downloadingBulkTemplate}
+              className="text-xs font-bold px-3.5 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 bg-orange-950/40 hover:bg-orange-950/70 border border-[#F27024]/30 shadow-md disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              title="Tải file Excel mẫu chấm điểm cho toàn bộ đội và toàn bộ giám khảo trong bảng đấu"
+            >
+              <Download size={14} className="text-[#F27024]" />
+              <span>{downloadingBulkTemplate ? "Đang tạo..." : "Tải Form Mẫu Bảng"}</span>
+            </button>
+
+            {/* Import Scores Button */}
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              disabled={!selectedRoundId || !selectedTrackId}
+              className="text-xs font-bold px-3.5 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 bg-[#F27024] hover:bg-[#d95d16] border border-[#F27024] shadow-md disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-[0.98]"
+              title="Import điểm hàng loạt từ file Excel"
+            >
+              <Upload size={14} className="text-white" />
+              <span>Import Điểm Bảng</span>
+            </button>
+
             <button
               onClick={() => handleExportGradingSheet(false)}
               disabled={!selectedRoundId || exportingSummary}
-              className="text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 cursor-pointer border border-slate-700/80 shadow-md disabled:opacity-50 disabled:cursor-not-allowed btn-import-export"
+              className="text-xs font-bold px-3.5 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 cursor-pointer border border-slate-700/80 shadow-md disabled:opacity-40 disabled:cursor-not-allowed btn-import-export"
             >
               <Download size={14} className="text-cyan-400" />
               <span>{exportingSummary ? "Đang xuất..." : "Xuất Điểm Tổng Hợp"}</span>
@@ -351,10 +417,10 @@ export default function AdminGradesView({ user, roles = [] }: AdminGradesViewPro
             <button
               onClick={() => handleExportGradingSheet(true)}
               disabled={!selectedRoundId || exportingJudge || !gradingsData?.gradings?.length}
-              className="text-xs font-bold px-4 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 bg-cyan-950/40 hover:bg-cyan-950/60 cursor-pointer border border-cyan-500/25 shadow-md disabled:opacity-50 disabled:cursor-not-allowed btn-import-export"
+              className="text-xs font-bold px-3.5 py-2 rounded-xl text-white font-mono transition-all flex items-center justify-center gap-1.5 bg-cyan-950/40 hover:bg-cyan-950/60 cursor-pointer border border-cyan-500/25 shadow-md disabled:opacity-40 disabled:cursor-not-allowed btn-import-export"
             >
               <Download size={14} className="text-cyan-400" />
-              <span>{exportingJudge ? "Đang xuất..." : "Xuất Phiếu Điểm Giám Khảo"}</span>
+              <span>{exportingJudge ? "Đang xuất..." : "Xuất Phiếu Điểm GK"}</span>
             </button>
           </div>
         )}
@@ -645,8 +711,27 @@ export default function AdminGradesView({ user, roles = [] }: AdminGradesViewPro
             </div>
           )}
         </div>
-
       </div>
+
+      {/* Bulk Import Scores Modal */}
+      {isImportModalOpen && selectedRoundId && selectedTrackId && (
+        <BulkImportScoresModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          roundId={selectedRoundId}
+          roundName={selectedRoundName}
+          trackId={selectedTrackId}
+          trackName={tracks.find((t: any) => t._id === selectedTrackId)?.name || ''}
+          onSuccess={() => {
+            // Refresh current team grading or team list
+            if (selectedTeamId && selectedRoundId) {
+              // Trigger reload
+              setSelectedTeamId((prev) => prev);
+            }
+          }}
+        />
+      )}
+
     </div>
   );
 }

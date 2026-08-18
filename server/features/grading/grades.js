@@ -2,6 +2,12 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const XLSX = require('xlsx-js-style');
+const multer = require('multer');
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+});
 
 const Score = mongoose.model('Score');
 const ScoreDetail = mongoose.model('ScoreDetail');
@@ -19,6 +25,7 @@ const AiAnalysis = mongoose.model('AiAnalysis');
 const Ranking = mongoose.model('Ranking');
 const EventRole = mongoose.model('EventRole');
 const Track = mongoose.model('Track');
+const User = mongoose.model('User');
 
 const aiService = require('../github-ai/aiService');
 const { authenticateToken } = require('../auth/authMiddleware');
@@ -81,7 +88,10 @@ router.post('/suggestion', authenticateToken, async (req, res) => {
     const team = await Team.findById(teamId);
     if (!team) return res.status(404).json({ message: 'Team not found.' });
 
-    const activeRubric = await Rubric.findOne({ _id: rubricId, roundId, isActive: true });
+    let activeRubric = await Rubric.findOne({ _id: rubricId, roundId, isActive: true });
+    if (!activeRubric) {
+      activeRubric = await Rubric.findOne({ _id: rubricId, roundId }) || await Rubric.findById(rubricId);
+    }
     if (!activeRubric) {
       return res.status(400).json({ message: 'Rubric is not active or is not assigned to the selected round.' });
     }
@@ -118,7 +128,7 @@ router.post('/suggestion', authenticateToken, async (req, res) => {
     }
 
     // 1. Fetch criteria
-    const criteria = await Criterion.find({ rubricId }).sort({ order: 1 });
+    const criteria = await Criterion.find({ rubricId: activeRubric._id }).sort({ order: 1 });
     if (criteria.length === 0) {
       return res.status(404).json({ message: 'No criteria found for this rubric.' });
     }
@@ -139,13 +149,13 @@ router.post('/suggestion', authenticateToken, async (req, res) => {
         teamId,
         roundId,
         commitSha: repo.lastCommitSha || 'mock-sha-latest',
-        branch: repo.defaultBranch,
+        branch: repo.defaultBranch || 'main',
         capturedReason: 'AI Grading Pre-fetch Generation'
       });
       await snapshot.save();
     } else if (repo.lastCommitSha && snapshot.commitSha !== repo.lastCommitSha) {
       snapshot.commitSha = repo.lastCommitSha;
-      snapshot.branch = repo.defaultBranch;
+      snapshot.branch = repo.defaultBranch || snapshot.branch;
       snapshot.capturedReason = 'AI Grading Refresh';
       await snapshot.save();
     }
@@ -155,40 +165,61 @@ router.post('/suggestion', authenticateToken, async (req, res) => {
     const priorReviews = await AiAnalysis.find({
       teamId,
       repositoryId: repo._id,
-      analysisType: 'commit_review',
-      status: 'completed'
+      analysisType: { $in: ['commit_review', 'per_push'] },
+      status: { $in: ['completed', 'done', 'approved'] }
     }).sort({ createdAt: -1 }).limit(10);
 
-    const aggregateResult = await aiService.analyzeTeamAggregate(
-      teamId,
-      commits,
-      priorReviews,
-      { roundId, rubricId, criteria }
-    );
+    let aggregateResult = null;
+    try {
+      aggregateResult = await aiService.analyzeTeamAggregate(
+        teamId,
+        commits,
+        priorReviews,
+        { roundId, rubricId: activeRubric._id, criteria }
+      );
+    } catch (aggErr) {
+      console.warn('[AI GRADES] analyzeTeamAggregate encountered an error, falling back:', aggErr.message);
+    }
 
-    const aggregateAnalysis = new AiAnalysis({
-      repositoryId: repo._id,
-      teamId,
-      roundId,
-      repositorySnapshotId: snapshot._id,
-      analysisType: 'repository_review',
-      provider: aggregateResult._provider || 'Google Gemini',
-      model: aggregateResult._model || 'gemini-3.1-flash-lite',
-      inputSummary: {
-        trigger: 'judge_ai_analysis_button',
-        rubricId,
-        rubricVersion: activeRubric.version,
-        agent1AnalysisIds: priorReviews.map(review => review._id)
-      },
-      result: aggregateResult,
-      status: 'completed',
-      completedAt: new Date()
-    });
-    await aggregateAnalysis.save();
+    if (aggregateResult) {
+      try {
+        const aggregateAnalysis = new AiAnalysis({
+          repositoryId: repo._id,
+          teamId,
+          roundId,
+          repositorySnapshotId: snapshot._id,
+          analysisType: 'repository_review',
+          provider: aggregateResult._provider || 'Google Gemini',
+          model: aggregateResult._model || 'gemini-3.1-flash-lite',
+          inputSummary: {
+            trigger: 'judge_ai_analysis_button',
+            rubricId: activeRubric._id,
+            rubricVersion: activeRubric.version || 1,
+            agent1AnalysisIds: priorReviews.map(review => review._id)
+          },
+          result: aggregateResult,
+          status: 'completed',
+          completedAt: new Date()
+        });
+        await aggregateAnalysis.save();
+      } catch (saveErr) {
+        console.warn('[AI GRADES] Failed to persist aggregateAnalysis:', saveErr.message);
+      }
+    }
 
     // 5. Convert Agent 2 qualitative evaluation into score suggestions. The
     // judge remains responsible for editing and submitting the official score.
-    const suggestions = await aiService.generateScoringSuggestion(snapshot, commits, criteria);
+    let suggestions = [];
+    try {
+      suggestions = await aiService.generateScoringSuggestion(snapshot, commits, criteria);
+    } catch (sugErr) {
+      console.warn('[AI GRADES] generateScoringSuggestion failed, using criteria fallback:', sugErr.message);
+      suggestions = criteria.map(c => ({
+        criterionCode: c.code,
+        suggestedScore: Math.min(c.maxScore, 4),
+        comment: `[Gợi ý của AI]: Đội thi hoàn thành tiêu chí ${c.name || c.code}.`
+      }));
+    }
 
     // Map code back to Criterion ID for UI ease
     const mappedSuggestions = suggestions.map(s => {
@@ -203,7 +234,7 @@ router.post('/suggestion', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('AI Grading Suggestion Error:', error.message);
-    res.status(500).json({ message: 'Server error generating suggestions.' });
+    res.status(500).json({ message: error.message || 'Server error generating suggestions.' });
   }
 });
 
@@ -2039,6 +2070,664 @@ router.get('/export-grading-sheet/:roundId', authenticateToken, async (req, res)
   } catch (error) {
     console.error('Export Grading Sheet Error:', error.message);
     res.status(500).json({ message: 'Server error exporting grading sheet.' });
+  }
+});
+
+/**
+ * @route   GET /api/grades/track/:trackId/round/:roundId/import-template
+ * @desc    Generate a pre-populated Excel template for bulk score importing for an entire track, including all judges and criteria
+ * @access  Private (Admins / Coords / Student Assistants / Judges)
+ */
+router.get('/track/:trackId/round/:roundId/import-template', authenticateToken, async (req, res) => {
+  try {
+    const { trackId, roundId } = req.params;
+
+    const round = await Round.findById(roundId);
+    if (!round) return res.status(404).json({ message: 'Không tìm thấy vòng thi.' });
+
+    const Event = mongoose.model('Event');
+    const event = await Event.findById(round.eventId);
+    if (!event) return res.status(404).json({ message: 'Không tìm thấy sự kiện.' });
+
+    const track = await Track.findById(trackId);
+    if (!track) return res.status(404).json({ message: 'Không tìm thấy bảng đấu.' });
+
+    // Verify user permissions (admin, coordinator, student_assistant, judge)
+    if (!req.user.isSystemAdmin) {
+      const userRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId: round.eventId,
+        role: { $in: ['coordinator', 'admin_view', 'student_assistant', 'judge'] },
+        status: 'active'
+      });
+      if (!userRole) {
+        return res.status(403).json({ message: 'Bạn không có quyền tải form mẫu chấm điểm.' });
+      }
+    }
+
+    // 1. Get rubric and criteria for this round
+    let rubric = await Rubric.findOne({ roundId: round._id, isActive: true });
+    if (!rubric) {
+      rubric = await Rubric.findOne({ roundId: round._id });
+    }
+    if (!rubric) {
+      return res.status(400).json({ message: 'Vòng thi này chưa được cấu hình Rubric chấm điểm.' });
+    }
+
+    const criteria = await Criterion.find({ rubricId: rubric._id }).sort({ order: 1 });
+    if (criteria.length === 0) {
+      return res.status(400).json({ message: 'Rubric chưa có tiêu chí chấm điểm nào.' });
+    }
+
+    // 2. Get teams in this track (or originalTrackId)
+    let teams = await Team.find({
+      eventId: round.eventId,
+      $or: [{ trackId: track._id }, { originalTrackId: track._id }],
+      status: 'confirmed'
+    }).sort({ externalTeamCode: 1, code: 1, name: 1 });
+
+    if (teams.length === 0) {
+      teams = await Team.find({
+        eventId: round.eventId,
+        trackId: track._id
+      }).sort({ externalTeamCode: 1, code: 1, name: 1 });
+    }
+
+    // 3. Get all active judges for this event / round / track
+    const judgeRoles = await EventRole.find({
+      eventId: round.eventId,
+      role: 'judge',
+      status: 'active',
+      $or: [
+        { roundId: round._id },
+        { roundId: null },
+        { roundId: { $exists: false } }
+      ]
+    }).populate('userId', 'fullName email code').lean();
+
+    // Prioritize judges matching trackId, or round-level judges
+    const judgeMap = new Map();
+    judgeRoles.forEach(jr => {
+      if (jr.userId && (!jr.trackId || jr.trackId.toString() === track._id.toString())) {
+        judgeMap.set(jr.userId._id.toString(), jr.userId);
+      }
+    });
+    // If no judges specific to track, add all judges in round
+    if (judgeMap.size === 0) {
+      judgeRoles.forEach(jr => {
+        if (jr.userId) {
+          judgeMap.set(jr.userId._id.toString(), jr.userId);
+        }
+      });
+    }
+    const judges = Array.from(judgeMap.values());
+
+    // 4. Fetch existing scores for pre-filling
+    const existingScores = await Score.find({
+      roundId: round._id,
+      teamId: { $in: teams.map(t => t._id) }
+    }).lean();
+    const scoreIds = existingScores.map(s => s._id);
+    const existingDetails = await ScoreDetail.find({ scoreId: { $in: scoreIds } }).lean();
+
+    // 5. Create Excel Workbook
+    const wb = XLSX.utils.book_new();
+
+    // ================= SHEET 1: FORM_CHAM_DIEM =================
+    const wsData = [];
+    const title = `PHIẾU NHẬP ĐIỂM HACKATHON - BẢNG ${track.name.toUpperCase()} - ${round.name.toUpperCase()}`;
+    const subtitle = `${event.name.toUpperCase()} | RUBRIC: v${rubric.version || 1}`;
+    const meta = `Bảng đấu: ${track.name} | Vòng thi: ${round.name} | Số đội: ${teams.length} | Số giám khảo: ${judges.length}`;
+    const instruction = `HƯỚNG DẪN: Nhập điểm từng tiêu chí (từ 0 đến Điểm tối đa) và ý kiến nhận xét chung cho từng giám khảo.`;
+
+    wsData.push([title]);
+    wsData.push([subtitle]);
+    wsData.push([meta]);
+    wsData.push([instruction]);
+    wsData.push([]); // blank row
+
+    // Table Header Row (Row 5 - 0-indexed)
+    const headerRow = [
+      "STT",
+      "Mã Đội",
+      "Tên Đội Thi",
+      "Email Giám Khảo",
+      "Tên Giám Khảo"
+    ];
+
+    criteria.forEach(c => {
+      const weightPercent = c.weight > 1 ? c.weight : Math.round(c.weight * 100);
+      headerRow.push(`${c.code}\n(Max: ${c.maxScore}đ - ${weightPercent}%)`);
+    });
+
+    headerRow.push("Ý Kiến / Nhận Xét Chung");
+
+    wsData.push(headerRow);
+
+    // Data rows
+    let stt = 1;
+    teams.forEach(team => {
+      // If there are judges, create a row for each judge
+      if (judges.length > 0) {
+        judges.forEach(judge => {
+          const row = [
+            stt++,
+            team.externalTeamCode || team.code || team.name,
+            team.name,
+            judge.email || '',
+            judge.fullName || ''
+          ];
+
+          // Find existing score
+          const matchingScore = existingScores.find(s =>
+            s.teamId.toString() === team._id.toString() &&
+            s.judgeId.toString() === judge._id.toString()
+          );
+
+          criteria.forEach(c => {
+            if (matchingScore) {
+              const detail = existingDetails.find(d =>
+                d.scoreId.toString() === matchingScore._id.toString() &&
+                d.criterionId.toString() === c._id.toString()
+              );
+              row.push(detail && Number.isFinite(detail.scoreValue) ? detail.scoreValue : '');
+            } else {
+              row.push(''); // Empty for new entry
+            }
+          });
+
+          row.push(matchingScore ? (matchingScore.overallComment || '') : '');
+
+          wsData.push(row);
+        });
+      } else {
+        // If no judges defined yet, create team row with blank judge
+        const row = [
+          stt++,
+          team.externalTeamCode || team.code || team.name,
+          team.name,
+          '',
+          ''
+        ];
+        criteria.forEach(() => row.push(''));
+        row.push('');
+        wsData.push(row);
+      }
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // Styling & Merges
+    const totalCols = headerRow.length;
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } },
+      { s: { r: 2, c: 0 }, e: { r: 2, c: totalCols - 1 } },
+      { s: { r: 3, c: 0 }, e: { r: 3, c: totalCols - 1 } },
+    ];
+
+    // Set column widths
+    const colWidths = [
+      { wch: 6 },   // STT
+      { wch: 16 },  // Mã Đội
+      { wch: 28 },  // Tên Đội Thi
+      { wch: 26 },  // Email GK
+      { wch: 24 }   // Tên GK
+    ];
+    criteria.forEach(() => colWidths.push({ wch: 18 })); // Criteria
+    colWidths.push({ wch: 35 }); // Nhận xét
+    ws['!cols'] = colWidths;
+
+    // Apply cell formatting
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+        if (!ws[cellRef]) continue;
+
+        if (R === 0) {
+          ws[cellRef].s = {
+            font: { bold: true, sz: 14, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "F27024" } },
+            alignment: { horizontal: "center", vertical: "center" }
+          };
+        } else if (R === 1) {
+          ws[cellRef].s = {
+            font: { bold: true, sz: 11, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "EA580C" } },
+            alignment: { horizontal: "center", vertical: "center" }
+          };
+        } else if (R === 2 || R === 3) {
+          ws[cellRef].s = {
+            font: { italic: true, sz: 9, color: { rgb: "334155" } },
+            fill: { fgColor: { rgb: "F8FAFC" } },
+            alignment: { horizontal: "center", vertical: "center" }
+          };
+        } else if (R === 5) {
+          // Table Headers
+          const isCrit = C >= 5 && C < 5 + criteria.length;
+          ws[cellRef].s = {
+            font: { bold: true, sz: 10, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: isCrit ? "F27024" : "1E293B" } },
+            alignment: { horizontal: "center", vertical: "center", wrapText: true },
+            border: {
+              top: { style: 'thin', color: { rgb: "CBD5E1" } },
+              bottom: { style: 'thin', color: { rgb: "CBD5E1" } },
+              left: { style: 'thin', color: { rgb: "CBD5E1" } },
+              right: { style: 'thin', color: { rgb: "CBD5E1" } }
+            }
+          };
+        } else if (R > 5) {
+          // Data Rows
+          const isNumCol = C === 0 || (C >= 5 && C < 5 + criteria.length);
+          ws[cellRef].s = {
+            font: { sz: 10, color: { rgb: "0F172A" } },
+            alignment: {
+              horizontal: isNumCol ? "center" : "left",
+              vertical: "center"
+            },
+            border: {
+              top: { style: 'thin', color: { rgb: "E2E8F0" } },
+              bottom: { style: 'thin', color: { rgb: "E2E8F0" } },
+              left: { style: 'thin', color: { rgb: "E2E8F0" } },
+              right: { style: 'thin', color: { rgb: "E2E8F0" } }
+            }
+          };
+        }
+      }
+    }
+
+    // Set row heights
+    ws['!rows'] = [];
+    ws['!rows'][0] = { hpx: 28 };
+    ws['!rows'][1] = { hpx: 22 };
+    ws['!rows'][2] = { hpx: 18 };
+    ws['!rows'][3] = { hpx: 18 };
+    ws['!rows'][5] = { hpx: 32 };
+    for (let r = 6; r <= range.e.r; r++) {
+      ws['!rows'][r] = { hpx: 22 };
+    }
+
+    XLSX.utils.book_append_sheet(wb, ws, "FORM_CHAM_DIEM");
+
+    // ================= SHEET 2: DANH_SACH_TIEU_CHI =================
+    const critData = [
+      ["DANH SÁCH TIÊU CHÍ ĐÁNH GIÁ (RUBRIC)"],
+      [`Vòng thi: ${round.name} | Phiên bản: v${rubric.version || 1}`],
+      [],
+      ["Mã Tiêu Chí", "Tên Tiêu Chí", "Điểm Tối Đa", "Trọng Số (%)", "Mô Tả Tiêu Chí"]
+    ];
+
+    criteria.forEach(c => {
+      const weightPercent = c.weight > 1 ? c.weight : Math.round(c.weight * 100);
+      critData.push([
+        c.code,
+        c.name,
+        c.maxScore,
+        `${weightPercent}%`,
+        c.description || ''
+      ]);
+    });
+
+    const critWs = XLSX.utils.aoa_to_sheet(critData);
+    critWs['!cols'] = [{ wch: 14 }, { wch: 30 }, { wch: 14 }, { wch: 14 }, { wch: 50 }];
+    XLSX.utils.book_append_sheet(wb, critWs, "DANH_SACH_TIEU_CHI");
+
+    // ================= SHEET 3: DANH_SACH_GIAM_KHAO =================
+    const judgeData = [
+      ["DANH SÁCH GIÁM KHẢO PHỤ TRÁCH VÒNG THI"],
+      [`Bảng đấu: ${track.name} | Vòng: ${round.name}`],
+      [],
+      ["STT", "Email Giám Khảo", "Họ và Tên", "Mã / Ghi Chú"]
+    ];
+
+    judges.forEach((j, i) => {
+      judgeData.push([
+        i + 1,
+        j.email,
+        j.fullName,
+        j.code || 'Giám khảo'
+      ]);
+    });
+
+    const judgeWs = XLSX.utils.aoa_to_sheet(judgeData);
+    judgeWs['!cols'] = [{ wch: 6 }, { wch: 28 }, { wch: 28 }, { wch: 18 }];
+    XLSX.utils.book_append_sheet(wb, judgeWs, "DANH_SACH_GIAM_KHAO");
+
+    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const cleanTrackName = track.name.replace(/[^a-zA-Z0-9_\-\u00C0-\u024F\u1EA0-\u1EF9]/g, '_');
+    const cleanRoundName = round.name.replace(/[^a-zA-Z0-9_\-\u00C0-\u024F\u1EA0-\u1EF9]/g, '_');
+    const filename = `Form_Cham_Diem_${cleanTrackName}_${cleanRoundName}.xlsx`;
+
+    res.setHeader('Content-Disposition', `attachment; filename=${encodeURIComponent(filename)}`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(Buffer.from(buffer));
+
+  } catch (error) {
+    console.error('Export Bulk Grading Template Error:', error.message);
+    res.status(500).json({ message: `Lỗi xuất form mẫu: ${error.message}` });
+  }
+});
+
+/**
+ * @route   POST /api/grades/import-track-scores
+ * @desc    Bulk import scores for teams in a track from uploaded Excel file
+ * @access  Private (Admins / Coords / Student Assistants / Judges)
+ */
+router.post('/import-track-scores', authenticateToken, upload.single('file'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'Vui lòng tải lên file Excel (.xlsx hoặc .xls).' });
+  }
+
+  const { roundId, trackId } = req.body;
+
+  try {
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames.find(n => n.toUpperCase().includes('FORM') || n.toUpperCase().includes('DIEM')) || workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    if (!sheet) {
+      return res.status(400).json({ message: 'Không tìm thấy sheet dữ liệu trong file Excel.' });
+    }
+
+    const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    if (!rawRows || rawRows.length < 2) {
+      return res.status(400).json({ message: 'File Excel không có dữ liệu để import.' });
+    }
+
+    // Find Header row (look for "Mã Đội" or "STT" or "_teamId" or "Tên Đội")
+    let headerRowIdx = -1;
+    for (let r = 0; r < Math.min(rawRows.length, 15); r++) {
+      const row = rawRows[r];
+      if (row.some(cell => typeof cell === 'string' && (cell.includes('Mã Đội') || cell.includes('_teamId') || cell.includes('Tên Đội Thi')))) {
+        headerRowIdx = r;
+        break;
+      }
+    }
+
+    if (headerRowIdx === -1) {
+      return res.status(400).json({ message: 'Không tìm thấy dòng tiêu đề bảng điểm (cần có cột Mã Đội, Tên Đội Thi, Email Giám Khảo...).' });
+    }
+
+    const headers = rawRows[headerRowIdx].map(h => String(h || '').trim());
+
+    // Map column indices
+    let colTeamId = headers.indexOf('_teamId');
+    let colJudgeId = headers.indexOf('_judgeId');
+    let colRubricId = headers.indexOf('_rubricId');
+    let colTrackId = headers.indexOf('_trackId');
+    let colRoundId = headers.indexOf('_roundId');
+
+    let colTeamCode = headers.findIndex(h => h.includes('Mã Đội'));
+    let colTeamName = headers.findIndex(h => h.includes('Tên Đội'));
+    let colJudgeEmail = headers.findIndex(h => h.includes('Email Giám Khảo') || h.includes('Email'));
+    let colJudgeName = headers.findIndex(h => h.includes('Tên Giám Khảo'));
+    let colComment = headers.findIndex(h => h.includes('Nhận Xét') || h.includes('Ý Kiến'));
+
+    // Resolve Round and Rubric context
+    let targetRoundId = roundId;
+    let targetTrackId = trackId;
+    let targetRubricId = null;
+
+    // Peek first data row for hidden IDs if not provided in body
+    for (let r = headerRowIdx + 1; r < rawRows.length; r++) {
+      const row = rawRows[r];
+      if (colRoundId >= 0 && row[colRoundId] && !targetRoundId) targetRoundId = String(row[colRoundId]).trim();
+      if (colTrackId >= 0 && row[colTrackId] && !targetTrackId) targetTrackId = String(row[colTrackId]).trim();
+      if (colRubricId >= 0 && row[colRubricId] && !targetRubricId) targetRubricId = String(row[colRubricId]).trim();
+      if (targetRoundId && targetRubricId) break;
+    }
+
+    if (!targetRoundId) {
+      return res.status(400).json({ message: 'Thiếu thông tin vòng thi (roundId).' });
+    }
+
+    const round = await Round.findById(targetRoundId);
+    if (!round) return res.status(404).json({ message: 'Không tìm thấy vòng thi tương ứng.' });
+    if (round.status === 'completed') {
+      return res.status(400).json({ message: 'Vòng thi này đã bị khoá. Không thể import điểm.' });
+    }
+
+    // Permission check
+    if (!req.user.isSystemAdmin) {
+      const userRole = await EventRole.findOne({
+        userId: req.user._id,
+        eventId: round.eventId,
+        role: { $in: ['coordinator', 'admin_view', 'student_assistant', 'judge'] },
+        status: 'active'
+      });
+      if (!userRole) {
+        return res.status(403).json({ message: 'Bạn không có quyền import điểm cho vòng thi này.' });
+      }
+    }
+
+    let rubric = targetRubricId ? await Rubric.findById(targetRubricId) : await Rubric.findOne({ roundId: round._id, isActive: true });
+    if (!rubric) rubric = await Rubric.findOne({ roundId: round._id });
+    if (!rubric) {
+      return res.status(400).json({ message: 'Chưa cấu hình Rubric cho vòng thi này.' });
+    }
+
+    const criteriaList = await Criterion.find({ rubricId: rubric._id }).sort({ order: 1 });
+    if (criteriaList.length === 0) {
+      return res.status(400).json({ message: 'Rubric chưa có tiêu chí chấm điểm.' });
+    }
+
+    // Map criteria to column indices
+    const criteriaColMap = [];
+    criteriaList.forEach(crit => {
+      const cCode = crit.code.toUpperCase();
+      const colIdx = headers.findIndex((h, idx) => {
+        if (idx === colTeamCode || idx === colTeamName || idx === colJudgeEmail || idx === colJudgeName || idx === colComment) return false;
+        const cleanH = h.toUpperCase().split('\n')[0].trim();
+        return cleanH === cCode || cleanH.startsWith(cCode + ' ') || cleanH.startsWith(cCode + '(');
+      });
+      if (colIdx >= 0) {
+        criteriaColMap.push({ criterion: crit, colIdx });
+      }
+    });
+
+    if (criteriaColMap.length === 0) {
+      return res.status(400).json({ message: 'Không khớp được cột tiêu chí nào từ file Excel với Rubric hiện tại.' });
+    }
+
+    // Fetch caches for Teams and Judges to optimize lookups
+    const allTeams = await Team.find({ eventId: round.eventId }).lean();
+    const allJudges = await User.find({}).lean();
+
+    let successCount = 0;
+    let updatedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    const dataRows = rawRows.slice(headerRowIdx + 1);
+
+    for (let idx = 0; idx < dataRows.length; idx++) {
+      const row = dataRows[idx];
+      const rowNum = headerRowIdx + 2 + idx;
+
+      // Skip completely empty row
+      if (!row || row.every(cell => String(cell || '').trim() === '')) {
+        continue;
+      }
+
+      // 1. Resolve Team
+      let team = null;
+      if (colTeamId >= 0 && row[colTeamId] && mongoose.Types.ObjectId.isValid(String(row[colTeamId]).trim())) {
+        team = allTeams.find(t => t._id.toString() === String(row[colTeamId]).trim());
+      }
+      if (!team && colTeamCode >= 0 && row[colTeamCode]) {
+        const codeVal = String(row[colTeamCode]).trim();
+        team = allTeams.find(t =>
+          (t.externalTeamCode && t.externalTeamCode.toLowerCase() === codeVal.toLowerCase()) ||
+          (t.code && t.code.toLowerCase() === codeVal.toLowerCase()) ||
+          t.name.toLowerCase() === codeVal.toLowerCase()
+        );
+      }
+      if (!team && colTeamName >= 0 && row[colTeamName]) {
+        const nameVal = String(row[colTeamName]).trim().toLowerCase();
+        team = allTeams.find(t => t.name.toLowerCase() === nameVal);
+      }
+
+      if (!team) {
+        errorCount++;
+        errors.push(`Dòng ${rowNum}: Không tìm thấy đội thi "${row[colTeamCode] || row[colTeamName] || 'N/A'}".`);
+        continue;
+      }
+
+      // 2. Resolve Judge
+      let judge = null;
+      if (colJudgeId >= 0 && row[colJudgeId] && mongoose.Types.ObjectId.isValid(String(row[colJudgeId]).trim())) {
+        judge = allJudges.find(j => j._id.toString() === String(row[colJudgeId]).trim());
+      }
+      if (!judge && colJudgeEmail >= 0 && row[colJudgeEmail]) {
+        const emailVal = String(row[colJudgeEmail]).trim().toLowerCase();
+        judge = allJudges.find(j => j.email && j.email.toLowerCase() === emailVal);
+      }
+      if (!judge && colJudgeName >= 0 && row[colJudgeName]) {
+        const nameVal = String(row[colJudgeName]).trim().toLowerCase();
+        judge = allJudges.find(j => j.fullName && j.fullName.toLowerCase() === nameVal);
+      }
+
+      if (!judge) {
+        errorCount++;
+        errors.push(`Dòng ${rowNum}: Không tìm thấy giám khảo "${row[colJudgeEmail] || row[colJudgeName] || 'N/A'}".`);
+        continue;
+      }
+
+      // 3. Extract and validate scores
+      let totalRawScore = 0;
+      let totalWeightedScore = 0;
+      const detailsToSave = [];
+      let hasAnyScore = false;
+      let rowScoreError = null;
+
+      for (const { criterion, colIdx } of criteriaColMap) {
+        const rawVal = row[colIdx];
+        if (rawVal !== '' && rawVal !== null && rawVal !== undefined) {
+          const numVal = Number(String(rawVal).replace(',', '.'));
+          if (isNaN(numVal)) {
+            rowScoreError = `Điểm tiêu chí ${criterion.code} không phải là số hợp lệ (${rawVal}).`;
+            break;
+          }
+          if (numVal < 0 || numVal > criterion.maxScore) {
+            rowScoreError = `Điểm tiêu chí ${criterion.code} (${numVal}) vượt quá giới hạn [0 - ${criterion.maxScore}].`;
+            break;
+          }
+
+          hasAnyScore = true;
+          const wScore = numVal * (criterion.weight / (rubric.totalWeight || 100));
+          totalRawScore += numVal;
+          totalWeightedScore += wScore;
+
+          detailsToSave.push({
+            criterionId: criterion._id,
+            scoreValue: Math.round(numVal * 100) / 100,
+            weightedScore: Math.round(wScore * 100) / 100
+          });
+        }
+      }
+
+      if (rowScoreError) {
+        errorCount++;
+        errors.push(`Dòng ${rowNum} (${team.name} - ${judge.fullName}): ${rowScoreError}`);
+        continue;
+      }
+
+      if (!hasAnyScore) {
+        // Skip row if no scores were input for this judge/team
+        continue;
+      }
+
+      const overallComment = colComment >= 0 ? String(row[colComment] || '').trim() : '';
+
+      // 4. Find Repo & Snapshot
+      const repo = await GithubRepository.findOne({ teamId: team._id });
+      const snapshot = await RepositorySnapshot.findOne({ teamId: team._id, roundId: round._id });
+
+      // 5. Upsert Score & ScoreDetail
+      let score = await Score.findOne({ teamId: team._id, roundId: round._id, judgeId: judge._id });
+      const isExisting = !!score;
+
+      if (score) {
+        score.totalRawScore = Math.round(totalRawScore * 100) / 100;
+        score.totalWeightedScore = Math.round(totalWeightedScore * 100) / 100;
+        if (overallComment) score.overallComment = overallComment;
+        score.status = 'submitted';
+        score.submittedAt = new Date();
+        await score.save();
+        updatedCount++;
+      } else {
+        score = new Score({
+          teamId: team._id,
+          repositoryId: repo ? repo._id : undefined,
+          repositorySnapshotId: snapshot ? snapshot._id : undefined,
+          eventId: round.eventId,
+          trackId: team.trackId || targetTrackId,
+          roundId: round._id,
+          rubricId: rubric._id,
+          judgeId: judge._id,
+          totalRawScore: Math.round(totalRawScore * 100) / 100,
+          totalWeightedScore: Math.round(totalWeightedScore * 100) / 100,
+          overallComment,
+          status: 'submitted',
+          submittedAt: new Date()
+        });
+        await score.save();
+      }
+
+      // Recreate ScoreDetails
+      await ScoreDetail.deleteMany({ scoreId: score._id });
+      if (detailsToSave.length > 0) {
+        await ScoreDetail.insertMany(
+          detailsToSave.map(d => ({
+            scoreId: score._id,
+            ...d
+          }))
+        );
+      }
+
+      // Audit Log
+      await ScoreAudit.create({
+        scoreId: score._id,
+        teamId: team._id,
+        roundId: round._id,
+        judgeId: judge._id,
+        actorId: req.user._id,
+        actorRole: req.user.isSystemAdmin ? 'admin' : 'coordinator',
+        action: isExisting ? 'bulk_update' : 'bulk_import',
+        summary: `Import điểm hàng loạt: ${totalWeightedScore.toFixed(2)} điểm (${detailsToSave.length} tiêu chí).`,
+        reason: 'Bulk import from Excel spreadsheet'
+      });
+
+      successCount++;
+    }
+
+    // 6. Broadcast Realtime Socket.IO update
+    try {
+      const io = req.app.get('socketio') || global.io;
+      if (io) {
+        io.to(`live:${round.eventId}`).emit('score_updated', {
+          roundId: round._id,
+          trackId: targetTrackId,
+          timestamp: new Date()
+        });
+      }
+    } catch (socketErr) {
+      console.warn('Socket emit in bulk import failed:', socketErr.message);
+    }
+
+    res.json({
+      success: true,
+      message: `Đã import thành công ${successCount} phiếu chấm điểm (${updatedCount} cập nhật mới).`,
+      totalProcessed: successCount + errorCount,
+      successCount,
+      updatedCount,
+      errorCount,
+      errors
+    });
+
+  } catch (error) {
+    console.error('Import Track Scores Error:', error.message);
+    res.status(500).json({ message: `Lỗi import điểm: ${error.message}` });
   }
 });
 

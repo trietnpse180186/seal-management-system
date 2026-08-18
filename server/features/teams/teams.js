@@ -3522,6 +3522,10 @@ router.get("/:teamId", authenticateToken, async (req, res) => {
             "name driveFileName driveFileId driveFileUrl startTime advanceTopN",
         },
       })
+      .populate({
+        path: "originalTrackId",
+        select: "name description environmentId topicName topicLink",
+      })
       .populate("leaderId", "fullName email")
       .populate("eventId", "name status isArchived");
 
@@ -3695,9 +3699,13 @@ router.get("/:teamId", authenticateToken, async (req, res) => {
       teamPlain.isJudgeActive = isJudgeActive;
       teamPlain.currentScenario = currentScenario;
 
-      if (team.trackId && team.trackId.environmentId) {
+      const targetEnvId =
+        (team.originalTrackId && team.originalTrackId.environmentId) ||
+        (team.trackId && team.trackId.environmentId);
+
+      if (targetEnvId) {
         try {
-          const envInfo = await getEnvironment(team.trackId.environmentId);
+          const envInfo = await getEnvironment(targetEnvId);
           teamPlain.environmentCode = envInfo.code;
         } catch (err) {
           console.warn(
@@ -3705,6 +3713,10 @@ router.get("/:teamId", authenticateToken, async (req, res) => {
             err.message,
           );
         }
+      }
+
+      if (!teamPlain.environmentCode && info && (info.environment || info.environmentCode)) {
+        teamPlain.environmentCode = info.environment || info.environmentCode;
       }
     }
 
